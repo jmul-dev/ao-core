@@ -1,0 +1,8 @@
+export const IPC_SERVER_ID = 'AO_IPC';
+export const IPC_MAIN_WINDOW_CHANNEL = 'IPC_MAIN_WINDOW_CHANNEL';
+export const EVENT_LOG = 'EVENT_LOG';
+export const DATA = 'DATA';
+export const DATA_TYPES = {
+    PEER_CONNECTED: 'PEER_CONNECTED',
+    PEER_DISCONNECTED: 'PEER_DISCONNECTED',
+};
