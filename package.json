@@ -4,12 +4,11 @@
   "description": "AO - Core",
   "main": "src/index.js",
   "bin": {
-    "core": "dist/bin.js",
-    "p2p": "dist/p2p/index.js"
+    "ao-core": "dist/bin.js",
+    "ao-p2p": "dist/p2p/index.js"
   },
   "scripts": {
     "start": "DEBUG=ao:* node dist/bin.js",
-    "ao": "DEBUG=ao:* node $npm_package_bin_core",
     "build": "babel src -d dist --source-maps inline --copy-files"
   },
   "dependencies": {
