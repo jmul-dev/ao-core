@@ -1,7 +1,5 @@
 'use strict';
-
-
-import * as CONSTANTS from './constants';
+import { EVENT_LOG, DATA, DATA_TYPES } from './constants';
 import { spawn } from "child_process";
 import express from "express";
 import { json } from "body-parser";
@@ -17,8 +15,6 @@ const debug = Debug('ao:core')
 const error = Debug('ao:core:error')
 
 
-export const AO_CONSTANTS = CONSTANTS;
-
 export default class Core extends IpcServer {
     constructor(args) {
         debug(args)
@@ -32,22 +28,22 @@ export default class Core extends IpcServer {
         if ( process.send ) {
             // If there is a parent process (running within app) we relay
             // all of the logs up.
-            process.send({event: AO_CONSTANTS.EVENT_LOG, message: message});
+            process.send({event: EVENT_LOG, message: message});
         } else {
             // TODO: append to a temp log somewhere (make this configurable via command line)
         }
         this.db.Log.create({message: message});
     }
     ipcLogListener() {
-        this.ipc.server.on(AO_CONSTANTS.EVENT_LOG, this.sendEventLog.bind(this));
+        this.ipc.server.on(EVENT_LOG, this.sendEventLog.bind(this));
     }
     ipcListenersThatPropogateToDb() {
         notEqual(this.db, null, 'ipcListenersThatPropogateToDb called without db instantiated')
-        this.ipc.server.on(AO_CONSTANTS.DATA, (data) => {           
+        this.ipc.server.on(DATA, (data) => {           
             switch(data.type) {
-                case AO_CONSTANTS.DATA_TYPES.PEER_CONNECTED:
+                case DATA_TYPES.PEER_CONNECTED:
                     return this.db.Peer.findOrCreate({where: {id: data.peerId}})
-                case AO_CONSTANTS.DATA_TYPES.PEER_DISCONNECTED:
+                case DATA_TYPES.PEER_DISCONNECTED:
                     return this.db.Peer.destroy({where: { id: data.peerId }})
                 default:
                     return null

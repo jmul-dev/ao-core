@@ -1,7 +1,8 @@
 #!/usr/local/bin/node
 'use strict';
 import 'source-map-support/register';
-import Core, { AO_CONSTANTS } from './index';
+import Core from './index';
+import { IPC_SERVER_ID } from './constants';
 import minimist from 'minimist';
 import Debug from 'debug';
 const debug = Debug('ao:core');
@@ -10,7 +11,7 @@ var argv = minimist(process.argv.slice(2), {
     default: {
         disableHttpInterface: false,
         httpPort: 3000,
-        ipcServerId: 'test', // AO_CONSTANTS.IPC_SERVER_ID,
+        ipcServerId: IPC_SERVER_ID,
     }
 });
 
