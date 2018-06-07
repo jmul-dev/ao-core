@@ -1,0 +1,29 @@
+enum ContentType {
+    VOD
+    STREAM
+    FILE 
+    APP
+}
+
+# Shared interface between all content types
+interface Content {
+    id: ID!
+    nodeID: ID!
+    creatorID: ID!
+    contentType: ContentType!
+    isFolder: Boolean!
+    isMutable: Boolean!
+    fileName: String
+    description: String
+    # Econ
+    stake: Number
+    fileSize: Number
+    premium: Number
+    split: Number
+    adSupport: Boolean
+}
+
+type VideoContent implements Content {
+    teaserFile: String
+    coverImage: String    
+}
