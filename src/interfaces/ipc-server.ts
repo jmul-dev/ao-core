@@ -1,8 +1,9 @@
 'use strict';
 import { IPC } from "node-ipc";
-import EventEmitter from "events";
+import { EventEmitter } from "events";
 
 class IpcServer extends EventEmitter {
+    ipc: IPC;
     constructor(serverId) {
         super()
         this.ipc = new IPC();
@@ -10,7 +11,7 @@ class IpcServer extends EventEmitter {
         this.ipc.config.silent = true;
         this.ipc.serve();
         this.ipc.server.start();
-        this.ipc.server.on('error', () => {
+        this.ipc.server.on('error', (error) => {
             this.emit('ipc:server:error', error)
         });
         this.ipc.server.on('start', () => {

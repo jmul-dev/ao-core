@@ -1,0 +1,7 @@
+# import * from "../types/index.graphql"
+
+type Query {
+    version: String,
+    videos: [Video],
+    peers: [Peer],
+}

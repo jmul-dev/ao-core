@@ -1,10 +1,12 @@
 'use strict';
 import { IPC } from "node-ipc";
 import { IPC_SERVER_ID } from "../constants.js";
-import EventEmitter from "events";
+import { EventEmitter } from "events";
 
 class IpcClient extends EventEmitter {
-    constructor(clientId, serverId) {
+    ipcServerId: string;
+    ipc: IPC;
+    constructor(clientId: string, serverId: string) {
         super()
         this.ipcServerId = serverId
         this.ipc = new IPC();

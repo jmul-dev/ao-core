@@ -16,6 +16,15 @@ const argv = minimist(process.argv.slice(2));
 
 
 class P2P extends IpcClient {
+    config: {
+        name: string;
+        version: string;
+        service: string;
+        bootstrapers: Array<any>;
+        multicastDNS: any;
+    }
+    connectionManager: ConnManager;
+    node: Node;
     constructor(ipcServerId) {
         super('ao_p2p_process', ipcServerId)
         this.config = {
@@ -106,7 +115,7 @@ class P2P extends IpcClient {
     }
     _loadProtocolInterface() {
         return new Promise((resolve, reject) => {
-            load(join(__dirname, './ao.p2p.proto')).then((protocolInterface) => {
+            load(join(__dirname, '../../src/p2p/ao.p2p.proto')).then((protocolInterface) => {
                 debug('proto3 protocol interface loaded')
                 resolve(protocolInterface)
             }).catch(reject)
