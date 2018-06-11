@@ -1,12 +1,12 @@
 enum ContentType {
     VOD
     STREAM
-    FILE 
+    FILE
     APP
 }
 
 # Shared interface between all content types
-interface Content {
+interface IContent {
     id: ID!
     nodeID: ID!
     creatorID: ID!
@@ -16,14 +16,33 @@ interface Content {
     fileName: String
     description: String
     # Econ
-    stake: Number
-    fileSize: Number
-    premium: Number
-    split: Number
+    stake: Float
+    fileSize: Float
+    premium: Float
+    split: Float
     adSupport: Boolean
+    # Network
+    createdAt: String
 }
 
-type VideoContent implements Content {
+type VideoContent implements IContent {
+    id: ID!
+    nodeID: ID!
+    creatorID: ID!
+    contentType: ContentType!
+    isFolder: Boolean!
+    isMutable: Boolean!
+    fileName: String
+    description: String
+    # Econ
+    stake: Float
+    fileSize: Float
+    premium: Float
+    split: Float
+    adSupport: Boolean
+    # Network
+    createdAt: String
+    # VideoContent
     teaserFile: String
     coverImage: String    
 }

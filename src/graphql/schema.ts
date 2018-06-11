@@ -11,16 +11,26 @@ export default function (db) {
     const schema = makeExecutableSchema({
         typeDefs: [graphqlSchema],
         resolvers: {
+            // Interface (required for mocks)
+            IContent: {
+                __resolveType(data, ctx, info) {
+                    return info.schema.getType(data.__typename) // __typename property must be set by your mock functions
+                },
+            },
             Query: {
                 version: () => packageJson.version,
                 // videos: () => db.Video.all(),
                 // peers: () => db.Peer.all()
             },
-        }
+        },
+        resolverValidationOptions: {
+            requireResolversForResolveType: false
+        },
+        inheritResolversFromInterfaces: true,
     });
     // NOTE: set preserveResolvers to true if we only want to mock undefined resolvers,
     // and use resolvers that are already defined.
-    if ( process.env.NODE_ENV === 'development' )
+    if ( process.env.NODE_ENV !== 'production' )
         addMockFunctionsToSchema({ schema, mocks, preserveResolvers: true });
     return schema;
 }

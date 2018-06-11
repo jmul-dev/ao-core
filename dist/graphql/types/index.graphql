@@ -1,14 +1,6 @@
 # import * from "NodeIdentity.graphql"
+# import * from "Content.graphql"
 
-type Video {
-    id: ID,
-    title: String,
-    metadata: VideoMetadata,
-}
-type VideoMetadata {
-    file_type: String,
-    file_size: Int,
-}
 type Peer {
-    id: ID,
+    id: ID
 }

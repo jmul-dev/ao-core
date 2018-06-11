@@ -9,6 +9,7 @@
   },
   "scripts": {
     "start": "DEBUG=ao:* node dist/bin.js",
+    "dev": "tsc-watch --onSuccess \"yarn start\"",
     "watch": "tsc --watch",
     "build": "tsc && yarn copyfiles",
     "clean": "rimraf dist",
@@ -33,7 +34,7 @@
     "peer-info": "^0.14.1",
     "protobufjs": "^6.8.6",
     "sequelize": "^4.37.10",
-    "sqlite3": "^4.0.0"    
+    "sqlite3": "^4.0.0"
   },
   "devDependencies": {
     "@types/debug": "0.0.30",
@@ -49,7 +50,8 @@
     "babel-preset-stage-0": "^6.24.1",
     "copyfiles": "^2.0.0",
     "rimraf": "^2.6.2",
-    "typescript": "^2.9.1",
-    "tslint": "^5.10.0"
+    "tsc-watch": "^1.0.22",
+    "tslint": "^5.10.0",
+    "typescript": "^2.9.1"
   }
 }

@@ -7,18 +7,18 @@ type NodeIdentity {
     datProfile: ID
     datStorage: ID
     # Local node specific
-    local: NodeLocal
+    local: NodeIdentityLocal
     # Creator specific
-    creator: NodeCreator    
+    creator: NodeIdentityContentCreator
     # Advertiser specific
     # Channel Specific
 }
-type NodeCreator {
-    content: [Content]
+type NodeIdentityContentCreator {
+    content: [VideoContent]
 }
-type NodeLocal {
-    localStorageReserved: Number
-    downloadRateCap: Number
-    uploadRateCap: Number
-    maxUploadCap: Number
+type NodeIdentityLocal {
+    localStorageReserved: Int
+    downloadRateCap: Int
+    uploadRateCap: Int
+    maxUploadCap: Int
 }
