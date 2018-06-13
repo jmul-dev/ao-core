@@ -4,10 +4,11 @@ import { importSchema } from 'graphql-import';
 import path from 'path';
 const graphqlSchema = importSchema( path.resolve(__dirname, './schema.graphql') );
 import mocks from './types/mocks';
+import Database from '../storage/database';
 const packageJson = require('../../package.json');
 
 
-export default function (db) {
+export default function (db: Database) {
     const schema = makeExecutableSchema({
         typeDefs: [graphqlSchema],
         resolvers: {
@@ -19,6 +20,8 @@ export default function (db) {
             },
             Query: {
                 version: () => packageJson.version,
+                logs: () => db.Log.all(),
+                // isRegistered: () => false,
                 // videos: () => db.Video.all(),
                 // peers: () => db.Peer.all()
             },

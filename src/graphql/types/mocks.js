@@ -17,8 +17,17 @@ casual.define('datHash', () => {
     return text;
 });
 
+// Use this to persist mocked data between requests (useful for testing side effects)
+let mockStore = {
+
+}
+
 // https://www.apollographql.com/docs/graphql-tools/mocking.html
 const mocks = {
+    // Graphql Queries
+    isRegistered: () => false,
+
+    // Graphql Types
     NodeIdentity: () => ({
         id: casual.uuid,
         // @ts-ignore
@@ -55,11 +64,28 @@ const mocks = {
     }),
     VideoContent: () => ({
         __typename: 'VideoContent',
+        contentType: 'VOD',
         teaserFile: 'teaser.mp4', // TODO: add source file for mocking
-        coverImage: 'cover.jpg', // TODO: add source file for mocking
+        coverImage: 'cover.jpg', // TODO: add source file for mocking        
     }),
-    Peer: () => ({
-        id: casual.uuid,
+    NodeStatistics: () => ({
+        status: 'connected',
+        uptime: casual.double(0, 1000),
+        peersConnected: casual.integer(0, 100),
+        videosAvailable: casual.integer(),
+        videosSeeding: casual.integer(),
+        videosStreaming: casual.integer(),
+        storageUsed: casual.double(),
+        bandwidthUp: casual.double(),
+        bandwidthDown: casual.double(),
+    }),
+    Wallet: () => ({
+        ethNetwork: 'ropsten',
+        // @ts-ignore
+        ethAddress: casual.ethAddress,
+        ethBalance: casual.double(),
+        aoBalance: casual.double(),
+        aoStaked: casual.double(),
     })
 }
 

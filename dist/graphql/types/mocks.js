@@ -19,8 +19,13 @@ casual_1.default.define('datHash', function () {
         text += possible.charAt(Math.floor(Math.random() * possible.length));
     return text;
 });
+// Use this to persist mocked data between requests (useful for testing side effects)
+var mockStore = {};
 // https://www.apollographql.com/docs/graphql-tools/mocking.html
 var mocks = {
+    // Graphql Queries
+    isRegistered: function () { return false; },
+    // Graphql Types
     NodeIdentity: function () { return ({
         id: casual_1.default.uuid,
         // @ts-ignore
@@ -57,11 +62,28 @@ var mocks = {
     }); },
     VideoContent: function () { return ({
         __typename: 'VideoContent',
+        contentType: 'VOD',
         teaserFile: 'teaser.mp4',
         coverImage: 'cover.jpg',
     }); },
-    Peer: function () { return ({
-        id: casual_1.default.uuid,
+    NodeStatistics: function () { return ({
+        status: 'connected',
+        uptime: casual_1.default.double(0, 1000),
+        peersConnected: casual_1.default.integer(0, 100),
+        videosAvailable: casual_1.default.integer(),
+        videosSeeding: casual_1.default.integer(),
+        videosStreaming: casual_1.default.integer(),
+        storageUsed: casual_1.default.double(),
+        bandwidthUp: casual_1.default.double(),
+        bandwidthDown: casual_1.default.double(),
+    }); },
+    Wallet: function () { return ({
+        ethNetwork: 'ropsten',
+        // @ts-ignore
+        ethAddress: casual_1.default.ethAddress,
+        ethBalance: casual_1.default.double(),
+        aoBalance: casual_1.default.double(),
+        aoStaked: casual_1.default.double(),
     }); }
 };
 // casual.seed(123)

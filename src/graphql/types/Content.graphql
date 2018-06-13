@@ -44,5 +44,12 @@ type VideoContent implements IContent {
     createdAt: String
     # VideoContent
     teaserFile: String
-    coverImage: String    
+    coverImage: String
+    metadata: VideoMetadata
+}
+
+type VideoMetadata {
+    duration: Float
+    resolution: String
+    encoding: String
 }

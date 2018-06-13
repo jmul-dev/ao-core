@@ -1,0 +1,11 @@
+type NodeStatistics {
+    status: String!
+    uptime: Float!
+    peersConnected: Int!
+    videosAvailable: Int!
+    videosSeeding: Int!
+    videosStreaming: Int!
+    storageUsed: Float!
+    bandwidthUp: Float
+    bandwidthDown: Float
+}

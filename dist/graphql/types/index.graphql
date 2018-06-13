@@ -1,6 +1,5 @@
 # import * from "NodeIdentity.graphql"
 # import * from "Content.graphql"
-
-type Peer {
-    id: ID
-}
+# import * from "Log.graphql"
+# import * from "NodeStatistics.graphql"
+# import * from "Wallet.graphql"
