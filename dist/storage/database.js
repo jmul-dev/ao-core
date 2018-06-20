@@ -35,7 +35,9 @@ var Database = /** @class */ (function () {
         });
     }
     Database.prototype.init = function () {
-        return this.memoryDB.sync({ force: true }); // syncs all models (create tables)
+        return this.memoryDB.sync({ force: true }).then(function () {
+            debug('In-memory db synced');
+        }); // syncs all models (create tables)
     };
     Database.prototype.close = function () {
         return this.memoryDB.close();

@@ -26,7 +26,9 @@ class Database {
         })
     }
     init() {
-        return this.memoryDB.sync({force: true})  // syncs all models (create tables)
+        return this.memoryDB.sync({force: true}).then(() => {
+            debug('In-memory db synced')
+        })  // syncs all models (create tables)
     }
     close() {
         return this.memoryDB.close()
