@@ -1,0 +1,7 @@
+type Wallet {
+    ethNetwork: String
+    ethAddress: String
+    ethBalance: Float
+    aoBalance: Float
+    aoStaked: Float
+}

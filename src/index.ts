@@ -1,21 +1,30 @@
 'use strict';
 import { EVENT_LOG, DATA, DATA_TYPES } from './constants';
-import { spawn } from "child_process";
-import express from "express";
+import { spawn, ChildProcess } from "child_process";
+import express = require('express');
 import { json } from "body-parser";
 import { graphqlExpress, graphiqlExpress } from "apollo-server-express";
-import graphql from "graphql";
 import schema from "./graphql/schema";
 import Database from "./storage/database";
 import { notEqual } from "assert";
 import { join } from "path";
 import IpcServer from "./interfaces/ipc-server";
 import Debug from 'debug';
-const debug = Debug('ao:core')
-const error = Debug('ao:core:error')
+import { Server, AddressInfo } from 'net';
+import cors from 'cors';
+const debug = Debug('ao:core');
+const error = Debug('ao:core:error');
 
 
 export default class Core extends IpcServer {
+    public options: {
+        httpPort: number;
+        ipcServerId: string;
+        disableHttpInterface: boolean;
+    };
+    private db: Database;
+    private server: Server;
+    private subProcesses: Array<ChildProcess>;
     constructor(args) {
         debug(args)
         super(args.ipcServerId)
@@ -72,10 +81,11 @@ export default class Core extends IpcServer {
         notEqual(this.db, null, 'http server requires instance of db');
         const expressServer = express();
         const graphqlSchema = schema(this.db);
-        expressServer.use('/graphql', json(), graphqlExpress({ schema: graphqlSchema }));
+        expressServer.use('/graphql', cors({origin: 'http://localhost:*'}), json(), graphqlExpress({ schema: graphqlSchema }));
         expressServer.get('/graphiql', graphiqlExpress({ endpointURL: '/graphql' })); // TODO: enable based on process.env.NODE_ENV
         this.server = expressServer.listen(this.options.httpPort, () => {
-            debug('Express server running on port: ' + this.server.address().port);
+            const address: AddressInfo = <AddressInfo> this.server.address();
+            debug('Express server running on port: ' + address.port);
             this.sendEventLog('Core http server started');
         });
         this.server.on('error', this.shutdownWithError.bind(this));
@@ -86,7 +96,7 @@ export default class Core extends IpcServer {
             this.ipc.server.stop();
         if ( this.server !== null && this.server.close )
             this.server.close();
-        const dbConnecitonPromise = this.db === null ? Promise.resolve() : this.db.close()
+        const dbConnecitonPromise: PromiseLike<void> = this.db === null ? Promise.resolve() : this.db.close()        
         dbConnecitonPromise.then(() => {
             for (let i = 0; i < this.subProcesses.length; i++) {
                 const subprocess = this.subProcesses[i];

@@ -1,0 +1,4 @@
+type Log {
+    createdAt: String!
+    message: String!
+}

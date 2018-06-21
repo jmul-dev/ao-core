@@ -1,0 +1,11 @@
+# import * from "../types/index.graphql"
+
+type Query {
+    version: String!
+    logs: [Log]!
+    isRegistered: Boolean
+    node: NodeIdentity
+    statistics: NodeStatistics
+    wallet: Wallet
+    videos: [VideoContent]
+}

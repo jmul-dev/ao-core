@@ -1,16 +1,17 @@
 #!/usr/local/bin/node
 'use strict';
-import 'source-map-support/register';
-import Core from './index';
 import { IPC_SERVER_ID } from './constants';
-import minimist from 'minimist';
+import Core from './index';
+import minimist = require('minimist');
 import Debug from 'debug';
 const debug = Debug('ao:core');
+
+
 
 var argv = minimist(process.argv.slice(2), {
     default: {
         disableHttpInterface: false,
-        httpPort: 3000,
+        httpPort: 3003,
         ipcServerId: IPC_SERVER_ID,
     }
 });
