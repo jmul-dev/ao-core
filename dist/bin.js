@@ -12,7 +12,7 @@ var debug = debug_1.default('ao:core');
 var argv = minimist(process.argv.slice(2), {
     default: {
         disableHttpInterface: false,
-        httpPort: 3000,
+        httpPort: 3003,
         ipcServerId: constants_1.IPC_SERVER_ID,
     }
 });
