@@ -4,7 +4,6 @@ import { spawn, ChildProcess } from "child_process";
 import express = require('express');
 import { json } from "body-parser";
 import { graphqlExpress, graphiqlExpress } from "apollo-server-express";
-import graphql from "graphql";
 import schema from "./graphql/schema";
 import Database from "./storage/database";
 import { notEqual } from "assert";
@@ -12,6 +11,7 @@ import { join } from "path";
 import IpcServer from "./interfaces/ipc-server";
 import Debug from 'debug';
 import { Server, AddressInfo } from 'net';
+import cors from 'cors';
 const debug = Debug('ao:core');
 const error = Debug('ao:core:error');
 
@@ -81,7 +81,7 @@ export default class Core extends IpcServer {
         notEqual(this.db, null, 'http server requires instance of db');
         const expressServer = express();
         const graphqlSchema = schema(this.db);
-        expressServer.use('/graphql', json(), graphqlExpress({ schema: graphqlSchema }));
+        expressServer.use('/graphql', cors({origin: 'http://localhost:*'}), json(), graphqlExpress({ schema: graphqlSchema }));
         expressServer.get('/graphiql', graphiqlExpress({ endpointURL: '/graphql' })); // TODO: enable based on process.env.NODE_ENV
         this.server = expressServer.listen(this.options.httpPort, () => {
             const address: AddressInfo = <AddressInfo> this.server.address();
