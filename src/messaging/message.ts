@@ -1,6 +1,6 @@
 'use strict';
 
-import Ajv from 'ajv';
+import {validate} from 'jsonschema'
 import Debug from 'debug';
 const debug = Debug('ao:core');
 const error = Debug('ao:core:error');
@@ -9,71 +9,75 @@ const error = Debug('ao:core:error');
  * Message creation class with basic data validation
  */
 export default class Message {
-    
-    constructor( message:Object ) {
-        //Let's run a validator here.
-        if( message ) {
-            this.validate(message);
-            //Head
-            this.app_id = message.app_id:String;
-            this.type_id = message.type_id:String;
-            this.message_type = message.message_type:Object;
-            this.signatures = message.signatures:Array; //Not sure what this data type is supposed to become?
-            
-            //Body
-            this.data = message.data:Object
-            this.encoding = message.encoding:String
+    constructor( initializer:Message ) {
+        // return if no initializer is passed in 
+        if (initializer === undefined) {
+            return;
         }
+        // apply 
+        Object.keys(initializer).forEach((key, index) => {
+            this[key] = initializer[key];
+        });
     }
-    message_schema: {
-        "required": {
+    message_schema:Object = {
+        "id": "/MessageObject",
+        "type": "object",
+        "required": [
             "app_id",
             "type_id",
             "data",
             "encoding"
-        }
+        ],
         "properties": {
             "app_id": {
-                "type": "string",
+                "type": "string"
             },
             "type_id": {
-                "type": "string",
+                "type": "string"
             },
-            // "message_type": {},
-            // "signatures": {},
-            // "data": {},
-            // "encoding": {}
+            "message_type": {
+                "type": "object"
+            },
+            "signatures": {
+                "type": "object"
+            },
+            "data": {
+                "type": "object"
+            },
+            "encoding": {
+                "type": "string"
+            }
         }
     }
     validate( message:Object ) {
-        var ajv = new Ajv();
-        var valid = ajv(this.message_schema, message);
-        if(!valid) {
-            //This means you're missing data on your message (its a super basic test)
-            error(ajv.errors)
+        var result = validate( message, this.message_schema)
+        if( result.valid ) {
+            return true;
+        } else {
+            error('Message failed validation')
         }
         return;
     }
 
     //Head Getters/Setters
     get app_id() { return this.app_id; }
-    set app_id(val) { this.app_id = val; }
+    set app_id(val:string) { this.app_id = val; }
 
     get type_id() { return this.type_id; }
-    set type_id(val) { this.type_id = val; }
+    set type_id(val:string) { this.type_id = val; }
 
     get message_type() { return this.message_type; }
-    set message_type(val) { this.message_type = val; }
+    set message_type(val:Object) { this.message_type = val; }
 
     get signatures() { return this.signatures; }
-    set signatures(val) { this.signatures = val; }
+    set signatures(val:Object) { this.signatures = val; }
 
     //Message body
     get data() { return this.data; }
-    set data(val) { this.data = val; }
+    set data(val:Object) { this.data = val; }
 
     get encoding() { return this.encoding; }
-    set encoding(val) { this.encoding = val; }
+    set encoding(val:String) { this.encoding = val; }
 
 
     toJSON() {

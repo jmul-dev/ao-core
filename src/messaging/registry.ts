@@ -8,6 +8,11 @@ export default class registry {
     }
     verify() {
         //verify that we do/don't fail the registry
-        return true
+        if(true) {
+            return {test:'test'}
+        } else {
+            return {error:'not good'}
+        }
+        
     }
 }
