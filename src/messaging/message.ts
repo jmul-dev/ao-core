@@ -1,5 +1,5 @@
 'use strict';
-
+import message_schema from './message_schema'
 import {validate} from 'jsonschema'
 import Debug from 'debug';
 const debug = Debug('ao:core');
@@ -19,44 +19,14 @@ export default class Message {
             this[key] = initializer[key];
         });
     }
-    message_schema:Object = {
-        "id": "/MessageObject",
-        "type": "object",
-        "required": [
-            "app_id",
-            "type_id",
-            "data",
-            "encoding"
-        ],
-        "properties": {
-            "app_id": {
-                "type": "string"
-            },
-            "type_id": {
-                "type": "string"
-            },
-            "message_type": {
-                "type": "object"
-            },
-            "signatures": {
-                "type": "object"
-            },
-            "data": {
-                "type": "object"
-            },
-            "encoding": {
-                "type": "string"
-            }
-        }
-    }
+    private message_schema:Object = message_schema
     validate( message:Object ) {
         var result = validate( message, this.message_schema)
         if( result.valid ) {
-            return true;
-        } else {
-            error('Message failed validation')
+            return;
         }
-        return;
+        error('Message failed validation');
+        
     }
 
     //Head Getters/Setters
@@ -89,7 +59,7 @@ export default class Message {
             data: this.data,
             encoding: this.encoding
         };
-        this.validate(message)
+        this.validate(message)//incase someone used getters and setters instead.
         return message
     }
 }

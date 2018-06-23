@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+var message_schema_1 = __importDefault(require("./message_schema"));
 var jsonschema_1 = require("jsonschema");
 var debug_1 = __importDefault(require("debug"));
 var debug = debug_1.default('ao:core');
@@ -13,36 +14,7 @@ var error = debug_1.default('ao:core:error');
 var Message = /** @class */ (function () {
     function Message(initializer) {
         var _this = this;
-        this.message_schema = {
-            "id": "/MessageObject",
-            "type": "object",
-            "required": [
-                "app_id",
-                "type_id",
-                "data",
-                "encoding"
-            ],
-            "properties": {
-                "app_id": {
-                    "type": "string"
-                },
-                "type_id": {
-                    "type": "string"
-                },
-                "message_type": {
-                    "type": "object"
-                },
-                "signatures": {
-                    "type": "object"
-                },
-                "data": {
-                    "type": "object"
-                },
-                "encoding": {
-                    "type": "string"
-                }
-            }
-        };
+        this.message_schema = message_schema_1.default;
         // return if no initializer is passed in 
         if (initializer === undefined) {
             return;
@@ -55,12 +27,9 @@ var Message = /** @class */ (function () {
     Message.prototype.validate = function (message) {
         var result = jsonschema_1.validate(message, this.message_schema);
         if (result.valid) {
-            return true;
+            return;
         }
-        else {
-            error('Message failed validation');
-        }
-        return;
+        error('Message failed validation');
     };
     Object.defineProperty(Message.prototype, "app_id", {
         //Head Getters/Setters
@@ -109,7 +78,7 @@ var Message = /** @class */ (function () {
             data: this.data,
             encoding: this.encoding
         };
-        this.validate(message);
+        this.validate(message); //incase someone used getters and setters instead.
         return message;
     };
     return Message;

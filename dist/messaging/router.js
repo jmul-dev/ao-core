@@ -9,8 +9,13 @@ var debug = debug_1.default('ao:core');
 var error = debug_1.default('ao:core:error');
 var Router = /** @class */ (function () {
     function Router(message) {
+        var _this = this;
+        this.registry = new registry_1.default();
         //data validation
-        this.validate(message)
+        this.registry.loadRegistry()
+            .then(function () {
+            _this.validate(message);
+        })
             .then(this.registryCheck.bind(this)) //registration check
             .catch(function (err) {
             error(err);
@@ -18,13 +23,13 @@ var Router = /** @class */ (function () {
     }
     Router.prototype.validate = function (message) {
         return new Promise(function (resolve, reject) {
-            //for now...
+            //basic data validation
             resolve(message);
         });
     };
     Router.prototype.registryCheck = function (message) {
         return new Promise(function (resolve, reject) {
-            var registry = new registry_1.default(message);
+            var registry = new registry_1.default();
             var verification = registry.verify();
             if (verification.error) {
                 reject('failed regsitry verification');
