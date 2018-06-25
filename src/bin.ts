@@ -6,8 +6,6 @@ import minimist = require('minimist');
 import Debug from 'debug';
 const debug = Debug('ao:core');
 
-
-
 var argv = minimist(process.argv.slice(2), {
     default: {
         disableHttpInterface: false,

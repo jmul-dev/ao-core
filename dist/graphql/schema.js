@@ -21,7 +21,7 @@ function default_1(db) {
             },
             Query: {
                 version: function () { return packageJson.version; },
-                logs: function () { return db.Log.all(); },
+                logs: function () { return db.getLogs(); },
             },
         },
         resolverValidationOptions: {

@@ -41,7 +41,7 @@ export default class Core extends IpcServer {
         } else {
             // TODO: append to a temp log somewhere (make this configurable via command line)
         }
-        this.db.Log.create({message: message});
+        this.db.addLog({message: message});
     }
     ipcLogListener() {
         this.ipc.server.on(EVENT_LOG, this.sendEventLog.bind(this));
@@ -51,9 +51,9 @@ export default class Core extends IpcServer {
         this.ipc.server.on(DATA, (data) => {           
             switch(data.type) {
                 case DATA_TYPES.PEER_CONNECTED:
-                    return this.db.Peer.findOrCreate({where: {id: data.peerId}})
+                    return this.db.addPeer(data.peerId)
                 case DATA_TYPES.PEER_DISCONNECTED:
-                    return this.db.Peer.destroy({where: { id: data.peerId }})
+                    return this.db.removePeer(data.peerId)
                 default:
                     return null
             }
@@ -96,7 +96,7 @@ export default class Core extends IpcServer {
             this.ipc.server.stop();
         if ( this.server !== null && this.server.close )
             this.server.close();
-        const dbConnecitonPromise: PromiseLike<void> = this.db === null ? Promise.resolve() : this.db.close()        
+        const dbConnecitonPromise: PromiseLike<void> = this.db === null ? Promise.resolve() : this.db.close()
         dbConnecitonPromise.then(() => {
             for (let i = 0; i < this.subProcesses.length; i++) {
                 const subprocess = this.subProcesses[i];

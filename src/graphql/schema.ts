@@ -20,7 +20,7 @@ export default function (db: Database) {
             },
             Query: {
                 version: () => packageJson.version,
-                logs: () => db.Log.all(),
+                logs: () => db.getLogs(),
                 // isRegistered: () => false,
                 // videos: () => db.Video.all(),
                 // peers: () => db.Peer.all()

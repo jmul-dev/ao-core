@@ -48,7 +48,7 @@ var Core = /** @class */ (function (_super) {
         else {
             // TODO: append to a temp log somewhere (make this configurable via command line)
         }
-        this.db.Log.create({ message: message });
+        this.db.addLog({ message: message });
     };
     Core.prototype.ipcLogListener = function () {
         this.ipc.server.on(constants_1.EVENT_LOG, this.sendEventLog.bind(this));
@@ -59,9 +59,9 @@ var Core = /** @class */ (function (_super) {
         this.ipc.server.on(constants_1.DATA, function (data) {
             switch (data.type) {
                 case constants_1.DATA_TYPES.PEER_CONNECTED:
-                    return _this.db.Peer.findOrCreate({ where: { id: data.peerId } });
+                    return _this.db.addPeer(data.peerId);
                 case constants_1.DATA_TYPES.PEER_DISCONNECTED:
-                    return _this.db.Peer.destroy({ where: { id: data.peerId } });
+                    return _this.db.removePeer(data.peerId);
                 default:
                     return null;
             }
