@@ -7,8 +7,12 @@ var graphql_tools_1 = require("graphql-tools");
 var graphql_import_1 = require("graphql-import");
 var path_1 = __importDefault(require("path"));
 var graphqlSchema = graphql_import_1.importSchema(path_1.default.resolve(__dirname, './schema.graphql'));
-var mocks_1 = __importDefault(require("./types/mocks"));
+var mocks_1 = __importDefault(require("./mocks"));
 var packageJson = require('../../package.json');
+// TODO: replace with actual db calls
+var mockStore = {
+    node: null,
+};
 function default_1(db) {
     var schema = graphql_tools_1.makeExecutableSchema({
         typeDefs: [graphqlSchema],
@@ -22,7 +26,22 @@ function default_1(db) {
             Query: {
                 version: function () { return packageJson.version; },
                 logs: function () { return db.getLogs(); },
+                node: function () { return mockStore.node; },
             },
+            Mutation: {
+                register: function (obj, args, context, info) {
+                    return new Promise(function (resolve, reject) {
+                        setTimeout(function () {
+                            // simulating setup time
+                            mockStore.node = {
+                                id: args.inputs.ethAddress,
+                                ethAddress: args.inputs.ethAddress
+                            };
+                            resolve(mockStore.node);
+                        }, 2500);
+                    });
+                }
+            }
         },
         resolverValidationOptions: {
             requireResolversForResolveType: false

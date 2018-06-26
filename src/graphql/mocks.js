@@ -17,16 +17,8 @@ casual.define('datHash', () => {
     return text;
 });
 
-// Use this to persist mocked data between requests (useful for testing side effects)
-let mockStore = {
-
-}
-
 // https://www.apollographql.com/docs/graphql-tools/mocking.html
 const mocks = {
-    // Graphql Queries
-    isRegistered: () => false,
-
     // Graphql Types
     NodeIdentity: () => ({
         id: casual.uuid,
@@ -88,7 +80,5 @@ const mocks = {
         aoStaked: casual.double(),
     })
 }
-
-// casual.seed(123)
 
 export default mocks

@@ -3,10 +3,14 @@ import { makeExecutableSchema, addMockFunctionsToSchema } from 'graphql-tools';
 import { importSchema } from 'graphql-import';
 import path from 'path';
 const graphqlSchema = importSchema( path.resolve(__dirname, './schema.graphql') );
-import mocks from './types/mocks';
+import mocks from './mocks';
 import Database from '../storage/database';
 const packageJson = require('../../package.json');
 
+// TODO: replace with actual db calls
+let mockStore = {
+    node: null,
+}
 
 export default function (db: Database) {
     const schema = makeExecutableSchema({
@@ -21,10 +25,24 @@ export default function (db: Database) {
             Query: {
                 version: () => packageJson.version,
                 logs: () => db.getLogs(),
-                // isRegistered: () => false,
+                node: () => mockStore.node,
                 // videos: () => db.Video.all(),
                 // peers: () => db.Peer.all()
             },
+            Mutation: {
+                register: (obj, args, context, info) => {
+                    return new Promise((resolve, reject) => {
+                        setTimeout(function() {
+                            // simulating setup time
+                            mockStore.node = {
+                                id: args.inputs.ethAddress,
+                                ethAddress: args.inputs.ethAddress
+                            }
+                            resolve(mockStore.node)
+                        }, 2500)                        
+                    })
+                }
+            }
         },
         resolverValidationOptions: {
             requireResolversForResolveType: false

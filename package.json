@@ -8,7 +8,7 @@
     "ao-p2p": "dist/p2p/index.js"
   },
   "scripts": {
-    "start": "DEBUG=ao:* node dist/bin.js",
+    "start": "yarn copyfiles && DEBUG=ao:* node dist/bin.js",
     "dev": "tsc-watch --onSuccess \"yarn start\"",
     "watch": "tsc --watch",
     "build": "tsc && yarn copyfiles",
