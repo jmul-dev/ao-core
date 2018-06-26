@@ -90,7 +90,7 @@ var Core = /** @class */ (function (_super) {
         assert_1.notEqual(this.db, null, 'http server requires instance of db');
         var expressServer = express();
         var graphqlSchema = schema_1.default(this.db);
-        expressServer.use('/graphql', cors_1.default({ origin: 'http://localhost:*' }), body_parser_1.json(), apollo_server_express_1.graphqlExpress({ schema: graphqlSchema }));
+        expressServer.use('/graphql', cors_1.default({ origin: 'http://localhost:3000' }), body_parser_1.json(), apollo_server_express_1.graphqlExpress({ schema: graphqlSchema }));
         expressServer.get('/graphiql', apollo_server_express_1.graphiqlExpress({ endpointURL: '/graphql' })); // TODO: enable based on process.env.NODE_ENV
         this.server = expressServer.listen(this.options.httpPort, function () {
             var address = _this.server.address();

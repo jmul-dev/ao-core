@@ -81,7 +81,7 @@ export default class Core extends IpcServer {
         notEqual(this.db, null, 'http server requires instance of db');
         const expressServer = express();
         const graphqlSchema = schema(this.db);
-        expressServer.use('/graphql', cors({origin: 'http://localhost:*'}), json(), graphqlExpress({ schema: graphqlSchema }));
+        expressServer.use('/graphql', cors({origin: 'http://localhost:3000'}), json(), graphqlExpress({ schema: graphqlSchema }));
         expressServer.get('/graphiql', graphiqlExpress({ endpointURL: '/graphql' })); // TODO: enable based on process.env.NODE_ENV
         this.server = expressServer.listen(this.options.httpPort, () => {
             const address: AddressInfo = <AddressInfo> this.server.address();
