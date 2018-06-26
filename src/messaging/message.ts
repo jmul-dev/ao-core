@@ -33,6 +33,9 @@ export default class Message {
     get app_id() { return this.app_id; }
     set app_id(val:string) { this.app_id = val; }
 
+    get event() { return this.event }
+    set event(val:string) { this.event = val; }
+
     get type_id() { return this.type_id; }
     set type_id(val:string) { this.type_id = val; }
 
@@ -44,7 +47,7 @@ export default class Message {
 
     //Message body
     get data() { return this.data; }
-    set data(val:Object) { this.data = val; }
+    set data(val:Object ) { this.data = val; }
 
     get encoding() { return this.encoding; }
     set encoding(val:String) { this.encoding = val; }

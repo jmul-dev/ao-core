@@ -38,6 +38,12 @@ var Message = /** @class */ (function () {
         enumerable: true,
         configurable: true
     });
+    Object.defineProperty(Message.prototype, "event", {
+        get: function () { return this.event; },
+        set: function (val) { this.event = val; },
+        enumerable: true,
+        configurable: true
+    });
     Object.defineProperty(Message.prototype, "type_id", {
         get: function () { return this.type_id; },
         set: function (val) { this.type_id = val; },

@@ -4,12 +4,16 @@ const message_schema:Object = {
     "type": "object",
     "required": [
         "app_id",
+        "event",
         "type_id",
         "data",
         "encoding"
     ],
     "properties": {
         "app_id": {
+            "type": "string"
+        },
+        "event": {
             "type": "string"
         },
         "type_id": {

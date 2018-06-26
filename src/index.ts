@@ -12,6 +12,9 @@ import IpcServer from "./interfaces/ipc-server";
 import Debug from 'debug';
 import { Server, AddressInfo } from 'net';
 import cors from 'cors';
+import Registry from './messaging/registry';
+import Router from './messaging/router';
+
 const debug = Debug('ao:core');
 const error = Debug('ao:core:error');
 
@@ -105,15 +108,29 @@ export default class Core extends IpcServer {
             process.exit(1);
         })
     }
+    registry:Registry;
+    router: Object;
+    registry_data: Array<any>;
     spinUpSubProcesses() {
+
+        //Maybe pass the registry json itself over at the time of Registry contruction?
+        this.registry = new Registry()
+        this.registry.initialize()
+        .then( (router) => {
+            this.router = router
+        })
+        .catch((e) => {
+            error(e)
+        })
+        
         debug('attempting to spawn sub processes')
-        const p2pSubProcess = spawn('node', [join(__dirname, '../dist/p2p/index.js'), '--ipcServerId', this.options.ipcServerId], {stdio: ['inherit', 'inherit', 'inherit']})
-        p2pSubProcess.on('error', (err) => {
-            error('p2pSubProcess failed to start: ', err)
-        })
-        p2pSubProcess.on('close', (code) => {
-            debug('p2pSubProcess closed on us with code: ', code)
-        })
-        this.subProcesses.push(p2pSubProcess)
+        // const p2pSubProcess = spawn('node', [join(__dirname, '../dist/p2p/index.js'), '--ipcServerId', this.options.ipcServerId], {stdio: ['inherit', 'inherit', 'inherit']})
+        // p2pSubProcess.on('error', (err) => {
+        //     error('p2pSubProcess failed to start: ', err)
+        // })
+        // p2pSubProcess.on('close', (code) => {
+        //     debug('p2pSubProcess closed on us with code: ', code)
+        // })
+        // this.subProcesses.push(p2pSubProcess)
     }
 }

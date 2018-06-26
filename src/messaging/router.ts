@@ -1,37 +1,37 @@
 'use strict';
-import Registry from './registry';
+import Message from './message'
 import Debug from 'debug';
+import Registry from './registry';
 const debug = Debug('ao:core');
 const error = Debug('ao:core:error');
+import {RegistryObject} from './message_interfaces'
 
-export default class Router {
-    registry: any;
-    constructor( message:Object ) {
-        this.registry = new Registry()
-        
+export default class Router {    
+    private registry: Registry;
+    private registry_item: RegistryObject;
+    constructor( registry ) {
+        this.registry = registry
+    }
+    public send(message:Message) {
         //data validation
-        this.registry.loadRegistry()
-        .then(() => {
-            this.validate(message)    
-        })
-        .then(this.registryCheck.bind(this))//registration check
+        this.validate(message)
+        .then( () => {
+            this.registry_item = this.registry.verify(message)
+        } )//registration check
+        .then(this.callMethod.bind(this))
         .catch((err)=> {
             error(err)
         })
     }
-    validate( message:Object ) {
+    private async validate( message:Message ) {
         return new Promise((resolve,reject) => {
             //basic data validation
             resolve(message)  
         })
     }
-    registryCheck( message:Object ) {
-        return new Promise((resolve,reject) => {
-            const registry = new Registry()
-            var verification = registry.verify()
-            if(verification.error) {
-                reject('failed regsitry verification')
-            }
+    private async callMethod( message:Message ) {
+        return new Promise( ( resolve,reject ) => {
+            this.registry_item.process.send()
             resolve(message)
         })
     }

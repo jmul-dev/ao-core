@@ -3,11 +3,11 @@ const process_schema:Object = {
     "id": "/ProcessObject",
     "type": "object",
     "required": [
-        "name",
+        "registry_name",
         "process"
     ],
     "properties": {
-        "name": {
+        "registry_name": {
             "type": "string"
         },
         "process": {

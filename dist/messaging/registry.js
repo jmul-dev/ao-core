@@ -41,8 +41,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 //Should the registry be a database/persisted storage thing?  If so, how far should we go with encryption?
 var registry_schema_1 = __importDefault(require("./registry_schema"));
 var process_schema_1 = __importDefault(require("./process_schema"));
-var jsonschema_1 = require("jsonschema");
+var path_1 = require("path");
+var child_process_1 = require("child_process");
 var debug_1 = __importDefault(require("debug"));
+var router_1 = __importDefault(require("./router"));
 var debug = debug_1.default('ao:core');
 var error = debug_1.default('ao:core:error');
 //Fake data for now.  We'll have to do an FS read, & encryption/decryption for this.
@@ -51,14 +53,39 @@ var model_registry = [
         priority: 0,
         name: 'p2pSubProcess',
         type: 'system',
-        file: '../dist/p2p/index.js',
+        file: '/p2p/index.js',
+        events: [
+            "p2p_lookup",
+            "p2p_peer_count"
+        ]
     }
 ];
 var Registry = /** @class */ (function () {
     function Registry() {
+        this.events_registry = {}; //Used to tie together events to a registry by name
+        this.registry_by_name = {}; //Now you can use a name to just pull the registry item
+        //Validation Schema
         this.registry_schema = registry_schema_1.default;
         this.process_schema = process_schema_1.default;
     }
+    //Init the Registry and get yourself a router!
+    Registry.prototype.initialize = function () {
+        return __awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            return __generator(this, function (_a) {
+                return [2 /*return*/, new Promise(function (resolve, reject) {
+                        _this.loadRegistry()
+                            .then(_this.loadProcesses.bind(_this))
+                            .then(function () {
+                            return new router_1.default(_this);
+                        })
+                            .catch(function (e) {
+                            error(e);
+                        });
+                    })];
+            });
+        });
+    };
     Registry.prototype.loadRegistry = function () {
         return __awaiter(this, void 0, void 0, function () {
             var _this = this;
@@ -66,7 +93,16 @@ var Registry = /** @class */ (function () {
                 return [2 /*return*/, new Promise(function (resolve, reject) {
                         //read from FS and decode later using a key? will have to figure this out.
                         _this.model_registry = model_registry;
-                        resolve(model_registry);
+                        //repacking information for easy use            
+                        for (var i = 0; i < model_registry.length; i++) {
+                            var registry = model_registry[i];
+                            _this.registry_by_name[registry.name] = registry;
+                            for (var e = 0; e < registry.events.length; e++) {
+                                var event = registry.events[e];
+                                _this.events_registry[event] = registry.name;
+                            }
+                        }
+                        resolve();
                     })];
             });
         });
@@ -82,56 +118,52 @@ var Registry = /** @class */ (function () {
             });
         });
     };
-    Registry.prototype.addProcess = function (process_object) {
+    Registry.prototype.loadProcesses = function () {
         return __awaiter(this, void 0, void 0, function () {
-            var err_1, result, record;
+            var _this = this;
             return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        if (!!this.model_registry) return [3 /*break*/, 4];
-                        _a.label = 1;
-                    case 1:
-                        _a.trys.push([1, 3, , 4]);
-                        return [4 /*yield*/, this.loadRegistry()];
-                    case 2:
-                        _a.sent();
-                        return [3 /*break*/, 4];
-                    case 3:
-                        err_1 = _a.sent();
-                        error(err_1);
-                        return [3 /*break*/, 4];
-                    case 4:
-                        result = jsonschema_1.validate(process_object, this.process_schema);
-                        if (result.valid) {
-                            record = this.findInRegistry(process_object.registry_name);
-                            record;
+                return [2 /*return*/, new Promise(function (resolve, reject) {
+                        var all_processes = [];
+                        var _loop_1 = function (i) {
+                            var registry = _this.model_registry[i];
+                            all_processes.push(new Promise(function (res, rej) {
+                                var current_process = child_process_1.spawn('node', [path_1.join(__dirname, '../../dist/' + registry.file)], { stdio: ['inherit', 'inherit', 'inherit'] });
+                                current_process.on('error', function (err) {
+                                    error(registry.name + ' failed to start: ', err);
+                                });
+                                current_process.on('close', function (code) {
+                                    debug(registry.name + ' closed on us with code: ', code);
+                                });
+                                _this.model_registry[i].process = current_process;
+                                res();
+                            }));
+                        };
+                        for (var i = 0; i < _this.model_registry.length; i++) {
+                            _loop_1(i);
                         }
-                        else {
-                            error('Process validation failed');
-                        }
-                        return [2 /*return*/];
-                }
+                        Promise.all(all_processes)
+                            .then(function () {
+                            resolve();
+                        })
+                            .catch(function (e) {
+                            error(e);
+                        });
+                    })];
             });
         });
     };
-    Registry.prototype.findInRegistry = function (name) {
-        for (var i = 0; i < this.model_registry.length; i++) {
-            var item = this.model_registry[i];
-            if (item.name == name) {
-                return item;
-            }
+    Registry.prototype.verify = function (message) {
+        //verify that we do/don't have the registry
+        var registry_name = this.events_registry[message.event];
+        if (!registry_name) {
+            return false;
         }
-    };
-    Registry.prototype.send = function (message) {
-        //verify the message with the registry
-    };
-    Registry.prototype.verify = function () {
-        //verify that we do/don't fail the registry
-        if (true) {
-            return { test: 'test' };
+        var registry = this.registry_by_name[registry_name];
+        if (registry) {
+            return registry;
         }
         else {
-            return { error: 'not good' };
+            return false;
         }
     };
     return Registry;

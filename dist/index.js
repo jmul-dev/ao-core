@@ -14,17 +14,16 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var constants_1 = require("./constants");
-var child_process_1 = require("child_process");
 var express = require("express");
 var body_parser_1 = require("body-parser");
 var apollo_server_express_1 = require("apollo-server-express");
 var schema_1 = __importDefault(require("./graphql/schema"));
 var database_1 = __importDefault(require("./storage/database"));
 var assert_1 = require("assert");
-var path_1 = require("path");
 var ipc_server_1 = __importDefault(require("./interfaces/ipc-server"));
 var debug_1 = __importDefault(require("debug"));
 var cors_1 = __importDefault(require("cors"));
+var registry_1 = __importDefault(require("./messaging/registry"));
 var debug = debug_1.default('ao:core');
 var error = debug_1.default('ao:core:error');
 var Core = /** @class */ (function (_super) {
@@ -116,15 +115,25 @@ var Core = /** @class */ (function (_super) {
         });
     };
     Core.prototype.spinUpSubProcesses = function () {
+        var _this = this;
+        //Maybe pass the registry json itself over at the time of Registry contruction?
+        this.registry = new registry_1.default();
+        this.registry.initialize()
+            .then(function (router) {
+            _this.router = router;
+        })
+            .catch(function (e) {
+            error(e);
+        });
         debug('attempting to spawn sub processes');
-        var p2pSubProcess = child_process_1.spawn('node', [path_1.join(__dirname, '../dist/p2p/index.js'), '--ipcServerId', this.options.ipcServerId], { stdio: ['inherit', 'inherit', 'inherit'] });
-        p2pSubProcess.on('error', function (err) {
-            error('p2pSubProcess failed to start: ', err);
-        });
-        p2pSubProcess.on('close', function (code) {
-            debug('p2pSubProcess closed on us with code: ', code);
-        });
-        this.subProcesses.push(p2pSubProcess);
+        // const p2pSubProcess = spawn('node', [join(__dirname, '../dist/p2p/index.js'), '--ipcServerId', this.options.ipcServerId], {stdio: ['inherit', 'inherit', 'inherit']})
+        // p2pSubProcess.on('error', (err) => {
+        //     error('p2pSubProcess failed to start: ', err)
+        // })
+        // p2pSubProcess.on('close', (code) => {
+        //     debug('p2pSubProcess closed on us with code: ', code)
+        // })
+        // this.subProcesses.push(p2pSubProcess)
     };
     return Core;
 }(ipc_server_1.default));
