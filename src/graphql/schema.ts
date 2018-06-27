@@ -11,7 +11,7 @@ const packageJson = require('../../package.json');
 let mockStore = {
     node: null,
     state: 'READY',
-    settings: null,
+    settings: undefined,  // undefined will resolve with mocks
 }
 
 export default function (db: Database) {
@@ -29,6 +29,7 @@ export default function (db: Database) {
                 logs: () => db.getLogs(),
                 node: () => mockStore.node,
                 state: () => mockStore.state,
+                settings: () => mockStore.settings,
                 // videos: () => db.Video.all(),
                 // peers: () => db.Peer.all()
             },
@@ -51,6 +52,7 @@ export default function (db: Database) {
                             ...mockStore.settings,
                             ...args.inputs,
                         }
+                        resolve(mockStore.settings)
                     })
                 }
             }

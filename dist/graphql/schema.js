@@ -21,7 +21,7 @@ var packageJson = require('../../package.json');
 var mockStore = {
     node: null,
     state: 'READY',
-    settings: null,
+    settings: undefined,
 };
 function default_1(db) {
     var schema = graphql_tools_1.makeExecutableSchema({
@@ -38,6 +38,7 @@ function default_1(db) {
                 logs: function () { return db.getLogs(); },
                 node: function () { return mockStore.node; },
                 state: function () { return mockStore.state; },
+                settings: function () { return mockStore.settings; },
             },
             Mutation: {
                 register: function (obj, args, context, info) {
@@ -55,6 +56,7 @@ function default_1(db) {
                 updateSettings: function (obj, args, context, info) {
                     return new Promise(function (resolve, reject) {
                         mockStore.settings = __assign({}, mockStore.settings, args.inputs);
+                        resolve(mockStore.settings);
                     });
                 }
             }
