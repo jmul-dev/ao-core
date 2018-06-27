@@ -1,6 +1,6 @@
 {
   "name": "ao-core",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "AO - Core",
   "main": "src/index.js",
   "bin": {
@@ -13,7 +13,8 @@
     "watch": "tsc --watch",
     "build": "tsc && yarn copyfiles",
     "clean": "rimraf dist",
-    "copyfiles": "copyfiles -u 1 \"./src/**/*.graphql\" dist"
+    "copyfiles": "copyfiles -u 1 \"./src/**/*.graphql\" dist",
+    "postinstall": "npm run build"
   },
   "dependencies": {
     "apollo-server-express": "^1.3.6",
@@ -23,13 +24,14 @@
     "cors": "^2.8.4",
     "debug": "^3.1.0",
     "express": "^4.16.3",
+    "gitlab-ci-releaser": "^1.5.0",
     "graphql": "^0.13.2",
     "graphql-import": "^0.6.0",
     "graphql-tag": "^2.9.2",
     "graphql-tools": "^3.0.2",
     "libp2p": "^0.20.4",
     "libp2p-connection-manager": "^0.0.2",
-    "libp2p-rpc": "nharlow89/libp2p-rpc",
+    "libp2p-rpc": "git://github.com/nharlow89/libp2p-rpc.git",
     "minimist": "^1.2.0",
     "node-ipc": "^9.1.1",
     "peer-info": "^0.14.1",
