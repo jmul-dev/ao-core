@@ -1,6 +1,6 @@
 {
   "name": "ao-core",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "AO - Core",
   "main": "src/index.js",
   "bin": {
@@ -24,6 +24,7 @@
     "cors": "^2.8.4",
     "debug": "^3.1.0",
     "express": "^4.16.3",
+    "gitlab-ci-releaser": "^1.5.0",
     "graphql": "^0.13.2",
     "graphql-import": "^0.6.0",
     "graphql-tag": "^2.9.2",
