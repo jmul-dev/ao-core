@@ -11,6 +11,7 @@ const packageJson = require('../../package.json');
 let mockStore = {
     node: null,
     state: 'READY',
+    settings: null,
 }
 
 export default function (db: Database) {
@@ -42,6 +43,14 @@ export default function (db: Database) {
                             }
                             resolve(mockStore.node)
                         }, 2500)                        
+                    })
+                },
+                updateSettings: (obj, args, context, info) => {
+                    return new Promise((resolve, reject) => {
+                        mockStore.settings = {
+                            ...mockStore.settings,
+                            ...args.inputs,
+                        }
                     })
                 }
             }
