@@ -7,9 +7,10 @@ import mocks from './mocks';
 import Database from '../storage/database';
 const packageJson = require('../../package.json');
 
-// TODO: replace with actual db calls
+// TODO: replace with actual db calls 
 let mockStore = {
     node: null,
+    state: 'READY',
 }
 
 export default function (db: Database) {
@@ -26,6 +27,7 @@ export default function (db: Database) {
                 version: () => packageJson.version,
                 logs: () => db.getLogs(),
                 node: () => mockStore.node,
+                state: () => mockStore.state,
                 // videos: () => db.Video.all(),
                 // peers: () => db.Peer.all()
             },

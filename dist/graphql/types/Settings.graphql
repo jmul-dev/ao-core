@@ -1,0 +1,20 @@
+type Settings {
+    maxDiskSpace: Int!
+    maxBandwidthUp: Int!
+    maxBandwidthDown: Int!
+    maxPeerConnections: Int!
+    runInBackground: Boolean!
+    runOnStartup: Boolean!
+    checkForUpdates: Boolean!
+    # Static info
+    diskSpaceAvailable: Int!
+}
+input SettingsInputs {
+    maxDiskSpace: Int!
+    maxBandwidthUp: Int!
+    maxBandwidthDown: Int!
+    maxPeerConnections: Int!
+    runInBackground: Boolean!
+    runOnStartup: Boolean!
+    checkForUpdates: Boolean!
+}

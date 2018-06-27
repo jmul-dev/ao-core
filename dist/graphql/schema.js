@@ -9,9 +9,10 @@ var path_1 = __importDefault(require("path"));
 var graphqlSchema = graphql_import_1.importSchema(path_1.default.resolve(__dirname, './schema.graphql'));
 var mocks_1 = __importDefault(require("./mocks"));
 var packageJson = require('../../package.json');
-// TODO: replace with actual db calls
+// TODO: replace with actual db calls 
 var mockStore = {
     node: null,
+    state: 'READY',
 };
 function default_1(db) {
     var schema = graphql_tools_1.makeExecutableSchema({
@@ -27,6 +28,7 @@ function default_1(db) {
                 version: function () { return packageJson.version; },
                 logs: function () { return db.getLogs(); },
                 node: function () { return mockStore.node; },
+                state: function () { return mockStore.state; },
             },
             Mutation: {
                 register: function (obj, args, context, info) {

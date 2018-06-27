@@ -2,6 +2,7 @@
 
 type Mutation {
     register(inputs: RegisterInputs): NodeIdentity
+    updateSettings(inputs: SettingsInputs): Settings
 }
 
 input RegisterInputs {
