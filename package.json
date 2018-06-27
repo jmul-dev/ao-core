@@ -13,8 +13,10 @@
     "watch": "tsc --watch",
     "build": "tsc && yarn copyfiles",
     "clean": "rimraf dist",
-    "copyfiles": "copyfiles -u 1 \"./src/**/*.graphql\" dist",
-    "postinstall": "npm run build"
+    "copyfiles": "copyfiles -u 1 \"./src/**/*.graphql\" dist"
+  },
+  "publishConfig":{
+    "registry":"https://npm.y-designs.com"
   },
   "dependencies": {
     "apollo-server-express": "^1.3.6",
