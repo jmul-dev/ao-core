@@ -18,7 +18,7 @@ release:
     - npm install gitlab-ci-releaser
   script:
     - npm install
-    - $(npm bin)/gitlab-ci-releaser
+    - $(npm bin)/gitlab-ci-releaser --npm
   when: manual
   only:
   - master
