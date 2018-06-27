@@ -1,9 +1,0 @@
-# import * from "../types/index.graphql"
-
-type Mutation {
-    register(inputs: RegisterInputs): NodeIdentity
-}
-
-input RegisterInputs {
-    ethAddress: String
-}
