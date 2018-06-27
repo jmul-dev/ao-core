@@ -10,7 +10,6 @@ build_app:
  stage: build
  script:
    - npm install
-   - npm run build
 release:
   tags:
     - centos7
@@ -18,7 +17,7 @@ release:
   before_script:
     - npm install gitlab-ci-releaser
   script:
-    - npm run build
+    - npm install
     - $(npm bin)/gitlab-ci-releaser
   when: manual
   only:
