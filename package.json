@@ -15,8 +15,8 @@
     "clean": "rimraf dist",
     "copyfiles": "copyfiles -u 1 \"./src/**/*.graphql\" dist"
   },
-  "publishConfig":{
-    "registry":"https://npm.y-designs.com"
+  "publishConfig": {
+    "registry": "https://npm.y-designs.com"
   },
   "dependencies": {
     "apollo-server-express": "^1.3.6",
