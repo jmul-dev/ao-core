@@ -46,19 +46,17 @@ var router_1 = __importDefault(require("./router"));
 var debug = debug_1.default('ao:core');
 var error = debug_1.default('ao:core:error');
 //Fake data for now.  We'll have to do an FS read, & encryption/decryption for this.
-var stored_registry = [
-    {
+var stored_registry = {
+    registry: {
         priority: 0,
-        name: 'registry',
         type: 'main',
         file: '',
         events: [
             "register_process"
         ]
     },
-    {
+    p2pSubProcess: {
         priority: 0,
-        name: 'p2pSubProcess',
         type: 'subprocess',
         file: '/p2p/index.js',
         events: [
@@ -66,12 +64,11 @@ var stored_registry = [
             "p2p_peer_count"
         ]
     }
-];
+};
 /**
  * Below is what the live_registry JSON is supposed to look like:
  {
      p2pSubProcess: {
-         status: 1,
          type: 'subprocess',
          events: [
             "p2p_lookup",
@@ -79,8 +76,7 @@ var stored_registry = [
          ]
      },
      registry: {
-         status: 1,
-         type: 'subprocess',
+         type: 'main',
          events: [
             "register_process"
          ]
@@ -89,6 +85,8 @@ var stored_registry = [
  */
 var Registry = /** @class */ (function () {
     function Registry() {
+        //Internal Data
+        this.stored_registry = stored_registry;
         this.events_registry = {}; //Used to tie together events to a registry by name
         this.registry_by_name = {}; //Now you can use a name to just pull the registry item
         //Externally accessible data
@@ -124,18 +122,19 @@ var Registry = /** @class */ (function () {
             return __generator(this, function (_a) {
                 return [2 /*return*/, new Promise(function (resolve, reject) {
                         //read from FS and decode later using a key? will have to figure this out.
-                        _this.stored_registry = stored_registry; // This is a "mock" model registry for now.
-                        //repacking information for easy use            
-                        for (var i = 0; i < stored_registry.length; i++) {
+                        //this.stored_registry = stored_registry // This is a "mock" model registry for now.
+                        _this.live_registry = _this.stored_registry;
+                        //repacking information for easy use     
+                        for (var key in _this.stored_registry) {
                             //The only special case.
-                            if (stored_registry[i].name == 'registry') {
-                                stored_registry[i].process = _this;
+                            if (key == 'registry') {
+                                stored_registry[key].process = _this;
                             }
-                            var registry = stored_registry[i];
-                            _this.registry_by_name[registry.name] = registry;
+                            var registry = stored_registry[key];
+                            _this.registry_by_name[key] = registry;
                             for (var e = 0; e < registry.events.length; e++) {
                                 var event = registry.events[e];
-                                _this.events_registry[event] = registry.name;
+                                _this.events_registry[event] = key;
                             }
                         }
                         resolve();
@@ -144,8 +143,8 @@ var Registry = /** @class */ (function () {
         });
     };
     Registry.prototype.loopStoredRegistries = function (func) {
-        for (var i = 0; i < this.stored_registry.length; i++) {
-            var registry = this.stored_registry[i];
+        for (var key in this.stored_registry) {
+            var registry = this.stored_registry[key];
             func(registry);
         }
     };
@@ -153,6 +152,7 @@ var Registry = /** @class */ (function () {
         //verify that we do/don't have the registry
         var registry_name = this.events_registry[message.event];
         if (!registry_name) {
+            debug('No event with matching registry');
             return false;
         }
         var registry = this.registry_by_name[registry_name];
@@ -192,17 +192,14 @@ var Registry = /** @class */ (function () {
             error('Request to register a pre-registered process: ' + message.data.name);
             return false;
         }
-        this.live_registry[message.data.name] = {
-            type: message.data.type,
-            events: this.registry_by_name[message.data.name].events
-        };
+        this.live_registry[message.data.name].status = 1;
         if (message.data.process) {
             this.live_registry[message.data.name].process = message.data.process;
         }
     };
     Registry.prototype.removeLiveRegistry = function (message) {
         if (message.data.name in this.live_registry) {
-            delete this.live_registry[message.data.name];
+            this.live_registry[message.data.name].status = 0;
         }
         else {
             error('Request to de-register an unassigned process: ' + message.data.name);
