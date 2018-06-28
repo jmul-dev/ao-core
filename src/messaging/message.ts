@@ -1,5 +1,5 @@
 'use strict';
-import message_schema from './message_schema'
+import {message_schema} from './validation_schemas'
 import {validate} from 'jsonschema'
 import Debug from 'debug';
 const debug = Debug('ao:core');

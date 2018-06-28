@@ -1,0 +1,27 @@
+before_script:
+ - eval $(ssh-agent -s)
+ - nvm use 9.11
+stages:
+ - build
+ - release
+build_app:
+ tags:
+   - centos7
+ stage: build
+ script:
+   - npm install
+   - npm run build
+release:
+  tags:
+    - centos7
+  stage: release
+  before_script:
+    - npm install gitlab-ci-releaser
+  script:
+    - npm install
+    - npm run build
+    - $(npm bin)/gitlab-ci-releaser
+    - npm publish
+  when: manual
+  only:
+  - master

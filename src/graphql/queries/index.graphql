@@ -1,11 +1,20 @@
 # import * from "../types/index.graphql"
 
+enum CoreState {
+    LOADING
+    LOADING_CORE_SERVER
+    LOADING_CORE_STORAGE    
+    READY
+    ERROR
+}
+
 type Query {
+    state: CoreState!
     version: String!
     logs: [Log]!
-    isRegistered: Boolean
     node: NodeIdentity
     statistics: NodeStatistics
     wallet: Wallet
     videos: [VideoContent]
+    settings: Settings!
 }

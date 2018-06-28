@@ -39,8 +39,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 //Should the registry be a database/persisted storage thing?  If so, how far should we go with encryption?
-var registry_schema_1 = __importDefault(require("./registry_schema"));
-var process_schema_1 = __importDefault(require("./process_schema"));
+var validation_schemas_1 = require("./validation_schemas");
 var path_1 = require("path");
 var child_process_1 = require("child_process");
 var debug_1 = __importDefault(require("debug"));
@@ -65,8 +64,8 @@ var Registry = /** @class */ (function () {
         this.events_registry = {}; //Used to tie together events to a registry by name
         this.registry_by_name = {}; //Now you can use a name to just pull the registry item
         //Validation Schema
-        this.registry_schema = registry_schema_1.default;
-        this.process_schema = process_schema_1.default;
+        this.registry_schema = validation_schemas_1.registry_schema;
+        this.process_schema = validation_schemas_1.process_schema;
     }
     //Init the Registry and get yourself a router!
     Registry.prototype.initialize = function () {

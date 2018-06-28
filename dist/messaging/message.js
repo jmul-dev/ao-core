@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-var message_schema_1 = __importDefault(require("./message_schema"));
+var validation_schemas_1 = require("./validation_schemas");
 var jsonschema_1 = require("jsonschema");
 var debug_1 = __importDefault(require("debug"));
 var debug = debug_1.default('ao:core');
@@ -14,7 +14,7 @@ var error = debug_1.default('ao:core:error');
 var Message = /** @class */ (function () {
     function Message(initializer) {
         var _this = this;
-        this.message_schema = message_schema_1.default;
+        this.message_schema = validation_schemas_1.message_schema;
         // return if no initializer is passed in 
         if (initializer === undefined) {
             return;

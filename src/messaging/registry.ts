@@ -1,8 +1,7 @@
 'use strict';
 //Should the registry be a database/persisted storage thing?  If so, how far should we go with encryption?
 
-import registry_schema from './registry_schema'
-import process_schema from './process_schema'
+import {registry_schema, process_schema} from './validation_schemas'
 import {validate} from 'jsonschema'
 import { join } from "path";
 import { spawn } from "child_process";
