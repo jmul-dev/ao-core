@@ -1,6 +1,5 @@
 #!/usr/local/bin/node
 'use strict';
-import { IPC_SERVER_ID } from './constants';
 import Core from './index';
 import minimist = require('minimist');
 import Debug from 'debug';
@@ -9,30 +8,9 @@ const debug = Debug('ao:core');
 var argv = minimist(process.argv.slice(2), {
     default: {
         disableHttpInterface: false,
-        httpPort: 3003,
-        ipcServerId: IPC_SERVER_ID,
+        httpPort: 3003
     }
 });
 
 const core = new Core(argv);
-// 1. IPC server
-core.on('ipc:server:start', () => {
-    debug('ipc server started. server id = ' + core.ipc.config.id)
-    // 2. IPC log listener
-    core.ipcLogListener()
-    // 3. DB Setup
-    core.dbSetup().then(() => {
-        core.ipcListenersThatPropogateToDb()
-        // 4. HTTP server
-        if ( !core.options.disableHttpInterface ) {
-            core.httpSetup()
-        }
-        // 5. Sub-processes
-        core.spinUpSubProcesses()
-    }).catch(err => {
-        core.shutdownWithError(err)
-    })
-})
-core.on('ipc:server:error', (err) => {
-    core.shutdownWithError(err)
-})
+core.init()

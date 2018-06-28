@@ -7,8 +7,6 @@ import { graphqlExpress, graphiqlExpress } from "apollo-server-express";
 import schema from "./graphql/schema";
 import Database from "./storage/database";
 import { notEqual } from "assert";
-import { join } from "path";
-import IpcServer from "./interfaces/ipc-server";
 import Debug from 'debug';
 import { Server, AddressInfo } from 'net';
 import cors from 'cors';
@@ -19,23 +17,36 @@ const debug = Debug('ao:core');
 const error = Debug('ao:core:error');
 
 
-export default class Core extends IpcServer {
+export default class Core {
     public options: {
         httpPort: number;
-        ipcServerId: string;
         disableHttpInterface: boolean;
     };
     private db: Database;
     private server: Server;
     private subProcesses: Array<ChildProcess>;
+
     constructor(args) {
         debug(args)
-        super(args.ipcServerId)
         this.options = args
         this.db = null
         this.server = null
         this.subProcesses = []
     }
+
+    init() {
+        this.dbSetup()
+        .then(()=> {
+            if ( !this.options.disableHttpInterface ) {
+                this.httpSetup()
+            }
+            this.spinUpSubProcesses()
+        })
+        .catch( (e) => {
+            this.shutdownWithError(e)
+        })
+    }
+
     sendEventLog(message) {
         if ( process.send ) {
             // If there is a parent process (running within app) we relay
@@ -45,22 +56,6 @@ export default class Core extends IpcServer {
             // TODO: append to a temp log somewhere (make this configurable via command line)
         }
         this.db.addLog({message: message});
-    }
-    ipcLogListener() {
-        this.ipc.server.on(EVENT_LOG, this.sendEventLog.bind(this));
-    }
-    ipcListenersThatPropogateToDb() {
-        notEqual(this.db, null, 'ipcListenersThatPropogateToDb called without db instantiated')
-        this.ipc.server.on(DATA, (data) => {           
-            switch(data.type) {
-                case DATA_TYPES.PEER_CONNECTED:
-                    return this.db.addPeer(data.peerId)
-                case DATA_TYPES.PEER_DISCONNECTED:
-                    return this.db.removePeer(data.peerId)
-                default:
-                    return null
-            }
-        });
     }
     dbSetup() {
         return new Promise((resolve, reject) => {
@@ -80,7 +75,6 @@ export default class Core extends IpcServer {
      * Note that the http server depends on both the ipc server AND the database
      */
     httpSetup() {
-        notEqual(this.ipc, null, 'http server requires instance of ipc server');
         notEqual(this.db, null, 'http server requires instance of db');
         const expressServer = express();
         const graphqlSchema = schema(this.db);
@@ -93,10 +87,9 @@ export default class Core extends IpcServer {
         });
         this.server.on('error', this.shutdownWithError.bind(this));
     }
+
     shutdownWithError(err) {
         error('core shutting down with error\n', err);
-        if ( this.ipc && this.ipc.server )
-            this.ipc.server.stop();
         if ( this.server !== null && this.server.close )
             this.server.close();
         const dbConnecitonPromise: PromiseLike<void> = this.db === null ? Promise.resolve() : this.db.close()
@@ -109,28 +102,22 @@ export default class Core extends IpcServer {
         })
     }
     registry:Registry;
-    router: Object;
+    router: Router;
     registry_data: Array<any>;
     spinUpSubProcesses() {
-
+        debug('attempting to spawn sub processes')
         //Maybe pass the registry json itself over at the time of Registry contruction?
         this.registry = new Registry()
-        this.registry.initialize()
-        .then( (router) => {
+        this.registry.initialize( )
+        .then( (router:Router) => {
             this.router = router
+            this.router.loadProcesses() // IPC server stuff will taken out
+            .catch(e => {
+                error(e)
+            })
         })
         .catch((e) => {
             error(e)
         })
-        
-        debug('attempting to spawn sub processes')
-        // const p2pSubProcess = spawn('node', [join(__dirname, '../dist/p2p/index.js'), '--ipcServerId', this.options.ipcServerId], {stdio: ['inherit', 'inherit', 'inherit']})
-        // p2pSubProcess.on('error', (err) => {
-        //     error('p2pSubProcess failed to start: ', err)
-        // })
-        // p2pSubProcess.on('close', (code) => {
-        //     debug('p2pSubProcess closed on us with code: ', code)
-        // })
-        // this.subProcesses.push(p2pSubProcess)
     }
 }

@@ -47,7 +47,7 @@ export default class Message {
 
     //Message body
     get data() { return this.data; }
-    set data(val:Object ) { this.data = val; }
+    set data(val:any ) { this.data = val; }
 
     get encoding() { return this.encoding; }
     set encoding(val:String) { this.encoding = val; }

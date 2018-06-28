@@ -41,17 +41,61 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var debug_1 = __importDefault(require("debug"));
 var debug = debug_1.default('ao:core');
 var error = debug_1.default('ao:core:error');
+var validation_schemas_1 = require("./validation_schemas");
+var jsonschema_1 = require("jsonschema");
+var path_1 = require("path");
+var child_process_1 = require("child_process");
 var Router = /** @class */ (function () {
     function Router(registry) {
+        this.message_schema = validation_schemas_1.message_schema;
         this.registry = registry;
     }
+    Router.prototype.loadProcesses = function () {
+        return __awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            return __generator(this, function (_a) {
+                return [2 /*return*/, new Promise(function (resolve, reject) {
+                        var all_processes = [];
+                        _this.registry.loopStoredRegistries(function (registry) {
+                            switch (registry.type) {
+                                case 'main':
+                                    //dont' do stuff for now.
+                                    break;
+                                default:
+                                case 'subprocess':
+                                    all_processes.push(new Promise(function (res, rej) {
+                                        var current_process = child_process_1.spawn(process.execPath, [path_1.join(__dirname, '../../dist/' + registry.file)], { stdio: ['ipc', 'inherit', 'inherit'] });
+                                        current_process.on('error', function (err) {
+                                            rej(err);
+                                            //this.registry.send() //send message to delete
+                                            error(registry.name + ' failed to start: ', err);
+                                        });
+                                        current_process.on('close', function (code) {
+                                            //Do we resolve or reject?
+                                            debug(registry.name + ' closed on us with code: ', code);
+                                        });
+                                        current_process.on('message', _this.send.bind(_this));
+                                        res();
+                                    }));
+                                    break;
+                            }
+                        });
+                        Promise.all(all_processes)
+                            .then(function () {
+                            resolve();
+                        })
+                            .catch(function (e) {
+                            reject(e);
+                            error(e);
+                        });
+                    })];
+            });
+        });
+    };
     Router.prototype.send = function (message) {
-        var _this = this;
         //data validation
         this.validate(message)
-            .then(function () {
-            _this.registry_item = _this.registry.verify(message);
-        }) //registration check
+            .then(this.verify.bind(this)) //registration check
             .then(this.callMethod.bind(this))
             .catch(function (err) {
             error(err);
@@ -59,9 +103,29 @@ var Router = /** @class */ (function () {
     };
     Router.prototype.validate = function (message) {
         return __awaiter(this, void 0, void 0, function () {
+            var _this = this;
             return __generator(this, function (_a) {
                 return [2 /*return*/, new Promise(function (resolve, reject) {
-                        //basic data validation
+                        var result = jsonschema_1.validate(message, _this.message_schema);
+                        if (result.valid) {
+                            resolve(message);
+                        }
+                        else {
+                            reject(result.errors);
+                        }
+                    })];
+            });
+        });
+    };
+    Router.prototype.verify = function (message) {
+        return __awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            return __generator(this, function (_a) {
+                return [2 /*return*/, new Promise(function (resolve, reject) {
+                        _this.registry_item = _this.registry.verify(message);
+                        if (!_this.registry_item) {
+                            reject('Registry does not exist or message event did not match.');
+                        }
                         resolve(message);
                     })];
             });
@@ -72,7 +136,21 @@ var Router = /** @class */ (function () {
             var _this = this;
             return __generator(this, function (_a) {
                 return [2 /*return*/, new Promise(function (resolve, reject) {
-                        _this.registry_item.process.send();
+                        try {
+                            switch (_this.registry_item.type) {
+                                case 'main':
+                                    //note that send is a normal method within the instantiated class
+                                    _this.registry_item.process.send(message);
+                                    break;
+                                default:
+                                case 'subprocess':
+                                    _this.registry_item.process.send({ message: message });
+                                    break;
+                            }
+                        }
+                        catch (error) {
+                            reject(error);
+                        }
                         resolve(message);
                     })];
             });
