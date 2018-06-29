@@ -1,13 +1,10 @@
 #!/usr/local/bin/node
 'use strict';
-import fs from "fs";
 import { join } from "path";
 import { load } from "protobufjs";
 import { create } from "peer-info";
 import Node from "libp2p-rpc";
 import ConnManager from "libp2p-connection-manager";
-import IpcClient from "../interfaces/ipc-client";
-import { EVENT_LOG, DATA, DATA_TYPES } from "../constants.js";
 import minimist from 'minimist';
 import Debug from 'debug';
 const debug = Debug('ao:p2p');
@@ -15,7 +12,7 @@ const error = Debug('ao:p2p:error');
 const argv = minimist(process.argv.slice(2));
 
 
-class P2P extends IpcClient {
+class P2P {
     config: {
         name: string;
         version: string;
@@ -25,8 +22,7 @@ class P2P extends IpcClient {
     }
     connectionManager: ConnManager;
     node: Node;
-    constructor(ipcServerId) {
-        super('ao_p2p_process', ipcServerId)
+    constructor() {
         this.config = {
             name: 'AO',  // Protocol name used for handshake
             version: '0.0.1',            // Protocol version used for handshake
@@ -39,10 +35,23 @@ class P2P extends IpcClient {
         }
         this.connectionManager = null
         this.node = null
-        this.on('ipc:client:connect', () => {
-            debug('p2p ipc client connected')
-            this.start()
-        })
+        
+        if( process.send ) {
+            debug('has parent.  registering the thang')
+            process.send({
+                app_id: 'testing', //Should be passed to this thing on initial start.
+                event: "register_process",
+                type_id: "bogus",
+                data: { 
+                    request: "add_to_registry",
+                    name: "p2pSubProcess",
+                    type: "subprocess"
+                },
+                encoding: "json"
+            })
+        }
+
+        this.start()
     }
     start() {
         const peerInfoPromise = this._createNodePeerInfo()
@@ -52,7 +61,7 @@ class P2P extends IpcClient {
             this.node = new Node(results[0], results[1], this.config)
             this.node.start().then(() => {
                 debug('p2p node started')
-                this.ipcClient().emit(EVENT_LOG, 'P2P Client started')
+                //this.ipcClient().emit(EVENT_LOG, 'P2P Client started')
             }).catch(error => {
                 debug('p2p node failed to start', error)
             })
@@ -61,17 +70,17 @@ class P2P extends IpcClient {
             this.connectionManager.start()
             this.connectionManager.on('connected', peerId => {
                 debug('peer connected', peerId)
-                this.ipcClient().emit(DATA, {
-                    type: DATA_TYPES.PEER_CONNECTED,
-                    peerId: peerId
-                })
+                // this.ipcClient().emit(DATA, {
+                //     type: DATA_TYPES.PEER_CONNECTED,
+                //     peerId: peerId
+                // })
             })
             this.connectionManager.on('disconnected', peerId => {
                 debug('peer disconnected', peerId)
-                this.ipcClient().emit(DATA, {
-                    type: DATA_TYPES.PEER_DISCONNECTED,
-                    peerId: peerId
-                })
+                // this.ipcClient().emit(DATA, {
+                //     type: DATA_TYPES.PEER_DISCONNECTED,
+                //     peerId: peerId
+                // })
             })
             this.connectionManager.on('limit:exceeded', (limitName, measured) => {
                 debug('connection manager reported limit exceeded', limitName, measured)
@@ -124,7 +133,7 @@ class P2P extends IpcClient {
 }
 
 if (require.main === module) {    
-    const p2p = new P2P(argv.ipcServerId);
+    const p2p = new P2P();
 }
 
 export default P2P;
