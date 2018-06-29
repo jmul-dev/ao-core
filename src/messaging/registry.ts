@@ -87,7 +87,8 @@ export default class Registry {
 
     public loopRegistries(func:Function) {
         for ( var key in this.stored_registry) {
-            const registry = this.stored_registry[key];
+            var registry = this.stored_registry[key];
+            registry.name = key
             func(registry)
         }
     }

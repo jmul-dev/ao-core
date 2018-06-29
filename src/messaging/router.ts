@@ -4,11 +4,12 @@ import Debug from 'debug';
 import Registry from './registry';
 const debug = Debug('ao:core');
 const error = Debug('ao:core:error');
-import {message_schema} from './validation_schemas'
-import {validate} from 'jsonschema'
-import {RegistryObject} from './message_interfaces'
+import { message_schema} from './validation_schemas'
+import { validate } from 'jsonschema'
+import { RegistryObject } from './message_interfaces'
 import { join } from "path";
 import { spawn } from "child_process";
+import { missingFieldArgMessage } from 'graphql/validation/rules/ProvidedNonNullArguments';
 
 export default class Router {    
     private registry: Registry;
@@ -33,12 +34,33 @@ export default class Router {
                         all_processes.push(new Promise((res,rej) => {
                             const current_process = spawn(process.execPath, [ join(__dirname, '../../dist/'+registry.file) ], { stdio: ['ipc', 'inherit', 'inherit'] })
                             current_process.on('error', (err) => {
-                                rej(err)
-                                //this.registry.send() //send message to delete
+                                var message:Message = new Message({
+                                    app_id: 'testing', //TBD
+                                    event: "register_process",
+                                    type_id: "bogus",
+                                    data: { 
+                                        request: "delete_from_registry",
+                                        name: registry.name
+                                    },
+                                    encoding: "json"
+                                })
+                                this.registry.send( message ) //send message to delete
                                 error( registry.name+' failed to start: ', err)
+                                rej(err)
                             })
                             current_process.on('close', (code) => {
                                 //Do we resolve or reject?
+                                var message:Message = new Message({
+                                    app_id: 'testing', //TBD
+                                    event: "register_process",
+                                    type_id: "bogus",
+                                    data: { 
+                                        request: "delete_from_registry",
+                                        name: registry.name
+                                    },
+                                    encoding: "json"
+                                })
+                                this.registry.send( message ) //send message to delete
                                 debug( registry.name+' closed on us with code: ', code)
                             })
                             current_process.on('message', this.send.bind(this))

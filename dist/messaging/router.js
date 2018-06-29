@@ -38,6 +38,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+var message_1 = __importDefault(require("./message"));
 var debug_1 = __importDefault(require("debug"));
 var debug = debug_1.default('ao:core');
 var error = debug_1.default('ao:core:error');
@@ -66,12 +67,33 @@ var Router = /** @class */ (function () {
                                     all_processes.push(new Promise(function (res, rej) {
                                         var current_process = child_process_1.spawn(process.execPath, [path_1.join(__dirname, '../../dist/' + registry.file)], { stdio: ['ipc', 'inherit', 'inherit'] });
                                         current_process.on('error', function (err) {
-                                            rej(err);
-                                            //this.registry.send() //send message to delete
+                                            var message = new message_1.default({
+                                                app_id: 'testing',
+                                                event: "register_process",
+                                                type_id: "bogus",
+                                                data: {
+                                                    request: "delete_from_registry",
+                                                    name: registry.name
+                                                },
+                                                encoding: "json"
+                                            });
+                                            _this.registry.send(message); //send message to delete
                                             error(registry.name + ' failed to start: ', err);
+                                            rej(err);
                                         });
                                         current_process.on('close', function (code) {
                                             //Do we resolve or reject?
+                                            var message = new message_1.default({
+                                                app_id: 'testing',
+                                                event: "register_process",
+                                                type_id: "bogus",
+                                                data: {
+                                                    request: "delete_from_registry",
+                                                    name: registry.name
+                                                },
+                                                encoding: "json"
+                                            });
+                                            _this.registry.send(message); //send message to delete
                                             debug(registry.name + ' closed on us with code: ', code);
                                         });
                                         current_process.on('message', _this.send.bind(_this));

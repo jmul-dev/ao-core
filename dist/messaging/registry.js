@@ -133,6 +133,7 @@ var Registry = /** @class */ (function () {
     Registry.prototype.loopRegistries = function (func) {
         for (var key in this.stored_registry) {
             var registry = this.stored_registry[key];
+            registry.name = key;
             func(registry);
         }
     };

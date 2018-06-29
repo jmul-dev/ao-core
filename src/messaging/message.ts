@@ -9,7 +9,7 @@ const error = Debug('ao:core:error');
  * Message creation class with basic data validation
  */
 export default class Message {
-    constructor( initializer:Message ) {
+    constructor( initializer:Object ) {
         // return if no initializer is passed in 
         if (initializer === undefined) {
             return;
