@@ -14,7 +14,9 @@ interface IContent {
     isFolder: Boolean!
     isMutable: Boolean!
     fileName: String
-    description: String
+    fileUrl: String
+    title: String
+    description: String    
     # Econ
     stake: Float
     fileSize: Float
@@ -33,7 +35,9 @@ type VideoContent implements IContent {
     isFolder: Boolean!
     isMutable: Boolean!
     fileName: String
-    description: String
+    fileUrl: String
+    title: String
+    description: String    
     # Econ
     stake: Float
     fileSize: Float
@@ -43,8 +47,8 @@ type VideoContent implements IContent {
     # Network
     createdAt: String
     # VideoContent
-    teaserFile: String
-    coverImage: String
+    teaserUrl: String
+    coverImageUrl: String
     metadata: VideoMetadata
 }
 

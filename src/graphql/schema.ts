@@ -4,6 +4,7 @@ import { importSchema } from 'graphql-import';
 import path from 'path';
 const graphqlSchema = importSchema( path.resolve(__dirname, './schema.graphql') );
 import mocks from './mocks';
+import { generateMockVideoList } from './mockVideos';
 import Database from '../storage/database';
 const packageJson = require('../../package.json');
 
@@ -12,6 +13,7 @@ let mockStore = {
     node: null,
     state: 'READY',
     settings: undefined,  // undefined will resolve with mocks
+    videos: generateMockVideoList()
 }
 
 export default function (db: Database) {
@@ -30,7 +32,7 @@ export default function (db: Database) {
                 node: () => mockStore.node,
                 state: () => mockStore.state,
                 settings: () => mockStore.settings,
-                // videos: () => db.Video.all(),
+                videos: () => mockStore.videos,
                 // peers: () => db.Peer.all()
             },
             Mutation: {

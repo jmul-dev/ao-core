@@ -16,12 +16,14 @@ var graphql_import_1 = require("graphql-import");
 var path_1 = __importDefault(require("path"));
 var graphqlSchema = graphql_import_1.importSchema(path_1.default.resolve(__dirname, './schema.graphql'));
 var mocks_1 = __importDefault(require("./mocks"));
+var mockVideos_1 = require("./mockVideos");
 var packageJson = require('../../package.json');
 // TODO: replace with actual db calls 
 var mockStore = {
     node: null,
     state: 'READY',
     settings: undefined,
+    videos: mockVideos_1.generateMockVideoList()
 };
 function default_1(db) {
     var schema = graphql_tools_1.makeExecutableSchema({
@@ -39,6 +41,7 @@ function default_1(db) {
                 node: function () { return mockStore.node; },
                 state: function () { return mockStore.state; },
                 settings: function () { return mockStore.settings; },
+                videos: function () { return mockStore.videos; },
             },
             Mutation: {
                 register: function (obj, args, context, info) {

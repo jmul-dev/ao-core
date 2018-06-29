@@ -45,7 +45,9 @@ const mocks = {
         contentType: 'VOD',
         isFolder: false,
         isMutable: false,
-        fileName: casual.title,
+        fileName: casual.word + '.mp4',
+        fileUrl: 'http://localhost:3000/content/' + casual.word + '.mp4',
+        title: casual.title,
         description: casual.description,
         stake: casual.integer,
         fileSize: casual.integer,
@@ -57,8 +59,8 @@ const mocks = {
     VideoContent: () => ({
         __typename: 'VideoContent',
         contentType: 'VOD',
-        teaserFile: 'teaser.mp4', // TODO: add source file for mocking
-        coverImage: 'cover.jpg', // TODO: add source file for mocking        
+        teaserUrl: casual.word + '.mp4',
+        coverImageUrl: casual.word + '.jpg',
     }),
     NodeStatistics: () => ({
         status: 'connected',
