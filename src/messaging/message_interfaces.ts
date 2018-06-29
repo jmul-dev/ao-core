@@ -5,6 +5,7 @@ export interface ProcessObject {
 
 export interface RegistryObject {
     priority: number,
+    status: boolean,
     name: string,
     type: string,
     file: string,

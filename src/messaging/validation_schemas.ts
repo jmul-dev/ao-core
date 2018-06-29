@@ -12,6 +12,9 @@ const registry_schema:Object = {
         "priority": {
             "type": "number"
         },
+        "status": {
+            "type": "boolean"
+        },
         "name": {
             "type": "string"
         },

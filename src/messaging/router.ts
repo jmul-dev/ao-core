@@ -23,7 +23,7 @@ export default class Router {
         return new Promise( (resolve,reject) => {
 
             var all_processes = []
-            this.registry.loopStoredRegistries( (registry) => {
+            this.registry.loopRegistries( (registry) => {
                 switch(registry.type) {
                     case 'main':
                         //dont' do stuff for now.

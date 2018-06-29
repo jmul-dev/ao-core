@@ -56,7 +56,7 @@ var Router = /** @class */ (function () {
             return __generator(this, function (_a) {
                 return [2 /*return*/, new Promise(function (resolve, reject) {
                         var all_processes = [];
-                        _this.registry.loopStoredRegistries(function (registry) {
+                        _this.registry.loopRegistries(function (registry) {
                             switch (registry.type) {
                                 case 'main':
                                     //dont' do stuff for now.

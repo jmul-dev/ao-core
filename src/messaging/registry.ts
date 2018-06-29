@@ -1,12 +1,12 @@
 'use strict';
 //Should the registry be a database/persisted storage thing?  If so, how far should we go with encryption?
 
-import {registry_schema, process_schema, message_schema} from './validation_schemas'
+import {registry_schema, message_schema} from './validation_schemas'
 import {validate} from 'jsonschema'
 import Debug from 'debug';
 import Router from './router';
 import Message from './message'
-import {ProcessObject,RegistryObject} from './message_interfaces'
+import {RegistryObject} from './message_interfaces'
 const debug = Debug('ao:core');
 const error = Debug('ao:core:error');
 
@@ -14,6 +14,7 @@ const error = Debug('ao:core:error');
 //Fake data for now.  We'll have to do an FS read, & encryption/decryption for this.
 var stored_registry:any = {
     registry: {
+        status: false, //Status marks whether the process is active/available
         priority: 0,
         type: 'main',//specifically made for registrations and other main processes
         file: '',//empty means that it sends to main
@@ -22,6 +23,7 @@ var stored_registry:any = {
         ]
     },
     p2pSubProcess: {
+        status: false,
         priority: 0,
         type: 'subprocess',
         file: '/p2p/index.js',//Assumes /dist as a pre-fix
@@ -32,25 +34,6 @@ var stored_registry:any = {
     }
 }
 
-/**
- * Below is what the live_registry JSON is supposed to look like:
- {
-     p2pSubProcess: {
-         type: 'subprocess',
-         events: [
-            "p2p_lookup",
-            "p2p_peer_count"
-         ]
-     },
-     registry: {
-         type: 'main',
-         events: [
-            "register_process"
-         ]
-     }
- }
- */
-
 export default class Registry {
 
     //Internal Data
@@ -59,17 +42,9 @@ export default class Registry {
     private registry_by_name:Object = {}     //Now you can use a name to just pull the registry item
     private router:Router
 
-    //Externally accessible data
-    public live_registry:Object = {}
-
     //Validation Schema
     private registry_schema:Object = registry_schema
-    private process_schema:Object = process_schema
     private message_schema:Object = message_schema
-
-    constructor() {
-        
-    }
 
     //Init the Registry and get yourself a router!
     async initialize() {
@@ -90,13 +65,12 @@ export default class Registry {
     private async initRegistry() {
         return new Promise( (resolve,reject) => {
             //read from FS and decode later using a key? will have to figure this out.
-            //this.stored_registry = stored_registry // This is a "mock" model registry for now.
-            this.live_registry = this.stored_registry
-            //repacking information for easy use     
+            // The "stored_registry" is a "mock" model registry for now.
             for( var key in this.stored_registry ) {
                 //The only special case.
                 if(key == 'registry') {
-                    stored_registry[key].process = this
+                    this.stored_registry[key].process = this
+                    this.stored_registry[key].status = 1 //make it active 
                 }
 
                 const registry = stored_registry[key];
@@ -111,7 +85,7 @@ export default class Registry {
         })
     }
 
-    public loopStoredRegistries(func:Function) {
+    public loopRegistries(func:Function) {
         for ( var key in this.stored_registry) {
             const registry = this.stored_registry[key];
             func(registry)
@@ -152,34 +126,51 @@ export default class Registry {
         }
         switch( message.data.request ) {
             case 'add_to_registry':
-                this.addLiveRegistry( message )
+                this.addRegistry( message )
                 break;
             default:
             case 'delete_from_registry':
-                this.removeLiveRegistry( message )
+                this.removeRegistry( message )
                 break;
         }
     }
 
-    private addLiveRegistry(message:Message) {
-        if( message.data.name in this.live_registry ) {
+    private addRegistry(message:Message) {
+        if( this.stored_registry[message.data.name].status ) {
             error('Request to register a pre-registered process: ' + message.data.name)
             return false
         }
-        this.live_registry[message.data.name].status = 1 
+        this.stored_registry[message.data.name].status = true
         if( message.data.process ) {
-            this.live_registry[message.data.name].process = message.data.process
+            this.stored_registry[message.data.name].process = message.data.process
         }
-
     }
 
-    private removeLiveRegistry(message:Message) {
-        if( message.data.name in this.live_registry ) {
-            this.live_registry[message.data.name].status = 0 
+    private removeRegistry(message:Message) {
+        if( this.stored_registry[message.data.name].status ) {
+            this.stored_registry[message.data.name].status = false 
         } else {
             error('Request to de-register an unassigned process: ' + message.data.name)
             return false
         }
+    }
+
+    //TBD when we figure out if other processes can be added
+    public async addNewProcess(registry:RegistryObject) {
+        return new Promise((resolve,reject) => {
+            var result = validate(registry,registry_schema)
+            if(!result.valid) {
+                reject(result.errors)
+            }
+            delete registry.name
+            registry.status = false
+            //Add to the stored registry
+            this.stored_registry[registry.name] = {...registry}
+
+            //Maybe a function here to write the new registry into the file??
+    
+            resolve()
+        })
     }
     
 }
