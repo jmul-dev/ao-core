@@ -9,7 +9,6 @@ import { validate } from 'jsonschema'
 import { RegistryObject } from './message_interfaces'
 import { join } from "path";
 import { spawn } from "child_process";
-import { missingFieldArgMessage } from 'graphql/validation/rules/ProvidedNonNullArguments';
 
 export default class Router {    
     private registry: Registry;
