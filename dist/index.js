@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var constants_1 = require("./constants");
+var path_1 = __importDefault(require("path"));
 var express = require("express");
 var body_parser_1 = require("body-parser");
 var apollo_server_express_1 = require("apollo-server-express");
@@ -71,6 +72,7 @@ var Core = /** @class */ (function () {
         var graphqlSchema = schema_1.default(this.db);
         expressServer.use('/graphql', cors_1.default({ origin: 'http://localhost:3000' }), body_parser_1.json(), apollo_server_express_1.graphqlExpress({ schema: graphqlSchema }));
         expressServer.get('/graphiql', apollo_server_express_1.graphiqlExpress({ endpointURL: '/graphql' })); // TODO: enable based on process.env.NODE_ENV
+        expressServer.use('/assets', express.static(path_1.default.join(__dirname, '../assets')));
         this.server = expressServer.listen(this.options.httpPort, function () {
             var address = _this.server.address();
             debug('Express server running on port: ' + address.port);

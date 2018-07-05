@@ -1,6 +1,7 @@
 'use strict';
 import { EVENT_LOG, DATA, DATA_TYPES } from './constants';
 import { spawn, ChildProcess } from "child_process";
+import path from 'path';
 import express = require('express');
 import { json } from "body-parser";
 import { graphqlExpress, graphiqlExpress } from "apollo-server-express";
@@ -80,6 +81,7 @@ export default class Core {
         const graphqlSchema = schema(this.db);
         expressServer.use('/graphql', cors({origin: 'http://localhost:3000'}), json(), graphqlExpress({ schema: graphqlSchema }));
         expressServer.get('/graphiql', graphiqlExpress({ endpointURL: '/graphql' })); // TODO: enable based on process.env.NODE_ENV
+        expressServer.use('/assets', express.static(path.join(__dirname, '../assets')));
         this.server = expressServer.listen(this.options.httpPort, () => {
             const address: AddressInfo = <AddressInfo> this.server.address();
             debug('Express server running on port: ' + address.port);

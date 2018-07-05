@@ -1,7 +1,18 @@
 import casual from 'casual';
 
 
+const demoAssets = [{
+    fileUrl: 'http://localhost:3003/assets/demo/demo-1-src.mov',
+    teaserUrl: 'http://localhost:3003/assets/demo/demo-1-src.mov',
+    coverImageUrl: 'http://localhost:3003/assets/demo/demo-1-poster.png',
+}, {
+    fileUrl: 'http://localhost:3003/assets/demo/demo-2-src.mov',
+    teaserUrl: 'http://localhost:3003/assets/demo/demo-2-src.mov',
+    coverImageUrl: 'http://localhost:3003/assets/demo/demo-2-poster.png',
+}]
+
 function generateRandomVideo() {
+    const demoAsset = casual.random_element(demoAssets);
     return {
         // IContent
         id: casual.uuid,
@@ -19,20 +30,7 @@ function generateRandomVideo() {
         split: casual.double(0, 1),
         adSupport: casual.boolean,
         createdAt: casual.date,
-        fileUrl: casual.random_element([
-            'https://devshed.y-designs.com/linotagliapietra/wp-content/uploads/2016/07/intro.fast_.mp4',
-            'https://devshed.y-designs.com/linotagliapietra/wp-content/uploads/2016/07/360-intro-5.fast_.mp4',
-            'https://devshed.y-designs.com/linotagliapietra/wp-content/uploads/2016/07/rotate6.fast_.mp4',
-        ]),
-        // VideoContent
-        teaserUrl: casual.random_element([
-            'https://devshed.y-designs.com/linotagliapietra/wp-content/uploads/2016/07/intro.fast_.mp4',
-            'https://devshed.y-designs.com/linotagliapietra/wp-content/uploads/2016/07/360-intro-5.fast_.mp4',
-            'https://devshed.y-designs.com/linotagliapietra/wp-content/uploads/2016/07/rotate6.fast_.mp4',
-        ]),
-        coverImageUrl: casual.random_element([
-            'https://devshed.y-designs.com/linotagliapietra/wp-content/uploads/2017/08/RAJ2889-web.jpg'
-        ]),
+        ...demoAsset,
     }
 }
 
