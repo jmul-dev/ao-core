@@ -56,7 +56,13 @@ export default function (db: Database) {
                         }
                         resolve(mockStore.settings)
                     })
+                },
+                //below is sort of a strange notation of double wrapping functions, but its what the example did
+                videoUpload: (obj, {file}, context, info) => async (file) => {
+                    const { stream, filename, mimetype, encoding } = await file
+                    
                 }
+                
             }
         },
         resolverValidationOptions: {

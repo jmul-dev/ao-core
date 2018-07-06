@@ -5,6 +5,7 @@ import path from 'path';
 import express = require('express');
 import { json } from "body-parser";
 import { graphqlExpress, graphiqlExpress } from "apollo-server-express";
+import { apolloUploadExpress } from 'apollo-upload-server'
 import schema from "./graphql/schema";
 import Database from "./storage/database";
 import { notEqual } from "assert";
@@ -79,7 +80,13 @@ export default class Core {
         notEqual(this.db, null, 'http server requires instance of db');
         const expressServer = express();
         const graphqlSchema = schema(this.db);
-        expressServer.use('/graphql', cors({origin: 'http://localhost:3000'}), json(), graphqlExpress({ schema: graphqlSchema }));
+        expressServer.use(
+            '/graphql', 
+            cors({origin: 'http://localhost:3000'}), 
+            json(), 
+            apolloUploadExpress({maxFieldSize: "1gb"}),
+            graphqlExpress({ schema: graphqlSchema })
+        );
         expressServer.get('/graphiql', graphiqlExpress({ endpointURL: '/graphql' })); // TODO: enable based on process.env.NODE_ENV
         expressServer.use('/assets', express.static(path.join(__dirname, '../assets')));
         this.server = expressServer.listen(this.options.httpPort, () => {
@@ -113,7 +120,7 @@ export default class Core {
         this.registry.initialize( )
         .then( (router:Router) => {
             this.router = router
-            this.router.loadProcesses() // IPC server stuff will taken out
+            this.router.loadProcesses() // IPC server stuff will be taken out
             .catch(e => {
                 error(e)
             })
