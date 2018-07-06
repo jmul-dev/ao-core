@@ -35,8 +35,9 @@ export default class Router {
                             current_process.on('error', (err) => {
                                 var message:Message = new Message({
                                     app_id: 'testing', //TBD
-                                    event: "register_process",
                                     type_id: "bogus",
+                                    event: "register_process",
+                                    from: registry.name,
                                     data: { 
                                         request: "delete_from_registry",
                                         name: registry.name
@@ -51,8 +52,9 @@ export default class Router {
                                 //Do we resolve or reject?
                                 var message:Message = new Message({
                                     app_id: 'testing', //TBD
-                                    event: "register_process",
                                     type_id: "bogus",
+                                    event: "register_process",
+                                    from: registry.name,
                                     data: { 
                                         request: "delete_from_registry",
                                         name: registry.name
@@ -62,7 +64,17 @@ export default class Router {
                                 this.registry.send( message ) //send message to delete
                                 debug( registry.name+' closed on us with code: ', code)
                             })
-                            current_process.on('message', this.send.bind(this))
+                            //message from child process
+                            current_process.on('message', (message:Message) => {
+                                //data validation
+                                this.validate(message, registry.name)
+                                .then(this.verify.bind(this))//registration check
+                                .then(this.callMethod.bind(this))
+                                .catch((err)=> {
+                                    error(err)
+                                    rej(err)
+                                })
+                            })
                             res()
                         }))
                         break;
@@ -82,18 +94,12 @@ export default class Router {
         })
     }
 
-    private send(message:Message) {
-        //data validation
-        this.validate(message)
-        .then(this.verify.bind(this))//registration check
-        .then(this.callMethod.bind(this))
-        .catch((err)=> {
-            error(err)
-        })
-    }
-
-    private async validate( message:Message ) {
+    private async validate( message:Message, registry_name ) {
         return new Promise((resolve,reject) => {
+            if(message.from != registry_name) {
+                //Fishy stuff by child process trying to act like they someone else.
+                reject('Looks like '+registry_name +' is being fishy. Its trying to act like its '+ message.from)
+            }
             let result =  validate(message, this.message_schema)
             if(result.valid) {
                 resolve(message)

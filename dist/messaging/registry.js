@@ -73,6 +73,20 @@ var stored_registry = {
             "p2p_lookup",
             "p2p_peer_count"
         ]
+    },
+    filesSubProcess: {
+        status: false,
+        priority: 0,
+        type: 'subprocess',
+        file: '/storage/files.js',
+        events: [
+            'write_file',
+            'move_file',
+            'delete_file',
+            'make_folder',
+            'move_folder',
+            'delete_folder'
+        ]
     }
 };
 var Registry = /** @class */ (function () {

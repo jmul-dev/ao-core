@@ -52,8 +52,9 @@ const message_schema:Object = {
     "type": "object",
     "required": [
         "app_id",
-        "event",
         "type_id",
+        "event",
+        "from",
         "data",
         "encoding"
     ],
@@ -61,10 +62,13 @@ const message_schema:Object = {
         "app_id": {
             "type": "string"
         },
+        "type_id": {
+            "type": "string"
+        },
         "event": {
             "type": "string"
         },
-        "type_id": {
+        "from": {
             "type": "string"
         },
         "message_type": {

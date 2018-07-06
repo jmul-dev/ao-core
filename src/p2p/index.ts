@@ -40,8 +40,9 @@ class P2P {
             debug('has parent.  registering the thang')
             process.send({
                 app_id: 'testing', //Should be passed to this thing on initial start.
-                event: "register_process",
                 type_id: "bogus",
+                event: "register_process",
+                from: "p2pSubProcess",
                 data: { 
                     request: "add_to_registry",
                     name: "p2pSubProcess",
