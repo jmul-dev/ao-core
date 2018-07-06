@@ -6,7 +6,11 @@ const graphqlSchema = importSchema( path.resolve(__dirname, './schema.graphql') 
 import mocks from './mocks';
 import { generateMockVideoList } from './mockVideos';
 import Database from '../storage/database';
+import Router from '../messaging/router';
+import Message from '../messaging/message'
 const packageJson = require('../../package.json');
+import { GraphQLUpload } from 'apollo-upload-server'
+import md5 from 'md5'
 
 // TODO: replace with actual db calls 
 let mockStore = {
@@ -16,9 +20,9 @@ let mockStore = {
     videos: generateMockVideoList()
 }
 
-export default function (db: Database) {
+export default function (db: Database, router: Router) {
     const schema = makeExecutableSchema({
-        typeDefs: [graphqlSchema],
+        typeDefs: [graphqlSchema, 'scalar Upload'],
         resolvers: {
             // Interface (required for mocks)
             IContent: {
@@ -60,10 +64,22 @@ export default function (db: Database) {
                 //below is sort of a strange notation of double wrapping functions, but its what the example did
                 videoUpload: (obj, {file}, context, info) => async (file) => {
                     const { stream, filename, mimetype, encoding } = await file
-                    
+                    //file storage has to happen here, but code has to be re-orged before we continue.
+                    var message = new Message({
+                        app_id: 'testing', //TBD
+                        type_id: "bogus",
+                        event: "stream_write_file",
+                        from: "http",
+                        data: { 
+                            stream: stream,
+                            file_path: 'video-upload-'+filename+ md5(new Date)
+                        },
+                        encoding: "json"
+                    })
+                    router.invokeSubProcess(message, 'filesSubProcess')
                 }
-                
-            }
+            },
+            Upload: GraphQLUpload
         },
         resolverValidationOptions: {
             requireResolversForResolveType: false

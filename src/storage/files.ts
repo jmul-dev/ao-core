@@ -9,6 +9,7 @@ import { Validator, SchemaError } from 'jsonschema'
 import {
     read_file_schema,
     write_file_schema,
+    stream_write_file_schema,
     move_file_schema,
     delete_file_schema,
     make_folder_schema,
@@ -35,9 +36,9 @@ class Files {
             if(typeof instance!='string') return;
             if(typeof schema.containsNot!='string') throw new SchemaError('"containsNot" expects a string', schema);
             if( instance.includes(schema.containsNot) ){
-              return 'contains the string ' + JSON.stringify(schema.containsNot);
+                return 'contains the string ' + JSON.stringify(schema.containsNot);
             }
-          }
+        }
 
         this.init()
         .then(this.register.bind(this))
@@ -96,6 +97,9 @@ class Files {
                         break;
                     case 'write_file':
                         var fs_promise = this.writeFile(message.data)
+                    break;
+                    case 'stream_write_file':
+                        var fs_promise = this.streamWriteFile(message.data)
                     break;
                     case 'move_file':
                         var fs_promise = this.moveFile(message.data)
@@ -179,6 +183,26 @@ class Files {
             .catch( (err) => {
                 reject(err)
             })
+        })
+    }
+
+    private async streamWriteFile( message_data ) {
+        return new Promise( (resolve,reject) => {
+            var result = this.validator.validate(message_data, stream_write_file_schema)
+            if(!result.valid) {
+                reject(result.errors)
+            }
+            var full_path = join(this.data_folder,message_data.file_path)
+            var stream = message_data.stream
+            stream.on('error', (err) => {
+                if(stream.trucated) {
+                    fs.unlinkSync(full_path)
+                }
+                reject(error)
+            })
+            .pipe( fs.createWriteStream(full_path) )
+            .on('error', err => reject(err))
+            .on('finish', () => resolve() )
         })
     }
 

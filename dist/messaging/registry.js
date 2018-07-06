@@ -82,6 +82,7 @@ var stored_registry = {
         events: [
             'read_file',
             'write_file',
+            'stream_write_file_schema',
             'move_file',
             'delete_file',
             'make_folder',
@@ -168,7 +169,7 @@ var Registry = /** @class */ (function () {
             return false;
         }
     };
-    //ability to receive messages from other 
+    //ability to receive messages from subprocesses
     Registry.prototype.send = function (message) {
         //validate
         var result = jsonschema_1.validate(message, this.message_schema);

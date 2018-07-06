@@ -40,6 +40,7 @@ var stored_registry:any = {
         events: [
             'read_file',
             'write_file',
+            'stream_write_file_schema',
             'move_file',
             'delete_file',
             'make_folder',
@@ -127,7 +128,7 @@ export default class Registry {
         }
     }
 
-    //ability to receive messages from other 
+    //ability to receive messages from subprocesses
     public send( message:Message ) {
         //validate
         var result = validate(message, this.message_schema)

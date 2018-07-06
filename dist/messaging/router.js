@@ -101,12 +101,9 @@ var Router = /** @class */ (function () {
                                         //message from child process
                                         current_process.on('message', function (message) {
                                             //data validation
-                                            _this.validate(message, registry.name)
-                                                .then(_this.verify.bind(_this)) //registration check
-                                                .then(_this.callMethod.bind(_this))
-                                                .catch(function (err) {
-                                                error(err);
-                                                rej(err);
+                                            _this.invokeSubProcess(message, registry.name)
+                                                .catch(function (e) {
+                                                rej(e);
                                             });
                                         });
                                         res();
@@ -126,6 +123,26 @@ var Router = /** @class */ (function () {
             });
         });
     };
+    Router.prototype.invokeSubProcess = function (message, registry_name) {
+        return __awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            return __generator(this, function (_a) {
+                return [2 /*return*/, new Promise(function (resolve, reject) {
+                        _this.validate(message, registry_name)
+                            .then(_this.verify.bind(_this)) //registration check
+                            .then(_this.callMethod.bind(_this))
+                            .then(function () {
+                            resolve();
+                        })
+                            .catch(function (err) {
+                            error(err);
+                            reject(err);
+                        });
+                    })];
+            });
+        });
+    };
+    //Validates the Message structure
     Router.prototype.validate = function (message, registry_name) {
         return __awaiter(this, void 0, void 0, function () {
             var _this = this;
@@ -146,34 +163,35 @@ var Router = /** @class */ (function () {
             });
         });
     };
+    //Verifies the existence of registry item.
     Router.prototype.verify = function (message) {
         return __awaiter(this, void 0, void 0, function () {
             var _this = this;
             return __generator(this, function (_a) {
                 return [2 /*return*/, new Promise(function (resolve, reject) {
-                        _this.registry_item = _this.registry.verify(message);
-                        if (!_this.registry_item) {
+                        var registry_item = _this.registry.verify(message);
+                        if (!registry_item) {
                             reject('Registry does not exist or message event did not match.');
                         }
-                        resolve(message);
+                        resolve({ registry_item: registry_item, message: message });
                     })];
             });
         });
     };
-    Router.prototype.callMethod = function (message) {
+    Router.prototype.callMethod = function (_a) {
+        var registry_item = _a.registry_item, message = _a.message;
         return __awaiter(this, void 0, void 0, function () {
-            var _this = this;
-            return __generator(this, function (_a) {
+            return __generator(this, function (_b) {
                 return [2 /*return*/, new Promise(function (resolve, reject) {
                         try {
-                            switch (_this.registry_item.type) {
+                            switch (registry_item.type) {
                                 case 'main':
                                     //note that send is a normal method within the instantiated class
-                                    _this.registry_item.process.send(message);
+                                    registry_item.process.send(message);
                                     break;
                                 default:
                                 case 'subprocess':
-                                    _this.registry_item.process.send({ message: message });
+                                    registry_item.process.send({ message: message });
                                     break;
                             }
                         }

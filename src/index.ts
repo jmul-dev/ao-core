@@ -39,10 +39,17 @@ export default class Core {
     init() {
         this.dbSetup()
         .then(()=> {
-            if ( !this.options.disableHttpInterface ) {
-                this.httpSetup()
-            }
+            
             this.spinUpSubProcesses()
+            .then( () => {
+                //we've made above promise based since we need the router to be present for this shiz
+                if ( !this.options.disableHttpInterface ) {
+                    this.httpSetup( )
+                }
+            })
+            .catch(e => {
+                error(e)
+            })
         })
         .catch( (e) => {
             this.shutdownWithError(e)
@@ -79,7 +86,7 @@ export default class Core {
     httpSetup() {
         notEqual(this.db, null, 'http server requires instance of db');
         const expressServer = express();
-        const graphqlSchema = schema(this.db);
+        const graphqlSchema = schema(this.db, this.router);
         expressServer.use(
             '/graphql', 
             cors({origin: 'http://localhost:3000'}), 
@@ -113,20 +120,24 @@ export default class Core {
     registry:Registry;
     router: Router;
     registry_data: Array<any>;
-    spinUpSubProcesses() {
-        debug('attempting to spawn sub processes')
-        //Maybe pass the registry json itself over at the time of Registry contruction?
-        this.registry = new Registry()
-        this.registry.initialize( )
-        .then( (router:Router) => {
-            this.router = router
-            this.router.loadProcesses() // IPC server stuff will be taken out
-            .catch(e => {
+    async spinUpSubProcesses() {
+        return new Promise( (resolve,reject) => {
+            debug('attempting to spawn sub processes')
+            //Maybe pass the registry json itself over at the time of Registry contruction?
+            this.registry = new Registry()
+            this.registry.initialize( )
+            .then( (router:Router) => {
+                this.router = router
+                this.router.loadProcesses() // IPC server stuff will be taken out
+                .catch(e => {
+                    reject(e)
+                    error(e)
+                })
+            })
+            .catch((e) => {
+                reject(e)
                 error(e)
             })
-        })
-        .catch((e) => {
-            error(e)
         })
     }
 }
