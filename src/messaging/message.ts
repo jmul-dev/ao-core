@@ -33,11 +33,14 @@ export default class Message {
     get app_id() { return this.app_id; }
     set app_id(val:string) { this.app_id = val; }
 
+    get type_id() { return this.type_id; }
+    set type_id(val:string) { this.type_id = val; }
+
     get event() { return this.event }
     set event(val:string) { this.event = val; }
 
-    get type_id() { return this.type_id; }
-    set type_id(val:string) { this.type_id = val; }
+    get from() { return this.from }
+    set from(val:string) { this.from = val; }
 
     get message_type() { return this.message_type; }
     set message_type(val:Object) { this.message_type = val; }
