@@ -38,6 +38,7 @@ var stored_registry:any = {
         type: 'subprocess',
         file: '/storage/files.js',
         events: [
+            'read_file',
             'write_file',
             'move_file',
             'delete_file',

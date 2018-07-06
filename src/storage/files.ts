@@ -4,6 +4,18 @@ import { join } from "path";
 import fs from 'fs-extra'
 import minimist from 'minimist';
 import Message from '../messaging/message'
+import { Validator, SchemaError } from 'jsonschema'
+
+import {
+    read_file_schema,
+    write_file_schema,
+    move_file_schema,
+    delete_file_schema,
+    make_folder_schema,
+    move_folder_schema,
+    delete_folder_schema
+} from './files_schemas'
+
 import Debug from 'debug';
 const debug = Debug('ao:files');
 const error = Debug('ao:files:error');
@@ -13,7 +25,20 @@ const argv = minimist(process.argv.slice(2));
 class Files {
     private data_folder:string;
 
+    private validator:any;
+
     constructor() {
+        this.validator = new Validator()
+
+        //Below is meant to ensure that file paths do not stray and use ../ to bypass their locations
+        this.validator.attributes.containsNot = function validateContains(instance, schema, options, ctx) {
+            if(typeof instance!='string') return;
+            if(typeof schema.containsNot!='string') throw new SchemaError('"containsNot" expects a string', schema);
+            if( instance.includes(schema.containsNot) ){
+              return 'contains the string ' + JSON.stringify(schema.containsNot);
+            }
+          }
+
         this.init()
         .then(this.register.bind(this))
         .then(this.onMessageRouter.bind(this))
@@ -49,7 +74,6 @@ class Files {
         return new Promise((resolve,reject) => {
             //make sure storage location exists (assumes dist location for now.  should make a configuration)
             this.data_folder = join('data','files')
-            console.log(this.data_folder)
             fs.ensureDir(this.data_folder)
             .then(() => {
                 resolve()
@@ -67,39 +91,43 @@ class Files {
             process.on('message', (message) => {
                 //Add message verification here?
                 switch(message.event) {
+                    case 'read_file':
+                        var fs_promise = this.readFile(message.data)
+                        break;
                     case 'write_file':
-                        var fs_promise = this.writeFile(message.data.file_path, message.data.file_data)
+                        var fs_promise = this.writeFile(message.data)
                     break;
                     case 'move_file':
-                        var fs_promise = this.moveFile(message.data.src_path, message.data.dest_path)
+                        var fs_promise = this.moveFile(message.data)
                     break;
                     case 'delete_file':
-                        var fs_promise = this.deleteFile(message.data.file_path)
+                        var fs_promise = this.deleteFile(message.data)
                     break;
                     case 'make_folder':
-                        var fs_promise = this.makeFolder(message.data.folder_path)
+                        var fs_promise = this.makeFolder(message.data)
                     break;
                     case 'move_folder':
-                        var fs_promise = this.moveFolder(message.data.src_path, message.data.dest_path)
+                        var fs_promise = this.moveFolder(message.data)
                     break;
                     case 'delete_folder':
-                        var fs_promise = this.deleteFolder(message.data.folder_path)
+                        var fs_promise = this.deleteFolder(message.data)
                         break;
                     default:
-                        reject()
-                        error('no compatible event')
+                        reject('not a routable event')
                         break;
                 }
 
                 fs_promise
-                .then(() => {
+                .then((file_data) => {
+
                     var callback_message = new Message({
                         app_id: 'testing', //TBD
                         event: message.data.callback_event,
                         type_id: "bogus",
                         from: "filesSubProcess",
                         data: {
-                            success: true
+                            original_event: message.event,
+                            file_data: file_data ? file_data : null
                         },
                         encoding: "json"
                     })
@@ -115,11 +143,32 @@ class Files {
         })
     }
 
+    private async readFile( message_data ) {
+        return new Promise( (resolve,reject) => {
+            var result = this.validator.validate(message_data, read_file_schema)
+            if(!result.valid) {
+                reject(result.errors)
+            }
+            var full_path = join(this.data_folder, message_data.file_path)
+            fs.readFile(full_path)
+            .then( (data) => {
+                resolve(data)
+            })
+            .catch( (err) => {
+                reject(err)
+            })
+        })
+    }
+
     //file path from data files dir including file name
-    private async writeFile( file_path, file_data ) {
+    private async writeFile( message_data ) {
         return new Promise((resolve,reject) => {
-            var full_path = join(this.data_folder,file_path)
-            fs.outputFile(full_path, file_data)
+            var result = this.validator.validate(message_data, write_file_schema)
+            if(!result.valid) {
+                reject(result.errors)
+            }
+            var full_path = join(this.data_folder,message_data.file_path)
+            fs.outputFile(full_path, message_data.file_data)
             .then( () => {
                 //fs.readFile(full_path) will return the file
             })
@@ -128,79 +177,93 @@ class Files {
                 resolve()
             })
             .catch( (err) => {
-                error(err)
                 reject(err)
             })
         })
     }
 
-    private async moveFile(src_path, dest_path) {
-        var full_src_path = join(this.data_folder, src_path)
-        var full_dest_path = join(this.data_folder, dest_path)
+    private async moveFile( message_data ) {
         return new Promise((resolve,reject) => {
+            var result = this.validator.validate(message_data, move_file_schema)
+            if(!result.valid) {
+                reject(result.errors)
+            }
+            var full_src_path = join(this.data_folder, message_data.src_path)
+            var full_dest_path = join(this.data_folder, message_data.dest_path)
             fs.move(full_src_path, full_dest_path)
             .then(() => {
                 resolve()
             })
             .catch( (err) => {
-                error(err)
                 reject(err)
             })
         })
     }
 
-    private async deleteFile(file_path) {
+    private async deleteFile(message_data) {
         return new Promise((resolve,reject) => {
-            var full_path = join(this.data_folder,file_path)
+            var result = this.validator.validate(message_data, delete_file_schema)
+            if(!result.valid) {
+                reject(result.errors)
+            }
+            var full_path = join(this.data_folder, message_data.file_path)
             fs.remove(full_path)
             .then( () => {
                 resolve()
             })
             .catch( (err) => {
-                error(err)
                 reject(err)
             })
         })
     }
 
-    private async makeFolder(folder_path) {
+    private async makeFolder(message_data) {
         return new Promise((resolve,reject) => {
-            var full_path = join(this.data_folder,folder_path)
+            var result = this.validator.validate(message_data, make_folder_schema)
+            if(!result.valid) {
+                reject(result.errors)
+            }
+            var full_path = join(this.data_folder,message_data.folder_path)
             fs.ensureDir(full_path)
             .then( () => {
                 resolve()
             })
             .catch( (err) => {
-                error(err)
                 reject(err)
             })
         })
     }
 
-    private async moveFolder(src_path, dest_path) {
-        var full_src_path = join(this.data_folder, src_path)
-        var full_dest_path = join(this.data_folder, dest_path)
+    private async moveFolder( message_data ) {
         return new Promise((resolve,reject) => {
+            var result = this.validator.validate(message_data, move_folder_schema)
+            if(!result.valid) {
+                reject(result.errors)
+            }
+            var full_src_path = join(this.data_folder, message_data.src_path)
+            var full_dest_path = join(this.data_folder, message_data.dest_path)
             fs.move(full_src_path, full_dest_path)
             .then(() => {
                 resolve()
             })
             .catch( (err) => {
-                error(err)
                 reject(err)
             })
         })
     }
 
-    private async deleteFolder(folder_path) {
+    private async deleteFolder(message_data) {
         return new Promise((resolve,reject) => {
-            var full_path = join(this.data_folder,folder_path)
+            var result = this.validator.validate(message_data, delete_folder_schema)
+            if(!result.valid) {
+                reject(result.errors)
+            }
+            var full_path = join(this.data_folder,message_data.folder_path)
             fs.remove(full_path)
             .then( () => {
                 resolve()
             })
             .catch( (err) => {
-                error(err)
                 reject(err)
             })
         })
