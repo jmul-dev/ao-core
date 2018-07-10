@@ -2,10 +2,9 @@
 'use strict';
 import { join } from "path";
 import fs from 'fs-extra'
-import minimist from 'minimist';
 import Message from '../messaging/message'
 import { Validator, SchemaError } from 'jsonschema'
-
+import md5 from 'md5'
 import {
     read_file_schema,
     write_file_schema,
@@ -20,13 +19,16 @@ import {
 import Debug from 'debug';
 const debug = Debug('ao:files');
 const error = Debug('ao:files:error');
-const argv = minimist(process.argv.slice(2));
 
 // Future use?: https://www.npmjs.com/package/file-encryptor
 class Files {
     private data_folder:string;
 
     private validator:any;
+
+    private registry_name:string = 'filesSubProcess'
+
+    private instance_id: number = md5( new Date().getTime() + Math.random() ) //rando number for identification
 
     constructor() {
         this.validator = new Validator()
@@ -51,18 +53,22 @@ class Files {
     private async register() {
         return new Promise( (resolve,reject) => {
             if( process.send ) {
-                debug('has parent. Registering Files Subprocess')
+                debug('Has parent. Registering Files Subprocess')
                 process.send({
-                    app_id: 'testing', //Should be passed to this thing on initial start.
-                    type_id: "bogus",
-                    event: "register_process",
-                    from: "filesSubProcess",
-                    data: { 
-                        request: "add_to_registry",
-                        name: "filesSubProcess",
-                        type: "subprocess"
-                    },
-                    encoding: "json"
+                    message: {
+                        app_id: 'testing', //Should be passed to this thing on initial start.
+                        type_id: "message",
+                        event: "register_process",
+                        instance_id: this.instance_id,
+                        from: this.registry_name,
+                        data: { 
+                            request: "add_to_registry",
+                            name: this.registry_name,
+                            type: "subprocess",
+                            instance_id: this.instance_id
+                        },
+                        encoding: "json"
+                    }
                 })
                 resolve()
             } else {
@@ -90,10 +96,15 @@ class Files {
     private async onMessageRouter() {
         return new Promise( (resolve,reject) => {
             process.on('message', (message) => {
+                //note, below vars are for callback message only.
+                var type_id:string = 'message'
+                var stream_direction = null;
                 //Add message verification here?
                 switch(message.event) {
                     case 'read_file':
                         var fs_promise = this.readFile(message.data)
+                        type_id = 'stream'
+                        stream_direction = 'output'
                         break;
                     case 'write_file':
                         var fs_promise = this.writeFile(message.data)
@@ -123,15 +134,17 @@ class Files {
 
                 fs_promise
                 .then((file_data) => {
-
                     var callback_message = new Message({
                         app_id: 'testing', //TBD
                         event: message.data.callback_event,
-                        type_id: "bogus",
-                        from: "filesSubProcess",
+                        instance_id: this.instance_id,
+                        type_id: type_id, //Message for most, but stream for some
+                        from: this.registry_name,
                         data: {
+                            message_sender: message.from,
                             original_event: message.event,
-                            file_data: file_data ? file_data : null
+                            file_data: file_data ? file_data : null,
+                            stream_direction: stream_direction ? stream_direction : null
                         },
                         encoding: "json"
                     })

@@ -1,13 +1,15 @@
 
 export interface ProcessObject {
-    send: Function
+    in_use: boolean,
+    process: any
 }
 
 export interface RegistryObject {
     priority: number,
     status: boolean,
+    multi_instance: boolean,
     name: string,
     type: string,
     file: string,
-    process: ProcessObject
+    instances: Array<ProcessObject>
 }

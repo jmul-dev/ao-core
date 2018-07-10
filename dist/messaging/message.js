@@ -44,6 +44,12 @@ var Message = /** @class */ (function () {
         enumerable: true,
         configurable: true
     });
+    Object.defineProperty(Message.prototype, "instance_id", {
+        get: function () { return this.instance_id; },
+        set: function (val) { this.instance_id = val; },
+        enumerable: true,
+        configurable: true
+    });
     Object.defineProperty(Message.prototype, "event", {
         get: function () { return this.event; },
         set: function (val) { this.event = val; },
@@ -85,6 +91,9 @@ var Message = /** @class */ (function () {
         var message = {
             app_id: this.app_id,
             type_id: this.type_id,
+            instance_id: this.instance_id,
+            event: this.event,
+            from: this.from,
             message_type: this.message_type,
             signatures: this.signatures,
             data: this.data,

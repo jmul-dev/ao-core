@@ -44,6 +44,7 @@ var debug = debug_1.default('ao:core');
 var error = debug_1.default('ao:core:error');
 var validation_schemas_1 = require("./validation_schemas");
 var jsonschema_1 = require("jsonschema");
+//import { RegistryObject } from './message_interfaces'
 var path_1 = require("path");
 var child_process_1 = require("child_process");
 var Router = /** @class */ (function () {
@@ -64,50 +65,7 @@ var Router = /** @class */ (function () {
                                     break;
                                 default:
                                 case 'subprocess':
-                                    all_processes.push(new Promise(function (res, rej) {
-                                        var current_process = child_process_1.spawn(process.execPath, [path_1.join(__dirname, '../../dist/' + registry.file)], { stdio: ['ipc', 'inherit', 'inherit'] });
-                                        current_process.on('error', function (err) {
-                                            var message = new message_1.default({
-                                                app_id: 'testing',
-                                                type_id: "bogus",
-                                                event: "register_process",
-                                                from: registry.name,
-                                                data: {
-                                                    request: "delete_from_registry",
-                                                    name: registry.name
-                                                },
-                                                encoding: "json"
-                                            });
-                                            _this.registry.send(message); //send message to delete
-                                            error(registry.name + ' failed to start: ', err);
-                                            rej(err);
-                                        });
-                                        current_process.on('close', function (code) {
-                                            //Do we resolve or reject?
-                                            var message = new message_1.default({
-                                                app_id: 'testing',
-                                                type_id: "bogus",
-                                                event: "register_process",
-                                                from: registry.name,
-                                                data: {
-                                                    request: "delete_from_registry",
-                                                    name: registry.name
-                                                },
-                                                encoding: "json"
-                                            });
-                                            _this.registry.send(message); //send message to delete
-                                            debug(registry.name + ' closed on us with code: ', code);
-                                        });
-                                        //message from child process
-                                        current_process.on('message', function (message) {
-                                            //data validation
-                                            _this.invokeSubProcess(message, registry.name)
-                                                .catch(function (e) {
-                                                rej(e);
-                                            });
-                                        });
-                                        res();
-                                    }));
+                                    all_processes.push(_this.createNewProcess(registry));
                                     break;
                             }
                         });
@@ -121,6 +79,56 @@ var Router = /** @class */ (function () {
                         });
                     })];
             });
+        });
+    };
+    Router.prototype.createNewProcess = function (registry) {
+        var _this = this;
+        return new Promise(function (res, rej) {
+            var current_process = child_process_1.spawn(process.execPath, [path_1.join(__dirname, '../../dist/' + registry.file)], {
+                stdio: ['ipc', 'inherit', 'inherit', 'pipe', 'pipe'] // Note, first pipe is read from child, second is for write.  Original was:['ipc', 'inherit', 'inherit'] 
+            });
+            current_process.on('error', function (err) {
+                var message = new message_1.default({
+                    app_id: 'testing',
+                    type_id: "message",
+                    event: "register_process",
+                    from: registry.name,
+                    data: {
+                        request: "delete_from_registry",
+                        name: registry.name
+                    },
+                    encoding: "json"
+                });
+                _this.registry.send(message); //send message to delete
+                error(registry.name + ' failed to start: ', err);
+                rej(err);
+            });
+            current_process.on('close', function (code) {
+                //Do we resolve or reject?
+                var message = new message_1.default({
+                    app_id: 'testing',
+                    type_id: "message",
+                    event: "register_process",
+                    from: registry.name,
+                    data: {
+                        request: "delete_from_registry",
+                        name: registry.name
+                    },
+                    encoding: "json"
+                });
+                _this.registry.send(message); //send message to delete
+                debug(registry.name + ' closed on us with code: ', code);
+            });
+            //message from child process
+            current_process.on('message', function (data) {
+                var message = data.message;
+                //data validation
+                _this.invokeSubProcess(message, registry.name)
+                    .catch(function (e) {
+                    rej(e);
+                });
+            });
+            res();
         });
     };
     Router.prototype.invokeSubProcess = function (message, registry_name) {
@@ -178,27 +186,85 @@ var Router = /** @class */ (function () {
             });
         });
     };
+    // TODO: Refactor this thing
     Router.prototype.callMethod = function (_a) {
         var registry_item = _a.registry_item, message = _a.message;
         return __awaiter(this, void 0, void 0, function () {
+            var _this = this;
             return __generator(this, function (_b) {
                 return [2 /*return*/, new Promise(function (resolve, reject) {
-                        try {
-                            switch (registry_item.type) {
-                                case 'main':
-                                    //note that send is a normal method within the instantiated class
-                                    registry_item.process.send(message);
+                        if (!registry_item.multi_instance) {
+                            var to_process = registry_item.instances[0].process;
+                        }
+                        else {
+                            //If its a multi-instance version, we need to ensure that the process is not in use
+                            for (var i = 0; i < registry_item.instances.length; i++) {
+                                var instance = registry_item.instances[i];
+                                if (!instance.in_use) {
+                                    var to_process = instance.process;
+                                    var to_instance = instance; //used later when we send successfully to mark as in use
                                     break;
-                                default:
-                                case 'subprocess':
-                                    registry_item.process.send({ message: message });
-                                    break;
+                                }
+                            }
+                            //Guess we've gotta invoke a new instance.
+                            if (typeof to_process == 'undefined') {
+                                console.log('Staring a new instance of ' + registry_item.name);
+                                _this.createNewProcess(registry_item)
+                                    .then(function () {
+                                    //start over.
+                                    _this.invokeSubProcess(message, registry_item.name)
+                                        .then(function () {
+                                        resolve();
+                                    })
+                                        .catch(function (err) {
+                                        console.log('new instance didnt work out');
+                                        reject(err);
+                                    });
+                                })
+                                    .catch(function (err) {
+                                    console.log('new instance didnt start');
+                                    reject(err);
+                                });
                             }
                         }
-                        catch (error) {
-                            reject(error);
+                        switch (message.type_id) {
+                            case 'message':
+                                try {
+                                    to_process.send({ message: message });
+                                    //Gotta mark this process as in_use
+                                    if (registry_item.multi_instance) {
+                                        _this.registry.markUsed(registry_item.name, to_instance.instance_id);
+                                    }
+                                }
+                                catch (error) {
+                                    reject(error);
+                                }
+                                resolve(message);
+                                break;
+                            case 'stream':
+                                var from_process = _this.registry.getFromProcess(message);
+                                break;
+                            default:
+                                reject('No compatible registry type id');
+                                break;
                         }
-                        resolve(message);
+                        //Let's handle the stream situation
+                        if (message.data.stream_direction == 'output') {
+                            var from_stream = from_process.stdio[3];
+                            to_process.stdio[4].on('error', function (err) {
+                                debug('Ignore this one: ' + err);
+                            });
+                            from_stream.pipe(to_process.stdio[4]);
+                            to_process.send({ message: message });
+                        }
+                        else if (message.data.stream_direction == 'input') {
+                            var to_stream = to_process.stdio[3];
+                            from_process.stdio[4].on('error', function (err) {
+                                debug('Ignore this one: ' + err);
+                            });
+                            to_stream.pipe(from_process.stdio[4]);
+                            to_process.send({ message: message });
+                        }
                     })];
             });
         });

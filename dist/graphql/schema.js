@@ -115,7 +115,7 @@ function default_1(db, router) {
                                     _a = _b.sent(), stream = _a.stream, filename = _a.filename, mimetype = _a.mimetype, encoding = _a.encoding;
                                     message = new message_1.default({
                                         app_id: 'testing',
-                                        type_id: "bogus",
+                                        type_id: "stream",
                                         event: "stream_write_file",
                                         from: "http",
                                         data: {

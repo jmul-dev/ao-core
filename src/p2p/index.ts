@@ -1,18 +1,19 @@
 #!/usr/local/bin/node
 'use strict';
+import md5 from 'md5'
 import { join } from "path";
 import { load } from "protobufjs";
 import { create } from "peer-info";
 import Node from "libp2p-rpc";
 import ConnManager from "libp2p-connection-manager";
-import minimist from 'minimist';
+
 import Debug from 'debug';
 const debug = Debug('ao:p2p');
 const error = Debug('ao:p2p:error');
-const argv = minimist(process.argv.slice(2));
-
 
 class P2P {
+    private instance_id: number = md5( new Date().getTime() + Math.random() ) //rando number for identification
+    
     config: {
         name: string;
         version: string;
@@ -39,16 +40,19 @@ class P2P {
         if( process.send ) {
             debug('has parent.  registering the thang')
             process.send({
-                app_id: 'testing', //Should be passed to this thing on initial start.
-                type_id: "bogus",
-                event: "register_process",
-                from: "p2pSubProcess",
-                data: { 
-                    request: "add_to_registry",
-                    name: "p2pSubProcess",
-                    type: "subprocess"
-                },
-                encoding: "json"
+                message: {
+                    app_id: 'testing', //Should be passed to this thing on initial start.
+                    type_id: "message",
+                    event: "register_process",
+                    from: "p2pSubProcess",
+                    data: { 
+                        request: "add_to_registry",
+                        name: "p2pSubProcess",
+                        type: "subprocess",
+                        instance_id: this.instance_id
+                    },
+                    encoding: "json"
+                }
             })
         }
 

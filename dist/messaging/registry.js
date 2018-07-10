@@ -58,6 +58,7 @@ var stored_registry = {
     registry: {
         status: false,
         priority: 0,
+        multi_instance: 0,
         type: 'main',
         file: '',
         events: [
@@ -67,6 +68,7 @@ var stored_registry = {
     p2pSubProcess: {
         status: false,
         priority: 0,
+        multi_instance: 0,
         type: 'subprocess',
         file: '/p2p/index.js',
         events: [
@@ -77,6 +79,7 @@ var stored_registry = {
     filesSubProcess: {
         status: false,
         priority: 0,
+        multi_instance: 1,
         type: 'subprocess',
         file: '/storage/files.js',
         events: [
@@ -107,44 +110,34 @@ var Registry = /** @class */ (function () {
             var _this = this;
             return __generator(this, function (_a) {
                 return [2 /*return*/, new Promise(function (resolve, reject) {
-                        _this.initRegistry()
-                            .then(function () {
-                            _this.router = new router_1.default(_this);
-                            resolve(_this.router);
-                        })
-                            .catch(function (e) {
-                            error(e);
-                            reject(e);
-                        });
+                        _this.initRegistry();
+                        _this.router = new router_1.default(_this);
+                        resolve(_this.router);
                     })];
             });
         });
     };
     //Maybe in the future we encrypt/decrypt the registry?  Maybe load a password/key to this loadRegistry?
     Registry.prototype.initRegistry = function () {
-        return __awaiter(this, void 0, void 0, function () {
-            var _this = this;
-            return __generator(this, function (_a) {
-                return [2 /*return*/, new Promise(function (resolve, reject) {
-                        //read from FS and decode later using a key? will have to figure this out.
-                        // The "stored_registry" is a "mock" model registry for now.
-                        for (var key in _this.stored_registry) {
-                            //The only special case.
-                            if (key == 'registry') {
-                                _this.stored_registry[key].process = _this;
-                                _this.stored_registry[key].status = 1; //make it active 
-                            }
-                            var registry = stored_registry[key];
-                            _this.registry_by_name[key] = registry;
-                            for (var e = 0; e < registry.events.length; e++) {
-                                var event = registry.events[e];
-                                _this.events_registry[event] = key;
-                            }
-                        }
-                        resolve();
-                    })];
-            });
-        });
+        //read from FS and decode later using a key? will have to figure this out.
+        // The "stored_registry" is a "mock" model registry for now.
+        for (var key in this.stored_registry) {
+            //The only special case.
+            if (key == 'registry') {
+                var instances = [{
+                        in_use: false,
+                        process: this
+                    }];
+                this.stored_registry[key].instances = instances;
+                this.stored_registry[key].status = 1; //make it active 
+            }
+            var registry = stored_registry[key];
+            this.registry_by_name[key] = registry;
+            for (var e = 0; e < registry.events.length; e++) {
+                var event = registry.events[e];
+                this.events_registry[event] = key;
+            }
+        }
     };
     Registry.prototype.loopRegistries = function (func) {
         for (var key in this.stored_registry) {
@@ -169,8 +162,48 @@ var Registry = /** @class */ (function () {
             return false;
         }
     };
+    Registry.prototype.getFromProcess = function (message) {
+        var registry_item = this.registry_by_name[message.from];
+        for (var i = 0; i < registry_item.instances.length; i++) {
+            var instance = registry_item.instances[i];
+            if (instance.instance_id == message.instance_id) {
+                var from_process = instance.process;
+                break;
+            }
+        }
+        return from_process;
+    };
+    Registry.prototype.markUsed = function (registry_name, instance_id) {
+        for (var key in this.stored_registry) {
+            if (this.stored_registry.hasOwnProperty(key)) {
+                if (key == registry_name) {
+                    for (var i = 0; i < this.stored_registry[key].instances.length; i++) {
+                        if (this.stored_registry[key].instances[i].instance_id == instance_id) {
+                            this.stored_registry[key].instances[i].in_use = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    };
+    Registry.prototype.markUnused = function (registry_name, instance_id) {
+        for (var key in this.stored_registry) {
+            if (this.stored_registry.hasOwnProperty(key)) {
+                if (key == registry_name) {
+                    for (var i = 0; i < this.stored_registry[key].instances.length; i++) {
+                        if (this.stored_registry[key].instances[i].instance_id == instance_id) {
+                            this.stored_registry[key].instances[i].in_use = false;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    };
     //ability to receive messages from subprocesses
-    Registry.prototype.send = function (message) {
+    Registry.prototype.send = function (data) {
+        var message = data.message;
         //validate
         var result = jsonschema_1.validate(message, this.message_schema);
         if (!result.valid) {
@@ -191,6 +224,8 @@ var Registry = /** @class */ (function () {
                 this.removeRegistry(message);
                 break;
         }
+        //Gotta update the registry data everytime we update it
+        this.initRegistry();
     };
     Registry.prototype.addRegistry = function (message) {
         if (this.stored_registry[message.data.name].status) {
@@ -199,10 +234,23 @@ var Registry = /** @class */ (function () {
         }
         this.stored_registry[message.data.name].status = true;
         if (message.data.process) {
-            this.stored_registry[message.data.name].process = message.data.process;
+            var new_process_object = {
+                in_use: false,
+                process: message.data.process,
+                instance_id: message.data.instance_id
+            };
+            //if instances is defined
+            if (Array.isArray(this.stored_registry[message.data.name].instances)) {
+                this.stored_registry[message.data.name].instances.push(new_process_object);
+            }
+            else {
+                this.stored_registry[message.data.name].instances = [new_process_object];
+            }
         }
     };
-    Registry.prototype.removeRegistry = function (message) {
+    // TODO: Figure out if removing from registry should just remove instances instead of entire registry item
+    Registry.prototype.removeRegistry = function (data) {
+        var message = data.message;
         if (this.stored_registry[message.data.name].status) {
             this.stored_registry[message.data.name].status = false;
         }

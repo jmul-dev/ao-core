@@ -67,7 +67,7 @@ export default function (db: Database, router: Router) {
                     //file storage has to happen here, but code has to be re-orged before we continue.
                     var message = new Message({
                         app_id: 'testing', //TBD
-                        type_id: "bogus",
+                        type_id: "stream",
                         event: "stream_write_file",
                         from: "http",
                         data: { 

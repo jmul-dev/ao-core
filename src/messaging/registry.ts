@@ -16,6 +16,7 @@ var stored_registry:any = {
     registry: {
         status: false, //Status marks whether the process is active/available
         priority: 0,
+        multi_instance: 0,
         type: 'main',//specifically made for registrations and other main processes
         file: '',//empty means that it sends to main
         events: [
@@ -25,6 +26,7 @@ var stored_registry:any = {
     p2pSubProcess: {
         status: false,
         priority: 0,
+        multi_instance: 0,
         type: 'subprocess',
         file: '/p2p/index.js',//Assumes /dist as a pre-fix
         events: [
@@ -35,6 +37,7 @@ var stored_registry:any = {
     filesSubProcess: {
         status: false,
         priority: 0,
+        multi_instance: 1,
         type: 'subprocess',
         file: '/storage/files.js',
         events: [
@@ -66,39 +69,34 @@ export default class Registry {
     async initialize() {
         return new Promise( (resolve,reject) => {
             this.initRegistry()
-            .then(() => {
-                this.router = new Router(this)
-                resolve(this.router)
-            })
-            .catch(e => {
-                error(e)
-                reject(e)
-            })
+            this.router = new Router(this)
+            resolve(this.router)
         })
     }
 
     //Maybe in the future we encrypt/decrypt the registry?  Maybe load a password/key to this loadRegistry?
-    private async initRegistry() {
-        return new Promise( (resolve,reject) => {
-            //read from FS and decode later using a key? will have to figure this out.
-            // The "stored_registry" is a "mock" model registry for now.
-            for( var key in this.stored_registry ) {
-                //The only special case.
-                if(key == 'registry') {
-                    this.stored_registry[key].process = this
-                    this.stored_registry[key].status = 1 //make it active 
-                }
-
-                const registry = stored_registry[key];
-                this.registry_by_name[key] = registry
-
-                for (let e = 0; e < registry.events.length; e++) {
-                    const event = registry.events[e];
-                    this.events_registry[event] = key
-                }
+    private initRegistry() {
+        //read from FS and decode later using a key? will have to figure this out.
+        // The "stored_registry" is a "mock" model registry for now.
+        for( var key in this.stored_registry ) {
+            //The only special case.
+            if(key == 'registry') {
+                var instances = [{
+                    in_use: false,
+                    process: this
+                }]
+                this.stored_registry[key].instances = instances
+                this.stored_registry[key].status = 1 //make it active 
             }
-            resolve();
-        })
+
+            const registry = stored_registry[key];
+            this.registry_by_name[key] = registry
+
+            for (let e = 0; e < registry.events.length; e++) {
+                const event = registry.events[e];
+                this.events_registry[event] = key
+            }
+        }
     }
 
     public loopRegistries(func:Function) {
@@ -128,8 +126,51 @@ export default class Registry {
         }
     }
 
+    public getFromProcess(message:Message) {
+        const registry_item = this.registry_by_name[message.from]
+        for (let i = 0; i < registry_item.instances.length; i++) {
+            const instance = registry_item.instances[i];
+            if(instance.instance_id == message.instance_id) {
+                var from_process = instance.process
+                break;
+            }
+        }
+        return from_process
+    }
+
+    public markUsed(registry_name, instance_id) {
+        for (const key in this.stored_registry) {
+            if (this.stored_registry.hasOwnProperty(key)) {
+                if(key == registry_name) {
+                    for (let i = 0; i < this.stored_registry[key].instances.length; i++) {
+                        if(this.stored_registry[key].instances[i].instance_id == instance_id) {
+                            this.stored_registry[key].instances[i].in_use = true
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    public markUnused(registry_name, instance_id) {
+        for (const key in this.stored_registry) {
+            if (this.stored_registry.hasOwnProperty(key)) {
+                if(key == registry_name) {
+                    for (let i = 0; i < this.stored_registry[key].instances.length; i++) {
+                        if(this.stored_registry[key].instances[i].instance_id == instance_id) {
+                            this.stored_registry[key].instances[i].in_use = false
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     //ability to receive messages from subprocesses
-    public send( message:Message ) {
+    public send( data:any ) {
+        var message:Message = data.message
         //validate
         var result = validate(message, this.message_schema)
         if( !result.valid ) {
@@ -150,6 +191,8 @@ export default class Registry {
                 this.removeRegistry( message )
                 break;
         }
+        //Gotta update the registry data everytime we update it
+        this.initRegistry()
     }
 
     private addRegistry(message:Message) {
@@ -159,11 +202,24 @@ export default class Registry {
         }
         this.stored_registry[message.data.name].status = true
         if( message.data.process ) {
-            this.stored_registry[message.data.name].process = message.data.process
+            var new_process_object = {
+                in_use: false,
+                process: message.data.process,
+                instance_id: message.data.instance_id
+            }
+
+            //if instances is defined
+            if( Array.isArray(this.stored_registry[message.data.name].instances) ) {
+                this.stored_registry[message.data.name].instances.push(new_process_object)
+            } else {
+                this.stored_registry[message.data.name].instances = [new_process_object]
+            }
         }
     }
 
-    private removeRegistry(message:Message) {
+    // TODO: Figure out if removing from registry should just remove instances instead of entire registry item
+    private removeRegistry(data:any) {//Sorry, got lazy
+        var message = data.message
         if( this.stored_registry[message.data.name].status ) {
             this.stored_registry[message.data.name].status = false 
         } else {
