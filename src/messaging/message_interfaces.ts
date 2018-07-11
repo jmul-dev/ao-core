@@ -1,7 +1,8 @@
 
 export interface ProcessObject {
     in_use: boolean,
-    process: any
+    process: any,
+    instance_id: string
 }
 
 export interface RegistryObject {

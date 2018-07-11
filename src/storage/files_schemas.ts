@@ -26,7 +26,6 @@ const write_file_schema:Object = {
             "containsNot":".."
         },
         "file_data": {
-            "type": "string"
         }
     }
 }

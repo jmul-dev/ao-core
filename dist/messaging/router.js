@@ -87,6 +87,12 @@ var Router = /** @class */ (function () {
             var current_process = child_process_1.spawn(process.execPath, [path_1.join(__dirname, '../../dist/' + registry.file)], {
                 stdio: ['ipc', 'inherit', 'inherit', 'pipe', 'pipe'] // Note, first pipe is read from child, second is for write.  Original was:['ipc', 'inherit', 'inherit'] 
             });
+            // current_process.stdio[1].on('error', (err) => {
+            //     debug('stido 1 : ' + err)
+            // })
+            // current_process.stdio[2].on('error', (err) => {
+            //     debug('stido 2 : ' + err)
+            // })
             current_process.on('error', function (err) {
                 var message = new message_1.default({
                     app_id: 'testing',
@@ -99,6 +105,7 @@ var Router = /** @class */ (function () {
                     },
                     encoding: "json"
                 });
+                console.log('errored', err);
                 _this.registry.send(message); //send message to delete
                 error(registry.name + ' failed to start: ', err);
                 rej(err);
@@ -116,13 +123,17 @@ var Router = /** @class */ (function () {
                     },
                     encoding: "json"
                 });
+                console.log('closed');
                 _this.registry.send(message); //send message to delete
                 debug(registry.name + ' closed on us with code: ', code);
             });
             //message from child process
-            current_process.on('message', function (data) {
-                var message = data.message;
-                //data validation
+            current_process.on('message', function (message) {
+                //Process attachment for registry can only happen from here.
+                if (message.event == 'register_process' &&
+                    message.data.request == 'add_to_registry') {
+                    message.data.process = current_process;
+                }
                 _this.invokeSubProcess(message, registry.name)
                     .catch(function (e) {
                     rej(e);
@@ -162,7 +173,7 @@ var Router = /** @class */ (function () {
                         }
                         var result = jsonschema_1.validate(message, _this.message_schema);
                         if (result.valid) {
-                            resolve(message);
+                            resolve({ message: message, registry_name: registry_name });
                         }
                         else {
                             reject(result.errors);
@@ -172,28 +183,35 @@ var Router = /** @class */ (function () {
         });
     };
     //Verifies the existence of registry item.
-    Router.prototype.verify = function (message) {
+    Router.prototype.verify = function (_a) {
+        var message = _a.message, registry_name = _a.registry_name;
         return __awaiter(this, void 0, void 0, function () {
             var _this = this;
-            return __generator(this, function (_a) {
+            return __generator(this, function (_b) {
                 return [2 /*return*/, new Promise(function (resolve, reject) {
-                        var registry_item = _this.registry.verify(message);
-                        if (!registry_item) {
-                            reject('Registry does not exist or message event did not match.');
+                        //Let's just make sure the originator isn't lying about its existance
+                        var from_registry_item = _this.registry.registryByName(registry_name);
+                        if (!from_registry_item) {
+                            reject('No registry by that name.');
                         }
-                        resolve({ registry_item: registry_item, message: message });
+                        //Get the registry item attached to that message event
+                        var registry_item = _this.registry.verifyEvent(message);
+                        if (!registry_item) {
+                            reject('Message event does not match any registry.');
+                        }
+                        resolve({ message: message, registry_item: registry_item });
                     })];
             });
         });
     };
     // TODO: Refactor this thing
     Router.prototype.callMethod = function (_a) {
-        var registry_item = _a.registry_item, message = _a.message;
+        var message = _a.message, registry_item = _a.registry_item;
         return __awaiter(this, void 0, void 0, function () {
             var _this = this;
             return __generator(this, function (_b) {
                 return [2 /*return*/, new Promise(function (resolve, reject) {
-                        if (!registry_item.multi_instance) {
+                        if (registry_item.multi_instance == 0) {
                             var to_process = registry_item.instances[0].process;
                         }
                         else {
@@ -215,6 +233,7 @@ var Router = /** @class */ (function () {
                                     _this.invokeSubProcess(message, registry_item.name)
                                         .then(function () {
                                         resolve();
+                                        return true;
                                     })
                                         .catch(function (err) {
                                         console.log('new instance didnt work out');
@@ -230,7 +249,7 @@ var Router = /** @class */ (function () {
                         switch (message.type_id) {
                             case 'message':
                                 try {
-                                    to_process.send({ message: message });
+                                    to_process.send(message);
                                     //Gotta mark this process as in_use
                                     if (registry_item.multi_instance) {
                                         _this.registry.markUsed(registry_item.name, to_instance.instance_id);
@@ -243,27 +262,36 @@ var Router = /** @class */ (function () {
                                 break;
                             case 'stream':
                                 var from_process = _this.registry.getFromProcess(message);
+                                if (message.data.stream_direction == 'output') {
+                                    var from_stream = from_process.stdio[3];
+                                    to_process.stdio[4].on('error', function (err) {
+                                        debug('Ignore this one: ' + err);
+                                    });
+                                    from_stream.pipe(to_process.stdio[4]);
+                                }
+                                else if (message.data.stream_direction == 'input') {
+                                    var to_stream = to_process.stdio[3];
+                                    from_process.stdio[4].on('error', function (err) {
+                                        debug('Ignore this one: ' + err);
+                                    });
+                                    to_stream.pipe(from_process.stdio[4]);
+                                }
+                                //Finally send off the message once the  pipes are made 
+                                //(might need to change who the message is sent to based on which way the data is flowing)
+                                try {
+                                    to_process.send(message);
+                                    if (registry_item.multi_instance) {
+                                        _this.registry.markUsed(registry_item.name, to_instance.instance_id);
+                                    }
+                                }
+                                catch (error) {
+                                    reject(error);
+                                }
+                                resolve(message);
                                 break;
                             default:
                                 reject('No compatible registry type id');
                                 break;
-                        }
-                        //Let's handle the stream situation
-                        if (message.data.stream_direction == 'output') {
-                            var from_stream = from_process.stdio[3];
-                            to_process.stdio[4].on('error', function (err) {
-                                debug('Ignore this one: ' + err);
-                            });
-                            from_stream.pipe(to_process.stdio[4]);
-                            to_process.send({ message: message });
-                        }
-                        else if (message.data.stream_direction == 'input') {
-                            var to_stream = to_process.stdio[3];
-                            from_process.stdio[4].on('error', function (err) {
-                                debug('Ignore this one: ' + err);
-                            });
-                            to_stream.pipe(from_process.stdio[4]);
-                            to_process.send({ message: message });
                         }
                     })];
             });

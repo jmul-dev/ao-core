@@ -73,7 +73,8 @@ var stored_registry = {
         file: '/p2p/index.js',
         events: [
             "p2p_lookup",
-            "p2p_peer_count"
+            "p2p_peer_count",
+            "p2p_log_write_callback"
         ]
     },
     filesSubProcess: {
@@ -146,13 +147,16 @@ var Registry = /** @class */ (function () {
             func(registry);
         }
     };
-    Registry.prototype.verify = function (message) {
+    Registry.prototype.verifyEvent = function (message) {
         //verify that we do/don't have the registry
         var registry_name = this.events_registry[message.event];
         if (!registry_name) {
             debug('No event with matching registry');
             return false;
         }
+        return this.registryByName(registry_name);
+    };
+    Registry.prototype.registryByName = function (registry_name) {
         var registry = this.registry_by_name[registry_name];
         //Maybe add app id checking later
         if (registry) {
@@ -202,8 +206,7 @@ var Registry = /** @class */ (function () {
         }
     };
     //ability to receive messages from subprocesses
-    Registry.prototype.send = function (data) {
-        var message = data.message;
+    Registry.prototype.send = function (message) {
         //validate
         var result = jsonschema_1.validate(message, this.message_schema);
         if (!result.valid) {
@@ -211,8 +214,8 @@ var Registry = /** @class */ (function () {
             return false;
         }
         //Verify
-        var registry = this.verify(message);
-        if (!registry) {
+        var registry = this.verifyEvent(message);
+        if (!registry) { //maybe ensure that this the right registry we got back?
             return false;
         }
         switch (message.data.request) {
@@ -228,7 +231,8 @@ var Registry = /** @class */ (function () {
         this.initRegistry();
     };
     Registry.prototype.addRegistry = function (message) {
-        if (this.stored_registry[message.data.name].status) {
+        if (this.stored_registry[message.data.name].status &&
+            this.stored_registry[message.data.name].multi_instance == false) {
             error('Request to register a pre-registered process: ' + message.data.name);
             return false;
         }
@@ -247,10 +251,12 @@ var Registry = /** @class */ (function () {
                 this.stored_registry[message.data.name].instances = [new_process_object];
             }
         }
+        else {
+            console.log('Process wasnt defined...');
+        }
     };
     // TODO: Figure out if removing from registry should just remove instances instead of entire registry item
-    Registry.prototype.removeRegistry = function (data) {
-        var message = data.message;
+    Registry.prototype.removeRegistry = function (message) {
         if (this.stored_registry[message.data.name].status) {
             this.stored_registry[message.data.name].status = false;
         }

@@ -55,7 +55,6 @@ class Files {
             if( process.send ) {
                 debug('Has parent. Registering Files Subprocess')
                 process.send({
-                    message: {
                         app_id: 'testing', //Should be passed to this thing on initial start.
                         type_id: "message",
                         event: "register_process",
@@ -68,7 +67,6 @@ class Files {
                             instance_id: this.instance_id
                         },
                         encoding: "json"
-                    }
                 })
                 resolve()
             } else {
@@ -100,6 +98,7 @@ class Files {
                 var type_id:string = 'message'
                 var stream_direction = null;
                 //Add message verification here?
+                
                 switch(message.event) {
                     case 'read_file':
                         var fs_promise = this.readFile(message.data)
@@ -108,32 +107,33 @@ class Files {
                         break;
                     case 'write_file':
                         var fs_promise = this.writeFile(message.data)
-                    break;
+                        break;
                     case 'stream_write_file':
                         var fs_promise = this.streamWriteFile(message.data)
-                    break;
+                        break;
                     case 'move_file':
                         var fs_promise = this.moveFile(message.data)
-                    break;
+                        break;
                     case 'delete_file':
                         var fs_promise = this.deleteFile(message.data)
-                    break;
+                        break;
                     case 'make_folder':
                         var fs_promise = this.makeFolder(message.data)
-                    break;
+                        break;
                     case 'move_folder':
                         var fs_promise = this.moveFolder(message.data)
-                    break;
+                        break;
                     case 'delete_folder':
                         var fs_promise = this.deleteFolder(message.data)
                         break;
                     default:
-                        reject('not a routable event')
+                        var err = 'not a routable event'
+                        reject(err)
+                        error(err)
                         break;
                 }
 
-                fs_promise
-                .then((file_data) => {
+                fs_promise.then((file_data) => {
                     var callback_message = new Message({
                         app_id: 'testing', //TBD
                         event: message.data.callback_event,
@@ -185,7 +185,15 @@ class Files {
                 reject(result.errors)
             }
             var full_path = join(this.data_folder,message_data.file_path)
-            fs.outputFile(full_path, message_data.file_data)
+            var write_data:any = message_data.file_data
+            if(typeof message_data.file_data == 'object') {
+                try{
+                    write_data = JSON.stringify(message_data.file_data)
+                } catch(err) {
+                    reject(err)
+                }
+            }
+            fs.outputFile(full_path, write_data)
             .then( () => {
                 //fs.readFile(full_path) will return the file
             })

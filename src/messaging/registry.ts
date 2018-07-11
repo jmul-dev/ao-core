@@ -31,7 +31,8 @@ var stored_registry:any = {
         file: '/p2p/index.js',//Assumes /dist as a pre-fix
         events: [
             "p2p_lookup",
-            "p2p_peer_count"
+            "p2p_peer_count",
+            "p2p_log_write_callback"
         ]
     },
     filesSubProcess: {
@@ -40,7 +41,7 @@ var stored_registry:any = {
         multi_instance: 1,
         type: 'subprocess',
         file: '/storage/files.js',
-        events: [
+        events: [           //In the future, maybe store all of the events within the file and have that be the first return on spawn?
             'read_file',
             'write_file',
             'stream_write_file_schema',
@@ -106,17 +107,19 @@ export default class Registry {
             func(registry)
         }
     }
-    
 
-    public verify( message:Message ) {
+    public verifyEvent( message:Message ) {
         //verify that we do/don't have the registry
         const registry_name = this.events_registry[message.event]
         if(!registry_name) {
             debug('No event with matching registry')
             return false
         }
-        const registry = this.registry_by_name[registry_name]
+        return this.registryByName(registry_name)
+    }
 
+    public registryByName(registry_name:string) {
+        const registry = this.registry_by_name[registry_name]
         //Maybe add app id checking later
 
         if(registry) {
@@ -169,8 +172,7 @@ export default class Registry {
     }
 
     //ability to receive messages from subprocesses
-    public send( data:any ) {
-        var message:Message = data.message
+    public send( message:Message ) {
         //validate
         var result = validate(message, this.message_schema)
         if( !result.valid ) {
@@ -178,8 +180,8 @@ export default class Registry {
             return false
         }
         //Verify
-        var registry = this.verify(message)
-        if( !registry ) {
+        var registry = this.verifyEvent(message)
+        if( !registry ) {//maybe ensure that this the right registry we got back?
             return false
         }
         switch( message.data.request ) {
@@ -196,7 +198,8 @@ export default class Registry {
     }
 
     private addRegistry(message:Message) {
-        if( this.stored_registry[message.data.name].status ) {
+        if( this.stored_registry[message.data.name].status && 
+            this.stored_registry[message.data.name].multi_instance == false) {
             error('Request to register a pre-registered process: ' + message.data.name)
             return false
         }
@@ -207,19 +210,19 @@ export default class Registry {
                 process: message.data.process,
                 instance_id: message.data.instance_id
             }
-
             //if instances is defined
             if( Array.isArray(this.stored_registry[message.data.name].instances) ) {
                 this.stored_registry[message.data.name].instances.push(new_process_object)
             } else {
                 this.stored_registry[message.data.name].instances = [new_process_object]
             }
+        } else {
+            console.log('Process wasnt defined...')
         }
     }
 
     // TODO: Figure out if removing from registry should just remove instances instead of entire registry item
-    private removeRegistry(data:any) {//Sorry, got lazy
-        var message = data.message
+    private removeRegistry(message:Message) {//Sorry, got lazy
         if( this.stored_registry[message.data.name].status ) {
             this.stored_registry[message.data.name].status = false 
         } else {

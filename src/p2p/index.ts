@@ -13,6 +13,7 @@ const error = Debug('ao:p2p:error');
 
 class P2P {
     private instance_id: number = md5( new Date().getTime() + Math.random() ) //rando number for identification
+    private registry_name:string = 'p2pSubProcess'
     
     config: {
         name: string;
@@ -38,30 +39,29 @@ class P2P {
         this.node = null
         
         if( process.send ) {
-            debug('has parent.  registering the thang')
+            debug('Has parent. Registering p2p System')
             process.send({
-                message: {
-                    app_id: 'testing', //Should be passed to this thing on initial start.
-                    type_id: "message",
-                    event: "register_process",
-                    from: "p2pSubProcess",
-                    data: { 
-                        request: "add_to_registry",
-                        name: "p2pSubProcess",
-                        type: "subprocess",
-                        instance_id: this.instance_id
-                    },
-                    encoding: "json"
-                }
+                app_id: 'testing', //Should be passed to this thing on initial start.
+                type_id: "message",
+                event: "register_process",
+                from: this.registry_name,
+                data: { 
+                    request: "add_to_registry",
+                    name: this.registry_name,
+                    type: "subprocess",
+                    instance_id: this.instance_id
+                },
+                encoding: "json"
             })
         }
-
         this.start()
     }
     start() {
         const peerInfoPromise = this._createNodePeerInfo()
         const loadProtocolInterfacePromise = this._loadProtocolInterface()
         Promise.all([peerInfoPromise, loadProtocolInterfacePromise]).then(results => {
+            // 0. Message receive router!
+            this.onMessageRouter()
             // 1. Create our Node (inherits from libp2p)
             this.node = new Node(results[0], results[1], this.config)
             this.node.start().then(() => {
@@ -79,6 +79,20 @@ class P2P {
                 //     type: DATA_TYPES.PEER_CONNECTED,
                 //     peerId: peerId
                 // })
+                process.send({
+                    app_id: 'testing',
+                    type_id: "message",
+                    event: 'write_file',
+                    from: this.registry_name,
+                    data: {
+                        file_path: 'testing.json',
+                        file_data: {
+                            testing:"loooooreem iiiiipsum"
+                        },
+                        callback_event: 'p2p_log_write_callback'
+                    },
+                    encoding: 'json'
+                })
             })
             this.connectionManager.on('disconnected', peerId => {
                 debug('peer disconnected', peerId)
@@ -133,6 +147,18 @@ class P2P {
                 debug('proto3 protocol interface loaded')
                 resolve(protocolInterface)
             }).catch(reject)
+        })
+    }
+    onMessageRouter() {
+        process.on('message', (message) => {
+            switch(message.event) {
+                case 'p2p_log_write_callback':
+                    debug('Wrote into the test.json file!')
+                    break;
+                default:
+                    debug('Dunno about that event: '+ message.event)
+                    break;
+            }
         })
     }
 }

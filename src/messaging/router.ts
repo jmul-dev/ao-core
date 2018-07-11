@@ -55,6 +55,12 @@ export default class Router {
                     stdio: ['ipc', 'inherit', 'inherit','pipe','pipe'] // Note, first pipe is read from child, second is for write.  Original was:['ipc', 'inherit', 'inherit'] 
                 }
             )
+            // current_process.stdio[1].on('error', (err) => {
+            //     debug('stido 1 : ' + err)
+            // })
+            // current_process.stdio[2].on('error', (err) => {
+            //     debug('stido 2 : ' + err)
+            // })
             current_process.on('error', (err) => {
                 var message:Message = new Message({
                     app_id: 'testing', //TBD
@@ -67,6 +73,7 @@ export default class Router {
                     },
                     encoding: "json"
                 })
+                console.log('errored',err)
                 this.registry.send( message ) //send message to delete
                 error( registry.name+' failed to start: ', err)
                 rej(err)
@@ -84,13 +91,20 @@ export default class Router {
                     },
                     encoding: "json"
                 })
-                this.registry.send( message ) //send message to delete
+                console.log('closed')
+                this.registry.send( message  ) //send message to delete
                 debug( registry.name+' closed on us with code: ', code)
             })
             //message from child process
-            current_process.on('message', (data:any) => {
-                var message:Message = data.message
-                //data validation
+            current_process.on('message', (message:Message) => {
+                //Process attachment for registry can only happen from here.
+                if(
+                    message.event == 'register_process' && 
+                    message.data.request == 'add_to_registry'
+                ) {
+                    message.data.process = current_process
+                }
+                
                 this.invokeSubProcess(message, registry.name)
                 .catch( e => {
                     rej(e)
@@ -124,7 +138,7 @@ export default class Router {
             }
             let result = validate(message, this.message_schema)
             if(result.valid) {
-                resolve(message)
+                resolve({message,registry_name})
             } else {
                 reject(result.errors)
             }
@@ -132,20 +146,26 @@ export default class Router {
     }
 
     //Verifies the existence of registry item.
-    private async verify( message:Message )  {
-        return new Promise( ( resolve,reject ) => {
-            var registry_item = this.registry.verify(message)
-            if(!registry_item) {
-                reject('Registry does not exist or message event did not match.')
+    private async verify( {message, registry_name} )  {
+        return new Promise( ( resolve,reject ) => {            
+            //Let's just make sure the originator isn't lying about its existance
+            var from_registry_item = this.registry.registryByName(registry_name)
+            if(!from_registry_item) {
+                reject('No registry by that name.')
             }
-            resolve({registry_item, message})
+            //Get the registry item attached to that message event
+            var registry_item = this.registry.verifyEvent(message)
+            if(!registry_item) {
+                reject('Message event does not match any registry.')
+            }
+            resolve({message, registry_item})
         })
     }
 
     // TODO: Refactor this thing
-    private async callMethod( {registry_item, message} ) {
+    private async callMethod( {message, registry_item} ) {
         return new Promise( ( resolve,reject ) => {
-            if(!registry_item.multi_instance) {
+            if(registry_item.multi_instance == 0) {
                 var to_process = registry_item.instances[0].process
             } else {
                 //If its a multi-instance version, we need to ensure that the process is not in use
@@ -166,6 +186,7 @@ export default class Router {
                         this.invokeSubProcess(message, registry_item.name)
                         .then(() => {
                             resolve()
+                            return true;
                         })
                         .catch(err => {
                             console.log('new instance didnt work out')
@@ -182,7 +203,7 @@ export default class Router {
             switch(message.type_id) {
                 case 'message':
                     try {
-                        to_process.send( { message: message } )
+                        to_process.send( message )
                         //Gotta mark this process as in_use
                         if(registry_item.multi_instance) {
                             this.registry.markUsed(registry_item.name, to_instance.instance_id)
@@ -194,28 +215,35 @@ export default class Router {
                     break;
                 case 'stream':
                     var from_process = this.registry.getFromProcess(message)
+                    if(message.data.stream_direction == 'output') {
+                        var from_stream = from_process.stdio[3]
+                        to_process.stdio[4].on('error', (err) => {
+                            debug('Ignore this one: ' + err)
+                        })
+                        from_stream.pipe(to_process.stdio[4])
+                    } else if( message.data.stream_direction == 'input') {
+                        var to_stream = to_process.stdio[3]
+                        from_process.stdio[4].on('error', (err) => {
+                            debug('Ignore this one: ' + err)
+                        })
+                        to_stream.pipe(from_process.stdio[4])
+                    }
+        
+                    //Finally send off the message once the  pipes are made 
+                    //(might need to change who the message is sent to based on which way the data is flowing)
+                    try {
+                        to_process.send(message)
+                        if(registry_item.multi_instance) {
+                            this.registry.markUsed(registry_item.name, to_instance.instance_id)
+                        }
+                    } catch (error) {
+                        reject(error)
+                    }
+                    resolve(message)
                     break;
                 default:
                     reject('No compatible registry type id')
                     break;
-            }
-
-            //Let's handle the stream situation
-            if(message.data.stream_direction == 'output') {
-                var from_stream = from_process.stdio[3]
-                to_process.stdio[4].on('error', (err) => {
-                    debug('Ignore this one: ' + err)
-                })
-                from_stream.pipe(to_process.stdio[4])
-                to_process.send({message: message})
-            } else if( message.data.stream_direction == 'input') {
-                var to_stream = to_process.stdio[3]
-                from_process.stdio[4].on('error', (err) => {
-                    debug('Ignore this one: ' + err)
-                })
-                to_stream.pipe(from_process.stdio[4])
-
-                to_process.send({message: message})
             }
         })
     }
