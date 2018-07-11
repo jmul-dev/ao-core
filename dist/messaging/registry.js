@@ -228,7 +228,6 @@ var Registry = /** @class */ (function () {
                 break;
         }
         //Gotta update the registry data everytime we update it
-        this.initRegistry();
     };
     Registry.prototype.addRegistry = function (message) {
         if (this.stored_registry[message.data.name].status &&

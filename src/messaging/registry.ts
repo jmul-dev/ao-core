@@ -194,7 +194,6 @@ export default class Registry {
                 break;
         }
         //Gotta update the registry data everytime we update it
-        this.initRegistry()
     }
 
     private addRegistry(message:Message) {

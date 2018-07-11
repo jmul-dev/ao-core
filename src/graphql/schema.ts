@@ -72,7 +72,7 @@ export default function (db: Database, router: Router) {
                         from: "http",
                         data: { 
                             stream: stream,
-                            file_path: 'video-upload-'+filename+ md5(new Date)
+                            file_path: 'video-upload-'+filename+ md5(new Date) //TODO: Figure out the pathing for this.
                         },
                         encoding: "json"
                     })

@@ -83,16 +83,10 @@ var Router = /** @class */ (function () {
     };
     Router.prototype.createNewProcess = function (registry) {
         var _this = this;
-        return new Promise(function (res, rej) {
+        return new Promise(function (resolve, reject) {
             var current_process = child_process_1.spawn(process.execPath, [path_1.join(__dirname, '../../dist/' + registry.file)], {
                 stdio: ['ipc', 'inherit', 'inherit', 'pipe', 'pipe'] // Note, first pipe is read from child, second is for write.  Original was:['ipc', 'inherit', 'inherit'] 
             });
-            // current_process.stdio[1].on('error', (err) => {
-            //     debug('stido 1 : ' + err)
-            // })
-            // current_process.stdio[2].on('error', (err) => {
-            //     debug('stido 2 : ' + err)
-            // })
             current_process.on('error', function (err) {
                 var message = new message_1.default({
                     app_id: 'testing',
@@ -108,7 +102,7 @@ var Router = /** @class */ (function () {
                 console.log('errored', err);
                 _this.registry.send(message); //send message to delete
                 error(registry.name + ' failed to start: ', err);
-                rej(err);
+                reject(err);
             });
             current_process.on('close', function (code) {
                 //Do we resolve or reject?
@@ -135,11 +129,16 @@ var Router = /** @class */ (function () {
                     message.data.process = current_process;
                 }
                 _this.invokeSubProcess(message, registry.name)
+                    .then(function () {
+                    //detect the fact that it was registered
+                    if ('process' in message.data) {
+                        resolve(); //Main resolve.  This is very important
+                    }
+                })
                     .catch(function (e) {
-                    rej(e);
+                    reject(e);
                 });
             });
-            res();
         });
     };
     Router.prototype.invokeSubProcess = function (message, registry_name) {
@@ -149,8 +148,10 @@ var Router = /** @class */ (function () {
                 return [2 /*return*/, new Promise(function (resolve, reject) {
                         _this.validate(message, registry_name)
                             .then(_this.verify.bind(_this)) //registration check
-                            .then(_this.callMethod.bind(_this))
+                            .then(_this.getInstance.bind(_this))
+                            .then(_this.sendProcess.bind(_this))
                             .then(function () {
+                            debug('sub process invoked for: ' + message.from);
                             resolve();
                         })
                             .catch(function (err) {
@@ -199,52 +200,69 @@ var Router = /** @class */ (function () {
                         if (!registry_item) {
                             reject('Message event does not match any registry.');
                         }
+                        debug(from_registry_item.name + ' to ' + registry_item.name);
                         resolve({ message: message, registry_item: registry_item });
                     })];
             });
         });
     };
-    // TODO: Refactor this thing
-    Router.prototype.callMethod = function (_a) {
+    Router.prototype.getInstance = function (_a) {
         var message = _a.message, registry_item = _a.registry_item;
         return __awaiter(this, void 0, void 0, function () {
             var _this = this;
             return __generator(this, function (_b) {
                 return [2 /*return*/, new Promise(function (resolve, reject) {
                         if (registry_item.multi_instance == 0) {
-                            var to_process = registry_item.instances[0].process;
+                            var to_instance = registry_item.instances[0];
+                            resolve({ message: message, registry_item: registry_item, to_instance: to_instance });
                         }
                         else {
                             //If its a multi-instance version, we need to ensure that the process is not in use
-                            for (var i = 0; i < registry_item.instances.length; i++) {
-                                var instance = registry_item.instances[i];
-                                if (!instance.in_use) {
-                                    var to_process = instance.process;
-                                    var to_instance = instance; //used later when we send successfully to mark as in use
-                                    break;
-                                }
-                            }
+                            var to_instance = _this.getRegistryInstance(registry_item);
                             //Guess we've gotta invoke a new instance.
-                            if (typeof to_process == 'undefined') {
-                                console.log('Staring a new instance of ' + registry_item.name);
+                            if (to_instance) {
+                                resolve({ message: message, registry_item: registry_item, to_instance: to_instance });
+                            }
+                            else {
+                                debug('Staring a new instance of ' + registry_item.name);
                                 _this.createNewProcess(registry_item)
                                     .then(function () {
-                                    //start over.
-                                    _this.invokeSubProcess(message, registry_item.name)
-                                        .then(function () {
-                                        resolve();
-                                        return true;
-                                    })
-                                        .catch(function (err) {
-                                        console.log('new instance didnt work out');
-                                        reject(err);
-                                    });
+                                    //Gotta re-get the registry item.
+                                    var registry_item = _this.registry.verifyEvent(message);
+                                    var to_instance = _this.getRegistryInstance(registry_item);
+                                    resolve({ message: message, registry_item: registry_item, to_instance: to_instance });
                                 })
                                     .catch(function (err) {
-                                    console.log('new instance didnt start');
+                                    debug('new instance didnt start');
                                     reject(err);
+                                    return false;
                                 });
                             }
+                        }
+                    })];
+            });
+        });
+    };
+    Router.prototype.getRegistryInstance = function (registry_item) {
+        for (var i = 0; i < registry_item.instances.length; i++) {
+            var instance = registry_item.instances[i];
+            if (!instance.in_use) {
+                var to_instance = instance; //used later when we send successfully to mark as in use
+                return to_instance;
+            }
+        }
+        return false;
+    };
+    Router.prototype.sendProcess = function (_a) {
+        var message = _a.message, registry_item = _a.registry_item, to_instance = _a.to_instance;
+        return __awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            return __generator(this, function (_b) {
+                return [2 /*return*/, new Promise(function (resolve, reject) {
+                        var to_process = to_instance.process;
+                        if (typeof to_process == 'undefined') {
+                            reject('No to_process');
+                            return false;
                         }
                         switch (message.type_id) {
                             case 'message':

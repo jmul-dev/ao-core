@@ -134,7 +134,7 @@ class Files {
                 }
 
                 fs_promise.then((file_data) => {
-                    var callback_message = new Message({
+                    var callback_message = {
                         app_id: 'testing', //TBD
                         event: message.data.callback_event,
                         instance_id: this.instance_id,
@@ -147,7 +147,7 @@ class Files {
                             stream_direction: stream_direction ? stream_direction : null
                         },
                         encoding: "json"
-                    })
+                    }
                     //Time to send back a callback message of success to the caller.
                     process.send(callback_message)
                 })

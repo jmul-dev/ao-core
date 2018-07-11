@@ -31,7 +31,6 @@ export default class Router {
                         all_processes.push(this.createNewProcess(registry))
                         break;
                 }
-                
             })
             
             Promise.all( all_processes )
@@ -47,7 +46,7 @@ export default class Router {
     }
 
     private createNewProcess(registry) {
-        return new Promise((res,rej) => {
+        return new Promise((resolve,reject) => {
             const current_process = spawn(
                 process.execPath, 
                 [ join(__dirname, '../../dist/'+registry.file) ], 
@@ -55,12 +54,6 @@ export default class Router {
                     stdio: ['ipc', 'inherit', 'inherit','pipe','pipe'] // Note, first pipe is read from child, second is for write.  Original was:['ipc', 'inherit', 'inherit'] 
                 }
             )
-            // current_process.stdio[1].on('error', (err) => {
-            //     debug('stido 1 : ' + err)
-            // })
-            // current_process.stdio[2].on('error', (err) => {
-            //     debug('stido 2 : ' + err)
-            // })
             current_process.on('error', (err) => {
                 var message:Message = new Message({
                     app_id: 'testing', //TBD
@@ -76,8 +69,9 @@ export default class Router {
                 console.log('errored',err)
                 this.registry.send( message ) //send message to delete
                 error( registry.name+' failed to start: ', err)
-                rej(err)
+                reject(err)
             })
+
             current_process.on('close', (code) => {
                 //Do we resolve or reject?
                 var message:Message = new Message({
@@ -106,11 +100,16 @@ export default class Router {
                 }
                 
                 this.invokeSubProcess(message, registry.name)
+                .then(() => {
+                    //detect the fact that it was registered
+                    if('process' in message.data) {
+                        resolve()//Main resolve.  This is very important
+                    }
+                })
                 .catch( e => {
-                    rej(e)
+                    reject(e)
                 })
             })
-            res()
         })
     }
 
@@ -118,8 +117,10 @@ export default class Router {
         return new Promise( (resolve,reject) => {
             this.validate(message, registry_name)
             .then(this.verify.bind(this))//registration check
-            .then(this.callMethod.bind(this))
+            .then(this.getInstance.bind(this))
+            .then(this.sendProcess.bind(this))
             .then( () => {
+                debug('sub process invoked for: '+ message.from)
                 resolve()
             })
             .catch((err)=> {
@@ -158,46 +159,64 @@ export default class Router {
             if(!registry_item) {
                 reject('Message event does not match any registry.')
             }
+            debug(from_registry_item.name + ' to ' + registry_item.name)
             resolve({message, registry_item})
         })
     }
 
-    // TODO: Refactor this thing
-    private async callMethod( {message, registry_item} ) {
+    private async getInstance( {message, registry_item} ) {
         return new Promise( ( resolve,reject ) => {
             if(registry_item.multi_instance == 0) {
-                var to_process = registry_item.instances[0].process
+                //Single instance situation
+                var to_instance = registry_item.instances[0]
+                resolve({message, registry_item, to_instance})
             } else {
                 //If its a multi-instance version, we need to ensure that the process is not in use
-                for (let i = 0; i < registry_item.instances.length; i++) {
-                    const instance = registry_item.instances[i];
-                    if(!instance.in_use) {
-                        var to_process = instance.process
-                        var to_instance = instance //used later when we send successfully to mark as in use
-                        break;
-                    }
-                }
+                var to_instance = this.getRegistryInstance(registry_item)
                 //Guess we've gotta invoke a new instance.
-                if(typeof to_process == 'undefined') {
-                    console.log('Staring a new instance of '+registry_item.name)
+                if(to_instance) {
+                    resolve({message, registry_item, to_instance})
+                } else {
+                    debug('Staring a new instance of '+registry_item.name)
                     this.createNewProcess(registry_item)
                     .then(() => {
-                        //start over.
-                        this.invokeSubProcess(message, registry_item.name)
-                        .then(() => {
-                            resolve()
-                            return true;
-                        })
-                        .catch(err => {
-                            console.log('new instance didnt work out')
-                            reject(err)
-                        })
+                        //Gotta re-get the registry item.
+                        var registry_item = this.registry.verifyEvent(message)
+                        var to_instance = this.getRegistryInstance(registry_item)
+                        if(to_instance) {
+                            resolve({message, registry_item, to_instance})
+                        } else {
+                            //unlikely, since it should be caught elsewhere.
+                            reject('Failed to invoke new process')
+                        }
                     })
                     .catch(err => {
-                        console.log('new instance didnt start')
+                        debug('new instance didnt start')
                         reject(err)
+                        return false
                     })
                 }
+            }
+        })
+    }
+
+    private getRegistryInstance(registry_item) {
+        for (let i = 0; i < registry_item.instances.length; i++) {
+            const instance = registry_item.instances[i];
+            if(!instance.in_use) {
+                var to_instance = instance //used later when we send successfully to mark as in use
+                return to_instance
+            }
+        }
+        return false
+    }
+
+    private async sendProcess({message, registry_item, to_instance}) {
+        return new Promise( (resolve,reject) => {
+            var to_process = to_instance.process
+            if(typeof to_process == 'undefined') {
+                reject('No to_process')
+                return false
             }
 
             switch(message.type_id) {

@@ -66,7 +66,6 @@ class P2P {
             this.node = new Node(results[0], results[1], this.config)
             this.node.start().then(() => {
                 debug('p2p node started')
-                //this.ipcClient().emit(EVENT_LOG, 'P2P Client started')
             }).catch(error => {
                 debug('p2p node failed to start', error)
             })
@@ -75,31 +74,25 @@ class P2P {
             this.connectionManager.start()
             this.connectionManager.on('connected', peerId => {
                 debug('peer connected', peerId)
-                // this.ipcClient().emit(DATA, {
-                //     type: DATA_TYPES.PEER_CONNECTED,
-                //     peerId: peerId
+                //debug('Sending Test write file message')
+                // process.send({
+                //     app_id: 'testing',
+                //     type_id: "message",
+                //     event: 'write_file',
+                //     from: this.registry_name,
+                //     data: {
+                //         file_path: 'testing.json',
+                //         file_data: {
+                //             testing:"loooooreem iiiiipsum"
+                //         },
+                //         callback_event: 'p2p_log_write_callback'
+                //     },
+                //     encoding: 'json'
                 // })
-                process.send({
-                    app_id: 'testing',
-                    type_id: "message",
-                    event: 'write_file',
-                    from: this.registry_name,
-                    data: {
-                        file_path: 'testing.json',
-                        file_data: {
-                            testing:"loooooreem iiiiipsum"
-                        },
-                        callback_event: 'p2p_log_write_callback'
-                    },
-                    encoding: 'json'
-                })
             })
             this.connectionManager.on('disconnected', peerId => {
                 debug('peer disconnected', peerId)
-                // this.ipcClient().emit(DATA, {
-                //     type: DATA_TYPES.PEER_DISCONNECTED,
-                //     peerId: peerId
-                // })
+                
             })
             this.connectionManager.on('limit:exceeded', (limitName, measured) => {
                 debug('connection manager reported limit exceeded', limitName, measured)
