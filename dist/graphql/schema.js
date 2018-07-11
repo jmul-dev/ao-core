@@ -66,8 +66,9 @@ var mockStore = {
 function default_1(db, router) {
     var _this = this;
     var schema = graphql_tools_1.makeExecutableSchema({
-        typeDefs: [graphqlSchema, 'scalar Upload'],
+        typeDefs: [graphqlSchema],
         resolvers: {
+            Upload: apollo_upload_server_1.GraphQLUpload,
             // Interface (required for mocks)
             IContent: {
                 __resolveType: function (data, ctx, info) {
@@ -136,9 +137,8 @@ function default_1(db, router) {
                             }
                         });
                     }); };
-                }
+                },
             },
-            Upload: apollo_upload_server_1.GraphQLUpload
         },
         resolverValidationOptions: {
             requireResolversForResolveType: false

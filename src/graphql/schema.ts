@@ -22,8 +22,9 @@ let mockStore = {
 
 export default function (db: Database, router: Router) {
     const schema = makeExecutableSchema({
-        typeDefs: [graphqlSchema, 'scalar Upload'],
+        typeDefs: [graphqlSchema],
         resolvers: {
+            Upload: GraphQLUpload,
             // Interface (required for mocks)
             IContent: {
                 __resolveType(data, ctx, info) {
@@ -38,8 +39,7 @@ export default function (db: Database, router: Router) {
                 settings: () => mockStore.settings,
                 videos: () => mockStore.videos,
                 // peers: () => db.Peer.all()
-            },
-            Upload: GraphQLUpload,
+            },            
             Mutation: {
                 register: (obj, args, context, info) => {
                     return new Promise((resolve, reject) => {
