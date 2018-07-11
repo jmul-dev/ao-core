@@ -35,6 +35,7 @@ export default class Router {
             
             Promise.all( all_processes )
             .then( () => {
+                debug('resolved all in router')
                 resolve()
             })
             .catch( (e) =>{
@@ -103,6 +104,7 @@ export default class Router {
                 .then(() => {
                     //detect the fact that it was registered
                     if('process' in message.data) {
+                        debug('Loaded process: '+ registry.name)
                         resolve()//Main resolve.  This is very important
                     }
                 })

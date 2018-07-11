@@ -71,6 +71,7 @@ var Router = /** @class */ (function () {
                         });
                         Promise.all(all_processes)
                             .then(function () {
+                            debug('resolved all in router');
                             resolve();
                         })
                             .catch(function (e) {
@@ -132,6 +133,7 @@ var Router = /** @class */ (function () {
                     .then(function () {
                     //detect the fact that it was registered
                     if ('process' in message.data) {
+                        debug('Loaded process: ' + registry.name);
                         resolve(); //Main resolve.  This is very important
                     }
                 })
@@ -213,6 +215,7 @@ var Router = /** @class */ (function () {
             return __generator(this, function (_b) {
                 return [2 /*return*/, new Promise(function (resolve, reject) {
                         if (registry_item.multi_instance == 0) {
+                            //Single instance situation
                             var to_instance = registry_item.instances[0];
                             resolve({ message: message, registry_item: registry_item, to_instance: to_instance });
                         }
@@ -230,7 +233,13 @@ var Router = /** @class */ (function () {
                                     //Gotta re-get the registry item.
                                     var registry_item = _this.registry.verifyEvent(message);
                                     var to_instance = _this.getRegistryInstance(registry_item);
-                                    resolve({ message: message, registry_item: registry_item, to_instance: to_instance });
+                                    if (to_instance) {
+                                        resolve({ message: message, registry_item: registry_item, to_instance: to_instance });
+                                    }
+                                    else {
+                                        //unlikely, since it should be caught elsewhere.
+                                        reject('Failed to invoke new process');
+                                    }
                                 })
                                     .catch(function (err) {
                                     debug('new instance didnt start');

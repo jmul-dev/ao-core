@@ -120,11 +120,18 @@ function default_1(db, router) {
                                         from: "http",
                                         data: {
                                             stream: stream,
-                                            file_path: 'video-upload-' + filename + md5_1.default(new Date)
+                                            file_path: 'video-upload-' + filename + md5_1.default(new Date) //TODO: Figure out the pathing for this.
                                         },
                                         encoding: "json"
                                     });
-                                    router.invokeSubProcess(message, 'filesSubProcess');
+                                    router.invokeSubProcess(message, 'filesSubProcess')
+                                        .then(function () {
+                                        //Dunno exactly if this is what we want
+                                        Promise.resolve();
+                                    })
+                                        .catch(function (err) {
+                                        Promise.reject(err);
+                                    });
                                     return [2 /*return*/];
                             }
                         });

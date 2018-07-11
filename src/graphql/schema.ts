@@ -39,6 +39,7 @@ export default function (db: Database, router: Router) {
                 videos: () => mockStore.videos,
                 // peers: () => db.Peer.all()
             },
+            Upload: GraphQLUpload,
             Mutation: {
                 register: (obj, args, context, info) => {
                     return new Promise((resolve, reject) => {
@@ -77,9 +78,15 @@ export default function (db: Database, router: Router) {
                         encoding: "json"
                     })
                     router.invokeSubProcess(message, 'filesSubProcess')
-                }
+                    .then(() => {
+                        //Dunno exactly if this is what we want
+                        Promise.resolve()
+                    })
+                    .catch(err => {
+                        Promise.reject(err)
+                    })
+                },
             },
-            Upload: GraphQLUpload
         },
         resolverValidationOptions: {
             requireResolversForResolveType: false

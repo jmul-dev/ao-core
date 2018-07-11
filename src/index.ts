@@ -128,7 +128,10 @@ export default class Core {
             this.registry.initialize( )
             .then( (router:Router) => {
                 this.router = router
-                this.router.loadProcesses() // IPC server stuff will be taken out
+                this.router.loadProcesses()
+                .then(() => {
+                    resolve()
+                })
                 .catch(e => {
                     reject(e)
                     error(e)

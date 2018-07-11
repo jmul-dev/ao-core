@@ -147,7 +147,10 @@ var Core = /** @class */ (function () {
                         _this.registry.initialize()
                             .then(function (router) {
                             _this.router = router;
-                            _this.router.loadProcesses() // IPC server stuff will be taken out
+                            _this.router.loadProcesses()
+                                .then(function () {
+                                resolve();
+                            })
                                 .catch(function (e) {
                                 reject(e);
                                 error(e);
