@@ -4,7 +4,6 @@ type Mutation {
     register(inputs: RegisterInputs): NodeIdentity
     updateSettings(inputs: SettingsInputs): Settings
     submitVideoContent(inputs: VideoContentSubmissionInputs): VideoContent
-    videoUpload(inputs: Upload!): File!
 }
 
 input RegisterInputs {
