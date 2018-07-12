@@ -64,7 +64,10 @@ export default function (db: Database, router: Router) {
                 },
                 submitVideoContent: (obj, args, context, info) => {
                     return new Promise((resolve, reject) => {
-                        console.log('HELP!!!!!!', args)
+                        // TODO: handle file uploads: video, videoTeaser, featuredImage
+                        args.inputs.video.then(({stream, filename, mimetype, encoding}) => {
+                            console.log(`video: filename[${filename}] mimetype[${mimetype}] encoding[${encoding}]`)
+                        })
                         resolve()
                     })
                 },

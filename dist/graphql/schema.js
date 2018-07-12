@@ -104,7 +104,11 @@ function default_1(db, router) {
                 },
                 submitVideoContent: function (obj, args, context, info) {
                     return new Promise(function (resolve, reject) {
-                        console.log('HELP!!!!!!', args);
+                        // TODO: handle file uploads: video, videoTeaser, featuredImage
+                        args.inputs.video.then(function (_a) {
+                            var stream = _a.stream, filename = _a.filename, mimetype = _a.mimetype, encoding = _a.encoding;
+                            console.log("video: filename[" + filename + "] mimetype[" + mimetype + "] encoding[" + encoding + "]");
+                        });
                         resolve();
                     });
                 },
