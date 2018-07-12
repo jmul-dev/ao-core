@@ -55,7 +55,7 @@ class Files {
         return new Promise( (resolve,reject) => {
             if( process.send ) {
                 debug('Has parent. Registering Files Subprocess')
-                process.send({
+                var register_message = new Message({
                         app_id: 'testing', //Should be passed to this thing on initial start.
                         type_id: "message",
                         event: "register_process",
@@ -69,6 +69,7 @@ class Files {
                         },
                         encoding: "json"
                 })
+                process.send( register_message.toJSON() )
                 resolve()
             } else {
                 reject()
@@ -138,7 +139,7 @@ class Files {
                 }
 
                 fs_promise.then((file_data) => {
-                    var callback_message = {
+                    var callback_message = new Message({
                         app_id: 'testing', //TBD
                         event: message.data.callback_event,
                         instance_id: this.instance_id,
@@ -151,9 +152,9 @@ class Files {
                             stream_direction: stream_direction ? stream_direction : null
                         },
                         encoding: "json"
-                    }
+                    })
                     //Time to send back a callback message of success to the caller.
-                    process.send(callback_message)
+                    process.send( callback_message.toJSON() )
                 })
                 .catch( (err) => {
                     error(err)
