@@ -139,22 +139,24 @@ class Files {
                 }
 
                 fs_promise.then((file_data) => {
-                    var callback_message = new Message({
-                        app_id: 'testing', //TBD
-                        event: message.data.callback_event,
-                        instance_id: this.instance_id,
-                        type_id: type_id, //Message for most, but stream for some
-                        from: this.registry_name,
-                        data: {
-                            message_sender: message.from,
-                            original_event: message.event,
-                            file_data: file_data ? file_data : null,
-                            stream_direction: stream_direction ? stream_direction : null
-                        },
-                        encoding: "json"
-                    })
-                    //Time to send back a callback message of success to the caller.
-                    process.send( callback_message.toJSON() )
+                    if(message.data.callback_event) {
+                        var callback_message = new Message({
+                            app_id: 'testing', //TBD
+                            event: message.data.callback_event,
+                            instance_id: this.instance_id,
+                            type_id: type_id, //Message for most, but stream for some
+                            from: this.registry_name,
+                            data: {
+                                message_sender: message.from,
+                                original_event: message.event,
+                                file_data: file_data ? file_data : null,
+                                stream_direction: stream_direction ? stream_direction : null
+                            },
+                            encoding: "json"
+                        })
+                        //Time to send back a callback message of success to the caller.
+                        process.send( callback_message.toJSON() )
+                    }
                 })
                 .catch( (err) => {
                     error(err)
