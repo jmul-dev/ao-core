@@ -102,6 +102,12 @@ function default_1(db, router) {
                         resolve(mockStore.settings);
                     });
                 },
+                submitVideoContent: function (obj, args, context, info) {
+                    return new Promise(function (resolve, reject) {
+                        console.log('HELP!!!!!!', args);
+                        resolve();
+                    });
+                },
                 //below is sort of a strange notation of double wrapping functions, but its what the example did
                 videoUpload: function (obj, _a, context, info) {
                     var file = _a.file;

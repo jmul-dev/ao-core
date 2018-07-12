@@ -62,6 +62,12 @@ export default function (db: Database, router: Router) {
                         resolve(mockStore.settings)
                     })
                 },
+                submitVideoContent: (obj, args, context, info) => {
+                    return new Promise((resolve, reject) => {
+                        console.log('HELP!!!!!!', args)
+                        resolve()
+                    })
+                },
                 //below is sort of a strange notation of double wrapping functions, but its what the example did
                 videoUpload: (obj, {file}, context, info) => async (file) => {
                     const { stream, filename, mimetype, encoding } = await file
