@@ -39,19 +39,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var constants_1 = require("./constants");
-var path_1 = __importDefault(require("path"));
-var express = require("express");
-var body_parser_1 = require("body-parser");
-var apollo_server_express_1 = require("apollo-server-express");
-var apollo_upload_server_1 = require("apollo-upload-server");
-var schema_1 = __importDefault(require("./graphql/schema"));
 var database_1 = __importDefault(require("./storage/database"));
-var assert_1 = require("assert");
 var debug_1 = __importDefault(require("debug"));
-var cors_1 = __importDefault(require("cors"));
 var registry_1 = __importDefault(require("./messaging/registry"));
 var debug = debug_1.default('ao:core');
 var error = debug_1.default('ao:core:error');
+var http_1 = __importDefault(require("./main/http"));
 var Core = /** @class */ (function () {
     function Core(args) {
         debug(args);
@@ -68,7 +61,12 @@ var Core = /** @class */ (function () {
                 .then(function () {
                 //we've made above promise based since we need the router to be present for this shiz
                 if (!_this.options.disableHttpInterface) {
-                    _this.httpSetup();
+                    _this.http = new http_1.default(_this.db, _this.router, _this.options, _this.sendEventLog, _this.shutdownWithError);
+                    _this.http.init()
+                        .then(function (server) {
+                        //this.server = server
+                    })
+                        .catch(function (e) { return error; });
                 }
             })
                 .catch(function (e) {
@@ -103,24 +101,6 @@ var Core = /** @class */ (function () {
                 reject(err);
             });
         });
-    };
-    /**
-     * Note that the http server depends on both the ipc server AND the database
-     */
-    Core.prototype.httpSetup = function () {
-        var _this = this;
-        assert_1.notEqual(this.db, null, 'http server requires instance of db');
-        var expressServer = express();
-        var graphqlSchema = schema_1.default(this.db, this.router);
-        expressServer.use('/graphql', cors_1.default({ origin: 'http://localhost:3000' }), body_parser_1.json(), apollo_upload_server_1.apolloUploadExpress({ maxFieldSize: "1gb" }), apollo_server_express_1.graphqlExpress({ schema: graphqlSchema }));
-        expressServer.get('/graphiql', apollo_server_express_1.graphiqlExpress({ endpointURL: '/graphql' })); // TODO: enable based on process.env.NODE_ENV
-        expressServer.use('/assets', express.static(path_1.default.join(__dirname, '../assets')));
-        this.server = expressServer.listen(this.options.httpPort, function () {
-            var address = _this.server.address();
-            debug('Express server running on port: ' + address.port);
-            _this.sendEventLog('Core http server started');
-        });
-        this.server.on('error', this.shutdownWithError.bind(this));
     };
     Core.prototype.shutdownWithError = function (err) {
         var _this = this;

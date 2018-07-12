@@ -13,6 +13,20 @@ const read_file_schema:Object = {
     }
 }
 
+const stream_read_file_schema:Object = {
+    "id": "/StreamReadFileObject",
+    "type": "object",
+    "required": [
+        "file_path"
+    ],
+    "properties": {
+        "file_path": {
+            "type": "string",
+            "containsNot":".."
+        }
+    }
+}
+
 const write_file_schema:Object = {
     "id": "/WriteFileObject",
     "type": "object",
@@ -132,6 +146,7 @@ const delete_folder_schema:Object = {
 
 export {
     read_file_schema,
+    stream_read_file_schema,
     write_file_schema,
     stream_write_file_schema,
     move_file_schema,

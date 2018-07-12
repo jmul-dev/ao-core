@@ -14,3 +14,15 @@ export interface RegistryObject {
     file: string,
     instances: Array<ProcessObject>
 }
+
+export interface MessageObject {
+    app_id: string,
+    type_id: string,
+    instance_id: string,
+    event:string,
+    from:string,
+    message_type:Object,
+    signatures:Object,
+    data:any,
+    encoding:string
+}

@@ -65,6 +65,16 @@ var stored_registry = {
             "register_process"
         ]
     },
+    http: {
+        status: false,
+        priority: 0,
+        multi_instance: 0,
+        type: 'main',
+        file: '',
+        events: [
+            "http_file_read_callback"
+        ]
+    },
     p2pSubProcess: {
         status: false,
         priority: 0,
@@ -85,8 +95,9 @@ var stored_registry = {
         file: '/storage/files.js',
         events: [
             'read_file',
+            'stream_read_file',
             'write_file',
-            'stream_write_file_schema',
+            'stream_write_file',
             'move_file',
             'delete_file',
             'make_folder',
@@ -151,7 +162,8 @@ var Registry = /** @class */ (function () {
         //verify that we do/don't have the registry
         var registry_name = this.events_registry[message.event];
         if (!registry_name) {
-            debug('No event with matching registry');
+            debug('No event with matching registry: ' + message.event);
+            debug(message);
             return false;
         }
         return this.registryByName(registry_name);

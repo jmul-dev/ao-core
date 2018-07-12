@@ -179,6 +179,7 @@ var Router = /** @class */ (function () {
                             resolve({ message: message, registry_name: registry_name });
                         }
                         else {
+                            //debug(message)
                             reject(result.errors);
                         }
                     })];
@@ -202,14 +203,14 @@ var Router = /** @class */ (function () {
                         if (!registry_item) {
                             reject('Message event does not match any registry.');
                         }
-                        debug(from_registry_item.name + ' to ' + registry_item.name);
-                        resolve({ message: message, registry_item: registry_item });
+                        //debug(from_registry_item.name + ' to ' + registry_item.name)
+                        resolve({ message: message, registry_item: registry_item, from_registry_item: from_registry_item });
                     })];
             });
         });
     };
     Router.prototype.getInstance = function (_a) {
-        var message = _a.message, registry_item = _a.registry_item;
+        var message = _a.message, registry_item = _a.registry_item, from_registry_item = _a.from_registry_item;
         return __awaiter(this, void 0, void 0, function () {
             var _this = this;
             return __generator(this, function (_b) {
@@ -217,14 +218,14 @@ var Router = /** @class */ (function () {
                         if (registry_item.multi_instance == 0) {
                             //Single instance situation
                             var to_instance = registry_item.instances[0];
-                            resolve({ message: message, registry_item: registry_item, to_instance: to_instance });
+                            resolve({ message: message, registry_item: registry_item, to_instance: to_instance, from_registry_item: from_registry_item });
                         }
                         else {
-                            //If its a multi-instance version, we need to ensure that the process is not in use
+                            //Multi-Instance
                             var to_instance = _this.getRegistryInstance(registry_item);
                             //Guess we've gotta invoke a new instance.
                             if (to_instance) {
-                                resolve({ message: message, registry_item: registry_item, to_instance: to_instance });
+                                resolve({ message: message, registry_item: registry_item, to_instance: to_instance, from_registry_item: from_registry_item });
                             }
                             else {
                                 debug('Staring a new instance of ' + registry_item.name);
@@ -234,7 +235,7 @@ var Router = /** @class */ (function () {
                                     var registry_item = _this.registry.verifyEvent(message);
                                     var to_instance = _this.getRegistryInstance(registry_item);
                                     if (to_instance) {
-                                        resolve({ message: message, registry_item: registry_item, to_instance: to_instance });
+                                        resolve({ message: message, registry_item: registry_item, to_instance: to_instance, from_registry_item: from_registry_item });
                                     }
                                     else {
                                         //unlikely, since it should be caught elsewhere.
@@ -263,7 +264,7 @@ var Router = /** @class */ (function () {
         return false;
     };
     Router.prototype.sendProcess = function (_a) {
-        var message = _a.message, registry_item = _a.registry_item, to_instance = _a.to_instance;
+        var message = _a.message, registry_item = _a.registry_item, to_instance = _a.to_instance, from_registry_item = _a.from_registry_item;
         return __awaiter(this, void 0, void 0, function () {
             var _this = this;
             return __generator(this, function (_b) {
@@ -288,37 +289,115 @@ var Router = /** @class */ (function () {
                                 resolve(message);
                                 break;
                             case 'stream':
-                                var from_process = _this.registry.getFromProcess(message);
-                                if (message.data.stream_direction == 'output') {
-                                    var from_stream = from_process.stdio[3];
-                                    to_process.stdio[4].on('error', function (err) {
-                                        debug('Ignore this one: ' + err);
-                                    });
-                                    from_stream.pipe(to_process.stdio[4]);
-                                }
-                                else if (message.data.stream_direction == 'input') {
-                                    var to_stream = to_process.stdio[3];
-                                    from_process.stdio[4].on('error', function (err) {
-                                        debug('Ignore this one: ' + err);
-                                    });
-                                    to_stream.pipe(from_process.stdio[4]);
-                                }
-                                //Finally send off the message once the  pipes are made 
-                                //(might need to change who the message is sent to based on which way the data is flowing)
-                                try {
-                                    to_process.send(message);
-                                    if (registry_item.multi_instance) {
-                                        _this.registry.markUsed(registry_item.name, to_instance.instance_id);
-                                    }
-                                }
-                                catch (error) {
-                                    reject(error);
-                                }
-                                resolve(message);
+                                _this.streamHander({ message: message, registry_item: registry_item, to_instance: to_instance, from_registry_item: from_registry_item })
+                                    .then(function () {
+                                    resolve(message);
+                                }).catch(reject);
                                 break;
                             default:
                                 reject('No compatible registry type id');
                                 break;
+                        }
+                    })];
+            });
+        });
+    };
+    Router.prototype.streamHander = function (_a) {
+        var message = _a.message, registry_item = _a.registry_item, to_instance = _a.to_instance, from_registry_item = _a.from_registry_item;
+        return __awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            return __generator(this, function (_b) {
+                return [2 /*return*/, new Promise(function (resolve, reject) {
+                        //this is once again, very complex...
+                        var to_process = to_instance.process;
+                        var from_process = _this.registry.getFromProcess(message);
+                        var stream_direction = message.data.stream_direction;
+                        var transaction_type;
+                        if (from_registry_item.type == 'subprocess' && registry_item.type == 'subprocess') {
+                            transaction_type = 'sub2sub';
+                        }
+                        switch (stream_direction) {
+                            case 'output':
+                                if (from_registry_item.type == 'subprocess' && registry_item.type == 'main') {
+                                    transaction_type = 'sub2main';
+                                }
+                                else if (from_registry_item.type == 'main' && registry_item.type == 'subprocess') {
+                                    transaction_type = 'main2sub';
+                                }
+                                switch (transaction_type) {
+                                    case 'sub2sub':
+                                        to_process.stdio[4].on('error', function (err) {
+                                            debug(err);
+                                        });
+                                        var from_stream = from_process.stdio[3];
+                                        from_stream.pipe(to_process.stdio[4]);
+                                        break;
+                                    case 'sub2main':
+                                        //pipe from_process.stdio[3] to to_process.stream
+                                        //This one requires a stream that we can hook into on the class
+                                        var from_stream = from_process.stdio[3];
+                                        from_stream.pipe(to_process.stream);
+                                        break;
+                                    case 'main2sub':
+                                        //pipe message.data.stream to to_process.stdio[4] (note that its not from_process.stream since from knows about the scenario)
+                                        to_process.stdio[4].on('error', function (err) {
+                                            debug(err);
+                                        });
+                                        message.data.stream(to_process.stdio[4]);
+                                        break;
+                                    default:
+                                        reject('no transaction_type for output');
+                                        break;
+                                }
+                                break;
+                            case 'input':
+                                if (from_registry_item.type == 'subprocess' && registry_item.type == 'main') {
+                                    transaction_type = 'main2sub';
+                                }
+                                else if (from_registry_item.type == 'main' && registry_item.type == 'subprocess') {
+                                    transaction_type = 'sub2main';
+                                }
+                                debug(transaction_type);
+                                switch (transaction_type) {
+                                    case 'sub2sub':
+                                        from_process.stdio[4].on('error', function (err) {
+                                            debug('Ignore this one: ' + err);
+                                        });
+                                        var to_stream = to_process.stdio[3];
+                                        to_stream.pipe(from_process.stdio[4]);
+                                        break;
+                                    case 'sub2main':
+                                        //pipe to_process.stdio[3] into message.data.stream  (note that its not from_process.stream since from knows about the scenario)
+                                        var to_stream = to_process.stdio[3];
+                                        to_stream.pipe(message.data.stream);
+                                        break;
+                                    case 'main2sub':
+                                        //pipe to_process.stream into from_process.stdio[4]
+                                        //This one, like the sub2main in output, requires an open stream we can latch onto.
+                                        to_process.stream(from_process.stdio[4]);
+                                        break;
+                                    default:
+                                        reject('no transaction_type for input');
+                                        break;
+                                }
+                                break;
+                            default:
+                                reject('no input or output?');
+                                break;
+                        }
+                        //Finally send off the message once the  pipes are made 
+                        //(might need to change who the message is sent to based on which way the data is flowing)
+                        try {
+                            delete message.data.stream;
+                            to_process.send(message);
+                            if (registry_item.multi_instance) {
+                                _this.registry.markUsed(registry_item.name, to_instance.instance_id);
+                            }
+                            resolve();
+                        }
+                        catch (error) {
+                            console.log('failed send');
+                            reject(error);
                         }
                     })];
             });

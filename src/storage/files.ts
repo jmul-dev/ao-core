@@ -7,6 +7,7 @@ import { Validator, SchemaError } from 'jsonschema'
 import md5 from 'md5'
 import {
     read_file_schema,
+    stream_read_file_schema,
     write_file_schema,
     stream_write_file_schema,
     move_file_schema,
@@ -102,6 +103,9 @@ class Files {
                 switch(message.event) {
                     case 'read_file':
                         var fs_promise = this.readFile(message.data)
+                        break;
+                    case 'stream_read_file':
+                        var fs_promise = this.streamReadFile(message.data)
                         type_id = 'stream'
                         stream_direction = 'output'
                         break;
@@ -173,6 +177,25 @@ class Files {
             })
             .catch( (err) => {
                 reject(err)
+            })
+        })
+    }
+
+    private async streamReadFile( message_data ) {
+        return new Promise( (resolve,reject) => {
+            var result = this.validator.validate(message_data, stream_read_file_schema)
+            if(!result.valid) {
+                reject(result.errors)
+            }
+            var full_path = join(this.data_folder, message_data.file_path)
+            var readStream = fs.createReadStream(full_path)
+            readStream.on('error', (err) => {
+                console.log('read file stream error:',err)
+            })
+            readStream.on('open', () => {
+                debug('about to pass the read file over')
+                var parent = fs.createWriteStream(null, {fd:3})
+                    readStream.pipe(parent)
             })
         })
     }
