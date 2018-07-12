@@ -34,33 +34,8 @@ export default class Core {
 
     init() {
         this.dbSetup()
-        .then(()=> {
-            
-            this.spinUpSubProcesses()
-            .then( () => {
-                //we've made above promise based since we need the router to be present for this shiz
-                if ( !this.options.disableHttpInterface ) {
-                    this.http = new Http( 
-                        this.db, 
-                        this.router,
-                        this.options,
-                        this.sendEventLog,
-                        this.shutdownWithError
-                    )
-                    this.http.init()
-                    .then((server:Server) => {
-                        this.server = server
-                    })
-                    .catch(e => {
-                        error(e)
-                    })
-
-                }
-            })
-            .catch(e => {
-                error(e)
-            })
-        })
+        .then( this.spinUpSubProcesses.bind(this) )
+        .then( this.httpSetup.bind(this))
         .catch( (e) => {
             this.shutdownWithError(e)
         })
@@ -76,6 +51,29 @@ export default class Core {
         }
         this.db.addLog({message: message});
     }
+
+    httpSetup() {
+        return new Promise((resolve, reject) => {
+            if ( !this.options.disableHttpInterface ) {
+                this.http = new Http( 
+                    this.db, 
+                    this.router,
+                    this.options,
+                    this.sendEventLog,
+                    this.shutdownWithError
+                )
+                this.http.init()
+                .then((server:Server) => {
+                    this.server = server
+                    resolve()
+                })
+                .catch(e => {
+                    reject(e)
+                })
+            }
+        })
+    }
+    
     dbSetup() {
         return new Promise((resolve, reject) => {
             this.db = new Database()
@@ -106,6 +104,7 @@ export default class Core {
     registry:Registry;
     router: Router;
     registry_data: Array<any>;
+    
     async spinUpSubProcesses() {
         return new Promise( (resolve,reject) => {
             debug('attempting to spawn sub processes')

@@ -57,23 +57,8 @@ var Core = /** @class */ (function () {
     Core.prototype.init = function () {
         var _this = this;
         this.dbSetup()
-            .then(function () {
-            _this.spinUpSubProcesses()
-                .then(function () {
-                //we've made above promise based since we need the router to be present for this shiz
-                if (!_this.options.disableHttpInterface) {
-                    _this.http = new http_1.default(_this.db, _this.router, _this.options, _this.sendEventLog, _this.shutdownWithError);
-                    _this.http.init()
-                        .then(function (server) {
-                        //this.server = server
-                    })
-                        .catch(function (e) { return error; });
-                }
-            })
-                .catch(function (e) {
-                error(e);
-            });
-        })
+            .then(this.spinUpSubProcesses.bind(this))
+            .then(this.httpSetup.bind(this))
             .catch(function (e) {
             _this.shutdownWithError(e);
         });
@@ -88,6 +73,22 @@ var Core = /** @class */ (function () {
             // TODO: append to a temp log somewhere (make this configurable via command line)
         }
         this.db.addLog({ message: message });
+    };
+    Core.prototype.httpSetup = function () {
+        var _this = this;
+        return new Promise(function (resolve, reject) {
+            if (!_this.options.disableHttpInterface) {
+                _this.http = new http_1.default(_this.db, _this.router, _this.options, _this.sendEventLog, _this.shutdownWithError);
+                _this.http.init()
+                    .then(function (server) {
+                    _this.server = server;
+                    resolve();
+                })
+                    .catch(function (e) {
+                    reject(e);
+                });
+            }
+        });
     };
     Core.prototype.dbSetup = function () {
         var _this = this;
