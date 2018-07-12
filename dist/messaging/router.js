@@ -71,7 +71,7 @@ var Router = /** @class */ (function () {
                         });
                         Promise.all(all_processes)
                             .then(function () {
-                            debug('resolved all in router');
+                            //debug('resolved all in router')
                             resolve();
                         })
                             .catch(function (e) {
@@ -153,7 +153,7 @@ var Router = /** @class */ (function () {
                             .then(_this.getInstance.bind(_this))
                             .then(_this.sendProcess.bind(_this))
                             .then(function () {
-                            debug('sub process invoked for: ' + message.from);
+                            //debug('sub process invoked for: '+ message.from)
                             resolve();
                         })
                             .catch(function (err) {
@@ -327,7 +327,7 @@ var Router = /** @class */ (function () {
                                 switch (transaction_type) {
                                     case 'sub2sub':
                                         to_process.stdio[4].on('error', function (err) {
-                                            debug(err);
+                                            debug('Stream output sub2sub' + err);
                                         });
                                         var from_stream = from_process.stdio[3];
                                         from_stream.pipe(to_process.stdio[4]);
@@ -341,7 +341,7 @@ var Router = /** @class */ (function () {
                                     case 'main2sub':
                                         //pipe message.data.stream to to_process.stdio[4] (note that its not from_process.stream since from knows about the scenario)
                                         to_process.stdio[4].on('error', function (err) {
-                                            debug(err);
+                                            debug('Stream output main2sub' + err);
                                         });
                                         message.data.stream(to_process.stdio[4]);
                                         break;
@@ -357,11 +357,10 @@ var Router = /** @class */ (function () {
                                 else if (from_registry_item.type == 'main' && registry_item.type == 'subprocess') {
                                     transaction_type = 'sub2main';
                                 }
-                                debug(transaction_type);
                                 switch (transaction_type) {
                                     case 'sub2sub':
                                         from_process.stdio[4].on('error', function (err) {
-                                            debug('Ignore this one: ' + err);
+                                            debug('Stream input sub2sub: ' + err);
                                         });
                                         var to_stream = to_process.stdio[3];
                                         to_stream.pipe(from_process.stdio[4]);
@@ -374,6 +373,9 @@ var Router = /** @class */ (function () {
                                     case 'main2sub':
                                         //pipe to_process.stream into from_process.stdio[4]
                                         //This one, like the sub2main in output, requires an open stream we can latch onto.
+                                        from_process.stdio[4].on('error', function (err) {
+                                            debug('Stream input main2sub: ' + err);
+                                        });
                                         to_process.stream(from_process.stdio[4]);
                                         break;
                                     default:

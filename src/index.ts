@@ -1,27 +1,16 @@
 'use strict';
 import { EVENT_LOG, DATA, DATA_TYPES } from './constants';
-import { spawn, ChildProcess } from "child_process";
-import path from 'path';
-import express = require('express');
-import { json } from "body-parser";
-import { graphqlExpress, graphiqlExpress } from "apollo-server-express";
-import { apolloUploadExpress } from 'apollo-upload-server'
-import schema from "./graphql/schema";
+import { ChildProcess } from "child_process";
 import Database from "./storage/database";
-import { notEqual } from "assert";
 import Debug from 'debug';
-import { Server, AddressInfo } from 'net';
-import cors from 'cors';
+import { Server } from 'net';
 import Registry from './messaging/registry';
 import Router from './messaging/router';
-import Message from './messaging/message';
 
 const debug = Debug('ao:core');
 const error = Debug('ao:core:error');
 
-//test
-import md5 from 'md5'
-import fs from 'fs'
+//Main classes
 import Http from './main/http';
 
 

@@ -44,6 +44,7 @@ var debug_1 = __importDefault(require("debug"));
 var registry_1 = __importDefault(require("./messaging/registry"));
 var debug = debug_1.default('ao:core');
 var error = debug_1.default('ao:core:error');
+//Main classes
 var http_1 = __importDefault(require("./main/http"));
 var Core = /** @class */ (function () {
     function Core(args) {
