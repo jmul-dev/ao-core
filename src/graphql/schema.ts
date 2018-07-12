@@ -2,6 +2,7 @@
 import { makeExecutableSchema, addMockFunctionsToSchema } from 'graphql-tools';
 import { importSchema } from 'graphql-import';
 import path from 'path';
+const join = path.join
 const graphqlSchema = importSchema( path.resolve(__dirname, './schema.graphql') );
 import mocks from './mocks';
 import { generateMockVideoList } from './mockVideos';
@@ -53,7 +54,21 @@ export default function (db: Database, router: Router) {
                                 id: args.inputs.ethAddress,
                                 ethAddress: args.inputs.ethAddress
                             }
-                            resolve(mockStore.node)
+                            var data_folder_message = new Message({
+                                app_id: 'testing',
+                                type_id: "message",
+                                event: "make_folder",
+                                from: 'http',
+                                data: {
+                                    folder_path: join('users', args.inputs.ethAddress,'data') //might as well make the data folder.  this works like mkdirp
+                                },
+                                encoding: 'json'
+                            })
+                            this.router.invokeSubProcess(data_folder_message.toJSON(), 'filesSubProcess')
+                            .then(() => {
+                                resolve(mockStore.node)
+                            })
+                            .catch(e => error)
                         }, 2500)                        
                     })
                 },
@@ -63,7 +78,22 @@ export default function (db: Database, router: Router) {
                             ...mockStore.settings,
                             ...args.inputs,
                         }
-                        resolve(mockStore.settings)
+                        var save_settings_message = new Message({
+                            app_id: 'testing',
+                            type_id: "message",
+                            event: "write_file",
+                            from: 'http',
+                            data: {
+                                file_path: join('users', args.inputs.ethAddress,'settings.json'),
+                                file_data: mockStore.settings
+                            },
+                            encoding: 'json'
+                        })
+                        this.router.invokeSubProcess(save_settings_message.toJSON(), 'filesSubProcess')
+                        .then(() => {
+                            resolve(mockStore.settings)
+                        })
+                        .catch(e => error)
                     })
                 },
                 submitVideoContent: (obj, args, context, info) => {
