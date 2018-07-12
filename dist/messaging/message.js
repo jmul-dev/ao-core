@@ -32,72 +32,70 @@ var Message = /** @class */ (function () {
         error('Message failed validation');
     };
     Object.defineProperty(Message.prototype, "app_id", {
-        //Head Getters/Setters
-        get: function () { return this.app_id; },
-        set: function (val) { this.app_id = val; },
+        get: function () { return this._app_id; },
+        set: function (val) { this._app_id = val; },
         enumerable: true,
         configurable: true
     });
     Object.defineProperty(Message.prototype, "type_id", {
-        get: function () { return this.type_id; },
-        set: function (val) { this.type_id = val; },
+        get: function () { return this._type_id; },
+        set: function (val) { this._type_id = val; },
         enumerable: true,
         configurable: true
     });
     Object.defineProperty(Message.prototype, "instance_id", {
-        get: function () { return this.instance_id; },
-        set: function (val) { this.instance_id = val; },
+        get: function () { return this._instance_id; },
+        set: function (val) { this._instance_id = val; },
         enumerable: true,
         configurable: true
     });
     Object.defineProperty(Message.prototype, "event", {
-        get: function () { return this.event; },
-        set: function (val) { this.event = val; },
+        get: function () { return this._event; },
+        set: function (val) { this._event = val; },
         enumerable: true,
         configurable: true
     });
     Object.defineProperty(Message.prototype, "from", {
-        get: function () { return this.from; },
-        set: function (val) { this.from = val; },
+        get: function () { return this._from; },
+        set: function (val) { this._from = val; },
         enumerable: true,
         configurable: true
     });
     Object.defineProperty(Message.prototype, "message_type", {
-        get: function () { return this.message_type; },
-        set: function (val) { this.message_type = val; },
+        get: function () { return this._message_type; },
+        set: function (val) { this._message_type = val; },
         enumerable: true,
         configurable: true
     });
     Object.defineProperty(Message.prototype, "signatures", {
-        get: function () { return this.signatures; },
-        set: function (val) { this.signatures = val; },
+        get: function () { return this._signatures; },
+        set: function (val) { this._signatures = val; },
         enumerable: true,
         configurable: true
     });
     Object.defineProperty(Message.prototype, "data", {
-        //Message body
-        get: function () { return this.data; },
-        set: function (val) { this.data = val; },
+        get: function () { return this._data; },
+        set: function (val) { this._data = val; },
         enumerable: true,
         configurable: true
     });
     Object.defineProperty(Message.prototype, "encoding", {
-        get: function () { return this.encoding; },
-        set: function (val) { this.encoding = val; },
+        get: function () { return this._encoding; },
+        set: function (val) { this._encoding = val; },
         enumerable: true,
         configurable: true
     });
     Message.prototype.toJSON = function () {
         var message = {
-            app_id: this.app_id,
-            type_id: this.type_id,
-            instance_id: this.instance_id,
-            event: this.event,
-            from: this.from,
-            message_type: this.message_type,
-            signatures: this.signatures,
-            data: this.data,
-            encoding: this.encoding
+            app_id: this._app_id,
+            type_id: this._type_id,
+            instance_id: this._instance_id,
+            event: this._event,
+            from: this._from,
+            message_type: this._message_type,
+            signatures: this._signatures,
+            data: this._data,
+            encoding: this._encoding
         };
         this.validate(message); //incase someone used getters and setters instead.
         return message;

@@ -5,6 +5,7 @@ import Registry from './registry';
 const debug = Debug('ao:core');
 const error = Debug('ao:core:error');
 import { message_schema} from './validation_schemas'
+import { MessageObject } from './message_interfaces'
 import { validate } from 'jsonschema'
 //import { RegistryObject } from './message_interfaces'
 import { join } from "path";
@@ -35,7 +36,7 @@ export default class Router {
             
             Promise.all( all_processes )
             .then( () => {
-                debug('resolved all in router')
+                //debug('resolved all in router')
                 resolve()
             })
             .catch( (e) =>{
@@ -115,14 +116,14 @@ export default class Router {
         })
     }
 
-    public async invokeSubProcess( message:Message, registry_name:string ) {
+    public async invokeSubProcess( message:MessageObject, registry_name:string ) {
         return new Promise( (resolve,reject) => {
             this.validate(message, registry_name)
             .then(this.verify.bind(this))//registration check
             .then(this.getInstance.bind(this))
             .then(this.sendProcess.bind(this))
             .then( () => {
-                debug('sub process invoked for: '+ message.from)
+                //debug('sub process invoked for: '+ message.from)
                 resolve()
             })
             .catch((err)=> {
@@ -133,7 +134,7 @@ export default class Router {
     }
 
     //Validates the Message structure
-    private async validate( message:Message, registry_name ) {
+    private async validate( message:MessageObject, registry_name ) {
         return new Promise((resolve,reject) => {
             if(message.from != registry_name) {
                 //Fishy stuff by child process trying to act like they someone else.
@@ -143,6 +144,7 @@ export default class Router {
             if(result.valid) {
                 resolve({message,registry_name})
             } else {
+                //debug(message)
                 reject(result.errors)
             }
         })
@@ -150,7 +152,7 @@ export default class Router {
 
     //Verifies the existence of registry item.
     private async verify( {message, registry_name} )  {
-        return new Promise( ( resolve,reject ) => {            
+        return new Promise( ( resolve,reject ) => {
             //Let's just make sure the originator isn't lying about its existance
             var from_registry_item = this.registry.registryByName(registry_name)
             if(!from_registry_item) {
@@ -161,23 +163,23 @@ export default class Router {
             if(!registry_item) {
                 reject('Message event does not match any registry.')
             }
-            debug(from_registry_item.name + ' to ' + registry_item.name)
-            resolve({message, registry_item})
+            //debug(from_registry_item.name + ' to ' + registry_item.name)
+            resolve({message, registry_item, from_registry_item})
         })
     }
 
-    private async getInstance( {message, registry_item} ) {
+    private async getInstance( {message, registry_item, from_registry_item} ) {
         return new Promise( ( resolve,reject ) => {
             if(registry_item.multi_instance == 0) {
                 //Single instance situation
                 var to_instance = registry_item.instances[0]
-                resolve({message, registry_item, to_instance})
+                resolve({message, registry_item, to_instance, from_registry_item})
             } else {
-                //If its a multi-instance version, we need to ensure that the process is not in use
+                //Multi-Instance
                 var to_instance = this.getRegistryInstance(registry_item)
                 //Guess we've gotta invoke a new instance.
                 if(to_instance) {
-                    resolve({message, registry_item, to_instance})
+                    resolve({message, registry_item, to_instance, from_registry_item})
                 } else {
                     debug('Staring a new instance of '+registry_item.name)
                     this.createNewProcess(registry_item)
@@ -186,7 +188,7 @@ export default class Router {
                         var registry_item = this.registry.verifyEvent(message)
                         var to_instance = this.getRegistryInstance(registry_item)
                         if(to_instance) {
-                            resolve({message, registry_item, to_instance})
+                            resolve({message, registry_item, to_instance, from_registry_item})
                         } else {
                             //unlikely, since it should be caught elsewhere.
                             reject('Failed to invoke new process')
@@ -213,7 +215,7 @@ export default class Router {
         return false
     }
 
-    private async sendProcess({message, registry_item, to_instance}) {
+    private async sendProcess({message, registry_item, to_instance, from_registry_item}) {
         return new Promise( (resolve,reject) => {
             var to_process = to_instance.process
             if(typeof to_process == 'undefined') {
@@ -235,36 +237,118 @@ export default class Router {
                     resolve(message)
                     break;
                 case 'stream':
-                    var from_process = this.registry.getFromProcess(message)
-                    if(message.data.stream_direction == 'output') {
-                        var from_stream = from_process.stdio[3]
-                        to_process.stdio[4].on('error', (err) => {
-                            debug('Ignore this one: ' + err)
-                        })
-                        from_stream.pipe(to_process.stdio[4])
-                    } else if( message.data.stream_direction == 'input') {
-                        var to_stream = to_process.stdio[3]
-                        from_process.stdio[4].on('error', (err) => {
-                            debug('Ignore this one: ' + err)
-                        })
-                        to_stream.pipe(from_process.stdio[4])
-                    }
-        
-                    //Finally send off the message once the  pipes are made 
-                    //(might need to change who the message is sent to based on which way the data is flowing)
-                    try {
-                        to_process.send(message)
-                        if(registry_item.multi_instance) {
-                            this.registry.markUsed(registry_item.name, to_instance.instance_id)
-                        }
-                    } catch (error) {
-                        reject(error)
-                    }
-                    resolve(message)
+                    this.streamHander({message, registry_item, to_instance, from_registry_item})
+                    .then(()=> {
+                        resolve(message)
+                    }).catch(reject)
+                    
                     break;
                 default:
                     reject('No compatible registry type id')
                     break;
+            }
+        })
+    }
+
+    private async streamHander({message, registry_item, to_instance, from_registry_item}) {
+        return new Promise( (resolve,reject) => {
+            //this is once again, very complex...
+            var to_process = to_instance.process
+            var from_process = this.registry.getFromProcess(message)
+            var stream_direction = message.data.stream_direction
+            var transaction_type:string
+
+            if( from_registry_item.type == 'subprocess' && registry_item.type == 'subprocess') {
+                transaction_type = 'sub2sub'
+            }
+            
+            switch(stream_direction) {
+                case 'output':
+                    if(  from_registry_item.type == 'subprocess' && registry_item.type == 'main') {
+                        transaction_type = 'sub2main'
+                    } else if( from_registry_item.type == 'main' && registry_item.type == 'subprocess' ) {
+                        transaction_type = 'main2sub'
+                    }
+
+                    switch(transaction_type) {
+                        case 'sub2sub':
+                            to_process.stdio[4].on('error', (err) => {
+                                debug('Stream output sub2sub' + err)
+                            })
+                            var from_stream = from_process.stdio[3]
+                            from_stream.pipe(to_process.stdio[4])
+                            break;
+                        case 'sub2main':
+                            //pipe from_process.stdio[3] to to_process.stream
+                            //This one requires a stream that we can hook into on the class
+                            var from_stream = from_process.stdio[3]
+                            from_stream.pipe(to_process.stream)
+                            break;
+                        case 'main2sub':
+                            //pipe message.data.stream to to_process.stdio[4] (note that its not from_process.stream since from knows about the scenario)
+                            to_process.stdio[4].on('error', (err) => {
+                                debug('Stream output main2sub'+err)
+                            })
+                            message.data.stream(to_process.stdio[4])
+                            break;
+                        default:
+                            reject('no transaction_type for output')
+                            break;
+                    }
+                break;
+
+                case 'input':
+                    if(  from_registry_item.type == 'subprocess' && registry_item.type == 'main') {
+                        transaction_type = 'main2sub'
+                    } else if( from_registry_item.type == 'main' && registry_item.type == 'subprocess' ) {
+                        transaction_type = 'sub2main'
+                    }
+                    
+                    switch(transaction_type) {
+                        case 'sub2sub':
+                            from_process.stdio[4].on('error', (err) => {
+                                debug('Stream input sub2sub: ' + err)
+                            })
+                            var to_stream = to_process.stdio[3]
+                            to_stream.pipe(from_process.stdio[4])
+                            break;
+                        case 'sub2main':
+                            //pipe to_process.stdio[3] into message.data.stream  (note that its not from_process.stream since from knows about the scenario)
+                            var to_stream = to_process.stdio[3]
+                            to_stream.pipe(message.data.stream)
+                            break;
+                        case 'main2sub':
+                            //pipe to_process.stream into from_process.stdio[4]
+                            //This one, like the sub2main in output, requires an open stream we can latch onto.
+                            from_process.stdio[4].on('error', (err) => {
+                                debug('Stream input main2sub: ' + err)
+                            })
+                            to_process.stream(from_process.stdio[4])
+                            break;
+                        default:
+                            reject('no transaction_type for input')
+                            break;
+                    }                    
+                break;
+
+                default:
+                    reject('no input or output?')
+                    break;
+            }
+
+            //Finally send off the message once the  pipes are made 
+            //(might need to change who the message is sent to based on which way the data is flowing)
+            
+            try {
+                delete message.data.stream
+                to_process.send(message)
+                if(registry_item.multi_instance) {
+                    this.registry.markUsed(registry_item.name, to_instance.instance_id)
+                }
+                resolve()
+            } catch (error) {
+                console.log('failed send')
+                reject(error)
             }
         })
     }

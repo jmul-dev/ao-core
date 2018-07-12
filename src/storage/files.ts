@@ -7,6 +7,7 @@ import { Validator, SchemaError } from 'jsonschema'
 import md5 from 'md5'
 import {
     read_file_schema,
+    stream_read_file_schema,
     write_file_schema,
     stream_write_file_schema,
     move_file_schema,
@@ -54,7 +55,7 @@ class Files {
         return new Promise( (resolve,reject) => {
             if( process.send ) {
                 debug('Has parent. Registering Files Subprocess')
-                process.send({
+                var register_message = new Message({
                         app_id: 'testing', //Should be passed to this thing on initial start.
                         type_id: "message",
                         event: "register_process",
@@ -68,6 +69,7 @@ class Files {
                         },
                         encoding: "json"
                 })
+                process.send( register_message.toJSON() )
                 resolve()
             } else {
                 reject()
@@ -102,6 +104,9 @@ class Files {
                 switch(message.event) {
                     case 'read_file':
                         var fs_promise = this.readFile(message.data)
+                        break;
+                    case 'stream_read_file':
+                        var fs_promise = this.streamReadFile(message.data)
                         type_id = 'stream'
                         stream_direction = 'output'
                         break;
@@ -134,22 +139,24 @@ class Files {
                 }
 
                 fs_promise.then((file_data) => {
-                    var callback_message = {
-                        app_id: 'testing', //TBD
-                        event: message.data.callback_event,
-                        instance_id: this.instance_id,
-                        type_id: type_id, //Message for most, but stream for some
-                        from: this.registry_name,
-                        data: {
-                            message_sender: message.from,
-                            original_event: message.event,
-                            file_data: file_data ? file_data : null,
-                            stream_direction: stream_direction ? stream_direction : null
-                        },
-                        encoding: "json"
+                    if(message.data.callback_event) {
+                        var callback_message = new Message({
+                            app_id: 'testing', //TBD
+                            event: message.data.callback_event,
+                            instance_id: this.instance_id,
+                            type_id: type_id, //Message for most, but stream for some
+                            from: this.registry_name,
+                            data: {
+                                message_sender: message.from,
+                                original_event: message.event,
+                                file_data: file_data ? file_data : null,
+                                stream_direction: stream_direction ? stream_direction : null
+                            },
+                            encoding: "json"
+                        })
+                        //Time to send back a callback message of success to the caller.
+                        process.send( callback_message.toJSON() )
                     }
-                    //Time to send back a callback message of success to the caller.
-                    process.send(callback_message)
                 })
                 .catch( (err) => {
                     error(err)
@@ -173,6 +180,25 @@ class Files {
             })
             .catch( (err) => {
                 reject(err)
+            })
+        })
+    }
+
+    private async streamReadFile( message_data ) {
+        return new Promise( (resolve,reject) => {
+            var result = this.validator.validate(message_data, stream_read_file_schema)
+            if(!result.valid) {
+                reject(result.errors)
+            }
+            var full_path = join(this.data_folder, message_data.file_path)
+            var readStream = fs.createReadStream(full_path)
+            readStream.on('error', (err) => {
+                console.log('read file stream error:',err)
+            })
+            readStream.on('open', () => {
+                debug('about to pass the read file over')
+                var parent = fs.createWriteStream(null, {fd:3})
+                    readStream.pipe(parent)
             })
         })
     }

@@ -1,22 +1,17 @@
 'use strict';
 import { EVENT_LOG, DATA, DATA_TYPES } from './constants';
-import { spawn, ChildProcess } from "child_process";
-import path from 'path';
-import express = require('express');
-import { json } from "body-parser";
-import { graphqlExpress, graphiqlExpress } from "apollo-server-express";
-import { apolloUploadExpress } from 'apollo-upload-server'
-import schema from "./graphql/schema";
+import { ChildProcess } from "child_process";
 import Database from "./storage/database";
-import { notEqual } from "assert";
 import Debug from 'debug';
-import { Server, AddressInfo } from 'net';
-import cors from 'cors';
+import { Server } from 'net';
 import Registry from './messaging/registry';
 import Router from './messaging/router';
 
 const debug = Debug('ao:core');
 const error = Debug('ao:core:error');
+
+//Main classes
+import Http from './main/http';
 
 
 export default class Core {
@@ -25,6 +20,7 @@ export default class Core {
         disableHttpInterface: boolean;
     };
     private db: Database;
+    private http: Http;
     private server: Server;
     private subProcesses: Array<ChildProcess>;
 
@@ -38,19 +34,8 @@ export default class Core {
 
     init() {
         this.dbSetup()
-        .then(()=> {
-            
-            this.spinUpSubProcesses()
-            .then( () => {
-                //we've made above promise based since we need the router to be present for this shiz
-                if ( !this.options.disableHttpInterface ) {
-                    this.httpSetup( )
-                }
-            })
-            .catch(e => {
-                error(e)
-            })
-        })
+        .then( this.spinUpSubProcesses.bind(this) )
+        .then( this.httpSetup.bind(this))
         .catch( (e) => {
             this.shutdownWithError(e)
         })
@@ -66,6 +51,29 @@ export default class Core {
         }
         this.db.addLog({message: message});
     }
+
+    httpSetup() {
+        return new Promise((resolve, reject) => {
+            if ( !this.options.disableHttpInterface ) {
+                this.http = new Http( 
+                    this.db, 
+                    this.router,
+                    this.options,
+                    this.sendEventLog,
+                    this.shutdownWithError
+                )
+                this.http.init()
+                .then((server:Server) => {
+                    this.server = server
+                    resolve()
+                })
+                .catch(e => {
+                    reject(e)
+                })
+            }
+        })
+    }
+    
     dbSetup() {
         return new Promise((resolve, reject) => {
             this.db = new Database()
@@ -78,30 +86,6 @@ export default class Core {
                 reject(err)
             })
         })
-        
-    }
-    /**
-     * Note that the http server depends on both the ipc server AND the database
-     */
-    httpSetup() {
-        notEqual(this.db, null, 'http server requires instance of db');
-        const expressServer = express();
-        const graphqlSchema = schema(this.db, this.router);
-        expressServer.use(
-            '/graphql', 
-            cors({origin: 'http://localhost:3000'}), 
-            json(), 
-            apolloUploadExpress({maxFieldSize: "1gb"}),
-            graphqlExpress({ schema: graphqlSchema })
-        );
-        expressServer.get('/graphiql', graphiqlExpress({ endpointURL: '/graphql' })); // TODO: enable based on process.env.NODE_ENV
-        expressServer.use('/assets', express.static(path.join(__dirname, '../assets')));
-        this.server = expressServer.listen(this.options.httpPort, () => {
-            const address: AddressInfo = <AddressInfo> this.server.address();
-            debug('Express server running on port: ' + address.port);
-            this.sendEventLog('Core http server started');
-        });
-        this.server.on('error', this.shutdownWithError.bind(this));
     }
 
     shutdownWithError(err) {
@@ -120,6 +104,7 @@ export default class Core {
     registry:Registry;
     router: Router;
     registry_data: Array<any>;
+    
     async spinUpSubProcesses() {
         return new Promise( (resolve,reject) => {
             debug('attempting to spawn sub processes')

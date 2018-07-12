@@ -23,6 +23,16 @@ var stored_registry:any = {
             "register_process"
         ]
     },
+    http: {
+        status: false, //Status marks whether the process is active/available
+        priority: 0,
+        multi_instance: 0,
+        type: 'main',//specifically made for registrations and other main processes
+        file: '',//empty means that it sends to main
+        events: [
+            "http_file_read_callback"
+        ]
+    },
     p2pSubProcess: {
         status: false,
         priority: 0,
@@ -43,8 +53,9 @@ var stored_registry:any = {
         file: '/storage/files.js',
         events: [           //In the future, maybe store all of the events within the file and have that be the first return on spawn?
             'read_file',
+            'stream_read_file',
             'write_file',
-            'stream_write_file_schema',
+            'stream_write_file',
             'move_file',
             'delete_file',
             'make_folder',
@@ -112,7 +123,8 @@ export default class Registry {
         //verify that we do/don't have the registry
         const registry_name = this.events_registry[message.event]
         if(!registry_name) {
-            debug('No event with matching registry')
+            debug('No event with matching registry: ' + message.event)
+            debug(message)
             return false
         }
         return this.registryByName(registry_name)

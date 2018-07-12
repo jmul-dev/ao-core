@@ -6,6 +6,7 @@ import { load } from "protobufjs";
 import { create } from "peer-info";
 import Node from "libp2p-rpc";
 import ConnManager from "libp2p-connection-manager";
+import Message from '../messaging/message';
 
 import Debug from 'debug';
 const debug = Debug('ao:p2p');
@@ -40,7 +41,7 @@ class P2P {
         
         if( process.send ) {
             debug('Has parent. Registering p2p System')
-            process.send({
+            var register_message = new Message({
                 app_id: 'testing', //Should be passed to this thing on initial start.
                 type_id: "message",
                 event: "register_process",
@@ -53,6 +54,7 @@ class P2P {
                 },
                 encoding: "json"
             })
+            process.send(register_message.toJSON())
         }
         this.start()
     }
