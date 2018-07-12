@@ -48,10 +48,12 @@ export default class Core {
                         this.shutdownWithError
                     )
                     this.http.init()
-                    .then((server) => {
-                        //this.server = server
+                    .then((server:Server) => {
+                        this.server = server
                     })
-                    .catch(e => error )
+                    .catch(e => {
+                        error(e)
+                    })
 
                 }
             })
