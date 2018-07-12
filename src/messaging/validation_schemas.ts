@@ -4,6 +4,7 @@ const registry_schema:Object = {
     "type": "object",
     "required": [
         "priority",
+        "multi_instance",
         "name",
         "type",
         "file"
@@ -15,6 +16,9 @@ const registry_schema:Object = {
         "status": {
             "type": "boolean"
         },
+        "multi_instance": {
+            "type": "boolean"
+        },
         "name": {
             "type": "string"
         },
@@ -24,8 +28,8 @@ const registry_schema:Object = {
         "file": {
             "type": "string"
         },
-        "process": {
-            "type": "object"
+        "instances": {
+            "type": "array"
         }
     }
 }
@@ -63,6 +67,9 @@ const message_schema:Object = {
             "type": "string"
         },
         "type_id": {
+            "type": "string"
+        },
+        "instance_id": {
             "type": "string"
         },
         "event": {

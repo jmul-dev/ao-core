@@ -1,18 +1,20 @@
 #!/usr/local/bin/node
 'use strict';
+import md5 from 'md5'
 import { join } from "path";
 import { load } from "protobufjs";
 import { create } from "peer-info";
 import Node from "libp2p-rpc";
 import ConnManager from "libp2p-connection-manager";
-import minimist from 'minimist';
+
 import Debug from 'debug';
 const debug = Debug('ao:p2p');
 const error = Debug('ao:p2p:error');
-const argv = minimist(process.argv.slice(2));
-
 
 class P2P {
+    private instance_id: number = md5( new Date().getTime() + Math.random() ) //rando number for identification
+    private registry_name:string = 'p2pSubProcess'
+    
     config: {
         name: string;
         version: string;
@@ -37,32 +39,33 @@ class P2P {
         this.node = null
         
         if( process.send ) {
-            debug('has parent.  registering the thang')
+            debug('Has parent. Registering p2p System')
             process.send({
                 app_id: 'testing', //Should be passed to this thing on initial start.
-                type_id: "bogus",
+                type_id: "message",
                 event: "register_process",
-                from: "p2pSubProcess",
+                from: this.registry_name,
                 data: { 
                     request: "add_to_registry",
-                    name: "p2pSubProcess",
-                    type: "subprocess"
+                    name: this.registry_name,
+                    type: "subprocess",
+                    instance_id: this.instance_id
                 },
                 encoding: "json"
             })
         }
-
         this.start()
     }
     start() {
         const peerInfoPromise = this._createNodePeerInfo()
         const loadProtocolInterfacePromise = this._loadProtocolInterface()
         Promise.all([peerInfoPromise, loadProtocolInterfacePromise]).then(results => {
+            // 0. Message receive router!
+            this.onMessageRouter()
             // 1. Create our Node (inherits from libp2p)
             this.node = new Node(results[0], results[1], this.config)
             this.node.start().then(() => {
                 debug('p2p node started')
-                //this.ipcClient().emit(EVENT_LOG, 'P2P Client started')
             }).catch(error => {
                 debug('p2p node failed to start', error)
             })
@@ -71,17 +74,25 @@ class P2P {
             this.connectionManager.start()
             this.connectionManager.on('connected', peerId => {
                 debug('peer connected', peerId)
-                // this.ipcClient().emit(DATA, {
-                //     type: DATA_TYPES.PEER_CONNECTED,
-                //     peerId: peerId
+                //debug('Sending Test write file message')
+                // process.send({
+                //     app_id: 'testing',
+                //     type_id: "message",
+                //     event: 'write_file',
+                //     from: this.registry_name,
+                //     data: {
+                //         file_path: 'testing.json',
+                //         file_data: {
+                //             testing:"loooooreem iiiiipsum"
+                //         },
+                //         callback_event: 'p2p_log_write_callback'
+                //     },
+                //     encoding: 'json'
                 // })
             })
             this.connectionManager.on('disconnected', peerId => {
                 debug('peer disconnected', peerId)
-                // this.ipcClient().emit(DATA, {
-                //     type: DATA_TYPES.PEER_DISCONNECTED,
-                //     peerId: peerId
-                // })
+                
             })
             this.connectionManager.on('limit:exceeded', (limitName, measured) => {
                 debug('connection manager reported limit exceeded', limitName, measured)
@@ -129,6 +140,18 @@ class P2P {
                 debug('proto3 protocol interface loaded')
                 resolve(protocolInterface)
             }).catch(reject)
+        })
+    }
+    onMessageRouter() {
+        process.on('message', (message) => {
+            switch(message.event) {
+                case 'p2p_log_write_callback':
+                    debug('Wrote into the test.json file!')
+                    break;
+                default:
+                    debug('Dunno about that event: '+ message.event)
+                    break;
+            }
         })
     }
 }

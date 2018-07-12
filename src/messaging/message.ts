@@ -36,6 +36,9 @@ export default class Message {
     get type_id() { return this.type_id; }
     set type_id(val:string) { this.type_id = val; }
 
+    get instance_id() { return this.instance_id; }
+    set instance_id(val:string) { this.instance_id = val; }
+
     get event() { return this.event }
     set event(val:string) { this.event = val; }
 
@@ -60,6 +63,9 @@ export default class Message {
         var message = {
             app_id: this.app_id,
             type_id: this.type_id,
+            instance_id: this.instance_id,
+            event: this.event,
+            from: this.from,
             message_type: this.message_type,
             signatures: this.signatures,
             data: this.data,

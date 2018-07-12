@@ -26,6 +26,23 @@ const write_file_schema:Object = {
             "containsNot":".."
         },
         "file_data": {
+        }
+    }
+}
+
+const stream_write_file_schema:Object = {
+    "id": "/StreamWriteFileObject",
+    "type": "object",
+    "required": [
+        "file_path",
+        "file_data"
+    ],
+    "properties": {
+        "file_path": {
+            "type": "string",
+            "containsNot":".."
+        },
+        "file_data": {
             "type": "string"
         }
     }
@@ -116,6 +133,7 @@ const delete_folder_schema:Object = {
 export {
     read_file_schema,
     write_file_schema,
+    stream_write_file_schema,
     move_file_schema,
     delete_file_schema,
     make_folder_schema,

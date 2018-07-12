@@ -5,6 +5,7 @@ import path from 'path';
 import express = require('express');
 import { json } from "body-parser";
 import { graphqlExpress, graphiqlExpress } from "apollo-server-express";
+import { apolloUploadExpress } from 'apollo-upload-server'
 import schema from "./graphql/schema";
 import Database from "./storage/database";
 import { notEqual } from "assert";
@@ -38,10 +39,17 @@ export default class Core {
     init() {
         this.dbSetup()
         .then(()=> {
-            if ( !this.options.disableHttpInterface ) {
-                this.httpSetup()
-            }
+            
             this.spinUpSubProcesses()
+            .then( () => {
+                //we've made above promise based since we need the router to be present for this shiz
+                if ( !this.options.disableHttpInterface ) {
+                    this.httpSetup( )
+                }
+            })
+            .catch(e => {
+                error(e)
+            })
         })
         .catch( (e) => {
             this.shutdownWithError(e)
@@ -78,8 +86,14 @@ export default class Core {
     httpSetup() {
         notEqual(this.db, null, 'http server requires instance of db');
         const expressServer = express();
-        const graphqlSchema = schema(this.db);
-        expressServer.use('/graphql', cors({origin: 'http://localhost:3000'}), json(), graphqlExpress({ schema: graphqlSchema }));
+        const graphqlSchema = schema(this.db, this.router);
+        expressServer.use(
+            '/graphql', 
+            cors({origin: 'http://localhost:3000'}), 
+            json(), 
+            apolloUploadExpress({maxFieldSize: "1gb"}),
+            graphqlExpress({ schema: graphqlSchema })
+        );
         expressServer.get('/graphiql', graphiqlExpress({ endpointURL: '/graphql' })); // TODO: enable based on process.env.NODE_ENV
         expressServer.use('/assets', express.static(path.join(__dirname, '../assets')));
         this.server = expressServer.listen(this.options.httpPort, () => {
@@ -106,20 +120,27 @@ export default class Core {
     registry:Registry;
     router: Router;
     registry_data: Array<any>;
-    spinUpSubProcesses() {
-        debug('attempting to spawn sub processes')
-        //Maybe pass the registry json itself over at the time of Registry contruction?
-        this.registry = new Registry()
-        this.registry.initialize( )
-        .then( (router:Router) => {
-            this.router = router
-            this.router.loadProcesses() // IPC server stuff will taken out
-            .catch(e => {
+    async spinUpSubProcesses() {
+        return new Promise( (resolve,reject) => {
+            debug('attempting to spawn sub processes')
+            //Maybe pass the registry json itself over at the time of Registry contruction?
+            this.registry = new Registry()
+            this.registry.initialize( )
+            .then( (router:Router) => {
+                this.router = router
+                this.router.loadProcesses()
+                .then(() => {
+                    resolve()
+                })
+                .catch(e => {
+                    reject(e)
+                    error(e)
+                })
+            })
+            .catch((e) => {
+                reject(e)
                 error(e)
             })
-        })
-        .catch((e) => {
-            error(e)
         })
     }
 }

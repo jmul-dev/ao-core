@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "apollo-server-express": "^1.3.6",
+    "apollo-upload-server": "^5.0.0",
     "assert": "^1.4.1",
     "body-parser": "^1.18.3",
     "casual": "^1.5.19",
@@ -36,6 +37,7 @@
     "libp2p": "^0.20.4",
     "libp2p-connection-manager": "^0.0.2",
     "libp2p-rpc": "git://github.com/nharlow89/libp2p-rpc.git",
+    "md5": "^2.2.1",
     "minimist": "^1.2.0",
     "node-ipc": "^9.1.1",
     "peer-info": "^0.14.1",

@@ -18,6 +18,10 @@ var graphqlSchema = graphql_import_1.importSchema(path_1.default.resolve(__dirna
 var mocks_1 = __importDefault(require("./mocks"));
 var mockVideos_1 = require("./mockVideos");
 var packageJson = require('../../package.json');
+var apollo_upload_server_1 = require("apollo-upload-server");
+var debug_1 = __importDefault(require("debug"));
+var debug = debug_1.default('ao:core');
+var error = debug_1.default('ao:core:error');
 // TODO: replace with actual db calls 
 var mockStore = {
     node: null,
@@ -25,10 +29,11 @@ var mockStore = {
     settings: undefined,
     videos: mockVideos_1.generateMockVideoList()
 };
-function default_1(db) {
+function default_1(db, router) {
     var schema = graphql_tools_1.makeExecutableSchema({
         typeDefs: [graphqlSchema],
         resolvers: {
+            Upload: apollo_upload_server_1.GraphQLUpload,
             // Interface (required for mocks)
             IContent: {
                 __resolveType: function (data, ctx, info) {
@@ -61,8 +66,36 @@ function default_1(db) {
                         mockStore.settings = __assign({}, mockStore.settings, args.inputs);
                         resolve(mockStore.settings);
                     });
-                }
-            }
+                },
+                submitVideoContent: function (obj, args, context, info) {
+                    return new Promise(function (resolve, reject) {
+                        // TODO: handle file uploads: video, videoTeaser, featuredImage
+                        args.inputs.video.then(function (_a) {
+                            var stream = _a.stream, filename = _a.filename, mimetype = _a.mimetype, encoding = _a.encoding;
+                            debug("video: filename[" + filename + "] mimetype[" + mimetype + "] encoding[" + encoding + "]");
+                            // send message through router to store file
+                            // var message = new Message({
+                            //     app_id: 'testing', //TBD
+                            //     type_id: "stream",
+                            //     event: "stream_write_file",
+                            //     from: "http",
+                            //     data: {
+                            //         stream: stream,
+                            //         file_path: 'video-upload-'+filename+ md5(new Date) //TODO: Figure out the pathing for this.
+                            //     },
+                            //     encoding: "json"
+                            // })
+                            // router.invokeSubProcess(message, 'filesSubProcess').then(() => {
+                            //     debug(`${filename} saved!`)
+                            // }).catch(err => {
+                            //     error(`${filename} error during save`, err)
+                            // })
+                        });
+                        // TODO: resolve once submition is complete
+                        resolve();
+                    });
+                },
+            },
         },
         resolverValidationOptions: {
             requireResolversForResolveType: false

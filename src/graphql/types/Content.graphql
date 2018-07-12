@@ -52,6 +52,16 @@ type VideoContent implements IContent {
     metadata: VideoMetadata
 }
 
+input VideoContentSubmissionInputs {
+    video: Upload
+    videoTeaser: Upload
+    featuredImage: Upload
+    title: String!
+    description: String!
+    stake: Float!
+    profit: Float!
+}
+
 type VideoMetadata {
     duration: Float
     resolution: String
