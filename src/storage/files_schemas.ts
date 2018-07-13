@@ -23,6 +23,12 @@ const stream_read_file_schema:Object = {
         "file_path": {
             "type": "string",
             "containsNot":".."
+        },
+        "decrypt": {
+            "type": "boolean"
+        },
+        "key": {
+            "type": "string"
         }
     }
 }

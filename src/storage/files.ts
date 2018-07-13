@@ -3,10 +3,9 @@
 import { join } from "path";
 import fs from 'fs-extra'
 import Dat from 'dat-node'
-import Message from '../messaging/message'
-import { Validator, SchemaError } from 'jsonschema'
-import encryptor from 'file-encryptor'
+import crypto from 'crypto'
 import md5 from 'md5'
+import { Validator, SchemaError } from 'jsonschema'
 import {
     read_file_schema,
     stream_read_file_schema,
@@ -23,6 +22,9 @@ import Debug from 'debug';
 const debug = Debug('ao:files');
 const error = Debug('ao:files:error');
 
+import Message from '../messaging/message'
+
+
 // Future use?: https://www.npmjs.com/package/file-encryptor
 class Files {
     private data_folder:string;
@@ -32,6 +34,8 @@ class Files {
     private registry_name:string = 'filesSubProcess'
 
     private instance_id: number = md5( new Date().getTime() + Math.random() ) //rando number for identification
+
+    private encryption_algo: string = 'aes-256-ctr'
 
     constructor() {
         this.validator = new Validator()
@@ -201,7 +205,15 @@ class Files {
             readStream.on('open', () => {
                 debug('about to pass the read file over')
                 var parent = fs.createWriteStream(null, {fd:3})
+                if(message_data.decrypt && message_data.key) {
+                    var decrypt = crypto.createDecipher(this.encryption_algo, message_data.key)
+                    readStream.pipe(decrypt).pipe(parent)
+                } else {
                     readStream.pipe(parent)
+                }
+            })
+            readStream.on('finish', () => {
+                resolve()
             })
         })
     }
@@ -245,14 +257,26 @@ class Files {
             var full_path = join(this.data_folder,message_data.file_path)
             var stream = message_data.stream
             stream.on('error', (err) => {
-                if(stream.trucated) {
+                if(stream.trucated || err) {
                     fs.unlinkSync(full_path)
                 }
-                reject(error)
+                reject(err)
             })
-            .pipe( fs.createWriteStream(full_path) )
-            .on('error', err => reject(err))
-            .on('finish', () => resolve() )
+            if(message_data.encrypt) {
+                //If you use encrypt, you definitely need to give the message a callback event
+                var key = md5(this.instance_id + new Date().getSeconds() + Math.random() )
+                var encrypt = crypto.createCipher(this.encryption_algo, key)
+                stream.pipe( encrypt )
+                .pipe( fs.createWriteStream(full_path) )
+                .on('error', err => reject(err))
+                .on('finish', () => {
+                    resolve(key)
+                } )
+            } else {
+                stream.pipe( fs.createWriteStream(full_path) )
+                .on('error', err => reject(err))
+                .on('finish', () => resolve() )
+            }
         })
     }
 

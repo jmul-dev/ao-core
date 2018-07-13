@@ -28,7 +28,6 @@
     "dat-node": "^3.5.11",
     "debug": "^3.1.0",
     "express": "^4.16.3",
-    "file-encryptor": "^0.1.1",
     "fs-extra": "^6.0.1",
     "gitlab-ci-releaser": "^1.5.0",
     "graphql": "^0.13.2",
