@@ -197,7 +197,7 @@ class Files implements SubProcess{
             var full_path = join(this.data_folder, message_data.file_path)
             var readStream = fs.createReadStream(full_path)
             readStream.on('error', (err) => {
-                console.log('read file stream error:',err)
+                debug('read file stream error:',err)
             })
             readStream.on('open', () => {
                 debug('about to pass the read file over')
@@ -327,8 +327,11 @@ class Files implements SubProcess{
                             reject(err)
                         }
                         dat.importFiles()
-                        dat.joinNetwork(() => {
-                        })// this has a callback mechanism 
+                        // dat.joinNetwork(() => {
+                        // })// this has a callback mechanism 
+
+                        // Send out message to the dat manager subprocess to scan for a new folder with dat.
+                        
                         resolve()
                     })
                 } else {

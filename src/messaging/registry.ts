@@ -7,8 +7,8 @@ import Debug from 'debug';
 import Router from './router';
 import Message from './message'
 import {RegistryObject} from './message_interfaces'
-const debug = Debug('ao:core');
-const error = Debug('ao:core:error');
+const debug = Debug('ao:registry');
+const error = Debug('ao:registry:error');
 
 
 //Fake data for now.  We'll have to do an FS read, & encryption/decryption for this.
@@ -21,6 +21,16 @@ var stored_registry:any = {
         file: '',//empty means that it sends to main
         events: [
             "register_process"
+        ]
+    },
+    database: {
+        status: false, //Status marks whether the process is active/available
+        priority: 0,
+        multi_instance: 0,
+        type: 'main',//specifically made for registrations and other main processes
+        file: '',//empty means that it sends to main
+        events: [
+            "db_get_eth_address"
         ]
     },
     http: {
@@ -38,7 +48,7 @@ var stored_registry:any = {
         priority: 0,
         multi_instance: 0,
         type: 'subprocess',
-        file: '/p2p/index.js',//Assumes /dist as a pre-fix
+        file: '/p2p/p2p.js',//Assumes /dist as a pre-fix
         events: [
             "p2p_lookup",
             "p2p_peer_count",
@@ -51,7 +61,7 @@ var stored_registry:any = {
         multi_instance: 1,
         type: 'subprocess',
         file: '/storage/files.js',
-        events: [           //In the future, maybe store all of the events within the file and have that be the first return on spawn?
+        events: [//In the future, maybe store all of the events within the file and have that be the first return on spawn?
             'read_file',
             'stream_read_file',
             'write_file',
@@ -61,6 +71,19 @@ var stored_registry:any = {
             'make_folder',
             'move_folder',
             'delete_folder'
+        ]
+    },
+    datSubProcess: {
+        status: false,
+        priority: 0,
+        multi_instance: 0,
+        type: 'subprocess',
+        file: '/p2p/dat.js',
+        events: [
+            "dat_callback_init",
+            "dat_resume",
+            "dat_pause",
+            "dat_remove"
         ]
     }
 }

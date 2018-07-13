@@ -6,15 +6,15 @@ const join = path.join
 const graphqlSchema = importSchema( path.resolve(__dirname, './schema.graphql') );
 import mocks from './mocks';
 import { generateMockVideoList } from './mockVideos';
-import Database from '../storage/database';
+import Database from '../main/database';
 import Router from '../messaging/router';
 import Message from '../messaging/message'
 const packageJson = require('../../package.json');
 import { GraphQLUpload } from 'apollo-upload-server';
 import md5 from 'md5';
 import Debug from 'debug';
-const debug = Debug('ao:core');
-const error = Debug('ao:core:error');
+const debug = Debug('ao:graphql');
+const error = Debug('ao:graphql:error');
 
 
 // TODO: replace with actual db calls 
@@ -54,13 +54,17 @@ export default function (db: Database, router: Router) {
                                 id: args.inputs.ethAddress,
                                 ethAddress: args.inputs.ethAddress
                             }
+
+                            this.db.setEthAddress(args.inputs.ethAddress)
+
+                            //Make Data Folder with the Eth Address
                             var data_folder_message = new Message({
                                 app_id: 'testing',
                                 type_id: "message",
                                 event: "make_folder",
                                 from: 'http',
                                 data: {
-                                    folder_path: join('users', args.inputs.ethAddress,'data') //might as well make the data folder.  this works like mkdirp
+                                    folder_path: join('data', args.inputs.ethAddress,'dat') //might as well make the dat folder.  this works like mkdirp
                                 },
                                 encoding: 'json'
                             })
@@ -69,6 +73,8 @@ export default function (db: Database, router: Router) {
                                 resolve(mockStore.node)
                             })
                             .catch(e => error)
+
+                            
                         }, 2500)                        
                     })
                 },

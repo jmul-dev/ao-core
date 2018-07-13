@@ -11,7 +11,7 @@ import cors from 'cors';
 import md5 from 'md5'
 
 //below is mostly for the defs
-import Database from "../storage/database";
+import Database from "../main/database";
 import Router from '../messaging/router';
 import Message from '../messaging/message';
 import { MessageObject } from '../messaging/message_interfaces'
@@ -57,7 +57,7 @@ export default class Http {
                 this.sendEventLog('Core http server started');
                 resolve(this.server)
                 
-                this.registerHttp()
+                this.register()
                 .then( () => {
                     expressServer.get('/streamTest', async (req,res,next) => {
                         try {
@@ -74,7 +74,7 @@ export default class Http {
         })
     }
 
-    private async registerHttp() {
+    private async register() {
         return new Promise( (resolve,reject) => {
             debug('Http Registered to Registry as main process')
             var module_name = 'http'
@@ -123,9 +123,9 @@ export default class Http {
         })
     }
 
-    public send(message:MessageObject ) {
-        debug('invoke http stuff here if we receive a message')
-        debug(message)
+    public send( message:MessageObject ) {
+        debug( 'invoke http stuff here if we receive a message' )
+        debug( message )
     }
 
 }

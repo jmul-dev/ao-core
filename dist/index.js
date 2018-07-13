@@ -39,7 +39,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var constants_1 = require("./constants");
-var database_1 = __importDefault(require("./storage/database"));
+var database_1 = __importDefault(require("./main/database"));
 var debug_1 = __importDefault(require("debug"));
 var registry_1 = __importDefault(require("./messaging/registry"));
 var debug = debug_1.default('ao:core');
@@ -56,7 +56,12 @@ var Core = /** @class */ (function () {
     }
     Core.prototype.init = function () {
         var _this = this;
-        this.dbSetup()
+        this.registry = new registry_1.default();
+        this.registry.initialize()
+            .then(function (router) {
+            _this.router = router;
+        })
+            .then(this.dbSetup.bind(this))
             .then(this.spinUpSubProcesses.bind(this))
             .then(this.httpSetup.bind(this))
             .catch(function (e) {
@@ -74,6 +79,20 @@ var Core = /** @class */ (function () {
         }
         this.db.addLog({ message: message });
     };
+    Core.prototype.dbSetup = function () {
+        var _this = this;
+        return new Promise(function (resolve, reject) {
+            _this.db = new database_1.default(_this.router);
+            _this.db.init().then(function () {
+                debug('database instance created');
+                _this.sendEventLog('Core database connected');
+                resolve();
+            }).catch(function (err) {
+                error('error creating database instance', err);
+                reject(err);
+            });
+        });
+    };
     Core.prototype.httpSetup = function () {
         var _this = this;
         return new Promise(function (resolve, reject) {
@@ -88,20 +107,6 @@ var Core = /** @class */ (function () {
                     reject(e);
                 });
             }
-        });
-    };
-    Core.prototype.dbSetup = function () {
-        var _this = this;
-        return new Promise(function (resolve, reject) {
-            _this.db = new database_1.default();
-            _this.db.init().then(function () {
-                debug('database instance created');
-                _this.sendEventLog('Core database connected');
-                resolve();
-            }).catch(function (err) {
-                error('error creating database instance', err);
-                reject(err);
-            });
         });
     };
     Core.prototype.shutdownWithError = function (err) {
@@ -125,22 +130,12 @@ var Core = /** @class */ (function () {
                 return [2 /*return*/, new Promise(function (resolve, reject) {
                         debug('attempting to spawn sub processes');
                         //Maybe pass the registry json itself over at the time of Registry contruction?
-                        _this.registry = new registry_1.default();
-                        _this.registry.initialize()
-                            .then(function (router) {
-                            _this.router = router;
-                            _this.router.loadProcesses()
-                                .then(function () {
-                                resolve();
-                            })
-                                .catch(function (e) {
-                                reject(e);
-                                error(e);
-                            });
+                        _this.router.loadProcesses()
+                            .then(function () {
+                            resolve();
                         })
                             .catch(function (e) {
                             reject(e);
-                            error(e);
                         });
                     })];
             });

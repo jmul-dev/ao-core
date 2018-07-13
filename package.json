@@ -40,9 +40,11 @@
     "libp2p-rpc": "git://github.com/nharlow89/libp2p-rpc.git",
     "md5": "^2.2.1",
     "minimist": "^1.2.0",
+    "multidat": "^5.1.0",
     "node-ipc": "^9.1.1",
     "peer-info": "^0.14.1",
-    "protobufjs": "^6.8.6"
+    "protobufjs": "^6.8.6",
+    "toiletdb": "^1.4.1"
   },
   "devDependencies": {
     "@types/debug": "0.0.30",

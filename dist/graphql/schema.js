@@ -22,8 +22,8 @@ var message_1 = __importDefault(require("../messaging/message"));
 var packageJson = require('../../package.json');
 var apollo_upload_server_1 = require("apollo-upload-server");
 var debug_1 = __importDefault(require("debug"));
-var debug = debug_1.default('ao:core');
-var error = debug_1.default('ao:core:error');
+var debug = debug_1.default('ao:graphql');
+var error = debug_1.default('ao:graphql:error');
 // TODO: replace with actual db calls 
 var mockStore = {
     node: null,
@@ -60,13 +60,15 @@ function default_1(db, router) {
                                 id: args.inputs.ethAddress,
                                 ethAddress: args.inputs.ethAddress
                             };
+                            this.db.setEthAddress(args.inputs.ethAddress);
+                            //Make Data Folder with the Eth Address
                             var data_folder_message = new message_1.default({
                                 app_id: 'testing',
                                 type_id: "message",
                                 event: "make_folder",
                                 from: 'http',
                                 data: {
-                                    folder_path: join('users', args.inputs.ethAddress, 'data') //might as well make the data folder.  this works like mkdirp
+                                    folder_path: join('data', args.inputs.ethAddress, 'dat') //might as well make the dat folder.  this works like mkdirp
                                 },
                                 encoding: 'json'
                             });
