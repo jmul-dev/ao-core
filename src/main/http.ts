@@ -50,7 +50,7 @@ export default class Http {
                 graphqlExpress({ schema: graphqlSchema })
             );
             expressServer.get('/graphiql', graphiqlExpress({ endpointURL: '/graphql' })); // TODO: enable based on process.env.NODE_ENV
-            expressServer.use('/assets', express.static(path.join(__dirname, '../assets')));
+            expressServer.use('/assets', express.static(path.join(__dirname, '../../assets')));
             this.server = expressServer.listen(this.options.httpPort, () => {
                 const address: AddressInfo = <AddressInfo> this.server.address();
                 debug('Express server running on port: ' + address.port);

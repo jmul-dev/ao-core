@@ -29,7 +29,7 @@ function generateRandomVideo() {
         premium: casual.integer,
         split: casual.double(0, 1),
         adSupport: casual.boolean,
-        createdAt: casual.date,
+        createdAt: casual.date(),
         ...demoAsset,
     }
 }

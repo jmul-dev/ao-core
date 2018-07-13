@@ -55,10 +55,13 @@ function default_1(db, router) {
                             // simulating setup time
                             mockStore.node = {
                                 id: args.inputs.ethAddress,
-                                ethAddress: args.inputs.ethAddress
+                                ethAddress: args.inputs.ethAddress,
+                                creator: {
+                                    content: mockVideos_1.generateMockVideoList(2)
+                                }
                             };
                             resolve(mockStore.node);
-                        }, 2500);
+                        }, 250);
                     });
                 },
                 updateSettings: function (obj, args, context, info) {
