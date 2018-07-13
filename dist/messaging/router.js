@@ -387,8 +387,6 @@ var Router = /** @class */ (function () {
                                 reject('no input or output?');
                                 break;
                         }
-                        //Finally send off the message once the  pipes are made 
-                        //(might need to change who the message is sent to based on which way the data is flowing)
                         try {
                             to_process.send(message);
                         }

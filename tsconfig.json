@@ -18,6 +18,9 @@
     },
     "exclude": [
         "dist",
-        ".vscode"
+        ".git",
+        ".vscode",
+        ".vscode/*",
+        "node_modules"
     ]
 }

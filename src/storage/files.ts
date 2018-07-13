@@ -17,6 +17,7 @@ import {
     move_folder_schema,
     delete_folder_schema
 } from './files_schemas'
+import SubProcess from '../subprocess_interface'
 
 import Debug from 'debug';
 const debug = Debug('ao:files');
@@ -26,16 +27,12 @@ import Message from '../messaging/message'
 
 
 // Future use?: https://www.npmjs.com/package/file-encryptor
-class Files {
-    private data_folder:string;
-
-    private validator:any;
-
-    private registry_name:string = 'filesSubProcess'
-
-    private instance_id: number = md5( new Date().getTime() + Math.random() ) //rando number for identification
-
-    private encryption_algo: string = 'aes-256-ctr'
+class Files implements SubProcess{
+    data_folder:string;
+    validator:any;
+    registry_name:string = 'filesSubProcess'
+    instance_id: number = md5( new Date().getTime() + Math.random() ) //rando number for identification
+    encryption_algo: string = 'aes-256-ctr'
 
     constructor() {
         this.validator = new Validator()
@@ -57,7 +54,22 @@ class Files {
         })
     }
 
-    private async register() {
+    async init() {
+        return new Promise((resolve,reject) => {
+            //make sure storage location exists (assumes dist location for now.  should make a configuration)
+            this.data_folder = join('data','files')
+            fs.ensureDir(this.data_folder)
+            .then(() => {
+                resolve()
+            })
+            .catch( (err) => {
+                error(err)
+                reject(err)
+            })
+        })
+    }
+    
+    async register() {
         return new Promise( (resolve,reject) => {
             if( process.send ) {
                 debug('Has parent. Registering Files Subprocess')
@@ -82,24 +94,9 @@ class Files {
             }
         })
     }
-
-    private async init() {
-        return new Promise((resolve,reject) => {
-            //make sure storage location exists (assumes dist location for now.  should make a configuration)
-            this.data_folder = join('data','files')
-            fs.ensureDir(this.data_folder)
-            .then(() => {
-                resolve()
-            })
-            .catch( (err) => {
-                error(err)
-                reject(err)
-            })
-        })
-    }
     
     //Time to bind all the messages to specific actions within the class
-    private async onMessageRouter() {
+    async onMessageRouter() {
         return new Promise( (resolve,reject) => {
             process.on('message', (message) => {
                 //note, below vars are for callback message only.
@@ -174,7 +171,7 @@ class Files {
         })
     }
 
-    private async readFile( message_data ) {
+    async readFile( message_data ) {
         return new Promise( (resolve,reject) => {
             var result = this.validator.validate(message_data, read_file_schema)
             if(!result.valid) {
@@ -191,7 +188,7 @@ class Files {
         })
     }
 
-    private async streamReadFile( message_data ) {
+    async streamReadFile( message_data ) {
         return new Promise( (resolve,reject) => {
             var result = this.validator.validate(message_data, stream_read_file_schema)
             if(!result.valid) {
@@ -219,7 +216,7 @@ class Files {
     }
 
     //file path from data files dir including file name
-    private async writeFile( message_data ) {
+    async writeFile( message_data ) {
         return new Promise((resolve,reject) => {
             var result = this.validator.validate(message_data, write_file_schema)
             if(!result.valid) {
@@ -248,7 +245,7 @@ class Files {
         })
     }
 
-    private async streamWriteFile( message_data ) {
+    async streamWriteFile( message_data ) {
         return new Promise( (resolve,reject) => {
             var result = this.validator.validate(message_data, stream_write_file_schema)
             if(!result.valid) {
@@ -280,7 +277,7 @@ class Files {
         })
     }
 
-    private async moveFile( message_data ) {
+    async moveFile( message_data ) {
         return new Promise((resolve,reject) => {
             var result = this.validator.validate(message_data, move_file_schema)
             if(!result.valid) {
@@ -298,7 +295,7 @@ class Files {
         })
     }
 
-    private async deleteFile(message_data) {
+    async deleteFile(message_data) {
         return new Promise((resolve,reject) => {
             var result = this.validator.validate(message_data, delete_file_schema)
             if(!result.valid) {
@@ -315,7 +312,7 @@ class Files {
         })
     }
 
-    private async makeFolder(message_data) {
+    async makeFolder(message_data) {
         return new Promise((resolve,reject) => {
             var result = this.validator.validate(message_data, make_folder_schema)
             if(!result.valid) {
@@ -344,7 +341,7 @@ class Files {
         })
     }
 
-    private async moveFolder( message_data ) {
+   async moveFolder( message_data ) {
         return new Promise((resolve,reject) => {
             var result = this.validator.validate(message_data, move_folder_schema)
             if(!result.valid) {
@@ -362,7 +359,7 @@ class Files {
         })
     }
 
-    private async deleteFolder(message_data) {
+   async deleteFolder(message_data) {
         return new Promise((resolve,reject) => {
             var result = this.validator.validate(message_data, delete_folder_schema)
             if(!result.valid) {

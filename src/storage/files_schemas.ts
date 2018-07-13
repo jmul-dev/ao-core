@@ -57,7 +57,8 @@ const stream_write_file_schema:Object = {
     "id": "/StreamWriteFileObject",
     "type": "object",
     "required": [
-        "file_path"
+        "file_path",
+        "stream"
     ],
     "properties": {
         "file_path": {

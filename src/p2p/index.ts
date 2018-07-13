@@ -1,5 +1,6 @@
 #!/usr/local/bin/node
 'use strict';
+import SubProcess from '../subprocess_interface'
 import md5 from 'md5'
 import { join } from "path";
 import { load } from "protobufjs";
@@ -12,9 +13,9 @@ import Debug from 'debug';
 const debug = Debug('ao:p2p');
 const error = Debug('ao:p2p:error');
 
-class P2P {
-    private instance_id: number = md5( new Date().getTime() + Math.random() ) //rando number for identification
-    private registry_name:string = 'p2pSubProcess'
+class P2P implements SubProcess {
+    instance_id: number = md5( new Date().getTime() + Math.random() ) //rando number for identification
+    registry_name:string = 'p2pSubProcess'
     
     config: {
         name: string;
@@ -39,85 +40,75 @@ class P2P {
         this.connectionManager = null
         this.node = null
         
-        if( process.send ) {
-            debug('Has parent. Registering p2p System')
-            var register_message = new Message({
-                app_id: 'testing', //Should be passed to this thing on initial start.
-                type_id: "message",
-                event: "register_process",
-                from: this.registry_name,
-                data: { 
-                    request: "add_to_registry",
-                    name: this.registry_name,
-                    type: "subprocess",
-                    instance_id: this.instance_id
-                },
-                encoding: "json"
-            })
-            process.send(register_message.toJSON())
-        }
-        this.start()
+        this.init()
+        .then(this.register.bind(this))
+        .then(this.onMessageRouter.bind(this))
+        .catch(e => {
+            error(e)
+        })
     }
-    start() {
-        const peerInfoPromise = this._createNodePeerInfo()
-        const loadProtocolInterfacePromise = this._loadProtocolInterface()
-        Promise.all([peerInfoPromise, loadProtocolInterfacePromise]).then(results => {
-            // 0. Message receive router!
-            this.onMessageRouter()
-            // 1. Create our Node (inherits from libp2p)
-            this.node = new Node(results[0], results[1], this.config)
-            this.node.start().then(() => {
-                debug('p2p node started')
-            }).catch(error => {
-                debug('p2p node failed to start', error)
-            })
-            // 2. Create the connection manager
-            this.connectionManager = new ConnManager(this.node, {/* TODO: connection limits */})
-            this.connectionManager.start()
-            this.connectionManager.on('connected', peerId => {
-                debug('peer connected', peerId)
-                //debug('Sending Test write file message')
-                // process.send({
-                //     app_id: 'testing',
-                //     type_id: "message",
-                //     event: 'write_file',
-                //     from: this.registry_name,
-                //     data: {
-                //         file_path: 'testing.json',
-                //         file_data: {
-                //             testing:"loooooreem iiiiipsum"
-                //         },
-                //         callback_event: 'p2p_log_write_callback'
-                //     },
-                //     encoding: 'json'
-                // })
-            })
-            this.connectionManager.on('disconnected', peerId => {
-                debug('peer disconnected', peerId)
-                
-            })
-            this.connectionManager.on('limit:exceeded', (limitName, measured) => {
-                debug('connection manager reported limit exceeded', limitName, measured)
-            })
-            // TODO: figure out peer communication using either node or manager.
-            // We should setup all of our RPC handlers here.
-            // node.on('peer:disconnect', (peer) => {
-            //     console.log('peer:disconnect')
-            // })
-            // NOTE: peer:connection is used in place of peer:connect (libp2p-rpc adds this event in order to attach rpc)
-            this.node.on('peer:connection', (conn, peer, type) => {
-                // Make RPC call to peer
-                peer.rpc.sayHello({name: 'Foo'}, (response, peer) => {
-                    console.log('Response', response)
+    async init() {
+        return new Promise( (resolve,reject) => {
+            const peerInfoPromise = this._createNodePeerInfo()
+            const loadProtocolInterfacePromise = this._loadProtocolInterface()
+            Promise.all([peerInfoPromise, loadProtocolInterfacePromise]).then(results => {
+                // 1. Create our Node (inherits from libp2p)
+                this.node = new Node(results[0], results[1], this.config)
+                this.node.start().then(() => {
+                    debug('p2p node started')
+                    resolve()
+                }).catch(error => {
+                    debug('p2p node failed to start', error)
+                    reject(error)
                 })
+                // 2. Create the connection manager
+                this.connectionManager = new ConnManager(this.node, {/* TODO: connection limits */})
+                this.connectionManager.start()
+                this.connectionManager.on('connected', peerId => {
+                    debug('peer connected', peerId)
+                    //debug('Sending Test write file message')
+                    // process.send({
+                    //     app_id: 'testing',
+                    //     type_id: "message",
+                    //     event: 'write_file',
+                    //     from: this.registry_name,
+                    //     data: {
+                    //         file_path: 'testing.json',
+                    //         file_data: {
+                    //             testing:"loooooreem iiiiipsum"
+                    //         },
+                    //         callback_event: 'p2p_log_write_callback'
+                    //     },
+                    //     encoding: 'json'
+                    // })
+                })
+                this.connectionManager.on('disconnected', peerId => {
+                    debug('peer disconnected', peerId)
+                    
+                })
+                this.connectionManager.on('limit:exceeded', (limitName, measured) => {
+                    debug('connection manager reported limit exceeded', limitName, measured)
+                })
+                // TODO: figure out peer communication using either node or manager.
+                // We should setup all of our RPC handlers here.
+                // node.on('peer:disconnect', (peer) => {
+                //     console.log('peer:disconnect')
+                // })
+                // NOTE: peer:connection is used in place of peer:connect (libp2p-rpc adds this event in order to attach rpc)
+                this.node.on('peer:connection', (conn, peer, type) => {
+                    // Make RPC call to peer
+                    peer.rpc.sayHello({name: 'Foo'}, (response, peer) => {
+                        console.log('Response', response)
+                    })
+                })
+                // Define RPC handlers
+                this.node.handle('sayHello', (message, peer, respond) => {
+                    respond({ message: 'heyThere' })
+                })
+            }).catch(errors => {
+                // TODO: report unable to start and shutdown (ipc channel should be open)
+                error(errors)
             })
-            // Define RPC handlers
-            this.node.handle('sayHello', (message, peer, respond) => {
-                respond({ message: 'heyThere' })
-            })
-        }).catch(errors => {
-            // TODO: report unable to start and shutdown (ipc channel should be open)
-            error(errors)
         })
     }
     stop() {
@@ -144,16 +135,46 @@ class P2P {
             }).catch(reject)
         })
     }
-    onMessageRouter() {
-        process.on('message', (message) => {
-            switch(message.event) {
-                case 'p2p_log_write_callback':
-                    debug('Wrote into the test.json file!')
-                    break;
-                default:
-                    debug('Dunno about that event: '+ message.event)
-                    break;
+
+    async register() {
+        return new Promise((resolve,reject) => {
+            if( process.send ) {
+                debug('Has parent. Registering p2p System')
+                var register_message = new Message({
+                    app_id: 'testing', //Should be passed to this thing on initial start.
+                    type_id: "message",
+                    event: "register_process",
+                    from: this.registry_name,
+                    data: { 
+                        request: "add_to_registry",
+                        name: this.registry_name,
+                        type: "subprocess",
+                        instance_id: this.instance_id
+                    },
+                    encoding: "json"
+                })
+                process.send(register_message.toJSON())
+                resolve()
+            } else {
+                reject()
             }
+        })
+    }
+
+    async onMessageRouter() {
+        return new Promise((resolve,reject) => {
+            process.on('message', (message) => {
+                switch(message.event) {
+                    case 'p2p_log_write_callback':
+                        debug('Wrote into the test.json file!')
+                        break;
+                    default:
+                        debug('Dunno about that event: '+ message.event)
+                        reject()
+                        break;
+                }
+            })
+            resolve()
         })
     }
 }
