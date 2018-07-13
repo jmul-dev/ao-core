@@ -40,6 +40,9 @@ const write_file_schema:Object = {
             "containsNot":".."
         },
         "file_data": {
+        },
+        "encrypt": {
+            "type": "boolean"
         }
     }
 }
@@ -48,16 +51,18 @@ const stream_write_file_schema:Object = {
     "id": "/StreamWriteFileObject",
     "type": "object",
     "required": [
-        "file_path",
-        "file_data"
+        "file_path"
     ],
     "properties": {
         "file_path": {
             "type": "string",
             "containsNot":".."
         },
-        "file_data": {
-            "type": "string"
+        "stream": {
+            
+        },
+        "encrypt": {
+            "type": "boolean"
         }
     }
 }

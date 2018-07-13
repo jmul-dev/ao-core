@@ -5,6 +5,7 @@ import fs from 'fs-extra'
 import Dat from 'dat-node'
 import Message from '../messaging/message'
 import { Validator, SchemaError } from 'jsonschema'
+import encryptor from 'file-encryptor'
 import md5 from 'md5'
 import {
     read_file_schema,

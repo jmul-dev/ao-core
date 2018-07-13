@@ -336,20 +336,22 @@ export default class Router {
                     break;
             }
 
-            //Finally send off the message once the  pipes are made 
-            //(might need to change who the message is sent to based on which way the data is flowing)
-            
             try {
-                delete message.data.stream
                 to_process.send(message)
-                if(registry_item.multi_instance) {
-                    this.registry.markUsed(registry_item.name, to_instance.instance_id)
-                }
-                resolve()
             } catch (error) {
-                console.log('failed send')
-                reject(error)
+                if(error instanceof TypeError) {
+                    delete message.data.stream
+                    to_process.send(message)
+                } else {
+                    console.log('failed send')
+                    reject(error)
+                }
             }
+
+            if(registry_item.multi_instance) {
+                this.registry.markUsed(registry_item.name, to_instance.instance_id)
+            }
+            resolve()
         })
     }
 }
