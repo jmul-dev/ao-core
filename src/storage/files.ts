@@ -2,6 +2,7 @@
 'use strict';
 import { join } from "path";
 import fs from 'fs-extra'
+import Dat from 'dat-node'
 import Message from '../messaging/message'
 import { Validator, SchemaError } from 'jsonschema'
 import md5 from 'md5'
@@ -150,7 +151,8 @@ class Files {
                                 message_sender: message.from,
                                 original_event: message.event,
                                 file_data: file_data ? file_data : null,
-                                stream_direction: stream_direction ? stream_direction : null
+                                stream_direction: stream_direction ? stream_direction : null,
+                                dat: message.data.dat ? message.data.dat : false
                             },
                             encoding: "json"
                         })
@@ -297,7 +299,19 @@ class Files {
             var full_path = join(this.data_folder,message_data.folder_path)
             fs.ensureDir(full_path)
             .then( () => {
-                resolve()
+                if(message_data.dat == true) {
+                    Dat(full_path, (err,dat) => {
+                        if(err) {
+                            reject(err)
+                        }
+                        dat.importFiles()
+                        dat.joinNetwork(() => {
+                        })// this has a callback mechanism 
+                        resolve()
+                    })
+                } else {
+                    resolve()
+                }
             })
             .catch( (err) => {
                 reject(err)

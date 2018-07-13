@@ -106,6 +106,9 @@ const make_folder_schema:Object = {
         "folder_path": {
             "type": "string",
             "containsNot":".."
+        },
+        "dat": {
+            "type": "boolean"
         }
     }
 }

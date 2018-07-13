@@ -14,9 +14,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var graphql_tools_1 = require("graphql-tools");
 var graphql_import_1 = require("graphql-import");
 var path_1 = __importDefault(require("path"));
+var join = path_1.default.join;
 var graphqlSchema = graphql_import_1.importSchema(path_1.default.resolve(__dirname, './schema.graphql'));
 var mocks_1 = __importDefault(require("./mocks"));
 var mockVideos_1 = require("./mockVideos");
+var message_1 = __importDefault(require("../messaging/message"));
 var packageJson = require('../../package.json');
 var apollo_upload_server_1 = require("apollo-upload-server");
 var debug_1 = __importDefault(require("debug"));
@@ -30,6 +32,7 @@ var mockStore = {
     videos: mockVideos_1.generateMockVideoList()
 };
 function default_1(db, router) {
+    var _this = this;
     var schema = graphql_tools_1.makeExecutableSchema({
         typeDefs: [graphqlSchema],
         resolvers: {
@@ -57,14 +60,43 @@ function default_1(db, router) {
                                 id: args.inputs.ethAddress,
                                 ethAddress: args.inputs.ethAddress
                             };
-                            resolve(mockStore.node);
+                            var data_folder_message = new message_1.default({
+                                app_id: 'testing',
+                                type_id: "message",
+                                event: "make_folder",
+                                from: 'http',
+                                data: {
+                                    folder_path: join('users', args.inputs.ethAddress, 'data') //might as well make the data folder.  this works like mkdirp
+                                },
+                                encoding: 'json'
+                            });
+                            this.router.invokeSubProcess(data_folder_message.toJSON(), 'filesSubProcess')
+                                .then(function () {
+                                resolve(mockStore.node);
+                            })
+                                .catch(function (e) { return error; });
                         }, 2500);
                     });
                 },
                 updateSettings: function (obj, args, context, info) {
                     return new Promise(function (resolve, reject) {
                         mockStore.settings = __assign({}, mockStore.settings, args.inputs);
-                        resolve(mockStore.settings);
+                        var save_settings_message = new message_1.default({
+                            app_id: 'testing',
+                            type_id: "message",
+                            event: "write_file",
+                            from: 'http',
+                            data: {
+                                file_path: join('users', args.inputs.ethAddress, 'settings.json'),
+                                file_data: mockStore.settings
+                            },
+                            encoding: 'json'
+                        });
+                        _this.router.invokeSubProcess(save_settings_message.toJSON(), 'filesSubProcess')
+                            .then(function () {
+                            resolve(mockStore.settings);
+                        })
+                            .catch(function (e) { return error; });
                     });
                 },
                 submitVideoContent: function (obj, args, context, info) {
