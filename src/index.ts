@@ -1,7 +1,6 @@
 'use strict';
 import { EVENT_LOG, DATA, DATA_TYPES } from './constants';
 import { ChildProcess } from "child_process";
-import Database from "./main/database";
 import Debug from 'debug';
 import { Server } from 'net';
 import Registry from './messaging/registry';
@@ -11,6 +10,7 @@ const debug = Debug('ao:core');
 const error = Debug('ao:core:error');
 
 //Main classes
+import Database from "./main/database";
 import Http from './main/http';
 
 
