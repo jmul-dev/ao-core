@@ -28,7 +28,7 @@ build-master:
     - npm run build
   artifacts:
     when: on_success
-    expire_in: 1 hrs
+    expire_in: 6 hrs
     untracked: true
     paths:
       - src/
@@ -49,3 +49,4 @@ release-master:
   script:
     - $(npm bin)/gitlab-ci-releaser
     - npm publish
+  when: manual
