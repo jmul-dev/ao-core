@@ -1,6 +1,6 @@
 {
   "name": "ao-core",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "AO - Core",
   "main": "src/index.js",
   "bin": {
