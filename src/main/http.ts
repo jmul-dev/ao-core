@@ -15,15 +15,13 @@ import Database from "../storage/database";
 import Router from '../messaging/router';
 import Message from '../messaging/message';
 import { MessageObject } from '../messaging/message_interfaces'
+import { ICoreOptions } from '../bin';
 
 const debug = Debug('ao:http');
 const error = Debug('ao:http:error');
 
 export default class Http {
-    private options: {
-        httpPort: number;
-        disableHttpInterface: boolean;
-    };
+    private options: ICoreOptions;
     private db: Database;
     private server: Server;
     private router: Router;
@@ -44,7 +42,7 @@ export default class Http {
             const graphqlSchema = schema(this.db, this.router);
             expressServer.use(
                 '/graphql', 
-                cors({origin: 'http://localhost:3000'}), 
+                cors({origin: this.options.httpOrigin}), 
                 json(), 
                 apolloUploadExpress({maxFieldSize: "1gb"}),
                 graphqlExpress({ schema: graphqlSchema })

@@ -6,6 +6,7 @@ import Debug from 'debug';
 import { Server } from 'net';
 import Registry from './messaging/registry';
 import Router from './messaging/router';
+import { ICoreOptions } from './bin';
 
 const debug = Debug('ao:core');
 const error = Debug('ao:core:error');
@@ -15,10 +16,7 @@ import Http from './main/http';
 
 
 export default class Core {
-    public options: {
-        httpPort: number;
-        disableHttpInterface: boolean;
-    };
+    public options: ICoreOptions;
     private db: Database;
     private http: Http;
     private server: Server;
