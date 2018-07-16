@@ -1,8 +1,11 @@
 'use strict'
-import Router from "../messaging/router";
-import Message  from "../messaging/message";
+import toilet from 'toiletdb'
+import { join } from "path";
 import md5 from 'md5'
 import Debug from 'debug';
+
+import Router from "../messaging/router";
+import Message  from "../messaging/message";
 import { MessageObject } from "../messaging/message_interfaces";
 
 const debug = Debug('ao:db');
@@ -13,8 +16,8 @@ class Database {
     private peers: Object = {};
     private logs: Array<{}> = [];
     private router:Router
-    module_name:string = 'database'
-    instance_id:string = md5( new Date().getTime() + Math.random() )
+    public module_name:string = 'database'
+    public instance_id:string = md5( new Date().getTime() + Math.random() )
 
     constructor(router:Router) {
         this.router = router        
@@ -49,36 +52,6 @@ class Database {
             })
         })
     }
-    public async close() {
-        return Promise.resolve();
-    }
-    public addPeer(peerId: string) {
-        this.peers[peerId] = {
-            id: peerId,
-            dateCreated: Date.now()
-        }
-    }
-    public removePeer(peerId: string) {
-        delete this.peers[peerId]
-    }
-    /**
-     * Logs
-     */
-    public addLog(log) {
-        this.logs.push({
-            ...log,
-            dateCreated: Date.now()
-        })
-    }
-    public getLogs() {
-        return this.logs
-    }
-
-    public eth_address:string
-    public setEthAddress(eth_address:string) {
-        this.eth_address = eth_address
-    }
-
     //This is for subprocesses to be able to send stuff to the DB.
     public send( message:MessageObject) {
         debug( message )
@@ -104,6 +77,77 @@ class Database {
             this.router.invokeSubProcess(cb_message.toJSON(),this.module_name)
         }
     }
+
+    public eth_address:string    
+    public async setEthAddress(eth_address:string) {
+        return new Promise( (resolve,reject) => {
+            this.eth_address = eth_address
+            //if the eth_address is set, we need to make sure that database is switched out.
+            this.setDatabase()
+            .then(() => {
+                resolve();
+            })
+            .catch(e => {
+                reject(e)
+            })
+        })
+    }
+
+    public data_folder:string
+    public db_path:string
+    public db:toilet
+    public async setDatabase() {
+        return new Promise((resolve,reject) => {
+            this.data_folder = join( 'data', 'files', this.eth_address )
+            this.db_path = join(this.data_folder, 'db.json')
+            this.db = toilet(this.db_path)
+            try {
+                this.db.open(() => {
+                    resolve()
+                })
+            } catch(e) {
+                reject(e)
+            }
+            
+        })
+    }
+
+    public async close() {
+        return Promise.resolve();
+    }
+
+
+    public addPeer(peerId: string) {
+        this.peers[peerId] = {
+            id: peerId,
+            dateCreated: Date.now()
+        }
+    }
+
+    public removePeer(peerId: string) {
+        delete this.peers[peerId]
+    }
+    /**
+     * Logs
+     */
+    public addLog(log) {
+        this.logs.push({
+            ...log,
+            dateCreated: Date.now()
+        })
+        //just let this hang, no need for the function to be Promised
+        this.db.write('logs', this.logs, (err) => {
+            if(err) {
+                error(err)
+            }
+        })
+    }
+    public getLogs() {
+        return this.logs
+    }
+
+
+    
 }
 
 export default Database;

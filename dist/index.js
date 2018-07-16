@@ -39,12 +39,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var constants_1 = require("./constants");
-var database_1 = __importDefault(require("./main/database"));
 var debug_1 = __importDefault(require("debug"));
 var registry_1 = __importDefault(require("./messaging/registry"));
 var debug = debug_1.default('ao:core');
 var error = debug_1.default('ao:core:error');
 //Main classes
+var database_1 = __importDefault(require("./main/database"));
 var http_1 = __importDefault(require("./main/http"));
 var Core = /** @class */ (function () {
     function Core(args) {
