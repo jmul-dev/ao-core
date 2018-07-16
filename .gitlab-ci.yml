@@ -18,6 +18,8 @@ build-master:
   stage: build
   only:
     - master
+  except:
+    - tags
   tags:
     - centos7
   script:
@@ -28,11 +30,14 @@ build-master:
     untracked: true
     paths:
       - src/
+      - dist/
 
 release-master:
   stage: release
   only:
     - master
+  except:
+    - tags
   tags:
     - centos7  
   before_script:
