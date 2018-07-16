@@ -83,7 +83,7 @@ class Database {
         return new Promise( (resolve,reject) => {
             this.eth_address = eth_address
             //if the eth_address is set, we need to make sure that database is switched out.
-            this.setDatabase()
+            this.openDatabase()
             .then(() => {
                 resolve();
             })
@@ -96,7 +96,10 @@ class Database {
     public data_folder:string
     public db_path:string
     public db:toilet
-    public async setDatabase() {
+    public DB_OPEN_ERROR:string = 'Database not yet opened. Log saved to local state.'
+    public DB_READ_ERROR:string = 'Database not readable.'
+    public DB_WRITE_ERROR:string = 'Database not writeable.'
+    public async openDatabase() {
         return new Promise((resolve,reject) => {
             this.data_folder = join( 'data', 'files', this.eth_address )
             this.db_path = join(this.data_folder, 'db.json')
@@ -136,17 +139,52 @@ class Database {
             dateCreated: Date.now()
         })
         //just let this hang, no need for the function to be Promised
-        this.db.write('logs', this.logs, (err) => {
-            if(err) {
-                error(err)
-            }
-        })
+        if(this.db) {
+            this.db.write('logs', this.logs, (err) => {
+                if(err) {
+                    error(err)
+                }
+            })
+        } else {
+            debug(this.DB_OPEN_ERROR)
+        }
     }
     public getLogs() {
         return this.logs
     }
 
-
+    /**
+     * Settings
+     */
+    public readSettings() {
+       return new Promise((resolve,reject) => {
+            if(this.db) {
+                this.db.read('settings', (err, data) => {
+                    if(err) {
+                        reject(this.DB_READ_ERROR)
+                    }
+                    resolve(data)
+                }) 
+            } else {
+                reject(this.DB_OPEN_ERROR)
+            }
+       }) 
+    }
+    
+    public writeSettings(data) {
+        return new Promise((resolve,reject) => {
+            if(this.db) {
+                this.db.write('settings', data, (err) => {
+                    if(err) {
+                        reject(this.DB_WRITE_ERROR)
+                    }
+                    resolve()
+                }) 
+            } else {
+                reject(this.DB_OPEN_ERROR)
+            }
+        })
+    }
     
 }
 
