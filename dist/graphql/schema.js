@@ -21,6 +21,7 @@ var mockVideos_1 = require("./mockVideos");
 var message_1 = __importDefault(require("../messaging/message"));
 var packageJson = require('../../package.json');
 var apollo_upload_server_1 = require("apollo-upload-server");
+var md5_1 = __importDefault(require("md5"));
 var debug_1 = __importDefault(require("debug"));
 var debug = debug_1.default('ao:graphql');
 var error = debug_1.default('ao:graphql:error');
@@ -32,7 +33,6 @@ var mockStore = {
     videos: mockVideos_1.generateMockVideoList()
 };
 function default_1(db, router) {
-    var _this = this;
     var schema = graphql_tools_1.makeExecutableSchema({
         typeDefs: [graphqlSchema],
         resolvers: {
@@ -60,45 +60,39 @@ function default_1(db, router) {
                                 id: args.inputs.ethAddress,
                                 ethAddress: args.inputs.ethAddress
                             };
-                            this.db.setEthAddress(args.inputs.ethAddress);
-                            //Make Data Folder with the Eth Address
-                            var data_folder_message = new message_1.default({
-                                app_id: 'testing',
-                                type_id: "message",
-                                event: "make_folder",
-                                from: 'http',
-                                data: {
-                                    folder_path: join('data', args.inputs.ethAddress, 'dat') //might as well make the dat folder.  this works like mkdirp
-                                },
-                                encoding: 'json'
-                            });
-                            this.router.invokeSubProcess(data_folder_message.toJSON(), 'filesSubProcess')
+                            db.setEthAddress(args.inputs.ethAddress)
                                 .then(function () {
-                                resolve(mockStore.node);
+                                //Make Data Folder with the Eth Address
+                                var data_folder_message = new message_1.default({
+                                    app_id: 'testing',
+                                    type_id: "message",
+                                    event: "make_folder",
+                                    from: 'http',
+                                    data: {
+                                        folder_path: join(args.inputs.ethAddress, 'dat') //might as well make the dat folder.  this works like mkdirp
+                                    },
+                                    encoding: 'json'
+                                });
+                                router.invokeSubProcess(data_folder_message.toJSON(), 'http')
+                                    .then(function () {
+                                    resolve(mockStore.node);
+                                })
+                                    .catch(function (e) { return error; });
                             })
-                                .catch(function (e) { return error; });
+                                .catch(function (e) { return reject(e); });
                         }, 2500);
                     });
                 },
                 updateSettings: function (obj, args, context, info) {
                     return new Promise(function (resolve, reject) {
                         mockStore.settings = __assign({}, mockStore.settings, args.inputs);
-                        var save_settings_message = new message_1.default({
-                            app_id: 'testing',
-                            type_id: "message",
-                            event: "write_file",
-                            from: 'http',
-                            data: {
-                                file_path: join('users', args.inputs.ethAddress, 'settings.json'),
-                                file_data: mockStore.settings
-                            },
-                            encoding: 'json'
-                        });
-                        _this.router.invokeSubProcess(save_settings_message.toJSON(), 'filesSubProcess')
+                        db.writeSettings(mockStore.settings)
                             .then(function () {
                             resolve(mockStore.settings);
                         })
-                            .catch(function (e) { return error; });
+                            .catch(function (e) {
+                            reject(e);
+                        });
                     });
                 },
                 submitVideoContent: function (obj, args, context, info) {
@@ -107,23 +101,27 @@ function default_1(db, router) {
                         args.inputs.video.then(function (_a) {
                             var stream = _a.stream, filename = _a.filename, mimetype = _a.mimetype, encoding = _a.encoding;
                             debug("video: filename[" + filename + "] mimetype[" + mimetype + "] encoding[" + encoding + "]");
+                            var new_dat_folder = md5_1.default(new Date);
+                            var eth_address = db.getEthAddress();
+                            var full_path = join(eth_address, 'dat', new_dat_folder, filename);
                             // send message through router to store file
-                            // var message = new Message({
-                            //     app_id: 'testing', //TBD
-                            //     type_id: "stream",
-                            //     event: "stream_write_file",
-                            //     from: "http",
-                            //     data: {
-                            //         stream: stream,
-                            //         file_path: 'video-upload-'+filename+ md5(new Date) //TODO: Figure out the pathing for this.
-                            //     },
-                            //     encoding: "json"
-                            // })
-                            // router.invokeSubProcess(message, 'filesSubProcess').then(() => {
-                            //     debug(`${filename} saved!`)
-                            // }).catch(err => {
-                            //     error(`${filename} error during save`, err)
-                            // })
+                            var message = new message_1.default({
+                                app_id: 'testing',
+                                type_id: "stream",
+                                event: "stream_write_file",
+                                from: "http",
+                                data: {
+                                    stream: stream,
+                                    stream_direction: 'output',
+                                    file_path: full_path
+                                },
+                                encoding: "json"
+                            });
+                            router.invokeSubProcess(message.toJSON(), 'http').then(function () {
+                                debug(filename + " saved!");
+                            }).catch(function (err) {
+                                error(filename + " error during save", err);
+                            });
                         });
                         // TODO: resolve once submition is complete
                         resolve();

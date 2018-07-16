@@ -85,12 +85,17 @@ class Database {
             //if the eth_address is set, we need to make sure that database is switched out.
             this.openDatabase()
             .then(() => {
+                debug('Ethereum Address set')
                 resolve();
             })
             .catch(e => {
                 reject(e)
             })
         })
+    }
+
+    public getEthAddress() {
+        return this.eth_address
     }
 
     public data_folder:string

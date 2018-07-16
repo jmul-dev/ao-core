@@ -1,6 +1,6 @@
 #!/usr/local/bin/node
 'use strict';
-import { join } from "path";
+import { join, dirname } from "path";
 import fs from 'fs-extra'
 import Dat from 'dat-node'
 import crypto from 'crypto'
@@ -252,26 +252,50 @@ class Files implements SubProcess{
                 reject(result.errors)
             }
             var full_path = join(this.data_folder,message_data.file_path)
-            var stream = message_data.stream
+            var dir_path = dirname(full_path)
+
+            try {
+                fs.ensureDir(dir_path)
+            } catch(e) {
+                reject(e)
+            }
+
+            if(message_data.stream) {
+                var stream = message_data.stream
+            } else {
+                var stream = fs.createReadStream(null, {fd:4})
+            }
+
             stream.on('error', (err) => {
                 if(stream.trucated || err) {
                     fs.unlinkSync(full_path)
                 }
+                debug(err)
                 reject(err)
             })
+            
             if(message_data.encrypt) {
                 //If you use encrypt, you definitely need to give the message a callback event
                 var key = md5(this.instance_id + new Date().getSeconds() + Math.random() )
                 var encrypt = crypto.createCipher(this.encryption_algo, key)
                 stream.pipe( encrypt )
                 .pipe( fs.createWriteStream(full_path) )
-                .on('error', err => reject(err))
-                .on('finish', () => {
+                .on('error', err => {
+                    debug('Pipe error')
+                    reject(err)
+                })
+
+                stream.on('finish', () => {
                     resolve(key)
                 } )
             } else {
                 stream.pipe( fs.createWriteStream(full_path) )
-                .on('error', err => reject(err))
+                .on('error', err => {
+                    debug('Pipe error')
+                    reject(err)
+                })
+
+                stream
                 .on('finish', () => resolve() )
             }
         })

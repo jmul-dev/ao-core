@@ -55,26 +55,26 @@ export default function (db: Database, router: Router) {
                                 ethAddress: args.inputs.ethAddress
                             }
 
-                            this.db.setEthAddress(args.inputs.ethAddress)
-
-                            //Make Data Folder with the Eth Address
-                            var data_folder_message = new Message({
-                                app_id: 'testing',
-                                type_id: "message",
-                                event: "make_folder",
-                                from: 'http',
-                                data: {
-                                    folder_path: join('data', args.inputs.ethAddress,'dat') //might as well make the dat folder.  this works like mkdirp
-                                },
-                                encoding: 'json'
-                            })
-                            this.router.invokeSubProcess(data_folder_message.toJSON(), 'filesSubProcess')
+                            db.setEthAddress(args.inputs.ethAddress)
                             .then(() => {
-                                resolve(mockStore.node)
+                                //Make Data Folder with the Eth Address
+                                var data_folder_message = new Message({
+                                    app_id: 'testing',
+                                    type_id: "message",
+                                    event: "make_folder",
+                                    from: 'http',
+                                    data: {
+                                        folder_path: join(args.inputs.ethAddress,'dat') //might as well make the dat folder.  this works like mkdirp
+                                    },
+                                    encoding: 'json'
+                                })
+                                router.invokeSubProcess(data_folder_message.toJSON(), 'http')
+                                .then(() => {
+                                    resolve(mockStore.node)
+                                })
+                                .catch(e => error)
                             })
-                            .catch(e => error)
-
-                            
+                            .catch(e => reject(e))
                         }, 2500)                        
                     })
                 },
@@ -84,22 +84,13 @@ export default function (db: Database, router: Router) {
                             ...mockStore.settings,
                             ...args.inputs,
                         }
-                        var save_settings_message = new Message({
-                            app_id: 'testing',
-                            type_id: "message",
-                            event: "write_file",
-                            from: 'http',
-                            data: {
-                                file_path: join('users', args.inputs.ethAddress,'settings.json'),
-                                file_data: mockStore.settings
-                            },
-                            encoding: 'json'
-                        })
-                        this.router.invokeSubProcess(save_settings_message.toJSON(), 'filesSubProcess')
+                        db.writeSettings(mockStore.settings)
                         .then(() => {
                             resolve(mockStore.settings)
                         })
-                        .catch(e => error)
+                        .catch(e => {
+                            reject(e)
+                        })
                     })
                 },
                 submitVideoContent: (obj, args, context, info) => {
@@ -107,23 +98,28 @@ export default function (db: Database, router: Router) {
                         // TODO: handle file uploads: video, videoTeaser, featuredImage
                         args.inputs.video.then(({stream, filename, mimetype, encoding}) => {
                             debug(`video: filename[${filename}] mimetype[${mimetype}] encoding[${encoding}]`)
+                            var new_dat_folder:string = md5(new Date)
+                            var eth_address:string = db.getEthAddress()
+                            var full_path = join( eth_address , 'dat', new_dat_folder, filename )
+
                             // send message through router to store file
-                            // var message = new Message({
-                            //     app_id: 'testing', //TBD
-                            //     type_id: "stream",
-                            //     event: "stream_write_file",
-                            //     from: "http",
-                            //     data: {
-                            //         stream: stream,
-                            //         file_path: 'video-upload-'+filename+ md5(new Date) //TODO: Figure out the pathing for this.
-                            //     },
-                            //     encoding: "json"
-                            // })
-                            // router.invokeSubProcess(message, 'filesSubProcess').then(() => {
-                            //     debug(`${filename} saved!`)
-                            // }).catch(err => {
-                            //     error(`${filename} error during save`, err)
-                            // })
+                            var message = new Message({
+                                app_id: 'testing', //TBD
+                                type_id: "stream",
+                                event: "stream_write_file",
+                                from: "http",
+                                data: {
+                                    stream: stream,
+                                    stream_direction: 'output',
+                                    file_path: full_path
+                                },
+                                encoding: "json"
+                            })
+                            router.invokeSubProcess(message.toJSON(), 'http').then(() => {
+                                debug(`${filename} saved!`)
+                            }).catch(err => {
+                                error(`${filename} error during save`, err)
+                            })
                         })
                         // TODO: resolve once submition is complete
                         resolve()

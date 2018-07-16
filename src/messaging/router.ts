@@ -273,7 +273,7 @@ export default class Router {
                     switch(transaction_type) {
                         case 'sub2sub':
                             to_process.stdio[4].on('error', (err) => {
-                                debug('Stream output sub2sub' + err)
+                                debug('Stream output sub2sub: ' + err)
                             })
                             var from_stream = from_process.stdio[3]
                             from_stream.pipe(to_process.stdio[4])
@@ -287,9 +287,9 @@ export default class Router {
                         case 'main2sub':
                             //pipe message.data.stream to to_process.stdio[4] (note that its not from_process.stream since from knows about the scenario)
                             to_process.stdio[4].on('error', (err) => {
-                                debug('Stream output main2sub'+err)
+                                debug('Stream output main2sub: '+err)
                             })
-                            message.data.stream(to_process.stdio[4])
+                            message.data.stream.pipe(to_process.stdio[4])
                             break;
                         default:
                             reject('no transaction_type for output')
@@ -323,7 +323,7 @@ export default class Router {
                             from_process.stdio[4].on('error', (err) => {
                                 debug('Stream input main2sub: ' + err)
                             })
-                            to_process.stream(from_process.stdio[4])
+                            to_process.stream.pipe(from_process.stdio[4])
                             break;
                         default:
                             reject('no transaction_type for input')
@@ -341,6 +341,7 @@ export default class Router {
             } catch (error) {
                 if(error instanceof TypeError) {
                     delete message.data.stream
+                    debug('Stream cut from message data')
                     to_process.send(message)
                 } else {
                     console.log('failed send')
