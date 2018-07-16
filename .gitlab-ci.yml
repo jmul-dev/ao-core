@@ -8,9 +8,11 @@ stages:
   - release
 
 build-development:
-  stage: build
+  stage: build  
   except:
     - master
+  tags:
+    - centos7
   script:
     - npm run build
 
@@ -26,7 +28,7 @@ build-master:
     - npm run build
   artifacts:
     when: on_success
-    expire_in: 2 hrs
+    expire_in: 1 hrs
     untracked: true
     paths:
       - src/
@@ -40,6 +42,8 @@ release-master:
     - tags
   tags:
     - centos7  
+  dependencies:
+    - build-master
   before_script:
     - npm install gitlab-ci-releaser
   script:
