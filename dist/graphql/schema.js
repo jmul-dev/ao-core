@@ -97,34 +97,83 @@ function default_1(db, router) {
                 },
                 submitVideoContent: function (obj, args, context, info) {
                     return new Promise(function (resolve, reject) {
-                        // TODO: handle file uploads: video, videoTeaser, featuredImage
-                        args.inputs.video.then(function (_a) {
-                            var stream = _a.stream, filename = _a.filename, mimetype = _a.mimetype, encoding = _a.encoding;
-                            debug("video: filename[" + filename + "] mimetype[" + mimetype + "] encoding[" + encoding + "]");
-                            var new_dat_folder = md5_1.default(new Date);
-                            var eth_address = db.getEthAddress();
-                            var full_path = join(eth_address, 'dat', new_dat_folder, filename);
-                            // send message through router to store file
-                            var message = new message_1.default({
+                        var new_dat_folder = md5_1.default(new Date);
+                        var eth_address = db.getEthAddress();
+                        var base_path = join(eth_address, 'dat', new_dat_folder);
+                        // Let's see if we can promise our way through this giant mess
+                        var all_inputs = ['video', 'videoTeaser', 'featuredImage'];
+                        var all_promises = [];
+                        var _loop_1 = function (i) {
+                            var input_name = all_inputs[i];
+                            new_promise = new Promise(function (res, rej) {
+                                args.inputs[input_name].then(function (_a) {
+                                    var stream = _a.stream, filename = _a.filename, mimetype = _a.mimetype, encoding = _a.encoding;
+                                    //debug(`video: filename[${filename}] mimetype[${mimetype}] encoding[${encoding}]`)
+                                    var full_path = join(base_path, input_name);
+                                    // send message through router to store file
+                                    var message = new message_1.default({
+                                        app_id: 'testing',
+                                        type_id: "stream",
+                                        event: "stream_write_file",
+                                        from: "http",
+                                        data: {
+                                            stream: stream,
+                                            stream_direction: 'output',
+                                            dat_folder: new_dat_folder,
+                                            file_path: full_path,
+                                            callback_event: "dat_file_uploaded"
+                                        },
+                                        encoding: "json"
+                                    });
+                                    router.invokeSubProcess(message.toJSON(), 'http')
+                                        .then(function () {
+                                        //debug(`${filename} save started!`)
+                                        res();
+                                    }).catch(function (err) {
+                                        error(filename + " error during save", err);
+                                        rej(err);
+                                    });
+                                }).catch(function (e) { rej(e); });
+                            });
+                            all_promises.push(new_promise);
+                        };
+                        var new_promise;
+                        for (var i = 0; i < all_inputs.length; i++) {
+                            _loop_1(i);
+                        }
+                        //All Promises
+                        Promise.all(all_promises)
+                            .then(function () {
+                            debug('All uploads started');
+                            //Time to start working on JSON creation
+                            var file_json = {
+                                title: args.inputs.title,
+                                description: args.inputs.description,
+                                stake: args.inputs.stake,
+                                profit: args.inputs.profit,
+                                owner: eth_address
+                            };
+                            var write_json_message = new message_1.default({
                                 app_id: 'testing',
-                                type_id: "stream",
-                                event: "stream_write_file",
+                                type_id: "message",
+                                event: "write_file",
                                 from: "http",
                                 data: {
-                                    stream: stream,
-                                    stream_direction: 'output',
-                                    file_path: full_path
+                                    file_path: join(base_path, 'video.json'),
+                                    file_data: file_json
                                 },
                                 encoding: "json"
                             });
-                            router.invokeSubProcess(message.toJSON(), 'http').then(function () {
-                                debug(filename + " saved!");
-                            }).catch(function (err) {
-                                error(filename + " error during save", err);
+                            router.invokeSubProcess(write_json_message.toJSON(), 'http')
+                                .then(function () {
+                                resolve();
+                            })
+                                .catch(function (e) {
+                                reject(e);
                             });
+                        }).catch(function (e) {
+                            reject(e);
                         });
-                        // TODO: resolve once submition is complete
-                        resolve();
                     });
                 },
             },

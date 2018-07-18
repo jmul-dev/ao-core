@@ -16,12 +16,25 @@ const dat_add_schema:Object = {
     "id": "/DatAddObject",
     "type": "object",
     "required": [
-        "file_path"
+        "file_path",
+        "file_json"
     ],
     "properties": {
         "file_path": {
             "type": "string"
+        },
+        "file_json": {
+            
         }
+    }
+}
+
+const dat_file_uploaded_schema:Object = {
+    "id": "/DatFileUploadedObject",
+    "type": "object",
+    "required": [
+    ],
+    "properties": {
     }
 }
 
@@ -54,6 +67,7 @@ const dat_stop_schema:Object = {
 export {
     dat_resume_all_schema,
     dat_add_schema,
+    dat_file_uploaded_schema,
     dat_pause_schema,
     dat_stop_schema
 }

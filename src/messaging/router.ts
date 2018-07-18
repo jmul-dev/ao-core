@@ -289,7 +289,7 @@ export default class Router {
                             to_process.stdio[4].on('error', (err) => {
                                 debug('Stream output main2sub: '+err)
                             })
-                            message.data.stream.pipe(to_process.stdio[4])
+                            message.data.stream.pipe( to_process.stdio[4] )
                             break;
                         default:
                             reject('no transaction_type for output')
@@ -344,7 +344,7 @@ export default class Router {
                     debug('Stream cut from message data')
                     to_process.send(message)
                 } else {
-                    console.log('failed send')
+                    error('failed send')
                     reject(error)
                 }
             }

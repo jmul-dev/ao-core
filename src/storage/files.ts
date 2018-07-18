@@ -142,7 +142,9 @@ class Files implements SubProcess{
                 }
 
                 fs_promise.then((file_data) => {
+                    debug('callback_event: '+ message.data.callback_event)
                     if(message.data.callback_event) {
+                        debug('Sending back a message')
                         var callback_message = new Message({
                             app_id: 'testing', //TBD
                             event: message.data.callback_event,
@@ -152,9 +154,10 @@ class Files implements SubProcess{
                             data: {
                                 message_sender: message.from,
                                 original_event: message.event,
-                                file_data: file_data ? file_data : null,
+                                file_data: file_data ? file_data : null,    //returns stats for writes so we know what happened.
                                 stream_direction: stream_direction ? stream_direction : null,
-                                dat: message.data.dat ? message.data.dat : false
+                                dat: message.data.dat ? message.data.dat : false,
+                                original_data: message.data ? message.data : null //Passing original data back with it too.
                             },
                             encoding: "json"
                         })
@@ -237,7 +240,10 @@ class Files implements SubProcess{
             })
             .then( (data) => {
                 //You can verify data here if ya want
-                resolve()
+                var file_data = {
+                    stats: fs.statSync(full_path)
+                }
+                resolve(file_data)
             })
             .catch( (err) => {
                 reject(err)
@@ -253,7 +259,7 @@ class Files implements SubProcess{
             }
             var full_path = join(this.data_folder,message_data.file_path)
             var dir_path = dirname(full_path)
-
+            
             try {
                 fs.ensureDir(dir_path)
             } catch(e) {
@@ -271,32 +277,33 @@ class Files implements SubProcess{
                     fs.unlinkSync(full_path)
                 }
                 debug(err)
-                reject(err)
+                reject()
             })
+
+            var writeTo = fs.createWriteStream(full_path)
             
             if(message_data.encrypt) {
                 //If you use encrypt, you definitely need to give the message a callback event
                 var key = md5(this.instance_id + new Date().getSeconds() + Math.random() )
                 var encrypt = crypto.createCipher(this.encryption_algo, key)
-                stream.pipe( encrypt )
-                .pipe( fs.createWriteStream(full_path) )
-                .on('error', err => {
-                    debug('Pipe error')
-                    reject(err)
-                })
-
-                stream.on('finish', () => {
-                    resolve(key)
+                stream.pipe( encrypt ).pipe( writeTo )
+                .on('finish', () => {
+                    var file_data = {
+                        stats: fs.statSync(full_path),
+                        key: key
+                    }
+                    stream.close()
+                    resolve(file_data)
                 } )
             } else {
-                stream.pipe( fs.createWriteStream(full_path) )
-                .on('error', err => {
-                    debug('Pipe error')
-                    reject(err)
+                stream.pipe( writeTo )
+                .on('finish', () => {
+                    var file_data = {
+                        stats: fs.statSync(full_path)
+                    }
+                    stream.close()
+                    resolve(file_data)
                 })
-
-                stream
-                .on('finish', () => resolve() )
             }
         })
     }

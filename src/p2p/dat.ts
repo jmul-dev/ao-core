@@ -2,14 +2,17 @@
 'use strict';
 import SubProcess from '../subprocess_interface'
 import md5 from 'md5'
+import ffprobe from 'ffprobe'
+import ffprobeStatic from 'ffprobe-static'
 import Multidat from 'multidat'
 import toilet from 'toiletdb'
-import { join } from "path";
+import { join, basename, dirname } from "path";
 import Message from '../messaging/message';
 import { Validator } from 'jsonschema'
 import {
     dat_resume_all_schema,
     dat_add_schema,
+    dat_file_uploaded_schema,
     dat_stop_schema
 } from './dat_schemas'
 
@@ -101,6 +104,9 @@ class DatManager implements SubProcess {
                     case 'dat_add':
                         var dat_promise = this.datAdd(message.data)
                         break;
+                    case 'dat_file_uploaded':
+                        var dat_promise = this.datFileUploaded(message.data)
+                        break;
                     case 'dat_remove':
                         var dat_promise = this.datRemove(message.data)
                         break;
@@ -180,6 +186,67 @@ class DatManager implements SubProcess {
             })
         })
     }
+
+    public dat_folders:Object = {} // A way to store details for dat uploaded files.
+    //used to mark files uploaded to 
+    async datFileUploaded(message_data) {
+        return new Promise( (resolve,reject) => {
+            var result = this.validator.validate(message_data, dat_file_uploaded_schema)
+            if(!result.valid) {
+                reject(result.errors)
+            }
+            const dat_folder = message_data.original_data.dat_folder
+            const file_size = message_data.file_data.stats.size
+            const file_path = join('data','files',message_data.original_data.file_path)
+            const file_name = basename(message_data.original_data.file_path)
+            
+            if(file_name != 'featuredImage') {
+                ffprobe(file_path, { path: ffprobeStatic.path }, (err, info) => {
+                    if(err) {
+                        reject(err)
+                    }
+                    for (let i = 0; i < info.streams.length; i++) {
+                        const stream = info.streams[i];
+                        if(stream.codec_type == 'video') {
+                            const file_data = {
+                                file_type: 'video',
+                                codec: stream.codec_name,
+                                width: stream.width,
+                                height: stream.height,
+                                duration: stream.duration,
+                                file_size: file_size
+                            }
+                            if(typeof this.dat_folders[dat_folder] == 'undefined') {
+                                this.dat_folders[dat_folder] = {}
+                            }
+                            this.dat_folders[dat_folder][file_name] = file_data
+                            this.checkDatAdd(dat_folder, file_path)
+                            resolve()
+                            break;
+                        }
+                    }
+                })
+            } else {
+                const file_data = {
+                    file_type: 'image',
+                    file_size: file_size
+                }
+                this.dat_folders[dat_folder][file_name] = file_data
+                this.checkDatAdd(dat_folder, file_path)
+                resolve()
+            }
+        })
+    }
+    private checkDatAdd(dat_folder, file_path) {
+        if( Object.keys(this.dat_folders[dat_folder]).length == 3 ) {
+            debug('All dat files uploaded for ' + dat_folder)
+            this.datAdd({
+                full_path: dirname(file_path)
+            })
+        }
+    }
+
+
     async datRemove(message_data) {
         return new Promise( (resolve,reject) => {
             var result = this.validator.validate(message_data, dat_stop_schema)

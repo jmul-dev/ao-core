@@ -28,6 +28,8 @@
     "dat-node": "^3.5.11",
     "debug": "^3.1.0",
     "express": "^4.16.3",
+    "ffprobe": "^1.1.0",
+    "ffprobe-static": "^2.0.0",
     "fs-extra": "^6.0.1",
     "gitlab-ci-releaser": "^1.5.0",
     "graphql": "^0.13.2",

@@ -397,7 +397,7 @@ var Router = /** @class */ (function () {
                                 to_process.send(message);
                             }
                             else {
-                                console.log('failed send');
+                                error('failed send');
                                 reject(error);
                             }
                         }

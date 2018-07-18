@@ -123,7 +123,8 @@ var stored_registry = {
         file: '/p2p/dat.js',
         events: [
             "dat_callback_init",
-            "dat_resume",
+            "dat_add",
+            "dat_file_uploaded",
             "dat_pause",
             "dat_remove"
         ]
