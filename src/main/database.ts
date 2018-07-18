@@ -54,7 +54,6 @@ class Database {
     }
     //This is for subprocesses to be able to send stuff to the DB.
     public send( message:MessageObject) {
-        debug( message )
         switch(message.event) {
             case 'db_get_eth_address':
                 var send_data = {
@@ -85,8 +84,23 @@ class Database {
             //if the eth_address is set, we need to make sure that database is switched out.
             this.openDatabase()
             .then(() => {
-                debug('Ethereum Address set')
-                resolve();
+                debug('Ethereum Address set, also setting for dat')
+                const dat_eth_set = new Message({
+                    app_id: 'testing', //Should be passed to this thing on initial start.
+                    type_id: "message",
+                    event: "dat_set_eth_address",
+                    from: this.module_name,
+                    data: {
+                        eth_address: this.eth_address
+                    },
+                    encoding: 'json'
+                })
+                this.router.invokeSubProcess(dat_eth_set.toJSON(), this.module_name)
+                .then(() => {
+                    resolve()
+                }).catch(e => {
+                    reject(e)
+                })
             })
             .catch(e => {
                 reject(e)

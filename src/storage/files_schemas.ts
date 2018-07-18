@@ -73,6 +73,27 @@ const stream_write_file_schema:Object = {
     }
 }
 
+const merge_json_file_schema:Object = {
+    "id": "/MergeJSONFileObject",
+    "type": "object",
+    "required": [
+        "file_path",
+        "file_data"
+    ],
+    "properties": {
+        "file_path": {
+            "type": "string",
+            "containsNot":".."
+        },
+        "file_data": {
+        },
+        "encrypt": {
+            "type": "boolean"
+        }
+    }
+}
+
+
 const move_file_schema:Object = {
     "id": "/MoveFileObject",
     "type": "object",
@@ -163,6 +184,7 @@ export {
     stream_read_file_schema,
     write_file_schema,
     stream_write_file_schema,
+    merge_json_file_schema,
     move_file_schema,
     delete_file_schema,
     make_folder_schema,

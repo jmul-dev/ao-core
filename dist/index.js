@@ -62,8 +62,8 @@ var Core = /** @class */ (function () {
             _this.router = router;
         })
             .then(this.dbSetup.bind(this))
-            .then(this.spinUpSubProcesses.bind(this))
             .then(this.httpSetup.bind(this))
+            .then(this.spinUpSubProcesses.bind(this))
             .catch(function (e) {
             _this.shutdownWithError(e);
         });

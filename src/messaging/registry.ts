@@ -66,6 +66,7 @@ var stored_registry:any = {
             'stream_read_file',
             'write_file',
             'stream_write_file',
+            "merge_json_file",
             'move_file',
             'delete_file',
             'make_folder',
@@ -80,6 +81,7 @@ var stored_registry:any = {
         type: 'subprocess',
         file: '/p2p/dat.js',
         events: [
+            "dat_set_eth_address",
             "dat_callback_init",
             "dat_add",
             "dat_file_uploaded",

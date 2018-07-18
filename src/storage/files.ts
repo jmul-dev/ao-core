@@ -1,6 +1,6 @@
 #!/usr/local/bin/node
 'use strict';
-import { join, dirname } from "path";
+import { join, dirname, resolve } from "path";
 import fs from 'fs-extra'
 import Dat from 'dat-node'
 import crypto from 'crypto'
@@ -11,6 +11,7 @@ import {
     stream_read_file_schema,
     write_file_schema,
     stream_write_file_schema,
+    merge_json_file_schema,
     move_file_schema,
     delete_file_schema,
     make_folder_schema,
@@ -26,7 +27,6 @@ const error = Debug('ao:files:error');
 import Message from '../messaging/message'
 
 
-// Future use?: https://www.npmjs.com/package/file-encryptor
 class Files implements SubProcess{
     data_folder:string;
     validator:any;
@@ -119,6 +119,9 @@ class Files implements SubProcess{
                     case 'stream_write_file':
                         var fs_promise = this.streamWriteFile(message.data)
                         break;
+                    case 'merge_json_file':
+                        var fs_promise = this.mergeJSONFile(message.data)
+                        break;
                     case 'move_file':
                         var fs_promise = this.moveFile(message.data)
                         break;
@@ -142,8 +145,8 @@ class Files implements SubProcess{
                 }
 
                 fs_promise.then((file_data) => {
-                    debug('callback_event: '+ message.data.callback_event)
                     if(message.data.callback_event) {
+                        debug('callback_event: '+ message.data.callback_event)
                         debug('Sending back a message')
                         var callback_message = new Message({
                             app_id: 'testing', //TBD
@@ -157,7 +160,8 @@ class Files implements SubProcess{
                                 file_data: file_data ? file_data : null,    //returns stats for writes so we know what happened.
                                 stream_direction: stream_direction ? stream_direction : null,
                                 dat: message.data.dat ? message.data.dat : false,
-                                original_data: message.data ? message.data : null //Passing original data back with it too.
+                                original_data: message.data ? message.data : null, //Passing original data back with it too.
+                                ...message.callback_data
                             },
                             encoding: "json"
                         })
@@ -181,7 +185,7 @@ class Files implements SubProcess{
                 reject(result.errors)
             }
             var full_path = join(this.data_folder, message_data.file_path)
-            fs.readFile(full_path)
+            fs.readFile(full_path, "utf8")
             .then( (data) => {
                 resolve(data)
             })
@@ -305,6 +309,32 @@ class Files implements SubProcess{
                     resolve(file_data)
                 })
             }
+        })
+    }
+
+    async mergeJSONFile( message_data ) {
+        return new Promise( (resolve,reject) => {
+            var result = this.validator.validate(message_data, merge_json_file_schema)
+            if(!result.valid) {
+                reject(result.errors)
+            }
+            var full_path = join(this.data_folder, message_data.file_path)            
+            fs.readFile(full_path, "utf8")
+            .then( (data) => {
+                const json_data = JSON.parse(data)
+                var merged_data = {...json_data, ...message_data.file_data}
+                fs.writeFile(full_path, JSON.stringify(merged_data) )
+                .then(() => {
+                    resolve(merged_data)
+                })
+                .catch((err) => {
+                    reject(err)
+                })
+            })
+            .catch( (err) => {
+                reject(err)
+            })
+
         })
     }
 

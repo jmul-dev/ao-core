@@ -10,6 +10,7 @@ import { join, basename, dirname } from "path";
 import Message from '../messaging/message';
 import { Validator } from 'jsonschema'
 import {
+    dat_set_eth_address_schema,
     dat_resume_all_schema,
     dat_add_schema,
     dat_file_uploaded_schema,
@@ -19,6 +20,12 @@ import {
 import Debug from 'debug';
 const debug = Debug('ao:dat');
 const error = Debug('ao:dat:error');
+
+//Great for debugging stupid promise things that doesn't show
+// process.on('unhandledRejection', err => {
+//     console.log("Caught unhandledRejection");
+//     console.log(err);
+// });
 
 //Manages the Dat P2P processes
 class DatManager implements SubProcess {
@@ -31,7 +38,6 @@ class DatManager implements SubProcess {
         this.init()
         .then(this.register.bind(this))         //Register first to messaging
         .then(this.onMessageRouter.bind(this))  //Get message listeners up
-        .then(this.getEthAddress.bind(this))    //Sends request to database and asks for eth address
         .catch(e => {
             error(e)
         })
@@ -68,38 +74,12 @@ class DatManager implements SubProcess {
             }
         })
     }
-
-    async getEthAddress() {
-        return new Promise((resolve,reject) => {
-            if( process.send ) {
-                debug('Getting EthAddress from DB')
-                var register_message = new Message({
-                        app_id: 'testing', //Should be passed to this thing on initial start.
-                        type_id: "message",
-                        event: "db_get_eth_address",
-                        instance_id: this.instance_id,
-                        from: this.registry_name,
-                        data: {
-                            callback_event: 'dat_callback_init',//starts the actual init process
-                            name: this.registry_name,
-                            type: "subprocess",
-                            instance_id: this.instance_id
-                        },
-                        encoding: "json"
-                })
-                process.send( register_message.toJSON() )
-                resolve()
-            } else {
-                reject('No Parent Process')
-            }
-        })
-    }
     
     async onMessageRouter() {
         return new Promise( (resolve,reject) => {
             process.on('message', (message) => {
                 switch(message.event) {
-                    case 'dat_callback_init':
+                    case 'dat_set_eth_address':
                         var dat_promise = this.datResumeAll(message.data)
                     case 'dat_add':
                         var dat_promise = this.datAdd(message.data)
@@ -131,10 +111,23 @@ class DatManager implements SubProcess {
                 })
                 .catch(e => reject(e))
             })
+            resolve()
         })
     }
 
     eth_address: string
+    async datSetEthAddress(message_data) {
+        return new Promise( (resolve,reject) => {
+            var result = this.validator.validate(message_data, dat_set_eth_address_schema)
+            if(!result.valid) {
+                reject(result.errors)
+            }
+            debug('Eth Adress set in Dat')
+            this.eth_address = message_data.eth_address
+            resolve()
+        })
+    }
+
     data_folder: string
     dat_folder: string
     dat_db: string
@@ -149,7 +142,9 @@ class DatManager implements SubProcess {
                 reject(result.errors)
             }
             //Store eth_address
+            debug('Eth Adress set in Dat')
             this.eth_address = message_data.eth_address
+            
             this.data_folder = join( 'data', 'files', this.eth_address )
             this.dat_folder =  join( this.data_folder, 'dat' )
             this.dat_db = join(this.data_folder, 'dat.json')
@@ -240,9 +235,25 @@ class DatManager implements SubProcess {
     private checkDatAdd(dat_folder, file_path) {
         if( Object.keys(this.dat_folders[dat_folder]).length == 3 ) {
             debug('All dat files uploaded for ' + dat_folder)
-            this.datAdd({
-                full_path: dirname(file_path)
+
+            const base_path = join(this.eth_address, 'dat', dat_folder)
+
+            const merge_json_message = new Message({
+                app_id: 'testing',
+                type_id: "message",
+                event: 'merge_json_file',
+                from: this.registry_name,
+                data: {
+                    file_path: join(base_path, 'video.json'),
+                    file_data: this.dat_folders[dat_folder],
+                    callback_event: 'dat_add',
+                    callback_data: {
+                        full_path: base_path
+                    }
+                },
+                encoding: "json"
             })
+            process.send( merge_json_message.toJSON() )
         }
     }
 

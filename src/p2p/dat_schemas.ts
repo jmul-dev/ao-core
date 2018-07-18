@@ -1,10 +1,11 @@
 'use strict';
 
-const dat_resume_all_schema:Object = {
-    "id": "/DatResumeAllObject",
+
+const dat_set_eth_address_schema:Object = {
+    "id": "/DatSetEthAddressObject",
     "type": "object",
     "required": [
-        "file_path"
+        "eth_address"
     ],
     "properties": {
         "eth_address": {
@@ -12,6 +13,20 @@ const dat_resume_all_schema:Object = {
         }
     }
 }
+
+const dat_resume_all_schema:Object = {
+    "id": "/DatResumeAllObject",
+    "type": "object",
+    "required": [
+        "eth_address"
+    ],
+    "properties": {
+        "eth_address": {
+            "type": "string"
+        }
+    }
+}
+
 const dat_add_schema:Object = {
     "id": "/DatAddObject",
     "type": "object",
@@ -65,6 +80,7 @@ const dat_stop_schema:Object = {
 }
 
 export {
+    dat_set_eth_address_schema,
     dat_resume_all_schema,
     dat_add_schema,
     dat_file_uploaded_schema,

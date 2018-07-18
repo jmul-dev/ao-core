@@ -39,8 +39,8 @@ export default class Core {
             this.router = router
         })
         .then( this.dbSetup.bind(this) )
-        .then( this.spinUpSubProcesses.bind(this) )
         .then( this.httpSetup.bind(this) )
+        .then( this.spinUpSubProcesses.bind(this) )
         .catch( (e) => {
             this.shutdownWithError(e)
         })

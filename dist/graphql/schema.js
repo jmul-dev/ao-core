@@ -54,33 +54,31 @@ function default_1(db, router) {
             Mutation: {
                 register: function (obj, args, context, info) {
                     return new Promise(function (resolve, reject) {
-                        setTimeout(function () {
-                            // simulating setup time
-                            mockStore.node = {
-                                id: args.inputs.ethAddress,
-                                ethAddress: args.inputs.ethAddress
-                            };
-                            db.setEthAddress(args.inputs.ethAddress)
+                        // simulating setup time
+                        mockStore.node = {
+                            id: args.inputs.ethAddress,
+                            ethAddress: args.inputs.ethAddress
+                        };
+                        db.setEthAddress(args.inputs.ethAddress)
+                            .then(function () {
+                            //Make Data Folder with the Eth Address
+                            var data_folder_message = new message_1.default({
+                                app_id: 'testing',
+                                type_id: "message",
+                                event: "make_folder",
+                                from: 'http',
+                                data: {
+                                    folder_path: join(args.inputs.ethAddress, 'dat') //might as well make the dat folder.  this works like mkdirp
+                                },
+                                encoding: 'json'
+                            });
+                            router.invokeSubProcess(data_folder_message.toJSON(), 'http')
                                 .then(function () {
-                                //Make Data Folder with the Eth Address
-                                var data_folder_message = new message_1.default({
-                                    app_id: 'testing',
-                                    type_id: "message",
-                                    event: "make_folder",
-                                    from: 'http',
-                                    data: {
-                                        folder_path: join(args.inputs.ethAddress, 'dat') //might as well make the dat folder.  this works like mkdirp
-                                    },
-                                    encoding: 'json'
-                                });
-                                router.invokeSubProcess(data_folder_message.toJSON(), 'http')
-                                    .then(function () {
-                                    resolve(mockStore.node);
-                                })
-                                    .catch(function (e) { return error; });
+                                resolve(mockStore.node);
                             })
-                                .catch(function (e) { return reject(e); });
-                        }, 2500);
+                                .catch(function (e) { return error; });
+                        })
+                            .catch(function (e) { return reject(e); });
                     });
                 },
                 updateSettings: function (obj, args, context, info) {
