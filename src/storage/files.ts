@@ -148,21 +148,23 @@ class Files implements SubProcess{
                     if(message.data.callback_event) {
                         debug('callback_event: '+ message.data.callback_event)
                         debug('Sending back a message')
+                        const callback_data = message.data.callback_data ? message.data.callback_data : null
+                        const data = {
+                            message_sender: message.from,
+                            original_event: message.event,
+                            file_data: file_data ? file_data : null,    //returns stats for writes so we know what happened.
+                            stream_direction: stream_direction ? stream_direction : null,
+                            dat: message.data.dat ? message.data.dat : false,
+                            original_data: message.data ? message.data : null, //Passing original data back with it too.
+                        }
+                        const merged_data = {...data, ...callback_data}
                         var callback_message = new Message({
                             app_id: 'testing', //TBD
                             event: message.data.callback_event,
                             instance_id: this.instance_id,
                             type_id: type_id, //Message for most, but stream for some
                             from: this.registry_name,
-                            data: {
-                                message_sender: message.from,
-                                original_event: message.event,
-                                file_data: file_data ? file_data : null,    //returns stats for writes so we know what happened.
-                                stream_direction: stream_direction ? stream_direction : null,
-                                dat: message.data.dat ? message.data.dat : false,
-                                original_data: message.data ? message.data : null, //Passing original data back with it too.
-                                ...message.callback_data
-                            },
+                            data: merged_data,
                             encoding: "json"
                         })
                         //Time to send back a callback message of success to the caller.

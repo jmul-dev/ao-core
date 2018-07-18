@@ -14,7 +14,8 @@ import {
     dat_resume_all_schema,
     dat_add_schema,
     dat_file_uploaded_schema,
-    dat_stop_schema
+    dat_stop_schema,
+    dat_get_list_schema
 } from './dat_schemas'
 
 import Debug from 'debug';
@@ -90,6 +91,9 @@ class DatManager implements SubProcess {
                     case 'dat_remove':
                         var dat_promise = this.datRemove(message.data)
                         break;
+                    case 'dat_get_list':
+                        var dat_promise = this.datGetList(message.data)
+                        break;
                     default:
                         var err = 'Dunno about that event: '+ message.event
                         reject(err)
@@ -116,24 +120,12 @@ class DatManager implements SubProcess {
     }
 
     eth_address: string
-    async datSetEthAddress(message_data) {
-        return new Promise( (resolve,reject) => {
-            var result = this.validator.validate(message_data, dat_set_eth_address_schema)
-            if(!result.valid) {
-                reject(result.errors)
-            }
-            debug('Eth Adress set in Dat')
-            this.eth_address = message_data.eth_address
-            resolve()
-        })
-    }
-
     data_folder: string
     dat_folder: string
     dat_db: string
     multidat: Multidat
     db: toilet  //That's right, we're going to use the toilet.
-    dats: Object
+    dats: Array<any>
 
     async datResumeAll(message_data) {
         return new Promise( (resolve,reject) => {
@@ -156,6 +148,13 @@ class DatManager implements SubProcess {
                 }
                 this.multidat = multidat
                 this.dats = multidat.list()
+                for (let i = 0; i < this.dats.length; i++) {
+                    const dat = this.dats[i];
+                    dat.importFiles()
+                    dat.joinNetwork()
+                    const dat_link = 'dat://' + dat.key.toString('hex')
+                    debug('Joined network for: '+ dat_link)
+                }
                 debug('Dat Subprocess initialized')
                 resolve({dat:'All Dats have Resumed'})
             })
@@ -164,6 +163,7 @@ class DatManager implements SubProcess {
 
     async datAdd(message_data) {
         return new Promise( (resolve,reject) => {
+            debug('got to add dat')
             var result = this.validator.validate(message_data, dat_add_schema)
             if(!result.valid) {
                 reject(result.errors)
@@ -171,12 +171,17 @@ class DatManager implements SubProcess {
             if(!this.multidat) {
                 reject('Multidat not initialized')
             }
-            this.multidat.create(message_data.full_path,(err,dat) => {
+            const full_path = join( 'data', 'files', message_data.full_path )
+
+            this.multidat.create( full_path , (err,dat) => {
                 if(err) {
                     reject(err)
                 }
                 this.dats = this.multidat.list()//update list.
-                debug(this.dats)//Can we save this straight to DB?
+                dat.importFiles()
+                dat.joinNetwork()
+                const dat_link = 'dat://' + dat.key.toString('hex')
+                debug('Joined network with new link: '+ dat_link)
                 resolve()
             })
         })
@@ -215,7 +220,7 @@ class DatManager implements SubProcess {
                                 this.dat_folders[dat_folder] = {}
                             }
                             this.dat_folders[dat_folder][file_name] = file_data
-                            this.checkDatAdd(dat_folder, file_path)
+                            this.checkDatAdd(dat_folder)
                             resolve()
                             break;
                         }
@@ -227,12 +232,13 @@ class DatManager implements SubProcess {
                     file_size: file_size
                 }
                 this.dat_folders[dat_folder][file_name] = file_data
-                this.checkDatAdd(dat_folder, file_path)
+                this.checkDatAdd(dat_folder)
                 resolve()
             }
         })
     }
-    private checkDatAdd(dat_folder, file_path) {
+    private checkDatAdd(dat_folder) {
+        debug( 'Dat folder length: ' + Object.keys(this.dat_folders[dat_folder]).length)
         if( Object.keys(this.dat_folders[dat_folder]).length == 3 ) {
             debug('All dat files uploaded for ' + dat_folder)
 
@@ -270,6 +276,27 @@ class DatManager implements SubProcess {
                 this.multidat.close(message_data.key,(err) => {
                     reject(err)
                 })
+            }
+        })
+    }
+
+    async datGetList(message_data) {
+        return new Promise( (resolve,reject) => {
+            var result = this.validator.validate(message_data, dat_get_list_schema)
+            if(!result.valid) {
+                reject(result.errors)
+            }
+            if( !this.multidat ) {
+                reject('Multidat not initialized')
+            } else {
+                var dat_list = []
+                for (let i = 0; i < this.multidat.list().length; i++) {
+                    const dat = this.multidat.list()[i];
+                    dat_list.push( dat.key.toString('hex') )
+                }
+                resolve( {
+                    dat_list: dat_list
+                } )
             }
         })
     }

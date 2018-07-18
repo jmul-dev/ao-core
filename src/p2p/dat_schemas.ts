@@ -79,12 +79,26 @@ const dat_stop_schema:Object = {
     }
 }
 
+
+const dat_get_list_schema:Object = {
+    "id": "/DatStopObject",
+    "type": "object",
+    "required": [
+        
+    ],
+    "properties": {
+        
+    }
+}
+
+
 export {
     dat_set_eth_address_schema,
     dat_resume_all_schema,
     dat_add_schema,
     dat_file_uploaded_schema,
     dat_pause_schema,
-    dat_stop_schema
+    dat_stop_schema,
+    dat_get_list_schema
 }
 
