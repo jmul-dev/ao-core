@@ -60,6 +60,12 @@ class Database {
                     eth_address: this.eth_address
                 }
                 break;
+            case 'store_content_key':
+                
+                break;
+            case 'store_content_link':
+
+                break;
             default:
                 error('No matching event')
                 break;
@@ -203,6 +209,14 @@ class Database {
                 reject(this.DB_OPEN_ERROR)
             }
         })
+    }
+
+    /**
+     * Content
+     */
+
+    public addDatKey() {
+
     }
     
 }

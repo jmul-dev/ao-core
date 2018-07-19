@@ -4,6 +4,8 @@ import { join, dirname, resolve } from "path";
 import fs from 'fs-extra'
 import Dat from 'dat-node'
 import crypto from 'crypto'
+import ffprobe from 'ffprobe'
+import ffprobeStatic from 'ffprobe-static'
 import md5 from 'md5'
 import { Validator, SchemaError } from 'jsonschema'
 import {
@@ -154,7 +156,6 @@ class Files implements SubProcess{
                             original_event: message.event,
                             file_data: file_data ? file_data : null,    //returns stats for writes so we know what happened.
                             stream_direction: stream_direction ? stream_direction : null,
-                            dat: message.data.dat ? message.data.dat : false,
                             original_data: message.data ? message.data : null, //Passing original data back with it too.
                         }
                         const merged_data = {...data, ...callback_data}
@@ -286,30 +287,76 @@ class Files implements SubProcess{
                 reject()
             })
 
-            var writeTo = fs.createWriteStream(full_path)
-            
-            if(message_data.encrypt) {
-                //If you use encrypt, you definitely need to give the message a callback event
-                var key = md5(this.instance_id + new Date().getSeconds() + Math.random() )
-                var encrypt = crypto.createCipher(this.encryption_algo, key)
-                stream.pipe( encrypt ).pipe( writeTo )
-                .on('finish', () => {
-                    var file_data = {
-                        stats: fs.statSync(full_path),
-                        key: key
+            const writeTo = fs.createWriteStream(full_path)
+            const file_data = {}
+
+            stream.pipe( writeTo )
+            .on('finish', () => {
+                stream.close()
+                var file_stat = fs.statSync(full_path)
+                file_data['file_size'] = file_stat.size
+                
+                this.getVideoData(message_data.type, full_path, file_data)
+                .then((file_data) => {
+                    if(!message_data.encrypt) {
+                        resolve(file_data)
+                    } else {
+                        //If you use encrypt, you definitely need to give the message a callback event
+                        var key = md5(this.instance_id + new Date().getSeconds() + Math.random() )
+                        var encrypt = crypto.createCipher(this.encryption_algo, key)
+                        const readFrom = fs.createReadStream(full_path)
+                        const encrypted_path = full_path+'.encrypted'
+                        const writeToEncrypted = fs.createWriteStream( encrypted_path )
+                        readFrom.pipe( encrypt ).pipe( writeToEncrypted )
+                        .on('finish', () => {
+                            file_stat = fs.statSync( encrypted_path )
+                            file_data['file_size'] = file_stat.size
+                            file_data['key'] = key
+                            fs.remove(full_path)
+                            .then(()=> {
+                                fs.move(encrypted_path, full_path)
+                                .then(() => {
+                                    resolve(file_data)
+                                })
+                                .catch(e => {
+                                    reject(e)
+                                })
+                            })
+                            .catch(e => {
+                                reject(e)
+                            })
+                        })
                     }
-                    stream.close()
-                    resolve(file_data)
-                } )
-            } else {
-                stream.pipe( writeTo )
-                .on('finish', () => {
-                    var file_data = {
-                        stats: fs.statSync(full_path)
-                    }
-                    stream.close()
-                    resolve(file_data)
                 })
+                .catch( e => {
+                    reject(e)
+                })
+            })
+        })
+    }
+
+    private async getVideoData(message_data_type, full_path, file_data) {
+        return new Promise( (resolve,reject) => {
+            if( message_data_type == 'video') {
+                ffprobe(full_path, { path: ffprobeStatic.path }, (err, info) => {
+                    if(err) {
+                        reject(err)
+                    }
+                    for (let i = 0; i < info.streams.length; i++) {
+                        const stream = info.streams[i];
+                        if(stream.codec_type == 'video') {
+                            file_data['file_type'] = 'video'
+                            file_data['codec'] = stream.codec_name
+                            file_data['width'] = stream.width
+                            file_data['height'] = stream.height
+                            file_data['duration'] = stream.duration
+                            resolve(file_data)
+                            break;
+                        }
+                    }
+                })
+            } else {
+                resolve(file_data)
             }
         })
     }

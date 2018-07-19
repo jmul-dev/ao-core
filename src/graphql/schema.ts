@@ -105,6 +105,15 @@ export default function (db: Database, router: Router) {
                                 args.inputs[input_name].then(({stream, filename, mimetype, encoding}) => {
                                     //debug(`video: filename[${filename}] mimetype[${mimetype}] encoding[${encoding}]`)
                                     var full_path = join( base_path, input_name )
+                                    var message_data = {
+                                        stream: stream,
+                                        stream_direction: 'output',
+                                        dat_folder: new_dat_folder,
+                                        file_path: full_path,
+                                        callback_event: "dat_file_uploaded",
+                                        type: input_name.includes('video') ? 'video': 'image',
+                                        encrypt: input_name == 'video'? true : false
+                                    }
         
                                     // send message through router to store file
                                     var message = new Message({
@@ -112,13 +121,7 @@ export default function (db: Database, router: Router) {
                                         type_id: "stream",
                                         event: "stream_write_file",
                                         from: "http",
-                                        data: {
-                                            stream: stream,
-                                            stream_direction: 'output',
-                                            dat_folder: new_dat_folder,
-                                            file_path: full_path,
-                                            callback_event: "dat_file_uploaded"
-                                        },
+                                        data: message_data,
                                         encoding: "json"
                                     })
                                     router.invokeSubProcess(message.toJSON(), 'http')
