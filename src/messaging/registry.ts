@@ -30,7 +30,9 @@ var stored_registry:any = {
         type: 'main',//specifically made for registrations and other main processes
         file: '',//empty means that it sends to main
         events: [
-            "db_get_eth_address"
+            "db_get_eth_address",
+            "add_dat_key",
+            "add_dat_hash"
         ]
     },
     http: {

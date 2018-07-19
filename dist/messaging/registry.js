@@ -72,7 +72,9 @@ var stored_registry = {
         type: 'main',
         file: '',
         events: [
-            "db_get_eth_address"
+            "db_get_eth_address",
+            "add_dat_key",
+            "add_dat_hash"
         ]
     },
     http: {

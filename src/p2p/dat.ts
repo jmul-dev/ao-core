@@ -179,8 +179,24 @@ class DatManager implements SubProcess {
                 this.dats = this.multidat.list()//update list.
                 dat.importFiles()
                 dat.joinNetwork()
-                const dat_link = 'dat://' + dat.key.toString('hex')
-                debug('Joined network with new link: '+ dat_link)
+                const dat_folder = basename(full_path)
+                debug(dat_folder)
+                const dat_hash =  dat.key.toString('hex')
+                debug('Joined network with new link: dat://' + dat_hash)
+
+                const save_key_message = new Message({
+                    app_id: 'testing',
+                    type_id: "message",
+                    event: "add_dat_hash",
+                    from: this.registry_name,
+                    data: {
+                        dat_folder: dat_folder,
+                        dat_hash: dat_hash
+                    },
+                    encoding: "json"
+                })
+                process.send( save_key_message.toJSON() )
+
                 resolve()
             })
         })
@@ -202,12 +218,26 @@ class DatManager implements SubProcess {
             if(file_name == 'featuredImage') {
                 file_data['file_type'] = 'image'
             }
+            if(file_name == 'video') {
+                const key = file_data['key']
+                const save_key_message = new Message({
+                    app_id: 'testing',
+                    type_id: "message",
+                    event: "add_dat_key",
+                    from: this.registry_name,
+                    data: {
+                        dat_folder: dat_folder,
+                        key: key
+                    },
+                    encoding: "json"
+                })
+                process.send( save_key_message.toJSON() )
+                delete file_data['key']
+            }
             if(typeof this.dat_folders[dat_folder] == 'undefined') {
                 this.dat_folders[dat_folder] = {}
             }
             this.dat_folders[dat_folder][file_name] = file_data
-            
-            debug( 'Dat folder length: ' + Object.keys(this.dat_folders[dat_folder]).length )
 
             if( Object.keys(this.dat_folders[dat_folder]).length == 3 ) {
                 debug('All dat files uploaded for ' + dat_folder)

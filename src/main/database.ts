@@ -7,6 +7,7 @@ import Debug from 'debug';
 import Router from "../messaging/router";
 import Message  from "../messaging/message";
 import { MessageObject } from "../messaging/message_interfaces";
+import { resolve } from 'url';
 
 const debug = Debug('ao:db');
 const error = Debug('ao:db:error');
@@ -60,17 +61,24 @@ class Database {
                     eth_address: this.eth_address
                 }
                 break;
-            case 'store_content_key':
-                
+            case 'add_dat_key':
+                var db_promise = this.addDatKey(message.data)
                 break;
-            case 'store_content_link':
-
+            case 'add_dat_hash':
+                var db_promise = this.addDatKey(message.data)
                 break;
             default:
                 error('No matching event')
                 break;
         }
-        if(message.data.callback_event) {
+        if(db_promise) {
+            db_promise.then(() => {
+                debug('Promise ran')
+            })
+            .catch(e => {
+                error(e)
+            })
+        } else if(!db_promise && message.data.callback_event) {
             var cb_message = new Message({
                 app_id: 'testing',
                 type_id: "message",
@@ -212,11 +220,57 @@ class Database {
     }
 
     /**
-     * Content
+     * Content Key and Dat Addresses
      */
 
-    public addDatKey() {
+    public addDatKey(data) {
+        return new Promise((resolve,reject) => {
+            if(this.db) {
+                this.db.read('keys',(err, keys) => {
+                    if(err) {
+                        reject(this.DB_WRITE_ERROR)
+                    }
+                    if(typeof keys == 'undefined') {
+                        keys = {}
+                    }
+                    keys[data.dat_folder] = data.key
+                    this.db.write('keys', keys, (err) => {
+                        if(err) {
+                            reject(this.DB_WRITE_ERROR)
+                        }
+                        resolve()
+                    }) 
+                })
+                
+            } else {
+                reject(this.DB_OPEN_ERROR)
+            }
+        })
+    }
 
+    public addDatHash(data) {
+        return new Promise((resolve,reject) => {
+            if(this.db) {
+                this.db.read('hashes',(err, hashes) => {
+                    if(err) {
+                        reject(this.DB_WRITE_ERROR)
+                    }
+                    if(typeof hashes == 'undefined') {
+                        hashes = {}
+                    }
+                    hashes[data.dat_folder] = data.hash
+                    this.db.write('hashes', hashes, (err) => {
+                        if(err) {
+                            reject(this.DB_WRITE_ERROR)
+                        }
+                        resolve()
+                    }) 
+                })
+                
+            } else {
+                reject(this.DB_OPEN_ERROR)
+            }
+        })
     }
     
 }
