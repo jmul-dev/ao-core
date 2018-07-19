@@ -23,6 +23,12 @@ const stream_read_file_schema:Object = {
         "file_path": {
             "type": "string",
             "containsNot":".."
+        },
+        "decrypt": {
+            "type": "boolean"
+        },
+        "key": {
+            "type": "string"
         }
     }
 }
@@ -40,12 +46,35 @@ const write_file_schema:Object = {
             "containsNot":".."
         },
         "file_data": {
+        },
+        "encrypt": {
+            "type": "boolean"
         }
     }
 }
 
 const stream_write_file_schema:Object = {
     "id": "/StreamWriteFileObject",
+    "type": "object",
+    "required": [
+        "file_path"
+    ],
+    "properties": {
+        "file_path": {
+            "type": "string",
+            "containsNot":".."
+        },
+        "stream": {
+            
+        },
+        "encrypt": {
+            "type": "boolean"
+        }
+    }
+}
+
+const merge_json_file_schema:Object = {
+    "id": "/MergeJSONFileObject",
     "type": "object",
     "required": [
         "file_path",
@@ -57,10 +86,13 @@ const stream_write_file_schema:Object = {
             "containsNot":".."
         },
         "file_data": {
-            "type": "string"
+        },
+        "encrypt": {
+            "type": "boolean"
         }
     }
 }
+
 
 const move_file_schema:Object = {
     "id": "/MoveFileObject",
@@ -106,6 +138,9 @@ const make_folder_schema:Object = {
         "folder_path": {
             "type": "string",
             "containsNot":".."
+        },
+        "dat": {
+            "type": "boolean"
         }
     }
 }
@@ -149,6 +184,7 @@ export {
     stream_read_file_schema,
     write_file_schema,
     stream_write_file_schema,
+    merge_json_file_schema,
     move_file_schema,
     delete_file_schema,
     make_folder_schema,

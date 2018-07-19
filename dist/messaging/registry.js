@@ -51,8 +51,8 @@ var validation_schemas_1 = require("./validation_schemas");
 var jsonschema_1 = require("jsonschema");
 var debug_1 = __importDefault(require("debug"));
 var router_1 = __importDefault(require("./router"));
-var debug = debug_1.default('ao:core');
-var error = debug_1.default('ao:core:error');
+var debug = debug_1.default('ao:registry');
+var error = debug_1.default('ao:registry:error');
 //Fake data for now.  We'll have to do an FS read, & encryption/decryption for this.
 var stored_registry = {
     registry: {
@@ -63,6 +63,18 @@ var stored_registry = {
         file: '',
         events: [
             "register_process"
+        ]
+    },
+    database: {
+        status: false,
+        priority: 0,
+        multi_instance: 0,
+        type: 'main',
+        file: '',
+        events: [
+            "db_get_eth_address",
+            "add_dat_key",
+            "add_dat_hash"
         ]
     },
     http: {
@@ -80,7 +92,7 @@ var stored_registry = {
         priority: 0,
         multi_instance: 0,
         type: 'subprocess',
-        file: '/p2p/index.js',
+        file: '/p2p/p2p.js',
         events: [
             "p2p_lookup",
             "p2p_peer_count",
@@ -98,11 +110,27 @@ var stored_registry = {
             'stream_read_file',
             'write_file',
             'stream_write_file',
+            "merge_json_file",
             'move_file',
             'delete_file',
             'make_folder',
             'move_folder',
             'delete_folder'
+        ]
+    },
+    datSubProcess: {
+        status: false,
+        priority: 0,
+        multi_instance: 0,
+        type: 'subprocess',
+        file: '/p2p/dat.js',
+        events: [
+            "dat_set_eth_address",
+            "dat_callback_init",
+            "dat_add",
+            "dat_file_uploaded",
+            "dat_pause",
+            "dat_remove"
         ]
     }
 };

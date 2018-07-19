@@ -327,7 +327,7 @@ var Router = /** @class */ (function () {
                                 switch (transaction_type) {
                                     case 'sub2sub':
                                         to_process.stdio[4].on('error', function (err) {
-                                            debug('Stream output sub2sub' + err);
+                                            debug('Stream output sub2sub: ' + err);
                                         });
                                         var from_stream = from_process.stdio[3];
                                         from_stream.pipe(to_process.stdio[4]);
@@ -341,9 +341,9 @@ var Router = /** @class */ (function () {
                                     case 'main2sub':
                                         //pipe message.data.stream to to_process.stdio[4] (note that its not from_process.stream since from knows about the scenario)
                                         to_process.stdio[4].on('error', function (err) {
-                                            debug('Stream output main2sub' + err);
+                                            debug('Stream output main2sub: ' + err);
                                         });
-                                        message.data.stream(to_process.stdio[4]);
+                                        message.data.stream.pipe(to_process.stdio[4]);
                                         break;
                                     default:
                                         reject('no transaction_type for output');
@@ -376,7 +376,7 @@ var Router = /** @class */ (function () {
                                         from_process.stdio[4].on('error', function (err) {
                                             debug('Stream input main2sub: ' + err);
                                         });
-                                        to_process.stream(from_process.stdio[4]);
+                                        to_process.stream.pipe(from_process.stdio[4]);
                                         break;
                                     default:
                                         reject('no transaction_type for input');
@@ -387,20 +387,24 @@ var Router = /** @class */ (function () {
                                 reject('no input or output?');
                                 break;
                         }
-                        //Finally send off the message once the  pipes are made 
-                        //(might need to change who the message is sent to based on which way the data is flowing)
                         try {
-                            delete message.data.stream;
                             to_process.send(message);
-                            if (registry_item.multi_instance) {
-                                _this.registry.markUsed(registry_item.name, to_instance.instance_id);
-                            }
-                            resolve();
                         }
                         catch (error) {
-                            console.log('failed send');
-                            reject(error);
+                            if (error instanceof TypeError) {
+                                delete message.data.stream;
+                                debug('Stream cut from message data');
+                                to_process.send(message);
+                            }
+                            else {
+                                error('failed send');
+                                reject(error);
+                            }
                         }
+                        if (registry_item.multi_instance) {
+                            _this.registry.markUsed(registry_item.name, to_instance.instance_id);
+                        }
+                        resolve();
                     })];
             });
         });
