@@ -57,7 +57,10 @@ function default_1(db, router) {
                         // simulating setup time
                         mockStore.node = {
                             id: args.inputs.ethAddress,
-                            ethAddress: args.inputs.ethAddress
+                            ethAddress: args.inputs.ethAddress,
+                            creator: {
+                                content: mockVideos_1.generateMockVideoList(2)
+                            }
                         };
                         db.setEthAddress(args.inputs.ethAddress)
                             .then(function () {

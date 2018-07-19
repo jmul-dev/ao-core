@@ -1,6 +1,6 @@
 {
   "name": "ao-core",
-  "version": "1.0.5",
+  "version": "1.0.11",
   "description": "AO - Core",
   "main": "src/index.js",
   "bin": {
@@ -18,6 +18,10 @@
   "publishConfig": {
     "registry": "https://npm.y-designs.com"
   },
+  "files": [
+    "dist",
+    "src"
+  ],
   "dependencies": {
     "apollo-server-express": "^1.3.6",
     "apollo-upload-server": "^5.0.0",

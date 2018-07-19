@@ -51,7 +51,10 @@ export default function (db: Database, router: Router) {
                         // simulating setup time
                         mockStore.node = {
                             id: args.inputs.ethAddress,
-                            ethAddress: args.inputs.ethAddress
+                            ethAddress: args.inputs.ethAddress,
+                            creator: {
+                                content: generateMockVideoList(2)
+                            }
                         }
                         db.setEthAddress(args.inputs.ethAddress)
                         .then(() => {

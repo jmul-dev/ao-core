@@ -15,15 +15,13 @@ import Database from "../main/database";
 import Router from '../messaging/router';
 import Message from '../messaging/message';
 import { MessageObject } from '../messaging/message_interfaces'
+import { ICoreOptions } from '../bin';
 
 const debug = Debug('ao:http');
 const error = Debug('ao:http:error');
 
 export default class Http {
-    private options: {
-        httpPort: number;
-        disableHttpInterface: boolean;
-    };
+    private options: ICoreOptions;
     private db: Database;
     private server: Server;
     private router: Router;
@@ -44,13 +42,13 @@ export default class Http {
             const graphqlSchema = schema(this.db, this.router);
             expressServer.use(
                 '/graphql', 
-                cors({origin: 'http://localhost:3000'}), 
+                cors({origin: this.options.httpOrigin}), 
                 json(), 
                 apolloUploadExpress({maxFieldSize: "1gb"}),
                 graphqlExpress({ schema: graphqlSchema })
             );
             expressServer.get('/graphiql', graphiqlExpress({ endpointURL: '/graphql' })); // TODO: enable based on process.env.NODE_ENV
-            expressServer.use('/assets', express.static(path.join(__dirname, '../assets')));
+            expressServer.use('/assets', express.static(path.join(__dirname, '../../assets')));
             this.server = expressServer.listen(this.options.httpPort, () => {
                 const address: AddressInfo = <AddressInfo> this.server.address();
                 debug('Express server running on port: ' + address.port);
