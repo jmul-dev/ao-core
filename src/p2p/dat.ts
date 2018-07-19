@@ -184,18 +184,18 @@ class DatManager implements SubProcess {
                 const dat_hash =  dat.key.toString('hex')
                 debug('Joined network with new link: dat://' + dat_hash)
 
-                const save_key_message = new Message({
+                const save_hash_message = new Message({
                     app_id: 'testing',
                     type_id: "message",
                     event: "add_dat_hash",
                     from: this.registry_name,
                     data: {
                         dat_folder: dat_folder,
-                        dat_hash: dat_hash
+                        hash: dat_hash
                     },
                     encoding: "json"
                 })
-                process.send( save_key_message.toJSON() )
+                process.send( save_hash_message.toJSON() )
 
                 resolve()
             })

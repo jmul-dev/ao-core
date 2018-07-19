@@ -65,7 +65,7 @@ class Database {
                 var db_promise = this.addDatKey(message.data)
                 break;
             case 'add_dat_hash':
-                var db_promise = this.addDatKey(message.data)
+                var db_promise = this.addDatHash(message.data)
                 break;
             default:
                 error('No matching event')
@@ -234,6 +234,7 @@ class Database {
                         keys = {}
                     }
                     keys[data.dat_folder] = data.key
+                    debug(keys)
                     this.db.write('keys', keys, (err) => {
                         if(err) {
                             reject(this.DB_WRITE_ERROR)
@@ -259,6 +260,7 @@ class Database {
                         hashes = {}
                     }
                     hashes[data.dat_folder] = data.hash
+                    debug(hashes)
                     this.db.write('hashes', hashes, (err) => {
                         if(err) {
                             reject(this.DB_WRITE_ERROR)
