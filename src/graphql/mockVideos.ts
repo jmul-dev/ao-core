@@ -13,6 +13,9 @@ const demoAssets = [{
 
 function generateRandomVideo() {
     const demoAsset = casual.random_element(demoAssets);
+    const fileSize = casual.integer(1000, 1000000)
+    const stake = Math.floor( casual.double(1, 4) * fileSize );
+    const premium = stake - fileSize
     return {
         // IContent
         id: casual.uuid,
@@ -24,10 +27,12 @@ function generateRandomVideo() {
         fileName: casual.word + '.mp4',
         title: casual.title,
         description: casual.description,
-        stake: casual.integer,
-        fileSize: casual.integer,
-        premium: casual.integer,
+
+        fileSize: fileSize,
+        stake: stake,
+        premium: premium,
         split: casual.double(0, 1),
+
         adSupport: casual.boolean,
         createdAt: casual.date(),
         ...demoAsset,
