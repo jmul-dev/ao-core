@@ -5,7 +5,7 @@
   "main": "src/index.js",
   "bin": {
     "ao-core": "dist/bin.js",
-    "ao-p2p": "dist/p2p/index.js"
+    "ao-p2p": "dist/p2p/p2p.js"
   },
   "scripts": {
     "start": "yarn copyfiles && DEBUG=ao:* node dist/bin.js",
