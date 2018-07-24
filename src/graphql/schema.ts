@@ -12,6 +12,7 @@ import Message from '../messaging/message'
 const packageJson = require('../../package.json');
 import { GraphQLUpload } from 'apollo-upload-server';
 import md5 from 'md5';
+import { ICoreOptions } from '../bin';
 import Debug from 'debug';
 const debug = Debug('ao:graphql');
 const error = Debug('ao:graphql:error');
@@ -25,7 +26,7 @@ let mockStore = {
     videos: generateMockVideoList()
 }
 
-export default function (db: Database, router: Router) {
+export default function (db: Database, router: Router, options: ICoreOptions) {
     const schema = makeExecutableSchema({
         typeDefs: [graphqlSchema],
         resolvers: {
@@ -41,23 +42,21 @@ export default function (db: Database, router: Router) {
                 logs: () => db.getLogs(),
                 node: () => mockStore.node,
                 state: () => mockStore.state,
-                settings: () => mockStore.settings,
+                settings: () => db.getSettings(),
                 videos: () => mockStore.videos,
                 // peers: () => db.Peer.all()
             },            
             Mutation: {
                 register: (obj, args, context, info) => {
                     return new Promise((resolve, reject) => {
-                        // simulating setup time
                         mockStore.node = {
                             id: args.inputs.ethAddress,
                             ethAddress: args.inputs.ethAddress,
                             creator: {
                                 content: generateMockVideoList(2)
-                            }
+                            },
                         }
-                        db.setEthAddress(args.inputs.ethAddress)
-                        .then(() => {
+                        db.setEthAddress(args.inputs.ethAddress).then(() => {
                             //Make Data Folder with the Eth Address
                             var data_folder_message = new Message({
                                 app_id: 'testing',
@@ -69,28 +68,18 @@ export default function (db: Database, router: Router) {
                                 },
                                 encoding: 'json'
                             })
-                            router.invokeSubProcess(data_folder_message.toJSON(), 'http')
-                            .then(() => {
+                            router.invokeSubProcess(data_folder_message.toJSON(), 'http').then(() => {
                                 resolve(mockStore.node)
-                            })
-                            .catch(e => error)
-                        })
-                        .catch(e => reject(e))
+                            }).catch(e => error)
+                        }).catch(e => reject(e))
                     })
                 },
                 updateSettings: (obj, args, context, info) => {
                     return new Promise((resolve, reject) => {
-                        mockStore.settings = {
-                            ...mockStore.settings,
-                            ...args.inputs,
-                        }
-                        db.writeSettings(mockStore.settings)
-                        .then(() => {
-                            resolve(mockStore.settings)
-                        })
-                        .catch(e => {
-                            reject(e)
-                        })
+                        db.getSettings().then(settings => {
+                            const updatedSettings = Object.assign({}, settings, args.inputs)
+                            db.writeSettings(updatedSettings).then(resolve).catch(reject)
+                        }).catch(reject)                        
                     })
                 },
                 submitVideoContent: (obj, args, context, info) => {

@@ -31,9 +31,9 @@ export default class Core {
     }
 
     init() {
-        this.registry = new Registry()
-        this.registry.initialize( )
-        .then( (router:Router) => {
+        this.registry = new Registry(this.options)
+        this.registry.initialize()
+        .then((router:Router) => {
             this.router = router
         })
         .then( this.dbSetup.bind(this) )
@@ -57,7 +57,7 @@ export default class Core {
 
     dbSetup() {
         return new Promise((resolve, reject) => {
-            this.db = new Database( this.router )
+            this.db = new Database( this.router, this.options.storageLocation )
             this.db.init().then(() => {
                 debug('database instance created')
                 this.sendEventLog('Core database connected');
