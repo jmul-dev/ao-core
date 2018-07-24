@@ -7,6 +7,7 @@ import Debug from 'debug';
 import Router from './router';
 import Message from './message'
 import {RegistryObject} from './message_interfaces'
+import { ICoreOptions } from '../bin';
 const debug = Debug('ao:registry');
 const error = Debug('ao:registry:error');
 
@@ -100,10 +101,15 @@ export default class Registry {
     private events_registry:Object = {}      //Used to tie together events to a registry by name
     private registry_by_name:Object = {}     //Now you can use a name to just pull the registry item
     private router:Router
+    public options:ICoreOptions
 
     //Validation Schema
     private registry_schema:Object = registry_schema
     private message_schema:Object = message_schema
+
+    constructor(options: ICoreOptions) {
+        this.options = options;
+    }
 
     //Init the Registry and get yourself a router!
     async initialize() {

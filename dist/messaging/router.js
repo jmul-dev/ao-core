@@ -85,7 +85,9 @@ var Router = /** @class */ (function () {
     Router.prototype.createNewProcess = function (registry) {
         var _this = this;
         return new Promise(function (resolve, reject) {
-            var current_process = child_process_1.spawn(process.execPath, [path_1.join(__dirname, '../../dist/' + registry.file)], {
+            var processLocation = path_1.join(__dirname, '../../dist/' + registry.file);
+            var processArgs = [processLocation, '--storageLocation', _this.registry.options.storageLocation]; // TODO: pass through args can be part of registration?
+            var current_process = child_process_1.spawn(process.execPath, processArgs, {
                 stdio: ['ipc', 'inherit', 'inherit', 'pipe', 'pipe'] // Note, first pipe is read from child, second is for write.  Original was:['ipc', 'inherit', 'inherit'] 
             });
             current_process.on('error', function (err) {

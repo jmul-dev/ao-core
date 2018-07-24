@@ -39,7 +39,7 @@ export default class Http {
     public init() {
         return new Promise( (resolve,reject) => {
             const expressServer = express();
-            const graphqlSchema = schema(this.db, this.router);
+            const graphqlSchema = schema(this.db, this.router, this.options);
             expressServer.use(
                 '/graphql', 
                 cors({origin: this.options.httpOrigin}), 

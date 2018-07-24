@@ -49,13 +49,11 @@ export default class Router {
 
     private createNewProcess(registry) {
         return new Promise((resolve,reject) => {
-            const current_process = spawn(
-                process.execPath, 
-                [ join(__dirname, '../../dist/'+registry.file) ], 
-                { 
-                    stdio: ['ipc', 'inherit', 'inherit','pipe','pipe'] // Note, first pipe is read from child, second is for write.  Original was:['ipc', 'inherit', 'inherit'] 
-                }
-            )
+            const processLocation = join(__dirname, '../../dist/'+registry.file)
+            const processArgs = [processLocation, '--storageLocation', this.registry.options.storageLocation]  // TODO: pass through args can be part of registration?
+            const current_process = spawn(process.execPath, processArgs, { 
+                stdio: ['ipc', 'inherit', 'inherit','pipe','pipe'] // Note, first pipe is read from child, second is for write.  Original was:['ipc', 'inherit', 'inherit'] 
+            })
             current_process.on('error', (err) => {
                 var message:Message = new Message({
                     app_id: 'testing', //TBD

@@ -56,7 +56,7 @@ var Core = /** @class */ (function () {
     }
     Core.prototype.init = function () {
         var _this = this;
-        this.registry = new registry_1.default();
+        this.registry = new registry_1.default(this.options);
         this.registry.initialize()
             .then(function (router) {
             _this.router = router;
@@ -82,7 +82,7 @@ var Core = /** @class */ (function () {
     Core.prototype.dbSetup = function () {
         var _this = this;
         return new Promise(function (resolve, reject) {
-            _this.db = new database_1.default(_this.router);
+            _this.db = new database_1.default(_this.router, _this.options.storageLocation);
             _this.db.init().then(function () {
                 debug('database instance created');
                 _this.sendEventLog('Core database connected');

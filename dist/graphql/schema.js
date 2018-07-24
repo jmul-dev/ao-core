@@ -1,12 +1,4 @@
 'use strict';
-var __assign = (this && this.__assign) || Object.assign || function(t) {
-    for (var s, i = 1, n = arguments.length; i < n; i++) {
-        s = arguments[i];
-        for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
-            t[p] = s[p];
-    }
-    return t;
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -32,7 +24,7 @@ var mockStore = {
     settings: undefined,
     videos: mockVideos_1.generateMockVideoList()
 };
-function default_1(db, router) {
+function default_1(db, router, options) {
     var schema = graphql_tools_1.makeExecutableSchema({
         typeDefs: [graphqlSchema],
         resolvers: {
@@ -48,22 +40,20 @@ function default_1(db, router) {
                 logs: function () { return db.getLogs(); },
                 node: function () { return mockStore.node; },
                 state: function () { return mockStore.state; },
-                settings: function () { return mockStore.settings; },
+                settings: function () { return db.getSettings(); },
                 videos: function () { return mockStore.videos; },
             },
             Mutation: {
                 register: function (obj, args, context, info) {
                     return new Promise(function (resolve, reject) {
-                        // simulating setup time
                         mockStore.node = {
                             id: args.inputs.ethAddress,
                             ethAddress: args.inputs.ethAddress,
                             creator: {
                                 content: mockVideos_1.generateMockVideoList(2)
-                            }
+                            },
                         };
-                        db.setEthAddress(args.inputs.ethAddress)
-                            .then(function () {
+                        db.setEthAddress(args.inputs.ethAddress).then(function () {
                             //Make Data Folder with the Eth Address
                             var data_folder_message = new message_1.default({
                                 app_id: 'testing',
@@ -75,25 +65,18 @@ function default_1(db, router) {
                                 },
                                 encoding: 'json'
                             });
-                            router.invokeSubProcess(data_folder_message.toJSON(), 'http')
-                                .then(function () {
+                            router.invokeSubProcess(data_folder_message.toJSON(), 'http').then(function () {
                                 resolve(mockStore.node);
-                            })
-                                .catch(function (e) { return error; });
-                        })
-                            .catch(function (e) { return reject(e); });
+                            }).catch(function (e) { return error; });
+                        }).catch(function (e) { return reject(e); });
                     });
                 },
                 updateSettings: function (obj, args, context, info) {
                     return new Promise(function (resolve, reject) {
-                        mockStore.settings = __assign({}, mockStore.settings, args.inputs);
-                        db.writeSettings(mockStore.settings)
-                            .then(function () {
-                            resolve(mockStore.settings);
-                        })
-                            .catch(function (e) {
-                            reject(e);
-                        });
+                        db.getSettings().then(function (settings) {
+                            var updatedSettings = Object.assign({}, settings, args.inputs);
+                            db.writeSettings(updatedSettings).then(resolve).catch(reject);
+                        }).catch(reject);
                     });
                 },
                 submitVideoContent: function (obj, args, context, info) {

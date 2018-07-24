@@ -1,6 +1,6 @@
 #!/usr/local/bin/node
 'use strict';
-import { join, dirname, resolve } from "path";
+import { join, dirname, resolve } from "path"
 import fs from 'fs-extra'
 import Dat from 'dat-node'
 import crypto from 'crypto'
@@ -21,12 +21,17 @@ import {
     delete_folder_schema
 } from './files_schemas'
 import SubProcess from '../subprocess_interface'
+import minimist = require('minimist')
 
 import Debug from 'debug';
 const debug = Debug('ao:files');
 const error = Debug('ao:files:error');
 
 import Message from '../messaging/message'
+
+interface IFilesOptions {
+    storageLocation: string;
+}
 
 
 class Files implements SubProcess{
@@ -36,8 +41,9 @@ class Files implements SubProcess{
     instance_id: number = md5( new Date().getTime() + Math.random() ) //rando number for identification
     encryption_algo: string = 'aes-256-ctr'
 
-    constructor() {
+    constructor(options: IFilesOptions) {
         this.validator = new Validator()
+        this.data_folder = resolve(options.storageLocation)
 
         //Below is meant to ensure that file paths do not stray and use ../ to bypass their locations
         this.validator.attributes.containsNot = function validateContains(instance, schema, options, ctx) {
@@ -57,15 +63,14 @@ class Files implements SubProcess{
     }
 
     async init() {
-        return new Promise((resolve,reject) => {
-            //make sure storage location exists (assumes dist location for now.  should make a configuration)
-            this.data_folder = join('data','files')
+        return new Promise((resolve,reject) => {            
             fs.ensureDir(this.data_folder)
             .then(() => {
+                debug('storage location set: ', this.data_folder)
                 resolve()
             })
-            .catch( (err) => {
-                error(err)
+            .catch((err) => {
+                error('storage location not found: ', err)
                 reject(err)
             })
         })
@@ -74,7 +79,6 @@ class Files implements SubProcess{
     async register() {
         return new Promise( (resolve,reject) => {
             if( process.send ) {
-                debug('Has parent. Registering Files Subprocess')
                 var register_message = new Message({
                         app_id: 'testing', //Should be passed to this thing on initial start.
                         type_id: "message",
@@ -492,7 +496,15 @@ class Files implements SubProcess{
 }
 
 if (require.main === module) {    
-    const files = new Files();
+    var argv = minimist(process.argv.slice(2), {
+        default: {
+            storageLocation: resolve(__dirname, '../../', 'data', 'files'),
+        }
+    });
+    const options: IFilesOptions = {
+        storageLocation: argv.storageLocation
+    }
+    const files = new Files(options);
 }
 
 

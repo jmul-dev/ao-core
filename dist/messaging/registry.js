@@ -135,7 +135,7 @@ var stored_registry = {
     }
 };
 var Registry = /** @class */ (function () {
-    function Registry() {
+    function Registry(options) {
         //Internal Data
         this.stored_registry = stored_registry;
         this.events_registry = {}; //Used to tie together events to a registry by name
@@ -143,6 +143,7 @@ var Registry = /** @class */ (function () {
         //Validation Schema
         this.registry_schema = validation_schemas_1.registry_schema;
         this.message_schema = validation_schemas_1.message_schema;
+        this.options = options;
     }
     //Init the Registry and get yourself a router!
     Registry.prototype.initialize = function () {
