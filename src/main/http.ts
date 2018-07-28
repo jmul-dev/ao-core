@@ -11,7 +11,7 @@ import cors from 'cors';
 import md5 from 'md5'
 
 //below is mostly for the defs
-import Database from "../main/database";
+import Database from "./database";
 import Router from '../messaging/router';
 import Message from '../messaging/message';
 import { MessageObject } from '../messaging/message_interfaces'

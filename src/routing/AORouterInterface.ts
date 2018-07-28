@@ -1,14 +1,16 @@
 import { EventEmitter } from 'events';
 import { IAORouterMessage } from './AORouter';
 import { ChildProcess } from 'child_process';
+import { ReadStream } from 'tty';
+import fs from 'fs';
 
 
-export interface IAOIncomingRequest {
-    id: number;
+export interface IAORouterRequest {
+    id: string;
     event: string;
     data?: any;
     respond: (data: any) => void;
-    reject: () => void;
+    reject: (error: Error) => void;
 }
 
 
@@ -29,12 +31,18 @@ export interface IAOIncomingRequest {
  */
 class AOProcessRouter extends EventEmitter {
     private process: ChildProcess | NodeJS.Process | any;
+    private debug: Function;
+    private moduleName: string;
+    private processIdentifier;
     private requestCount = 0;
 
-    constructor(childProcess?: ChildProcess) {
+    constructor(childProcess: ChildProcess, debug: Function, moduleName: string) {
         super();
+        this.debug = debug;
+        this.processIdentifier = Math.random().toString(36).substring(5);
         this.process = childProcess ? childProcess : process
         this.process.on('message', this._routeMessage.bind(this))
+        this.debug(`Router interface initialized for [${moduleName}] with id[${this.processIdentifier}]`)
     }
 
     /**
@@ -50,7 +58,10 @@ class AOProcessRouter extends EventEmitter {
             // the other event listener handle that
             return;            
         }
-        const incomingRequest: IAOIncomingRequest = {
+        if ( message.data && message.data.stream ) {
+            message.data.stream = fs.createReadStream(null, {fd: 3})
+        }
+        const incomingRequest: IAORouterRequest = {
             id: message.requestId,
             event: message.event,
             data: message.data,
@@ -66,15 +77,14 @@ class AOProcessRouter extends EventEmitter {
             requestId: originatingMessage.requestId,
             responseId: originatingMessage.requestId,
             event: originatingMessage.event,
-            data: isReject ? {
-                error: responseData
-            } : responseData
+            data: !isReject ? responseData : undefined,
+            error: isReject ? responseData : undefined,
         }
         this.process.send(outgoingResponse)
     }
 
     /**
-     * Router send is wrapped in a promise for process
+     * Send-to-Router is wrapped in a promise for process
      * abstraction and better handling of responses.
      * 
      * @param event 
@@ -82,15 +92,28 @@ class AOProcessRouter extends EventEmitter {
      * @returns Promise<any>
      */
     public send(event: string, data?: any): Promise<any> {
+        // TODO: if we are sending a stream, make sure our stdio fd is not in use!
+        // If so we need to move this onto a queue
         return new Promise((resolve, reject) => {
-            const requestId = ++this.requestCount;
+            const requestId = `${this.processIdentifier}:${++this.requestCount}`;
             const request: IAORouterMessage = {
                 requestId,
                 event,
                 data,
             }
+            if ( data && data.stream ) {
+                const readableStream = data.stream
+                if ( this.process.stdio ) {
+                    this.debug('Attempting to pipe stream to AORouter process via stdio3')
+                    readableStream.pipe(this.process.stdio[3])
+                } else {
+                    this.debug('Attempting to pipe stream to AORouter, no stdio to mess with')
+                }
+                data.stream = true  // We dont pass the stream object through to the router 
+            }
             this.process.send(request, (error?: Error) => {
                 if ( error ) {
+                    // TODO data.stream.unpipe(this.process.stdio[3])
                     return reject(error)
                 }
                 this.process.on('message', (message: any) => {
@@ -120,7 +143,7 @@ export default abstract class AORouterInterface {
     /**
      * @param childProcess Only provide reference to childProcess from ao-core
      */
-    constructor(childProcess?: ChildProcess) {
-        this.router = new AOProcessRouter(childProcess)
+    constructor(childProcess?: ChildProcess, debug: Function = console.log, moduleName: string = 'unkown') {
+        this.router = new AOProcessRouter(childProcess, debug, moduleName)
     }
 }

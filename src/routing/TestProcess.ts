@@ -1,16 +1,16 @@
 #!/usr/local/bin/node
 'use strict';
 import Debug from 'debug';
-import AORouterInterface, { IAOIncomingRequest } from './AOSubprocess';
+import AORouterInterface, { IAORouterRequest } from './AORouterInterface';
 const debug = Debug('ao:test');
 
 class Test extends AORouterInterface {
     constructor() {
-        super()
+        super(undefined, debug, 'test')
         this.router.on('/test/debug', this._handleDebug.bind(this))
-        this.router.send('/core/log', {message: 'Log me from TestProcess'})
+        // this.router.send('/core/log', {message: 'Log me from TestProcess'})
     }
-    _handleDebug(request: IAOIncomingRequest) {
+    _handleDebug(request: IAORouterRequest) {
         setTimeout(() => {
             request.respond({
                 debugMessage: 'This is a response to /test/debug'
