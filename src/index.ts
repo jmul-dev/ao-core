@@ -1,8 +1,8 @@
 'use strict';
 import { EVENT_LOG, DATA, DATA_TYPES } from './constants';
-import AORouter from './routing/AORouter';
+import AORouter from './router/AORouter';
 import { ICoreOptions } from './bin';
-import { IAORouterRequest } from './routing/AORouterInterface';
+import { IAORouterRequest } from './router/AORouterInterface';
 import Debug from 'debug';
 const debug = Debug('ao:core');
 const error = Debug('ao:core:error');
