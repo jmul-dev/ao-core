@@ -27,9 +27,11 @@ export default class AOFS extends AORouterInterface {
         super()
         this.storageLocation = args.storageLocation
         this.router.on('/fs/write', this._handleWrite.bind(this))
-        this.router.on('/fs/write/stream', this._handleWriteStream.bind(this))
+        this.router.on('/fs/writeStream', this._handleWriteStream.bind(this))
         this.router.on('/fs/read', this._handleRead.bind(this))
-        this.router.on('/fs/read/stream', this._handleReadStream.bind(this))
+        this.router.on('/fs/readStream', this._handleReadStream.bind(this))
+        this.router.on('/fs/mkdir', this._handleMkdir.bind(this))
+        this.router.on('/fs/unlink', this._handleUnlink.bind(this))
         debug(`started`)
     }
 
@@ -62,7 +64,14 @@ export default class AOFS extends AORouterInterface {
     }
 
     _handleReadStream(request: IAORouterRequest) {
-        request.reject(new Error('/fs/read/stream not implemented'))
+        request.reject(new Error('/fs/readStream not implemented'))
     }
 
+    _handleMkdir(request: IAORouterRequest) {
+        request.reject(new Error('/fs/readStream not implemented'))
+    }
+
+    _handleUnlink(request: IAORouterRequest) {
+        request.reject(new Error('/fs/readStream not implemented'))
+    }
 }

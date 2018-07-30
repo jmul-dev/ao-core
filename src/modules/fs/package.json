@@ -9,13 +9,15 @@
     "AO": {
         "events": [
             "/fs/read",
-            "/fs/read/stream",
+            "/fs/readStream",
             "/fs/write",
-            "/fs/write/stream"
+            "/fs/writeStream",
+            "/fs/mkdir",
+            "/fs/unlink"
         ],
         "activationEvents": [
-            "/fs/read/stream",
-            "/fs/write/stream"
+            "/fs/readStream",
+            "/fs/writeStream"
         ]
     }
   }

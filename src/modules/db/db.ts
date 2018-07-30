@@ -42,6 +42,8 @@ export default class AODB extends AORouterInterface {
         this.storageLocation = args.storageLocation
         this.router.on('/db/core/get', this._handleCoreDbGet.bind(this))
         this.router.on('/db/core/update', this._handleCoreDbUpdate.bind(this))
+        this.router.on('/db/user/get', this._handleUserDbGet.bind(this))
+        this.router.on('/db/user/update', this._handleUserDbUpdate.bind(this))
         debug(`started`)
     }
 
@@ -109,4 +111,13 @@ export default class AODB extends AORouterInterface {
             })            
         }).catch(request.reject)
     }
+
+    private _handleUserDbGet(request: IAORouterRequest) {
+        request.reject(new Error('Not implemented'))
+    }
+
+    private _handleUserDbUpdate(request: IAORouterRequest) {
+        request.reject(new Error('Not implemented'))
+    }
+
 }

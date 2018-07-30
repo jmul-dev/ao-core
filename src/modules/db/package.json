@@ -9,7 +9,9 @@
     "AO": {
         "events": [
             "/db/core/get",
-            "/db/core/update"
+            "/db/core/update",
+            "/db/user/get",
+            "/db/user/update"
         ],
         "activationEvents": [
             

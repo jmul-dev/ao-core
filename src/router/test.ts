@@ -47,7 +47,7 @@ class TestMain {
     }
     testStream() {
         const inputStream = fs.createReadStream('/Users/neilharlow/Desktop/test-stream-a.png');
-        this.router.send('/fs/write/stream', {
+        this.router.send('/fs/writeStream', {
             stream: inputStream,
             writePath: '/test-stream-a.out.png',
         }).then(response => {
@@ -56,7 +56,7 @@ class TestMain {
             debug('test-stream-a:error', error)
         })
         const inputStreamB = fs.createReadStream('/Users/neilharlow/Desktop/test-stream-b.png');
-        this.router.send('/fs/write/stream', {
+        this.router.send('/fs/writeStream', {
             stream: inputStreamB,
             writePath: '/test-stream-b.out.png',
         }).then(response => {

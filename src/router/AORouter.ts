@@ -13,6 +13,7 @@ const packageJson = require('../../package.json');
 const fsPackageJson: IRegistryEntry = require('../modules/fs/package.json');
 const httpPackageJson: IRegistryEntry = require('../modules/http/package.json');
 const dbPackageJson: IRegistryEntry = require('../modules/db/package.json');
+const datPackageJson: IRegistryEntry = require('../modules/db/package.json');
 
 
 export interface IRegistryEntry {
@@ -217,8 +218,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
 
 
     private registerCoreProcesses() {
-        // A unique entry in the stack, this is the controlling parent process
-        // of ao-core.
+        // NOTE: we could pull from the core package.json if we really wanted
         this.registerEntry({
             name: 'ao-core',
             version: packageJson.version,
@@ -233,38 +233,10 @@ export default class AORouter extends AORouterCoreProcessInterface {
                 ],
             },
         })
-        // this.registerEntry({
-        //     name: 'test',
-        //     version: packageJson.version,
-        //     publisher: 'AO',
-        //     displayName: 'Test',
-        //     description: 'Test process that connects AO to the world',
-        //     bin: './TestProcess.js',
-        //     AO: {
-        //         events: [
-        //             '/test/debug'
-        //         ],
-        //     },
-        // })
         this.registerEntry(fsPackageJson)
         this.registerEntry(httpPackageJson)
         this.registerEntry(dbPackageJson)
-        // this.registerEntry({
-        //     name: 'fs',
-        //     version: packageJson.version,
-        //     publisher: 'AO',
-        //     displayName: 'FS',
-        //     description: 'File system management',
-        //     main: '../modules/storage/fs.bin.js',
-        //     AO: {
-        //         activationEvents: [
-        //             '/fs/write/stream',
-        //         ],
-        //         events: [
-        //             '/fs/write/stream',
-        //         ],
-        //     },
-        // })
+        this.registerEntry(datPackageJson)
     }
 
     private registerEntry(entry: IRegistryEntry) {
@@ -352,7 +324,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
     }
 
     private async registerExtensions(): Promise<any> {
-        // TODO. load foreign sub processes (extensions) (registry information in package.json files)
+        // TODO. load foreign sub processes (extensions)
     }
 
     public shutdown(): void {
