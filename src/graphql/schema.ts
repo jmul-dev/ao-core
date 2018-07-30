@@ -2,7 +2,6 @@
 import { makeExecutableSchema, addMockFunctionsToSchema } from 'graphql-tools';
 import { importSchema } from 'graphql-import';
 import path from 'path';
-const join = path.join
 const graphqlSchema = importSchema( path.resolve(__dirname, './schema.graphql') );
 import mocks from './mocks';
 import { generateMockVideoList } from './mockVideos';
@@ -11,7 +10,6 @@ import { GraphQLUpload } from 'apollo-upload-server';
 import { AOSubprocessRouter } from '../router/AORouterInterface';
 import { AODB_CoreUpdate_Data } from '../modules/db/db';
 import Debug from 'debug';
-import { responsePathAsArray } from '../../node_modules/@types/graphql';
 const debug = Debug('ao:graphql');
 const error = Debug('ao:graphql:error');
 
@@ -35,6 +33,7 @@ export default function (router: AOSubprocessRouter) {
                     return info.schema.getType(data.__typename) // __typename property must be set by your mock functions
                 },
             },
+            // TODO: refactor resolvers into seperate files
             Query: {
                 version: () => packageJson.version,
                 // logs: () => db.getLogs(),
