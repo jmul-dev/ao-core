@@ -21,8 +21,14 @@ class TestMain {
     private router: AOCoreProcessRouter;
 
     constructor() {
-        const coreRouter = new AORouter;
-        this.router = coreRouter.router    
+        const coreRouter = new AORouter({            
+            storageLocation: path.resolve(__dirname, '../../data'),
+            disableHttpInterface: false,
+            httpPort: 3003,
+            httpOrigin: 'http://localhost:3000',
+        });
+        coreRouter.init()
+        this.router = coreRouter.router
         this.router.on('/core/log', this._handleLog.bind(this))
     }
     _handleLog(message) {
@@ -43,7 +49,7 @@ class TestMain {
         const inputStream = fs.createReadStream('/Users/neilharlow/Desktop/test-stream-a.png');
         this.router.send('/fs/write/stream', {
             stream: inputStream,
-            writePath: '/Users/neilharlow/Desktop/test-stream-a.out.png',
+            writePath: '/test-stream-a.out.png',
         }).then(response => {
             debug('test-stream-a:response', response.data)
         }).catch(error => {
@@ -52,7 +58,7 @@ class TestMain {
         const inputStreamB = fs.createReadStream('/Users/neilharlow/Desktop/test-stream-b.png');
         this.router.send('/fs/write/stream', {
             stream: inputStreamB,
-            writePath: '/Users/neilharlow/Desktop/test-stream-b.out.png',
+            writePath: '/test-stream-b.out.png',
         }).then(response => {
             debug('test-stream-b:response', response.data)
         }).catch(error => {

@@ -10,10 +10,8 @@ var join = path_1.default.join;
 var graphqlSchema = graphql_import_1.importSchema(path_1.default.resolve(__dirname, './schema.graphql'));
 var mocks_1 = __importDefault(require("./mocks"));
 var mockVideos_1 = require("./mockVideos");
-var message_1 = __importDefault(require("../messaging/message"));
 var packageJson = require('../../package.json');
 var apollo_upload_server_1 = require("apollo-upload-server");
-var md5_1 = __importDefault(require("md5"));
 var debug_1 = __importDefault(require("debug"));
 var debug = debug_1.default('ao:graphql');
 var error = debug_1.default('ao:graphql:error');
@@ -24,7 +22,7 @@ var mockStore = {
     settings: undefined,
     videos: mockVideos_1.generateMockVideoList()
 };
-function default_1(db, router, options) {
+function default_1(router) {
     var schema = graphql_tools_1.makeExecutableSchema({
         typeDefs: [graphqlSchema],
         resolvers: {
@@ -37,10 +35,16 @@ function default_1(db, router, options) {
             },
             Query: {
                 version: function () { return packageJson.version; },
-                logs: function () { return db.getLogs(); },
+                // logs: () => db.getLogs(),
                 node: function () { return mockStore.node; },
                 state: function () { return mockStore.state; },
-                settings: function () { return db.getSettings(); },
+                settings: function () {
+                    return new Promise(function (resolve, reject) {
+                        router.send('/db/core/get', { key: 'settings' }).then(function (response) {
+                            resolve(response.data);
+                        }).catch(reject);
+                    });
+                },
                 videos: function () { return mockStore.videos; },
             },
             Mutation: {
@@ -53,114 +57,113 @@ function default_1(db, router, options) {
                                 content: mockVideos_1.generateMockVideoList(2)
                             },
                         };
-                        db.setEthAddress(args.inputs.ethAddress).then(function () {
-                            //Make Data Folder with the Eth Address
-                            var data_folder_message = new message_1.default({
-                                app_id: 'testing',
-                                type_id: "message",
-                                event: "make_folder",
-                                from: 'http',
-                                data: {
-                                    folder_path: join(args.inputs.ethAddress, 'dat') //might as well make the dat folder.  this works like mkdirp
-                                },
-                                encoding: 'json'
-                            });
-                            router.invokeSubProcess(data_folder_message.toJSON(), 'http').then(function () {
-                                resolve(mockStore.node);
-                            }).catch(function (e) { return error; });
-                        }).catch(function (e) { return reject(e); });
+                        // db.setEthAddress(args.inputs.ethAddress).then(() => {
+                        //     //Make Data Folder with the Eth Address
+                        //     var data_folder_message = new Message({
+                        //         app_id: 'testing',
+                        //         type_id: "message",
+                        //         event: "make_folder",
+                        //         from: 'http',
+                        //         data: {
+                        //             folder_path: join(args.inputs.ethAddress,'dat') //might as well make the dat folder.  this works like mkdirp
+                        //         },
+                        //         encoding: 'json'
+                        //     })
+                        //     router.invokeSubProcess(data_folder_message.toJSON(), 'http').then(() => {
+                        //         resolve(mockStore.node)
+                        //     }).catch(e => error)
+                        // }).catch(e => reject(e))
                     });
                 },
                 updateSettings: function (obj, args, context, info) {
                     return new Promise(function (resolve, reject) {
-                        db.getSettings().then(function (settings) {
-                            var updatedSettings = Object.assign({}, settings, args.inputs);
-                            db.writeSettings(updatedSettings).then(resolve).catch(reject);
+                        var updateData = {
+                            key: 'settings',
+                            value: args.inputs,
+                            merge: true
+                        };
+                        router.send('/db/core/update', updateData).then(function (response) {
+                            resolve(response.data);
                         }).catch(reject);
                     });
                 },
                 submitVideoContent: function (obj, args, context, info) {
                     return new Promise(function (resolve, reject) {
-                        var new_dat_folder = md5_1.default(new Date);
-                        var eth_address = db.getEthAddress();
-                        var base_path = join(eth_address, 'dat', new_dat_folder);
-                        // Let's see if we can promise our way through this giant mess
-                        var all_inputs = ['video', 'videoTeaser', 'featuredImage'];
-                        var all_promises = [];
-                        var _loop_1 = function (i) {
-                            var input_name = all_inputs[i];
-                            new_promise = new Promise(function (res, rej) {
-                                args.inputs[input_name].then(function (_a) {
-                                    var stream = _a.stream, filename = _a.filename, mimetype = _a.mimetype, encoding = _a.encoding;
-                                    //debug(`video: filename[${filename}] mimetype[${mimetype}] encoding[${encoding}]`)
-                                    var full_path = join(base_path, input_name);
-                                    var message_data = {
-                                        stream: stream,
-                                        stream_direction: 'output',
-                                        dat_folder: new_dat_folder,
-                                        file_path: full_path,
-                                        callback_event: "dat_file_uploaded",
-                                        type: input_name.includes('video') ? 'video' : 'image',
-                                        encrypt: input_name == 'video' ? true : false
-                                    };
-                                    // send message through router to store file
-                                    var message = new message_1.default({
-                                        app_id: 'testing',
-                                        type_id: "stream",
-                                        event: "stream_write_file",
-                                        from: "http",
-                                        data: message_data,
-                                        encoding: "json"
-                                    });
-                                    router.invokeSubProcess(message.toJSON(), 'http')
-                                        .then(function () {
-                                        //debug(`${filename} save started!`)
-                                        res();
-                                    }).catch(function (err) {
-                                        error(filename + " error during save", err);
-                                        rej(err);
-                                    });
-                                }).catch(function (e) { rej(e); });
-                            });
-                            all_promises.push(new_promise);
-                        };
-                        var new_promise;
-                        for (var i = 0; i < all_inputs.length; i++) {
-                            _loop_1(i);
-                        }
-                        //All Promises
-                        Promise.all(all_promises)
-                            .then(function () {
-                            debug('All uploads started');
-                            //Time to start working on JSON creation
-                            var file_json = {
-                                title: args.inputs.title,
-                                description: args.inputs.description,
-                                stake: args.inputs.stake,
-                                profit: args.inputs.profit,
-                                owner: eth_address
-                            };
-                            var write_json_message = new message_1.default({
-                                app_id: 'testing',
-                                type_id: "message",
-                                event: "write_file",
-                                from: "http",
-                                data: {
-                                    file_path: join(base_path, 'video.json'),
-                                    file_data: file_json
-                                },
-                                encoding: "json"
-                            });
-                            router.invokeSubProcess(write_json_message.toJSON(), 'http')
-                                .then(function () {
-                                resolve();
-                            })
-                                .catch(function (e) {
-                                reject(e);
-                            });
-                        }).catch(function (e) {
-                            reject(e);
-                        });
+                        // var new_dat_folder:string = md5(new Date)
+                        // var eth_address:string = db.getEthAddress()
+                        // var base_path:string = join(eth_address , 'dat', new_dat_folder)
+                        // // Let's see if we can promise our way through this giant mess
+                        // var all_inputs = ['video','videoTeaser','featuredImage']
+                        // var all_promises:Array<any> = []
+                        // for (let i = 0; i < all_inputs.length; i++) {
+                        //     const input_name = all_inputs[i];
+                        //     var new_promise = new Promise((res,rej) => {
+                        //         args.inputs[input_name].then(({stream, filename, mimetype, encoding}) => {
+                        //             //debug(`video: filename[${filename}] mimetype[${mimetype}] encoding[${encoding}]`)
+                        //             var full_path = join( base_path, input_name )
+                        //             var message_data = {
+                        //                 stream: stream,
+                        //                 stream_direction: 'output',
+                        //                 dat_folder: new_dat_folder,
+                        //                 file_path: full_path,
+                        //                 callback_event: "dat_file_uploaded",
+                        //                 type: input_name.includes('video') ? 'video': 'image',
+                        //                 encrypt: input_name == 'video'? true : false
+                        //             }
+                        //             // send message through router to store file
+                        //             var message = new Message({
+                        //                 app_id: 'testing', //TBD
+                        //                 type_id: "stream",
+                        //                 event: "stream_write_file",
+                        //                 from: "http",
+                        //                 data: message_data,
+                        //                 encoding: "json"
+                        //             })
+                        //             router.invokeSubProcess(message.toJSON(), 'http')
+                        //             .then(() => {
+                        //                 //debug(`${filename} save started!`)
+                        //                 res()
+                        //             }).catch(err => {
+                        //                 error(`${filename} error during save`, err)
+                        //                 rej(err)
+                        //             })
+                        //         }).catch(e => {rej(e)})
+                        //     })
+                        //     all_promises.push(new_promise)
+                        // }
+                        // //All Promises
+                        // Promise.all(all_promises)
+                        // .then(() => {
+                        //     debug('All uploads started')
+                        //     //Time to start working on JSON creation
+                        //     var file_json:Object = {
+                        //         title: args.inputs.title,
+                        //         description: args.inputs.description,
+                        //         stake: args.inputs.stake,
+                        //         profit: args.inputs.profit,
+                        //         owner: eth_address
+                        //     }
+                        //     var write_json_message = new Message({
+                        //         app_id: 'testing', //TBD
+                        //         type_id: "message",
+                        //         event: "write_file",
+                        //         from: "http",
+                        //         data: {
+                        //             file_path: join(base_path, 'video.json'),
+                        //             file_data: file_json
+                        //         },
+                        //         encoding: "json"
+                        //     })
+                        //     router.invokeSubProcess(write_json_message.toJSON(), 'http')
+                        //     .then( () => {
+                        //         resolve()
+                        //     })
+                        //     .catch(e => {
+                        //         reject(e)
+                        //     })
+                        // }).catch(e => {
+                        //     reject(e)
+                        // })
                     });
                 },
             },

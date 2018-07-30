@@ -6,8 +6,13 @@ import { ReadStream, WriteStream } from "fs";
 import fs from 'fs';
 import AORouterCoreProcessPretender from "./AORouterCoreProcessPretender";
 import { AORouterCoreProcessInterface } from "./AORouterInterface";
+import { ICoreOptions } from "../bin";
 const debug = Debug('ao:router');
 const packageJson = require('../../package.json');
+// Core modules
+const fsPackageJson: IRegistryEntry = require('../modules/fs/package.json');
+const httpPackageJson: IRegistryEntry = require('../modules/http/package.json');
+const dbPackageJson: IRegistryEntry = require('../modules/db/package.json');
 
 
 export interface IRegistryEntry {
@@ -16,11 +21,11 @@ export interface IRegistryEntry {
     publisher: string;
     displayName: string;
     description: string;
-    main: string;
+    bin: string;
     AO: {
+        runUnderCore?: boolean;
         activationEvents?: Array<string>;  // Events that trigger new instance
         events: Array<string>;
-        privaleged: boolean;
     },
 }
 
@@ -56,6 +61,8 @@ type Process = NodeJS.Process | ChildProcess | any // Sorry tsc was not happy wi
  * and `messages` (from one process to another with response)
  */
 export default class AORouter extends AORouterCoreProcessInterface {
+    private args: ICoreOptions;
+    public initialized: boolean = false;
     /**
      * The registry is a store of the available subprocesses
      * and their capabilities.
@@ -82,16 +89,21 @@ export default class AORouter extends AORouterCoreProcessInterface {
      */
     private messageCount: number = 0;
 
-    constructor() {
+    constructor(args: ICoreOptions) {
         super()
+        this.args = args;        
+    }
+
+    public init() {
         this.registerCoreProcesses()
         this.spawnCoreProcesses()
+        this.initialized = true
         // this.registerExtensions()   
-        this._printRouterState()     
+        this._printRouterState()
     }
 
     private incomingMessageRouter(message: IAORouterMessage, from: IRegistryEntry, fromProcess: Process) {
-        if ( message.responseId ) {
+        if ( message.responseId || message.routerMessageId && !message.responseId ) {
             // NOTE: this is a response to an earlier message, see the AORouter.send 
             // method for how that response is handled
         } else if (message.event) {
@@ -136,7 +148,8 @@ export default class AORouter extends AORouterCoreProcessInterface {
             if ( !entryNameThatCanHandleEvent ) {
                 const err = new Error('No process entries can handle event: ' + event)
                 debug(err.message)
-                return reject(err)
+                reject(err)
+                return;
             }
             const receivingRegistryEntry = this.registry[entryNameThatCanHandleEvent]
             const existingProcesses = this.registryEntryNameToProcessInstances[entryNameThatCanHandleEvent]
@@ -151,11 +164,15 @@ export default class AORouter extends AORouterCoreProcessInterface {
                 // 3c. Not an activation event, but no existing process
                 receivingProcess = this.spawnProcessForEntry(receivingRegistryEntry)
             }
+            if ( !receivingProcess ) {
+                reject(new Error(`Unable to locate process for event: ${event}`))
+                return;
+            }
             // 4. Handle streams
             const messageHasStream = message.data && message.data.stream
-            if ( messageHasStream ) {
-                let readStream: ReadStream;
-                let writeStream: WriteStream;
+            let readStream: ReadStream;
+            let writeStream: WriteStream;
+            if ( messageHasStream ) {                
                 if ( from.name === 'ao-core' ) {
                     readStream = message.data.stream
                     writeStream = receivingProcess.stdio[4]
@@ -175,9 +192,10 @@ export default class AORouter extends AORouterCoreProcessInterface {
             receivingProcess.send(message, (error?: Error) => {
                 if ( error ) {
                     if ( messageHasStream ) {
-                        // TODO receivingProcess.stdio[3].unpipe(fromProcess.stdio[3])
+                        readStream.unpipe(writeStream)
                     }
-                    return reject(error)
+                    reject(error)
+                    return;
                 }                
                 // 6. Match incoming messages to the requestId, this will be our response
                 receivingProcess.on('message', function receivingProcessResponseHandler(response: IAORouterMessage) {
@@ -197,6 +215,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
         })
     }
 
+
     private registerCoreProcesses() {
         // A unique entry in the stack, this is the controlling parent process
         // of ao-core.
@@ -206,62 +225,46 @@ export default class AORouter extends AORouterCoreProcessInterface {
             publisher: 'AO',
             displayName: 'AO Core',
             description: 'AO Core\'s main process',
-            main: undefined,
+            bin: undefined,
             AO: {
+                runUnderCore: true,
                 events: [
                     '/core/log'
                 ],
-                privaleged: true,
             },
         })
-        this.registerEntry({
-            name: 'test',
-            version: packageJson.version,
-            publisher: 'AO',
-            displayName: 'Test',
-            description: 'Test process that connects AO to the world',
-            main: './TestProcess.js',
-            AO: {
-                events: [
-                    '/test/debug'
-                ],
-                privaleged: true,
-            },
-        })
-        this.registerEntry({
-            name: 'fs',
-            version: packageJson.version,
-            publisher: 'AO',
-            displayName: 'FS',
-            description: 'File system management',
-            main: '../modules/storage/fs.js',
-            AO: {
-                activationEvents: [
-                    '/fs/write/stream',
-                ],
-                events: [
-                    '/fs/write/stream',
-                ],
-                privaleged: true,
-            },
-        })
-        // 1. load AO core's subprocesses (privaleged). Manually for now
-        // TODO: register these the same way we would extensions
-        // this.registry['p2p'] = {
-        //     name: 'p2p',
+        // this.registerEntry({
+        //     name: 'test',
         //     version: packageJson.version,
         //     publisher: 'AO',
-        //     displayName: 'P2P',
-        //     description: 'P2P process that connects AO to the world',
-        //     main: '../p2p/p2p.js',
+        //     displayName: 'Test',
+        //     description: 'Test process that connects AO to the world',
+        //     bin: './TestProcess.js',
         //     AO: {
-        //         routes: [
-        //             '/p2p/peers/count',
-        //             '/p2p/peer'
-        //         ]
+        //         events: [
+        //             '/test/debug'
+        //         ],
         //     },
-        //     privaleged: true,
-        // }
+        // })
+        this.registerEntry(fsPackageJson)
+        this.registerEntry(httpPackageJson)
+        this.registerEntry(dbPackageJson)
+        // this.registerEntry({
+        //     name: 'fs',
+        //     version: packageJson.version,
+        //     publisher: 'AO',
+        //     displayName: 'FS',
+        //     description: 'File system management',
+        //     main: '../modules/storage/fs.bin.js',
+        //     AO: {
+        //         activationEvents: [
+        //             '/fs/write/stream',
+        //         ],
+        //         events: [
+        //             '/fs/write/stream',
+        //         ],
+        //     },
+        // })
     }
 
     private registerEntry(entry: IRegistryEntry) {
@@ -286,7 +289,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
     private spawnCoreProcesses() {
         Object.keys(this.registry).forEach((entryName: string) => {
             const registryEntry: IRegistryEntry = this.registry[entryName]
-            if ( registryEntry.name === 'ao-core' ) {
+            if ( registryEntry.AO.runUnderCore ) {
                 this.bindCoreProcess(registryEntry)
             } else if ( !registryEntry.AO.activationEvents || registryEntry.AO.activationEvents.length === 0 ) {
                 this.spawnProcessForEntry(registryEntry)
@@ -304,9 +307,9 @@ export default class AORouter extends AORouterCoreProcessInterface {
         return coreEntryProcess
     }
 
-    private spawnProcessForEntry(entry: IRegistryEntry): ChildProcess {
-        const processLocation = path.join(__dirname, entry.main);
-        const processArgs = [processLocation, '--ao-core']
+    private spawnProcessForEntry(entry: IRegistryEntry): ChildProcess | null {
+        const processLocation = path.join(__dirname, '../modules', entry.bin);
+        const processArgs = [processLocation, '--storageLocation', this.args.storageLocation, '--ao-core']
         let entryProcess: ChildProcess = spawn(process.execPath, processArgs, {
             stdio: ['ipc', 'inherit', 'inherit', 'pipe', 'pipe'],            
         })
@@ -322,8 +325,13 @@ export default class AORouter extends AORouterCoreProcessInterface {
         entryProcess.on('message', (message: IAORouterMessage) => {
             this.incomingMessageRouter(message, entry, entryProcess)
         })
-        this.addProcessIntanceToEntry(entry.name, entryProcess)        
-        return entryProcess
+        if ( entryProcess.pid ) {
+            this.addProcessIntanceToEntry(entry.name, entryProcess)        
+            return entryProcess
+        } else {
+            debug(new Error('Could not spawn process: ' + entry.name))
+            return null
+        }
     }
 
     private addProcessIntanceToEntry(entryName: string, processInstance: Process) {        
@@ -347,7 +355,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
         // TODO. load foreign sub processes (extensions) (registry information in package.json files)
     }
 
-    private shutdown(): void {
+    public shutdown(): void {
         // TODO: attempt to kill all subprocesses
     }
 

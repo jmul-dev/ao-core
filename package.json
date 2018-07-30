@@ -13,7 +13,7 @@
     "watch": "tsc --watch",
     "build": "tsc && yarn copyfiles",
     "clean": "rimraf dist",
-    "copyfiles": "copyfiles -u 1 \"./src/**/*.graphql\" dist"
+    "copyfiles": "copyfiles -u 1 \"./src/**/*.graphql\"  \"./src/modules/**/*.json\" dist"
   },
   "publishConfig": {
     "registry": "https://npm.y-designs.com"

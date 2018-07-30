@@ -1,3 +1,4 @@
+/*
 #!/usr/local/bin/node
 'use strict';
 import SubProcess from '../subprocess_interface'
@@ -311,3 +312,4 @@ if (require.main === module) {
 }
 
 export default DatManager;
+*/

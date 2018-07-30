@@ -1,7 +1,5 @@
 import { EventEmitter } from 'events';
 import { IAORouterMessage } from './AORouter';
-import { ChildProcess } from 'child_process';
-import { ReadStream } from 'tty';
 import fs from 'fs';
 import AORouterCoreProcessPretender from './AORouterCoreProcessPretender';
 
@@ -44,7 +42,7 @@ abstract class AORouterInterface {
  *          incomingRequest.reject(error)
  *      })
  */
-class AOSubprocessRouter extends EventEmitter implements AORouterInterface {
+export class AOSubprocessRouter extends EventEmitter implements AORouterInterface {
     private process: NodeJS.Process;
     private processIdentifier;
     private requestCount = 0;

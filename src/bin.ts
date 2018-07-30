@@ -18,9 +18,8 @@ var argv = minimist(process.argv.slice(2), {
         disableHttpInterface: false,
         httpPort: 3003,
         httpOrigin: 'http://localhost:3000',
-        storageLocation: path.resolve(__dirname, '..', 'data', 'files'),
+        storageLocation: path.resolve(__dirname, '..', 'data'),
     }
 });
 
 const core = new Core(argv);
-core.init()

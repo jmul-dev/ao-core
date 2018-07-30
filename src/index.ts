@@ -1,47 +1,30 @@
 'use strict';
 import { EVENT_LOG, DATA, DATA_TYPES } from './constants';
-import { ChildProcess } from "child_process";
-import Debug from 'debug';
-import { Server } from 'net';
-import Registry from './messaging/registry';
-import Router from './messaging/router';
+import AORouter from './routing/AORouter';
 import { ICoreOptions } from './bin';
-
+import { IAORouterRequest } from './routing/AORouterInterface';
+import Debug from 'debug';
 const debug = Debug('ao:core');
 const error = Debug('ao:core:error');
-
-//Main classes
-import Database from "./main/database";
-import Http from './main/http';
 
 
 export default class Core {
     public options: ICoreOptions;
-    private db: Database;
-    private http: Http;
-    private server: Server;
-    private subProcesses: Array<ChildProcess>;
+    private coreRouter: AORouter;
 
     constructor(args) {
         debug(args)
         this.options = args
-        this.db = null
-        this.server = null
-        this.subProcesses = []
+        this.coreRouter = new AORouter(args)
+        this.coreRouter.init()
+        // TODO: setup coreRouter event listeners (eg: http shutdown/error)
+        this.coreRouter.router.on('/core/log', this._handleLog.bind(this))
+        process.stdin.resume();  // Hack to keep the core processes running
     }
 
-    init() {
-        this.registry = new Registry(this.options)
-        this.registry.initialize()
-        .then((router:Router) => {
-            this.router = router
-        })
-        .then( this.dbSetup.bind(this) )
-        .then( this.httpSetup.bind(this) )
-        .then( this.spinUpSubProcesses.bind(this) )
-        .catch( (e) => {
-            this.shutdownWithError(e)
-        })
+    _handleLog(request: IAORouterRequest) {
+        debug('/core/log', request)
+        // request.respond(null)
     }
 
     sendEventLog(message) {
@@ -52,74 +35,20 @@ export default class Core {
         } else {
             // TODO: append to a temp log somewhere (make this configurable via command line)
         }
-        this.db.addLog({message: message});
-    }
-
-    dbSetup() {
-        return new Promise((resolve, reject) => {
-            this.db = new Database( this.router, this.options.storageLocation )
-            this.db.init().then(() => {
-                debug('database instance created')
-                this.sendEventLog('Core database connected');
-                resolve()
-            }).catch(err => {
-                error('error creating database instance', err)
-                reject(err)
-            })
-        })
-    }
-
-    httpSetup() {
-        return new Promise((resolve, reject) => {
-            if ( !this.options.disableHttpInterface ) {
-                this.http = new Http( 
-                    this.db, 
-                    this.router,
-                    this.options,
-                    this.sendEventLog,
-                    this.shutdownWithError
-                )
-                this.http.init()
-                .then((server:Server) => {
-                    this.server = server
-                    resolve()
-                })
-                .catch(e => {
-                    reject(e)
-                })
+        // TODO: implement db calls
+        this.coreRouter.router.send('/db/core/store', {
+            table: 'logs',
+            data: {
+                message,
+                dateCreated: Date.now()
             }
         })
     }
   
     shutdownWithError(err) {
         error('core shutting down with error\n', err);
-        if ( this.server !== null && this.server.close )
-            this.server.close();
-        const dbConnecitonPromise: PromiseLike<void> = this.db === null ? Promise.resolve() : this.db.close()
-        dbConnecitonPromise.then(() => {
-            for (let i = 0; i < this.subProcesses.length; i++) {
-                const subprocess = this.subProcesses[i];
-                subprocess.kill();
-            }
-            process.exit(1);
-        })
+        this.coreRouter.shutdown()
+        process.exit(1);
     }
-    registry:Registry;
-    router: Router;
-    registry_data: Array<any>;
     
-    async spinUpSubProcesses() {
-        return new Promise( (resolve,reject) => {
-            debug('attempting to spawn sub processes')
-            //Maybe pass the registry json itself over at the time of Registry contruction?
-            
-            this.router.loadProcesses()
-            .then(() => {
-                resolve()
-            })
-            .catch(e => {
-                reject(e)
-            })
-        })
-    }
 }
