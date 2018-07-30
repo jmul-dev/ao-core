@@ -6,7 +6,7 @@ const debug = Debug('ao:test');
 
 class Test extends AORouterInterface {
     constructor() {
-        super(undefined, debug, 'test')
+        super()
         this.router.on('/test/debug', this._handleDebug.bind(this))
         // this.router.send('/core/log', {message: 'Log me from TestProcess'})
     }

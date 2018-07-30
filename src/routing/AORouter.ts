@@ -2,8 +2,10 @@ import { ChildProcess, spawn } from "child_process";
 import path from 'path';
 import Debug from 'debug';
 import EventEmitter from 'events';
-import { ReadStream } from "fs";
+import { ReadStream, WriteStream } from "fs";
 import fs from 'fs';
+import AORouterCoreProcessPretender from "./AORouterCoreProcessPretender";
+import { AORouterCoreProcessInterface } from "./AORouterInterface";
 const debug = Debug('ao:router');
 const packageJson = require('../../package.json');
 
@@ -53,7 +55,7 @@ type Process = NodeJS.Process | ChildProcess | any // Sorry tsc was not happy wi
  * TODO: this is a ways off, but we should distinguish between `events` (consumed by anyone)
  * and `messages` (from one process to another with response)
  */
-class AORouter {
+export default class AORouter extends AORouterCoreProcessInterface {
     /**
      * The registry is a store of the available subprocesses
      * and their capabilities.
@@ -81,10 +83,35 @@ class AORouter {
     private messageCount: number = 0;
 
     constructor() {
+        super()
         this.registerCoreProcesses()
         this.spawnCoreProcesses()
         // this.registerExtensions()   
         this._printRouterState()     
+    }
+
+    private incomingMessageRouter(message: IAORouterMessage, from: IRegistryEntry, fromProcess: Process) {
+        if ( message.responseId ) {
+            // NOTE: this is a response to an earlier message, see the AORouter.send 
+            // method for how that response is handled
+        } else if (message.event) {
+            // 1. We re-use the router send method to push this off to the proper location
+            this.relay(message, from, fromProcess).then((responseMessage: IAORouterMessage) => {
+                // 2. Send this back to the originating process
+                fromProcess.send(responseMessage)
+            }).catch((err: Error) => {
+                const responseError: IAORouterMessage = {
+                    ...message,
+                    responseId: message.requestId,
+                    data: {
+                        error: err
+                    }                    
+                }
+                fromProcess.send(responseError)
+            })
+        } else {
+            debug(`[${from.name}] sent a message with no event`)
+        }
     }
     
     /**
@@ -93,7 +120,7 @@ class AORouter {
      * @param event 
      * @param data 
      */
-    private async send(incomingMessage: IAORouterMessage, from: IRegistryEntry, fromProcess: Process): Promise<any> {
+    private async relay(incomingMessage: IAORouterMessage, from: IRegistryEntry, fromProcess: Process): Promise<any> {
         const messageId = incomingMessage.routerMessageId || ++this.messageCount;
         const event = incomingMessage.event
 
@@ -131,30 +158,38 @@ class AORouter {
                 debug(err.message)
                 return reject(err)
             }
-            const registryEntry = this.registry[entryNameThatCanHandleEvent]
+            const receivingRegistryEntry = this.registry[entryNameThatCanHandleEvent]
             const existingProcesses = this.registryEntryNameToProcessInstances[entryNameThatCanHandleEvent]
             let receivingProcess: Process = null            
-            if ( registryEntry.AO.activationEvents && registryEntry.AO.activationEvents.indexOf(event) > -1 ) {
+            if ( receivingRegistryEntry.AO.activationEvents && receivingRegistryEntry.AO.activationEvents.indexOf(event) > -1 ) {
                 // 3a. If this is an activation event for the entry, lets spawn another instance
-                receivingProcess = this.spawnProcessForEntry(registryEntry)
+                receivingProcess = this.spawnProcessForEntry(receivingRegistryEntry)
             } else if ( existingProcesses.length > 0 ) {
                 // 3b. Not an activation event & we have a running process that can handle this event
                 receivingProcess = existingProcesses[0]
             } else {
                 // 3c. Not an activation event, but no existing process
-                receivingProcess = this.spawnProcessForEntry(registryEntry)
+                receivingProcess = this.spawnProcessForEntry(receivingRegistryEntry)
             }
             // 4. Handle streams
             const messageHasStream = message.data && message.data.stream
             if ( messageHasStream ) {
-                const readStream = fs.createReadStream(null, {fd:3})
-                const writeStream = receivingProcess.stdio[3]
+                let readStream: ReadStream;
+                let writeStream: WriteStream;
+                if ( from.name === 'ao-core' ) {
+                    readStream = message.data.stream
+                    writeStream = receivingProcess.stdio[3]
+                    debug('piping stream FROM core TO subprocess')
+                } else if ( receivingRegistryEntry.name === 'ao-core' ) {
+                    readStream = fs.createReadStream(null, {fd:3})
+                    writeStream = new WriteStream()
+                    message.data.stream = writeStream
+                    debug('piping stream FROM subprocess TO core')
+                }
                 readStream.pipe(writeStream)
-                // receivingProcess.stdio[3].pipe(fromProcess.stdio[3]);
-                console.log('router piping from -> receiving', receivingProcess.stdio[3].readable, receivingProcess.stdio[3].writable, receivingProcess.stdio[4].readable, receivingProcess.stdio[4].writable)
             }
             const startTime = Date.now()
-            debug(`routing event    [${message.routerMessageId}][${event}]: ${from.name} -> ${registryEntry.name} ${messageHasStream ? '(with stream)' : ''}`)
+            debug(`routing event    [${message.routerMessageId}][${event}]: ${from.name} -> ${receivingRegistryEntry.name} ${messageHasStream ? '(with stream)' : ''}`)
             // 5. Send the request out 
             receivingProcess.send(message, (error?: Error) => {
                 if ( error ) {
@@ -168,7 +203,7 @@ class AORouter {
                     if ( message.routerMessageId === response.routerMessageId ) {
                         const responseTime = Date.now() - startTime
                         const responseTimeFormated = (responseTime / 1000).toFixed(2)
-                        debug(`routing response [${message.routerMessageId}][${event}]: ${from.name} <- ${registryEntry.name}, duration[${responseTimeFormated}s]`)
+                        debug(`routing response [${message.routerMessageId}][${event}]: ${from.name} <- ${receivingRegistryEntry.name}, duration[${responseTimeFormated}s]`)
                         if ( response.error ) {
                             reject(response.error)
                         } else {
@@ -277,15 +312,17 @@ class AORouter {
             }
         })
     }
-    private bindCoreProcess(entry: IRegistryEntry): NodeJS.Process {
-        let entryProcess: Process = process
-        entryProcess.on('exit', this.shutdown.bind(this))
-        entryProcess.on('message', (message: IAORouterMessage) => {
-            this.incomingMessageRouter(message, entry, entryProcess)
+
+    private bindCoreProcess(entry: IRegistryEntry): AORouterCoreProcessPretender {        
+        let coreEntryProcess: AORouterCoreProcessPretender = this.router.process
+        coreEntryProcess.on('exit', this.shutdown.bind(this))
+        coreEntryProcess.on('message', (message: IAORouterMessage) => {
+            this.incomingMessageRouter(message, entry, coreEntryProcess)
         })
-        this.addProcessIntanceToEntry(entry.name, entryProcess)        
-        return entryProcess
+        this.addProcessIntanceToEntry(entry.name, coreEntryProcess)        
+        return coreEntryProcess
     }
+
     private spawnProcessForEntry(entry: IRegistryEntry): ChildProcess {
         const processLocation = path.join(__dirname, entry.main);
         const processArgs = [processLocation, '--ao-core']
@@ -329,30 +366,6 @@ class AORouter {
         // TODO. load foreign sub processes (extensions) (registry information in package.json files)
     }
 
-    private incomingMessageRouter(message: IAORouterMessage, from: IRegistryEntry, fromProcess: Process) {
-        if ( message.responseId ) {
-            // NOTE: this is a response to an earlier message, see the AORouter.send 
-            // method for how that response is handled
-        } else if (message.event) {
-            // 1. We re-use the router send method to push this off to the proper location
-            this.send(message, from, fromProcess).then((responseMessage: IAORouterMessage) => {
-                // 2. Send this back to the originating process
-                fromProcess.send(responseMessage)
-            }).catch((err: Error) => {
-                const responseError: IAORouterMessage = {
-                    ...message,
-                    responseId: message.requestId,
-                    data: {
-                        error: err
-                    }                    
-                }
-                fromProcess.send(responseError)
-            })
-        } else {
-            debug(`[${from.name}] sent a message with no event`)
-        }
-    }
-
     private shutdown(): void {
         // TODO: attempt to kill all subprocesses
     }
@@ -369,8 +382,4 @@ class AORouter {
         })
         debug(`=======  AORouter state (${timestamp}) =======`)
     }
-}
-
-if (require.main === module) {    
-    new AORouter();
 }

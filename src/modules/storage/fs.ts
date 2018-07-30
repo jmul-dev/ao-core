@@ -13,7 +13,7 @@ interface IAOFS_WriteStream_Data {
 
 class AOFS extends AORouterInterface {
     constructor() {
-        super(undefined, debug, 'fs')
+        super()
         this.router.on('/fs/write/stream', this._handleWriteStream.bind(this))
     }
     _handleWriteStream(request: IAORouterRequest) {
