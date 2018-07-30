@@ -49,17 +49,17 @@ class TestMain {
         }).catch(error => {
             debug('test-stream-a:error', error)
         })
-        // const inputStreamB = fs.createReadStream('/Users/neilharlow/Desktop/test-stream-b.png');
-        // this.router.send('/fs/write/stream', {
-        //     stream: inputStreamB,
-        //     writePath: '/Users/neilharlow/Desktop/test-stream-b.out.png',
-        // }).then(response => {
-        //     debug('test-stream-b:response', response.data)
-        // }).catch(error => {
-        //     debug('test-stream-b:error', error)
-        // })
+        const inputStreamB = fs.createReadStream('/Users/neilharlow/Desktop/test-stream-b.png');
+        this.router.send('/fs/write/stream', {
+            stream: inputStreamB,
+            writePath: '/Users/neilharlow/Desktop/test-stream-b.out.png',
+        }).then(response => {
+            debug('test-stream-b:response', response.data)
+        }).catch(error => {
+            debug('test-stream-b:error', error)
+        })
     }
 }
 const test = new TestMain()
-test.sendTest()
-// test.testStream()
+// test.sendTest()
+test.testStream()

@@ -70,7 +70,8 @@ class AOSubprocessRouter extends EventEmitter implements AORouterInterface {
             return;            
         }
         if ( message.data && message.data.stream ) {
-            message.data.stream = fs.createReadStream(null, {fd: 3})
+            console.log('Subprocess - attempt to create readStream on fd4')
+            message.data.stream = fs.createReadStream(null, {fd: 4})
         }
         const incomingRequest: IAORouterRequest = {
             id: message.requestId,
@@ -103,25 +104,23 @@ class AOSubprocessRouter extends EventEmitter implements AORouterInterface {
      * @returns Promise<any>
      */
     public send(event: string, data?: any): Promise<any> {
-        // TODO: if we are sending a stream, make sure our stdio fd is not in use!
-        // If so we need to move this onto a queue
         return new Promise((resolve, reject) => {
             const requestId = `${this.processIdentifier}:${++this.requestCount}`;
             const request: IAORouterMessage = {
                 requestId,
                 event,
                 data,
+            }            
+            if ( data && data.stream ) {
+                /**
+                 * Reminder: we are sending the stream up to the parent
+                 * process (core)
+                 */
+                const readableStream = data.stream
+                const parent = fs.createWriteStream(null, {fd: 3})                
+                readableStream.pipe(parent)
+                data.stream = true  // We dont pass the stream object through to the router 
             }
-            // if ( data && data.stream ) {
-            //     const readableStream = data.stream
-            //     if ( this.process.stdio ) {
-            //         this.debug('Attempting to pipe stream to AORouter process via stdio3')
-            //         readableStream.pipe(this.process.stdio[3])
-            //     } else {
-            //         this.debug('Attempting to pipe stream to AORouter, no stdio to mess with')
-            //     }
-            //     data.stream = true  // We dont pass the stream object through to the router 
-            // }
             this.process.send(request, (error?: Error) => {
                 if ( error ) {
                     // TODO data.stream.unpipe(this.process.stdio[3])
@@ -170,9 +169,6 @@ export class AOCoreProcessRouter extends EventEmitter implements AORouterInterfa
             // the other event listener handle that
             return;            
         }
-        if ( message.data && message.data.stream ) {
-            message.data.stream = fs.createReadStream(null, {fd: 3})
-        }
         const incomingRequest: IAORouterRequest = {
             id: message.requestId,
             event: message.event,
@@ -213,19 +209,8 @@ export class AOCoreProcessRouter extends EventEmitter implements AORouterInterfa
                 event,
                 data,
             }
-            // if ( data && data.stream ) {
-            //     const readableStream = data.stream
-            //     if ( this.process.stdio ) {
-            //         this.debug('Attempting to pipe stream to AORouter process via stdio3')
-            //         readableStream.pipe(this.process.stdio[3])
-            //     } else {
-            //         this.debug('Attempting to pipe stream to AORouter, no stdio to mess with')
-            //     }
-            //     data.stream = true  // We dont pass the stream object through to the router 
-            // }
             this.process.send(request, (error?: Error) => {
                 if ( error ) {
-                    // TODO data.stream.unpipe(this.process.stdio[3])
                     return reject(error)
                 }
                 this.process.on('message', (message: any) => {

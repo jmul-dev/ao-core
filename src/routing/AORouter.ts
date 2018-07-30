@@ -123,26 +123,6 @@ export default class AORouter extends AORouterCoreProcessInterface {
     private async relay(incomingMessage: IAORouterMessage, from: IRegistryEntry, fromProcess: Process): Promise<any> {
         const messageId = incomingMessage.routerMessageId || ++this.messageCount;
         const event = incomingMessage.event
-
-        // TODO: If we need to stream 
-        // if ( incomingMessage.data.test ) {
-        //     console.log('ATTEMPT TO DO THE NASTY')
-        //     const destinationStream = fs.createWriteStream(incomingMessage.data.writePath)
-        //     const readStream = fs.createReadStream(null, {fd:4})
-        //     // Incoming stream should be on fd4
-        //     readStream.pipe(destinationStream).on('finish', () => {
-        //         const fileStats = fs.statSync(incomingMessage.data.writePath)
-        //         console.log('WE DID THE NASTY', {
-        //             fileSize: fileStats.size,
-        //             filePath: incomingMessage.data.writePath,
-        //         })
-        //     }).on('error', (error) => {
-        //         console.log('ERROR DOING THE NASTY', error)
-        //     })
-        // }
-
-
-
         return new Promise((resolve, reject) => {
             // 1. Ensure message format (NOTE: we leave data validation up to the event handler)
             const message: IAORouterMessage = {
@@ -178,10 +158,11 @@ export default class AORouter extends AORouterCoreProcessInterface {
                 let writeStream: WriteStream;
                 if ( from.name === 'ao-core' ) {
                     readStream = message.data.stream
-                    writeStream = receivingProcess.stdio[3]
+                    writeStream = receivingProcess.stdio[4]
+                    message.data.stream = true // cannot send the stream object to subprocess
                     debug('piping stream FROM core TO subprocess')
                 } else if ( receivingRegistryEntry.name === 'ao-core' ) {
-                    readStream = fs.createReadStream(null, {fd:3})
+                    readStream = fs.createReadStream(null, {fd: 3})
                     writeStream = new WriteStream()
                     message.data.stream = writeStream
                     debug('piping stream FROM subprocess TO core')
