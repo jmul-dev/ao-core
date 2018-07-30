@@ -8,7 +8,7 @@ import mocks from './mocks';
 import { generateMockVideoList } from './mockVideos';
 const packageJson = require('../../package.json');
 import { GraphQLUpload } from 'apollo-upload-server';
-import { AOSubprocessRouter } from '../routing/AORouterInterface';
+import { AOSubprocessRouter } from '../router/AORouterInterface';
 import { AODB_CoreUpdate_Data } from '../modules/db/db';
 import Debug from 'debug';
 import { responsePathAsArray } from '../../node_modules/@types/graphql';

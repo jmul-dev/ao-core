@@ -1,5 +1,5 @@
 import fs, { ReadStream } from 'fs';
-import AORouterInterface, { IAORouterRequest } from "../../routing/AORouterInterface";
+import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
 import path from 'path';
 import Debug from 'debug';
 const debug = Debug('ao:fs');
@@ -30,6 +30,7 @@ export default class AOFS extends AORouterInterface {
         this.router.on('/fs/write/stream', this._handleWriteStream.bind(this))
         this.router.on('/fs/read', this._handleRead.bind(this))
         this.router.on('/fs/read/stream', this._handleReadStream.bind(this))
+        debug(`started`)
     }
 
     _handleWrite(request: IAORouterRequest) {

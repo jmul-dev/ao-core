@@ -7,7 +7,7 @@ import { json } from "body-parser";
 import { graphqlExpress, graphiqlExpress } from "apollo-server-express";
 import { apolloUploadExpress } from 'apollo-upload-server';
 import Debug from 'debug';
-import AORouterInterface from "../../routing/AORouterInterface";
+import AORouterInterface from "../../router/AORouterInterface";
 const debug = Debug('ao:http');
 
 export interface Http_Args {
@@ -40,6 +40,7 @@ export default class Http extends AORouterInterface {
             // this.router.send('/db/store')            
         });
         this.server.on('error', this.shutdown.bind(this));
+        debug(`started`)
     }
 
     public shutdown(err?: Error) {

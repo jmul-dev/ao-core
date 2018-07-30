@@ -1,4 +1,4 @@
-import AORouterInterface, { IAORouterRequest } from "../../routing/AORouterInterface";
+import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
 import toilet from 'toiletdb';
 import path from 'path';
 import fs from 'fs';
@@ -42,7 +42,7 @@ export default class AODB extends AORouterInterface {
         this.storageLocation = args.storageLocation
         this.router.on('/db/core/get', this._handleCoreDbGet.bind(this))
         this.router.on('/db/core/update', this._handleCoreDbUpdate.bind(this))
-        debug(`AODB started, storage location: ${args.storageLocation}`)
+        debug(`started`)
     }
 
     private getCoreDb(): Promise<toilet> {
