@@ -1,4 +1,7 @@
 import fs, { ReadStream } from 'fs';
+import fsExtra from 'fs-extra'
+import crypto from 'crypto'
+
 import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
 import path from 'path';
 import Debug from 'debug';
@@ -19,6 +22,23 @@ export interface IAOFS_Write_Data {
     data: string;
 }
 
+export interface IAOFS_Read_Data {
+    readPath: string;
+}
+
+export interface IAOFS_ReadStream_Data {
+    readPath: string;
+    key: string;
+}
+
+export interface IAOFS_Mkdir_Data {
+    dirPath: string;
+}
+
+export interface IAOFS_Unlink_Data {
+    removePath: string;
+}
+
 /**
  * AOFS
  * 
@@ -27,6 +47,7 @@ export interface IAOFS_Write_Data {
  */
 export default class AOFS extends AORouterInterface {
     private storageLocation: string;
+    private encryptionAlgorithm: string = 'aes-256-ctr';
 
     constructor(args: AOFS_Args) {
         super()
@@ -66,18 +87,58 @@ export default class AOFS extends AORouterInterface {
     }
 
     _handleRead(request: IAORouterRequest) {
-        request.reject(new Error('/fs/read not implemented'))
+        const requestData: IAOFS_Read_Data = request.data;
+        const readPath = path.resolve(this.storageLocation, requestData.readPath)
+        fs.readFile(readPath, (err, data) => {
+            if(err) {
+                request.reject(err)
+            }
+            request.respond(data)
+        })
     }
 
     _handleReadStream(request: IAORouterRequest) {
-        request.reject(new Error('/fs/readStream not implemented'))
+        const requestData: IAOFS_ReadStream_Data = request.data
+        const readPath = path.resolve(this.storageLocation, requestData.readPath)
+        const readStream = fs.createReadStream(readPath)
+
+        readStream.on('error', (err) => {
+            request.reject(err)
+        })
+
+        readStream.on('open', () => {
+            var receiver = fs.createWriteStream(null, {fd:3})
+            if(requestData.key) {
+                const decrypt = crypto.createDecipher( this.encryptionAlgorithm, requestData.key )
+                readStream.pipe(decrypt).pipe(receiver)
+            } else {
+                readStream.pipe(receiver)
+            }
+            //TODO: What message do we send??
+            request.respond({})
+        })
     }
 
     _handleMkdir(request: IAORouterRequest) {
-        request.reject(new Error('/fs/readStream not implemented'))
+        const requestData: IAOFS_Mkdir_Data = request.data
+        const dirPath = path.resolve(this.storageLocation, requestData.dirPath)
+        fsExtra.ensureDir(dirPath)
+        .then( () => {
+            request.respond({})
+        })
+        .catch( (err) => {
+            request.reject(err)
+        })
     }
 
     _handleUnlink(request: IAORouterRequest) {
-        request.reject(new Error('/fs/readStream not implemented'))
+        const requestData: IAOFS_Unlink_Data = request.data
+        const removePath = path.resolve(this.storageLocation, requestData.removePath)
+        fs.unlink(removePath, (err) => {
+            if(err) {
+                request.reject(err)
+            }
+            request.respond({})
+        })
     }
 }
