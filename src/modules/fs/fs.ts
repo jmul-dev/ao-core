@@ -9,9 +9,14 @@ export interface AOFS_Args {
     storageLocation: string;
 }
 
-interface IAOFS_WriteStream_Data {
+export interface IAOFS_WriteStream_Data {
     stream: ReadStream;
     writePath: string;
+}
+
+export interface IAOFS_Write_Data {
+    writePath: string;
+    data: string;
 }
 
 /**
@@ -36,6 +41,7 @@ export default class AOFS extends AORouterInterface {
     }
 
     _handleWrite(request: IAORouterRequest) {
+        const requestData: IAOFS_Write_Data = request.data;
         request.reject(new Error('/fs/write not implemented'))
     }
 

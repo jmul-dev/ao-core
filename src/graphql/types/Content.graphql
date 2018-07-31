@@ -48,11 +48,12 @@ type VideoContent implements IContent {
     createdAt: String
     # VideoContent
     teaserUrl: String
-    coverImageUrl: String
+    featuredImageUrl: String
     metadata: VideoMetadata
 }
 
 input VideoContentSubmissionInputs {
+    ethAddress: String!
     video: Upload
     videoTeaser: Upload
     featuredImage: Upload

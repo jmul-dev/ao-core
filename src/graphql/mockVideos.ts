@@ -4,11 +4,11 @@ import casual from 'casual';
 const demoAssets = [{
     fileUrl: 'http://localhost:3003/assets/demo/demo-1-src.mov',
     teaserUrl: 'http://localhost:3003/assets/demo/demo-1-src.mov',
-    coverImageUrl: 'http://localhost:3003/assets/demo/demo-1-poster.png',
+    featuredImageUrl: 'http://localhost:3003/assets/demo/demo-1-poster.png',
 }, {
     fileUrl: 'http://localhost:3003/assets/demo/demo-2-src.mov',
     teaserUrl: 'http://localhost:3003/assets/demo/demo-2-src.mov',
-    coverImageUrl: 'http://localhost:3003/assets/demo/demo-2-poster.png',
+    featuredImageUrl: 'http://localhost:3003/assets/demo/demo-2-poster.png',
 }]
 
 function generateRandomVideo() {

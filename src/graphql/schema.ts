@@ -9,7 +9,10 @@ const packageJson = require('../../package.json');
 import { GraphQLUpload } from 'apollo-upload-server';
 import { AOSubprocessRouter } from '../router/AORouterInterface';
 import { AODB_CoreUpdate_Data } from '../modules/db/db';
+import md5 from 'md5';
+import { IAOFS_WriteStream_Data, IAOFS_Write_Data } from '../modules/fs/fs';
 import Debug from 'debug';
+import { IAORouterMessage } from '../router/AORouter';
 const debug = Debug('ao:graphql');
 const error = Debug('ao:graphql:error');
 
@@ -92,6 +95,66 @@ export default function (router: AOSubprocessRouter) {
                 },
                 submitVideoContent: (obj, args, context, info) => {
                     return new Promise((resolve, reject) => {
+                        const newContentId: string = md5(new Date);
+                        const ethAddress: string = args.ethAddress;
+                        const contentPath: string = path.join(ethAddress, 'dat', newContentId)
+                        const fileInputs = ['video', 'videoTeaser', 'featuredImage']
+                        let contentFileNames: Array<string> = []
+                        let fileStorePromises: Array<Promise<any>> = []
+                        for (let i = 0; i < fileInputs.length; i++) {
+                            const fileInputName = fileInputs[i];
+                            fileStorePromises.push(new Promise((localResolve, localReject) => {
+                                args.inputs[fileInputName].then(({stream, filename, mimetype, encoding}) => {
+                                    // attaching the existing file extension if there is one
+                                    const fileName = fileInputName + '.' + filename.substr(filename.lastIndexOf('.') + 1)
+                                    contentFileNames[i] = fileName
+                                    const writeStreamData: IAOFS_WriteStream_Data = {
+                                        stream,
+                                        writePath: path.join(contentPath, fileName)
+                                    }
+                                    router.send('/fs/writeStream', writeStreamData).then(localResolve).catch(localReject)
+                                }).catch(localReject)
+                            }))
+                        }
+                        Promise.all(fileStorePromises).then((results: Array<IAORouterMessage>) => {
+                            debug('submitVideoContent - all files stored')
+                            const contentJson = {
+                                id: newContentId,
+                                creatorId: ethAddress,
+                                contentType: 'VOD',
+                                isFolder: false, // TODO: determine if args.inputs.video is a folder
+                                isMutable: false,
+                                title: args.inputs.title,
+                                description: args.inputs.description,
+                                stake: args.inputs.stake,
+                                profit: args.inputs.profit,
+                                createdAt: Date.now(),
+
+                                fileName: contentFileNames[0],
+                                fileUrl: `${ethAddress}/dat/${newContentId}/${contentFileNames[0]}`,
+                                fileSize: results[0].data.fileSize,
+                                teaserUrl: `${ethAddress}/dat/${newContentId}/${contentFileNames[1]}`,
+                                featuredImageUrl: `${ethAddress}/dat/${newContentId}/${contentFileNames[2]}`,
+
+                                metadata: { // TODO: run video through ffprobe before encrypting
+                                    duration: 0,  
+                                    resolution: 0,
+                                    encoding: 0,
+                                }
+                            }
+                            const contentWriteData: IAOFS_Write_Data = {
+                                writePath: `${ethAddress}/dat/${newContentId}/content.json`,
+                                data: JSON.stringify(contentJson)
+                            }
+                            router.send('/fs/write', contentWriteData).then((result: IAORouterMessage) => {
+                                resolve(contentJson)
+                            }).catch((error: Error) => {
+                                // TODO: attempt to cleanup file storage
+                                reject(error)
+                            })
+                        }).catch(reject)
+
+                        // TODO: remove
                         // var new_dat_folder:string = md5(new Date)
                         // var eth_address:string = db.getEthAddress()
                         // var base_path:string = join(eth_address , 'dat', new_dat_folder)

@@ -60,7 +60,7 @@ const mocks = {
         __typename: 'VideoContent',
         contentType: 'VOD',
         teaserUrl: casual.word + '.mp4',
-        coverImageUrl: casual.word + '.jpg',
+        featuredImageUrl: casual.word + '.jpg',
     }),
     NodeStatistics: () => ({
         status: 'connected',
