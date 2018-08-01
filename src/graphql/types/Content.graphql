@@ -8,6 +8,8 @@ enum ContentType {
 # Shared interface between all content types
 interface IContent {
     id: ID!
+    datKey: ID
+    stakeID: ID
     nodeID: ID!
     creatorID: ID!
     contentType: ContentType!
