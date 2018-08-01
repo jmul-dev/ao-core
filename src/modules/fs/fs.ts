@@ -1,6 +1,7 @@
 import fs, { ReadStream } from 'fs';
 import fsExtra from 'fs-extra'
 import crypto from 'crypto'
+import md5 from 'md5'
 
 import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
 import path from 'path';
@@ -15,6 +16,7 @@ export interface AOFS_Args {
 export interface IAOFS_WriteStream_Data {
     stream: ReadStream;
     writePath: string;
+    encrypt: boolean;
 }
 
 export interface IAOFS_Write_Data {
@@ -72,18 +74,50 @@ export default class AOFS extends AORouterInterface {
         const writePath = path.resolve(this.storageLocation, requestData.writePath)
         debug('writing stream to:', writePath)
         const destinationStream = fs.createWriteStream(writePath)
-        requestData.stream.pipe(destinationStream).on('finish', () => {
+        
+        requestData.stream.pipe(destinationStream)
+        .on('finish', () => {
             const fileStats = fs.statSync(writePath)
-            request.respond({
-                fileSize: fileStats.size,
-                filePath: writePath,
-            })
+            if( !requestData.encrypt ) {
+                request.respond({
+                    fileSize: fileStats.size,
+                    filePath: writePath,
+                })
+            } else {
+                const key = md5( new Date().getSeconds() + Math.random() )
+                const encrypt = crypto.createCipher(this.encryptionAlgorithm, key)
+                const readFrom = fs.createReadStream(writePath)
+                const encryptedPath = writePath+'.encrypted'
+                const writeToEncrypted = fs.createWriteStream( encryptedPath )
+                readFrom.pipe( encrypt ).pipe( writeToEncrypted )
+                .on('finish', () => {
+                    const fileStats = fs.statSync( encryptedPath )
+                    fsExtra.remove(writePath)
+                    .then(()=> {
+                        fsExtra.move(encryptedPath, writePath)
+                        .then(() => {
+                            request.respond({
+                                fileSize: fileStats.size,
+                                filePath: writePath,
+                                key: key
+                            })
+                        })
+                        .catch(error => {
+                            request.reject(error)
+                        })
+                    })
+                    .catch(error => {
+                        request.reject(error)
+                    })
+                })
+            }
         }).on('error', (error) => {
             console.log('fs rejecting', error)
             request.reject(error)
             // TODO: 'error' event does not mean the stream is closed, 
             // should probably close up streams/cleanup
         })
+        
     }
 
     _handleRead(request: IAORouterRequest) {
