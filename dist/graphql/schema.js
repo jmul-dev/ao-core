@@ -36,7 +36,13 @@ function default_1(router) {
             // TODO: refactor resolvers into seperate files
             Query: {
                 version: function () { return packageJson.version; },
-                // logs: () => db.getLogs(),
+                logs: function () {
+                    return new Promise(function (resolve, reject) {
+                        router.send('/db/core/get', { key: 'logs' }).then(function (response) {
+                            resolve(response.data || []);
+                        }).catch(reject);
+                    });
+                },
                 node: function () { return mockStore.node; },
                 state: function () { return mockStore.state; },
                 settings: function () {

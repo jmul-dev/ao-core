@@ -18,27 +18,26 @@ var Core = /** @class */ (function () {
         this.coreRouter.router.on('/core/log', this._handleLog.bind(this));
         process.stdin.resume(); // Hack to keep the core processes running
     }
+    // NOTE: this is useful for sending event logs up to the 
+    // electron wrapper (if exists) without going through the http
+    // interface. 
     Core.prototype._handleLog = function (request) {
-        debug('/core/log', request);
-        // request.respond(null)
-    };
-    Core.prototype.sendEventLog = function (message) {
+        var data = request.data;
         if (process.send) {
             // If there is a parent process (running within app) we relay
             // all of the logs up.
-            process.send({ event: constants_1.EVENT_LOG, message: message });
+            process.send({ event: constants_1.EVENT_LOG, message: data.message });
         }
         else {
             // TODO: append to a temp log somewhere (make this configurable via command line)
         }
-        // TODO: implement db calls
-        this.coreRouter.router.send('/db/core/store', {
+        this.coreRouter.router.send('/db/core/insert', {
             table: 'logs',
-            data: {
-                message: message,
-                dateCreated: Date.now()
+            value: {
+                message: data.message,
+                createdAt: Date.now()
             }
-        });
+        }).then(request.respond).catch(request.reject);
     };
     Core.prototype.shutdownWithError = function (err) {
         error('core shutting down with error\n', err);

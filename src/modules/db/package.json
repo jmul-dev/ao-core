@@ -10,8 +10,9 @@
         "events": [
             "/db/core/get",
             "/db/core/update",
+            "/db/core/insert",
             "/db/user/get",
-            "/db/user/update"
+            "/db/user/update"            
         ],
         "activationEvents": [
             

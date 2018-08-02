@@ -2,7 +2,7 @@
     "name": "ao-fs",
     "version": "0.0.1",
     "publisher": "AO",
-    "displayName": "AOFS",
+    "displayName": "AO FS",
     "description": "AO - FS package",
     "main": "fs/fs.js",
     "bin":  "fs/fs.bin.js",

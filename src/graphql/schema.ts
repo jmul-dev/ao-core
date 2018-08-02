@@ -39,7 +39,13 @@ export default function (router: AOSubprocessRouter) {
             // TODO: refactor resolvers into seperate files
             Query: {
                 version: () => packageJson.version,
-                // logs: () => db.getLogs(),
+                logs: () => {
+                    return new Promise((resolve, reject) => {
+                        router.send('/db/core/get', {key: 'logs'}).then(response => {
+                            resolve(response.data || [])
+                        }).catch(reject)
+                    })
+                },
                 node: () => mockStore.node,
                 state: () => mockStore.state,
                 settings: () => {

@@ -13,8 +13,21 @@ const packageJson = require('../../package.json');
 const fsPackageJson: IRegistryEntry = require('../modules/fs/package.json');
 const httpPackageJson: IRegistryEntry = require('../modules/http/package.json');
 const dbPackageJson: IRegistryEntry = require('../modules/db/package.json');
-const datPackageJson: IRegistryEntry = require('../modules/db/package.json');
-
+const datPackageJson: IRegistryEntry = require('../modules/dat/package.json');
+const corePackageJson = {
+    name: 'ao-core',
+    version: packageJson.version,
+    publisher: 'AO',
+    displayName: 'AO Core',
+    description: 'AO Core\'s main process',
+    bin: undefined,
+    AO: {
+        runUnderCore: true,
+        events: [
+            '/core/log'
+        ],
+    },
+}
 
 export interface IRegistryEntry {
     name: string;
@@ -197,7 +210,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
                     }
                     reject(error)
                     return;
-                }                
+                }
                 // 6. Match incoming messages to the requestId, this will be our response
                 receivingProcess.on('message', function receivingProcessResponseHandler(response: IAORouterMessage) {
                     if ( message.routerMessageId === response.routerMessageId ) {
@@ -219,20 +232,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
 
     private registerCoreProcesses() {
         // NOTE: we could pull from the core package.json if we really wanted
-        this.registerEntry({
-            name: 'ao-core',
-            version: packageJson.version,
-            publisher: 'AO',
-            displayName: 'AO Core',
-            description: 'AO Core\'s main process',
-            bin: undefined,
-            AO: {
-                runUnderCore: true,
-                events: [
-                    '/core/log'
-                ],
-            },
-        })
+        this.registerEntry(corePackageJson)
         this.registerEntry(fsPackageJson)
         this.registerEntry(httpPackageJson)
         this.registerEntry(dbPackageJson)
@@ -240,8 +240,9 @@ export default class AORouter extends AORouterCoreProcessInterface {
     }
 
     private registerEntry(entry: IRegistryEntry) {
-        if ( this.registry[entry.name] ) {
+        if ( this.registry[entry.name] ) {            
             debug('Registry name collision, possibly duplicate entry name. Not registering...', entry)
+            this._printRouterState()
         } else {
             this.registry[entry.name] = entry
             this.registry[entry.name].AO.events.forEach(event => {
@@ -337,7 +338,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
         const registeredEntries = Object.keys(this.registry).forEach((entryName: string) => {
             const entry: IRegistryEntry = this.registry[entryName]
             const instances = this.registryEntryNameToProcessInstances[entryName]
-            debug(`${entry.displayName}:`)
+            debug(`${entry.displayName} (${entry.name}):`)
             debug(`\tevents: ${entry.AO.events.join(', ')}`)
             debug(`\tinstances: ${instances.length}`)
         })

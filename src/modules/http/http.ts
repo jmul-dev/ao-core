@@ -36,8 +36,16 @@ export default class Http extends AORouterInterface {
         this.server = this.express.listen(options.httpPort, () => {
             const address: AddressInfo = <AddressInfo> this.server.address();
             debug('Express server running on port: ' + address.port);
-            // TODO: store event log
-            // this.router.send('/db/store')            
+            this.router.send('/core/log', {message: `AO Core http server running on port ${address.port}`}).then(response => {
+                console.log('Response from log A: ', response)
+            }).catch(error => {
+                console.log('Error Response from log A: ', error)
+            })
+            this.router.send('/core/log', {message: `AO Core http server running with cors ${options.httpOrigin}`}).then(response => {
+                console.log('Response from log B: ', response)
+            }).catch(error => {
+                console.log('Error Response from log B: ', error)
+            })
         });
         this.server.on('error', this.shutdown.bind(this));
         debug(`started`)

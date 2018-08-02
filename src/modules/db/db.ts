@@ -20,6 +20,11 @@ export interface AODB_CoreUpdate_Data {
     merge?: boolean;
 }
 
+export interface AODB_CoreInsert_Data {
+    table: string;
+    value: any;
+}
+
 
 export default class AODB extends AORouterInterface {
     public static DEFAULT_SETTINGS = {
@@ -42,6 +47,7 @@ export default class AODB extends AORouterInterface {
         this.storageLocation = args.storageLocation
         this.router.on('/db/core/get', this._handleCoreDbGet.bind(this))
         this.router.on('/db/core/update', this._handleCoreDbUpdate.bind(this))
+        this.router.on('/db/core/insert', this._handleCoreDbInsert.bind(this))
         this.router.on('/db/user/get', this._handleUserDbGet.bind(this))
         this.router.on('/db/user/update', this._handleUserDbUpdate.bind(this))
         debug(`started`)
@@ -93,15 +99,19 @@ export default class AODB extends AORouterInterface {
         }).catch(request.reject)
     }
 
+    /**
+     * Updating an arbirtary key value within the store, with the
+     * option to merge with existing data (if value is object)
+     */
     private _handleCoreDbUpdate(request: IAORouterRequest) {
         const requestData: AODB_CoreUpdate_Data = request.data
         // TODO: validate requestData
         this.getCoreDb().then(db => {
             db.read(requestData.key, (err, existingValue) => {
-                let updatedValue = existingValue;
+                let updatedValue = requestData.value
                 if ( typeof existingValue === 'object' && requestData.merge )
                     updatedValue = Object.assign({}, existingValue, requestData.value)                
-                db.write(requestData.key, requestData.value, (err, data) => {
+                db.write(requestData.key, updatedValue, (err, data) => {
                     if ( err ) {
                         request.reject(err)
                     } else {
@@ -110,6 +120,27 @@ export default class AODB extends AORouterInterface {
                 })
             })            
         }).catch(request.reject)
+    }
+
+    /**
+     * Insert an entry into an array of data. For this to work,
+     * an id must be passed.
+     */
+    private _handleCoreDbInsert(request: IAORouterRequest) {
+        const requestData: AODB_CoreInsert_Data = request.data
+        this.getCoreDb().then(db => {
+            db.read(requestData.table, (err, existingValue) => {
+                let updatedValues = existingValue || []
+                updatedValues.push(requestData.value)
+                db.write(requestData.table, updatedValues, (err, data) => {
+                    if ( err ) {
+                        request.reject(err)
+                    } else {
+                        request.respond(data)
+                    }
+                })
+            })
+        })
     }
 
     private _handleUserDbGet(request: IAORouterRequest) {

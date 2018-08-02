@@ -8,6 +8,10 @@ const debug = Debug('ao:core');
 const error = Debug('ao:core:error');
 
 
+export interface AOCore_Log_Data {
+    message: string;
+}
+
 export default class Core {
     public options: ICoreOptions;
     private coreRouter: AORouter;
@@ -22,27 +26,25 @@ export default class Core {
         process.stdin.resume();  // Hack to keep the core processes running
     }
 
+    // NOTE: this is useful for sending event logs up to the 
+    // electron wrapper (if exists) without going through the http
+    // interface. 
     _handleLog(request: IAORouterRequest) {
-        debug('/core/log', request)
-        // request.respond(null)
-    }
-
-    sendEventLog(message) {
+        const data: AOCore_Log_Data = request.data
         if ( process.send ) {
             // If there is a parent process (running within app) we relay
             // all of the logs up.
-            process.send({event: EVENT_LOG, message: message});
+            process.send({event: EVENT_LOG, message: data.message});
         } else {
             // TODO: append to a temp log somewhere (make this configurable via command line)
         }
-        // TODO: implement db calls
-        this.coreRouter.router.send('/db/core/store', {
+        this.coreRouter.router.send('/db/core/insert', {
             table: 'logs',
-            data: {
-                message,
-                dateCreated: Date.now()
+            value: {
+                message: data.message,
+                createdAt: Date.now()
             }
-        })
+        }).then(request.respond).catch(request.reject)
     }
   
     shutdownWithError(err) {
