@@ -31,6 +31,8 @@ interface IContent {
 
 type VideoContent implements IContent {
     id: ID!
+    datKey: ID
+    stakeID: ID
     nodeID: ID!
     creatorID: ID!
     contentType: ContentType!
