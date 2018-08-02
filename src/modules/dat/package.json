@@ -8,11 +8,12 @@
     "bin":  "dat/dat.bin.js",
     "AO": {
         "events": [
-            "/dat/create",
-            "/dat/remove",
-            "/dat/list",
             "/dat/resumeAll",
-            "/dat/stopAll"
+            "/dat/stopAll",
+            "/dat/create",
+            "/dat/joinNetwork",
+            "/dat/remove",
+            "/dat/list"
         ],
         "activationEvents": [
             

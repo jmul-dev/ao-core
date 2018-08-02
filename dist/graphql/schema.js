@@ -113,7 +113,8 @@ function default_1(router) {
                                     var writeStreamData = {
                                         stream: stream,
                                         writePath: path_1.default.join(contentPath, fileName),
-                                        encrypt: fileInputName == 'video' ? true : false
+                                        encrypt: fileInputName == 'video' ? true : false,
+                                        videoStats: fileInputName.includes('video') ? true : false
                                     };
                                     router.send('/fs/writeStream', writeStreamData).then(localResolve).catch(localReject);
                                 }).catch(localReject);
@@ -124,6 +125,15 @@ function default_1(router) {
                         }
                         Promise.all(fileStorePromises).then(function (results) {
                             debug('submitVideoContent - all files stored');
+                            var fileSize = 0;
+                            var videoStats = {};
+                            for (var i = 0; i < results.length; i++) {
+                                var result = results[i];
+                                if (result.data.videoStats && result.data.key) {
+                                    videoStats = result.data.videoStats;
+                                    fileSize = result.data.fileSize;
+                                }
+                            }
                             var contentJson = {
                                 id: newContentId,
                                 creatorId: ethAddress,
@@ -137,13 +147,13 @@ function default_1(router) {
                                 createdAt: Date.now(),
                                 fileName: contentFileNames[0],
                                 fileUrl: ethAddress + "/dat/" + newContentId + "/" + contentFileNames[0],
-                                fileSize: results[0].data.fileSize,
+                                fileSize: fileSize,
                                 teaserUrl: ethAddress + "/dat/" + newContentId + "/" + contentFileNames[1],
                                 featuredImageUrl: ethAddress + "/dat/" + newContentId + "/" + contentFileNames[2],
                                 metadata: {
-                                    duration: 0,
-                                    resolution: 0,
-                                    encoding: 0,
+                                    duration: videoStats['duration'],
+                                    resolution: videoStats['height'],
+                                    encoding: videoStats['codec'],
                                 }
                             };
                             var contentWriteData = {
