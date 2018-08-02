@@ -281,7 +281,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
 
     private spawnProcessForEntry(entry: IRegistryEntry): ChildProcess | null {
         const processLocation = path.join(__dirname, '../modules', entry.bin);
-        const processArgs = [processLocation, '--storageLocation', this.args.storageLocation, '--ao-core']
+        const processArgs = [processLocation, '--storageLocation', this.args.storageLocation, '--httpOrigin', this.args.httpOrigin, '--ao-core']
         let entryProcess: ChildProcess = spawn(process.execPath, processArgs, {
             stdio: ['ipc', 'inherit', 'inherit', 'pipe', 'pipe'],            
         })

@@ -6,12 +6,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var graphql_tools_1 = require("graphql-tools");
 var graphql_import_1 = require("graphql-import");
 var path_1 = __importDefault(require("path"));
-var join = path_1.default.join;
 var graphqlSchema = graphql_import_1.importSchema(path_1.default.resolve(__dirname, './schema.graphql'));
 var mocks_1 = __importDefault(require("./mocks"));
 var mockVideos_1 = require("./mockVideos");
 var packageJson = require('../../package.json');
 var apollo_upload_server_1 = require("apollo-upload-server");
+var md5_1 = __importDefault(require("md5"));
 var debug_1 = __importDefault(require("debug"));
 var debug = debug_1.default('ao:graphql');
 var error = debug_1.default('ao:graphql:error');
@@ -33,6 +33,7 @@ function default_1(router) {
                     return info.schema.getType(data.__typename); // __typename property must be set by your mock functions
                 },
             },
+            // TODO: refactor resolvers into seperate files
             Query: {
                 version: function () { return packageJson.version; },
                 // logs: () => db.getLogs(),
@@ -89,6 +90,68 @@ function default_1(router) {
                 },
                 submitVideoContent: function (obj, args, context, info) {
                     return new Promise(function (resolve, reject) {
+                        var newContentId = md5_1.default(new Date);
+                        var ethAddress = args.ethAddress;
+                        var contentPath = path_1.default.join(ethAddress, 'dat', newContentId);
+                        var fileInputs = ['video', 'videoTeaser', 'featuredImage'];
+                        var contentFileNames = [];
+                        var fileStorePromises = [];
+                        var _loop_1 = function (i) {
+                            var fileInputName = fileInputs[i];
+                            fileStorePromises.push(new Promise(function (localResolve, localReject) {
+                                args.inputs[fileInputName].then(function (_a) {
+                                    var stream = _a.stream, filename = _a.filename, mimetype = _a.mimetype, encoding = _a.encoding;
+                                    // attaching the existing file extension if there is one
+                                    var fileName = fileInputName + '.' + filename.substr(filename.lastIndexOf('.') + 1);
+                                    contentFileNames[i] = fileName;
+                                    var writeStreamData = {
+                                        stream: stream,
+                                        writePath: path_1.default.join(contentPath, fileName),
+                                        encrypt: fileInputName == 'video' ? true : false
+                                    };
+                                    router.send('/fs/writeStream', writeStreamData).then(localResolve).catch(localReject);
+                                }).catch(localReject);
+                            }));
+                        };
+                        for (var i = 0; i < fileInputs.length; i++) {
+                            _loop_1(i);
+                        }
+                        Promise.all(fileStorePromises).then(function (results) {
+                            debug('submitVideoContent - all files stored');
+                            var contentJson = {
+                                id: newContentId,
+                                creatorId: ethAddress,
+                                contentType: 'VOD',
+                                isFolder: false,
+                                isMutable: false,
+                                title: args.inputs.title,
+                                description: args.inputs.description,
+                                stake: args.inputs.stake,
+                                profit: args.inputs.profit,
+                                createdAt: Date.now(),
+                                fileName: contentFileNames[0],
+                                fileUrl: ethAddress + "/dat/" + newContentId + "/" + contentFileNames[0],
+                                fileSize: results[0].data.fileSize,
+                                teaserUrl: ethAddress + "/dat/" + newContentId + "/" + contentFileNames[1],
+                                featuredImageUrl: ethAddress + "/dat/" + newContentId + "/" + contentFileNames[2],
+                                metadata: {
+                                    duration: 0,
+                                    resolution: 0,
+                                    encoding: 0,
+                                }
+                            };
+                            var contentWriteData = {
+                                writePath: ethAddress + "/dat/" + newContentId + "/content.json",
+                                data: JSON.stringify(contentJson)
+                            };
+                            router.send('/fs/write', contentWriteData).then(function (result) {
+                                resolve(contentJson);
+                            }).catch(function (error) {
+                                // TODO: attempt to cleanup file storage
+                                reject(error);
+                            });
+                        }).catch(reject);
+                        // TODO: remove
                         // var new_dat_folder:string = md5(new Date)
                         // var eth_address:string = db.getEthAddress()
                         // var base_path:string = join(eth_address , 'dat', new_dat_folder)

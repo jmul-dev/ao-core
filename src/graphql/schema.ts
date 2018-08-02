@@ -110,7 +110,8 @@ export default function (router: AOSubprocessRouter) {
                                     contentFileNames[i] = fileName
                                     const writeStreamData: IAOFS_WriteStream_Data = {
                                         stream,
-                                        writePath: path.join(contentPath, fileName)
+                                        writePath: path.join(contentPath, fileName),
+                                        encrypt: fileInputName == 'video' ? true: false
                                     }
                                     router.send('/fs/writeStream', writeStreamData).then(localResolve).catch(localReject)
                                 }).catch(localReject)

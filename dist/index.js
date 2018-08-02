@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var constants_1 = require("./constants");
-var AORouter_1 = __importDefault(require("./routing/AORouter"));
+var AORouter_1 = __importDefault(require("./router/AORouter"));
 var debug_1 = __importDefault(require("debug"));
 var debug = debug_1.default('ao:core');
 var error = debug_1.default('ao:core:error');
