@@ -92,8 +92,11 @@ export default class AODat extends AORouterInterface {
 
     private _handleDatStopAll(request: IAORouterRequest) {
         const requestData: AODat_StopAll_Data = request.data
-        
-        request.reject(new Error('Not implemented!'))
+        for (let i = 0; i < this.dats.length; i++) {
+            const dat = this.dats[i]
+            dat.close()
+        }
+        request.respond({})
     }
 
     private _handleDatCreate(request: IAORouterRequest) {
@@ -105,14 +108,14 @@ export default class AODat extends AORouterInterface {
             }
             this.dats = this.multidat.list()//update list.
             dat.importFiles()
-            dat.joinNetwork()
+            //dat.joinNetwork()
             const dat_folder = basename(fullPath)
             debug(dat_folder)
             const dat_hash =  dat.key.toString('hex')
-            debug('Joined network with new link: dat://' + dat_hash)
+            debug('New link: dat://' + dat_hash)
 
             request.respond({
-                    dat_folder: dat_folder,
+                    datFolder: dat_folder,
                     hash: dat_hash
             })
         })
