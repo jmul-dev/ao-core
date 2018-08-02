@@ -117,7 +117,8 @@ export default function (router: AOSubprocessRouter) {
                                     const writeStreamData: IAOFS_WriteStream_Data = {
                                         stream,
                                         writePath: path.join(contentPath, fileName),
-                                        encrypt: fileInputName == 'video' ? true: false
+                                        encrypt: fileInputName == 'video' ? true: false,
+                                        videoStats: fileInputName.includes('video') ? true: false
                                     }
                                     router.send('/fs/writeStream', writeStreamData).then(localResolve).catch(localReject)
                                 }).catch(localReject)
@@ -125,6 +126,7 @@ export default function (router: AOSubprocessRouter) {
                         }
                         Promise.all(fileStorePromises).then((results: Array<IAORouterMessage>) => {
                             debug('submitVideoContent - all files stored')
+
                             const contentJson = {
                                 id: newContentId,
                                 creatorId: ethAddress,
