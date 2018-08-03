@@ -74,7 +74,7 @@ export class AOSubprocessRouter extends EventEmitter implements AORouterInterfac
         const incomingRequest: IAORouterRequest = {
             id: message.requestId,
             event: message.event,
-            data: message.data,
+            data: message.data || {},
             respond: this._routeMessageResponse.bind(this, message, false),
             reject: this._routeMessageResponse.bind(this, message, true),
         }
@@ -170,7 +170,7 @@ export class AOCoreProcessRouter extends EventEmitter implements AORouterInterfa
         const incomingRequest: IAORouterRequest = {
             id: message.requestId,
             event: message.event,
-            data: message.data,
+            data: message.data || {},
             respond: this._routeMessageResponse.bind(this, message, false),
             reject: this._routeMessageResponse.bind(this, message, true),
         }

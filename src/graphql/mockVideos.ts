@@ -17,6 +17,7 @@ function generateRandomVideo(coreOrigin,corePort) {
     const stake = Math.floor( casual.double(1, 4) * fileSize );
     const premium = stake - fileSize
     const originURL = coreOrigin+':'+corePort
+    console.log(originURL+demoAsset.fileUrl)
     return {
         // IContent
         id: casual.uuid,
@@ -36,7 +37,7 @@ function generateRandomVideo(coreOrigin,corePort) {
 
         adSupport: casual.boolean,
         createdAt: casual.date(),
-        
+
         fileUrl: originURL+demoAsset.fileUrl,
         teaserUrl: originURL+demoAsset.teaserUrl,
         featuredImageUrl: originURL+demoAsset.featuredImageUrl

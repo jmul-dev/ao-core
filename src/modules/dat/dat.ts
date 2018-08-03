@@ -80,7 +80,8 @@ export default class AODat extends AORouterInterface {
                 const dat_link = 'dat://' + dat.key.toString('hex')
                 debug('Joined network for: '+ dat_link)
             }
-            debug('Dat Subprocess initialized')
+            debug(`Dat process initialized for user ${this.ethAddress}`)
+            this.router.send('/core/log', {message: `[AO Dat] Dat process initialized for user ${this.ethAddress}`})
             request.respond({dat:'All Dats have Resumed'})
         })
     }

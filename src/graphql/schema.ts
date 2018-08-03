@@ -8,7 +8,7 @@ import { generateMockVideoList } from './mockVideos';
 const packageJson = require('../../package.json');
 import { GraphQLUpload } from 'apollo-upload-server';
 import { AOSubprocessRouter } from '../router/AORouterInterface';
-import { AODB_CoreUpdate_Data } from '../modules/db/db';
+import { AODB_SettingsUpdate_Data } from '../modules/db/db';
 import md5 from 'md5';
 import { IAOFS_WriteStream_Data, IAOFS_Write_Data, IAOFS_Mkdir_Data } from '../modules/fs/fs';
 import { AODat_Create_Data, AODat_ResumeAll_Data } from '../modules/dat/dat'
@@ -48,7 +48,7 @@ export default function (router: AOSubprocessRouter, options: Http_Args) {
                 version: () => packageJson.version,
                 logs: () => {
                     return new Promise((resolve, reject) => {
-                        router.send('/db/core/get', {key: 'logs'}).then(response => {
+                        router.send('/db/logs/get').then(response => {
                             resolve(response.data || [])
                         }).catch(reject)
                     })
@@ -57,7 +57,7 @@ export default function (router: AOSubprocessRouter, options: Http_Args) {
                 state: () => mockStore.state,
                 settings: () => {
                     return new Promise((resolve, reject) => {
-                        router.send('/db/core/get', {key: 'settings'}).then(response => {
+                        router.send('/db/settings/get').then(response => {
                             resolve(response.data)
                         }).catch(reject)
                     })
@@ -66,10 +66,10 @@ export default function (router: AOSubprocessRouter, options: Http_Args) {
                     if (!mockStore.videos) {
                         mockStore.videos = generateMockVideoList(90, options.coreOrigin, options.corePort)
                     }
-                    return 
+                    return mockStore.videos
                 },
                 // peers: () => db.Peer.all()
-            },            
+            },
             Mutation: {
                 register: (obj, args, context, info) => {
                     return new Promise((resolve, reject) => {
@@ -79,33 +79,30 @@ export default function (router: AOSubprocessRouter, options: Http_Args) {
                             creator: {
                                 content: generateMockVideoList(2, options.coreOrigin, options.corePort)
                             },
-                        }
-                        
+                        }                        
                         //Mkdir is to ensure that the folder exists.
                         const fsMakeDirData: IAOFS_Mkdir_Data = {
                             dirPath: path.join(args.inputs.ethAddress,'dat')
-                        }                        
-                        router.send('/fs/mkdir',fsMakeDirData)
-                        .then( () => {
+                        }
+                        router.send('/fs/mkdir',fsMakeDirData).then( () => {
                             //ResumeAll also initializes the multidat instance
                             const datResumeAllData: AODat_ResumeAll_Data = {
                                 ethAddress: args.inputs.ethAddress
                             }
-                            router.send('/dat/resumeAll', datResumeAllData)
-                            .then(resolve)
-                            .catch(reject)
+                            router.send('/dat/resumeAll', datResumeAllData).then(() => {
+                                router.send('/core/log', {message: `[AO Core] Registered as user ${args.inputs.ethAddress}`})
+                                resolve(mockStore.node)
+                            }).catch(reject)
                         }).catch(reject)
-
                     })
                 },
                 updateSettings: (obj, args, context, info) => {
                     return new Promise((resolve, reject) => {
-                        const updateData: AODB_CoreUpdate_Data = {
-                            key: 'settings',
-                            value: args.inputs,
-                            merge: true
+                        const updateData: AODB_SettingsUpdate_Data = {
+                            ...args.inputs,
                         }
-                        router.send('/db/core/update', updateData).then((response) => {
+                        router.send('/db/settings/update', updateData).then((response) => {
+                            router.send('/core/log', {message: `[AO DB] User settings updated`})
                             resolve(response.data)
                         }).catch(reject)
                     })

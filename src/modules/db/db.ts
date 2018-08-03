@@ -1,5 +1,5 @@
 import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
-import toilet from 'toiletdb';
+import Datastore from 'nedb';
 import path from 'path';
 import fs from 'fs';
 import Debug from 'debug';
@@ -10,19 +10,35 @@ export interface AODB_Args {
     storageLocation: string;
 }
 
-export interface AODB_CoreGet_Data {
-    key: string;
+/**
+ * Logs
+ */
+export interface AODB_LogsGet_Data {
+    query: any;  // https://github.com/louischatriot/nedb#finding-documents
 }
-
-export interface AODB_CoreUpdate_Data {
-    key: string;
-    value: any;
-    merge?: boolean;
+export interface AODB_LogsInsert_Data {
+    message: string;
+    createdAt?: Date;
 }
-
-export interface AODB_CoreInsert_Data {
-    table: string;
-    value: any;
+/**
+ * Settings
+ */
+export interface AODB_SettingsGet_Data {
+    query: any;  // https://github.com/louischatriot/nedb#finding-documents
+}
+export interface AODB_SettingsUpdate_Data {
+    maxDiskSpace?: number;
+    maxBandwidthUp?: number;
+    maxBandwidthDown?: number;
+    maxPeerConnections?: number;
+    runInBackground?: boolean;
+    runOnStartup?: boolean;
+    checkForUpdates?: boolean;
+}
+export interface AODB_Setting {
+    id: string;
+    setting: string;
+    value: string;
 }
 
 
@@ -37,118 +53,158 @@ export default class AODB extends AORouterInterface {
         checkForUpdates: true,
     }
     private storageLocation: string;
-    private coreDb: toilet;
+    private db: {
+        logs: Datastore,
+        settings: Datastore,
+    }
     private userDbs: {
-        [key: string]: toilet
+        [key: string]: Datastore
     }
 
     constructor(args: AODB_Args) {
         super()
         this.storageLocation = args.storageLocation
-        this.router.on('/db/core/get', this._handleCoreDbGet.bind(this))
-        this.router.on('/db/core/update', this._handleCoreDbUpdate.bind(this))
-        this.router.on('/db/core/insert', this._handleCoreDbInsert.bind(this))
-        this.router.on('/db/user/get', this._handleUserDbGet.bind(this))
-        this.router.on('/db/user/update', this._handleUserDbUpdate.bind(this))
+        this.router.on('/db/logs/get', this._logsGet.bind(this))
+        this.router.on('/db/logs/insert', this._logsInsert.bind(this))
+        this.router.on('/db/settings/get', this._settingsGet.bind(this))
+        this.router.on('/db/settings/update', this._settingsUpdate.bind(this))
+        this._setupCoreDbs()
         debug(`started`)
+        this.router.send('/core/log', {message: `[AO DB] Core database initialized`})
     }
 
-    private getCoreDb(): Promise<toilet> {
-        return new Promise((resolve, reject) => {
-            if ( this.coreDb ) {
-                resolve(this.coreDb)
-            } else {
-                const dbLocation = path.resolve(this.storageLocation, 'core.db.json')
-                // TODO: should we use fs module? ie: this.router.send('/fs/write')
-                if ( !fs.existsSync(dbLocation) ) {
-                    debug('coreDb does not exist, creating with settings seed')
-                    const dbSeed = JSON.stringify({
-                        settings: AODB.DEFAULT_SETTINGS,
-                    }, null, '\t')
-                    fs.writeFileSync(dbLocation, dbSeed)
-                }
-                this.coreDb = toilet(dbLocation)
-                this.coreDb.open(err => {
-                    if ( err ) {
-                        reject(err)
+    private _setupCoreDbs(): void {
+        this.db = {
+            logs: new Datastore({
+                inMemoryOnly: true,
+                // filename: path.resolve(this.storageLocation, 'logs.db.json'),
+                // autoload: true,
+                // onload: this._handleCoreDbLoadError.bind(this)
+            }),
+            settings: new Datastore({
+                filename: path.resolve(this.storageLocation, 'settings.db.json'),
+                autoload: true,
+                onload: (error: Error) => {
+                    if ( error ){
+                        this._handleCoreDbLoadError(error)
                     } else {
-                        resolve(this.coreDb)
+                        // Load default settings (insert will not overwrite existing settings)
+                        Object.keys(AODB.DEFAULT_SETTINGS).forEach(settingName => {
+                            const settingValue = AODB.DEFAULT_SETTINGS[settingName]
+                            this.db.settings.insert({setting: settingName, value: settingValue})
+                        })   
                     }
-                })
+                }
+            }),
+        }
+        // Logs expire after 48 hrs
+        this.db.logs.ensureIndex({
+            fieldName: 'createdAt',
+            // @ts-ignore Types not quite up to par
+            expireAfterSeconds: 3600 * 24,
+        })
+        // Settings indexed by name (unique)
+        this.db.settings.ensureIndex({
+            fieldName: 'setting',
+            unique: true,
+        })        
+    }
+
+    private _handleCoreDbLoadError(error: Error): void {
+        if ( error ) {
+            debug('Error loading core db', error)
+            // TODO: handle gracefully?
+        } else {
+            // TODO: we might need to drop some data (ex: peers) from previous session
+        }
+    }
+
+    private _logsGet(request: IAORouterRequest) {
+        const requestData: AODB_LogsGet_Data = request.data
+        let query = requestData.query || {}
+        this.db.logs.find(query).sort({createdAt: 1}).exec((error, results) => {
+            if ( error ) {
+                request.reject(error)
+            } else {
+                request.respond(results)
             }
         })
     }
 
-    private getUserDb(userId: string): Promise<toilet> {
-        return new Promise((resolve, reject) => {
-            // TODO:
+    private _logsInsert(request: IAORouterRequest) {
+        const requestData: AODB_LogsInsert_Data = request.data
+        const log = requestData
+        if ( !log.message ) {
+            request.reject(new Error('Invalid data format for log insert, "message" field required'))
+            return;
+        }
+        if ( !log.createdAt || !(log.createdAt instanceof Date) ) {
+            log.createdAt = new Date()
+        }
+        this.db.logs.insert(log, function(error: Error, doc) {
+            if ( error ) {
+                request.reject(error)
+            } else {
+                request.respond(doc)
+            }
         })
     }
 
-    private _handleCoreDbGet(request: IAORouterRequest) {
-        const requestData: AODB_CoreGet_Data = request.data
-        // TODO: validate requestData
-        this.getCoreDb().then(db => {
-            db.read(requestData.key, (err, data) => {
-                if ( err ) {
-                    request.reject(err)
+    private _settingsGet(request: IAORouterRequest) {
+        const requestData: AODB_SettingsGet_Data = request.data
+        let query = requestData.query || {}
+        this.db.settings.find(query).exec((error, results) => {
+            if ( error ) {
+                request.reject(error)
+            } else {
+                let keyValueSettings = results.reduce((values, settingEntry: AODB_Setting) => ({
+                    ...values,
+                    [settingEntry.setting]: settingEntry.value
+                }), {})
+                request.respond(keyValueSettings)
+            }
+        })
+    }
+
+    private _settingsUpdate(request: IAORouterRequest) {
+        const requestData: AODB_SettingsUpdate_Data = request.data
+        const settings = requestData
+        let options = {
+            upsert: true
+        }
+        let updatePromises = []
+        Object.keys(settings).forEach(settingName => {
+            updatePromises.push(new Promise((resolve, reject) => {
+                let query = {
+                    setting: settingName,
+                }
+                let update = {
+                    setting: settingName,
+                    value: settings[settingName]
+                }
+                this.db.settings.update(query, update, options, (error: Error) => {
+                    if ( error ) {
+                        reject(error)
+                    } else {
+                        resolve()
+                    }
+                })
+            }))
+        })
+        Promise.all(updatePromises).then(() => {
+            // We return all settings
+            this.db.settings.find({}).exec((error: Error, results) => {
+                if ( error ) {
+                    request.reject(error)
                 } else {
-                    request.respond(data)
+                    let keyValueSettings = results.reduce((values, settingEntry: AODB_Setting) => ({
+                        ...values,
+                        [settingEntry.setting]: settingEntry.value
+                    }), {})
+                    request.respond(keyValueSettings)
                 }
             })
         }).catch(request.reject)
-    }
-
-    /**
-     * Updating an arbirtary key value within the store, with the
-     * option to merge with existing data (if value is object)
-     */
-    private _handleCoreDbUpdate(request: IAORouterRequest) {
-        const requestData: AODB_CoreUpdate_Data = request.data
-        // TODO: validate requestData
-        this.getCoreDb().then(db => {
-            db.read(requestData.key, (err, existingValue) => {
-                let updatedValue = requestData.value
-                if ( typeof existingValue === 'object' && requestData.merge )
-                    updatedValue = Object.assign({}, existingValue, requestData.value)                
-                db.write(requestData.key, updatedValue, (err, data) => {
-                    if ( err ) {
-                        request.reject(err)
-                    } else {
-                        request.respond(data)
-                    }
-                })
-            })            
-        }).catch(request.reject)
-    }
-
-    /**
-     * Insert an entry into an array of data. For this to work,
-     * an id must be passed.
-     */
-    private _handleCoreDbInsert(request: IAORouterRequest) {
-        const requestData: AODB_CoreInsert_Data = request.data
-        this.getCoreDb().then(db => {
-            db.read(requestData.table, (err, existingValue) => {
-                let updatedValues = existingValue || []
-                updatedValues.push(requestData.value)
-                db.write(requestData.table, updatedValues, (err, data) => {
-                    if ( err ) {
-                        request.reject(err)
-                    } else {
-                        request.respond(data)
-                    }
-                })
-            })
-        })
-    }
-
-    private _handleUserDbGet(request: IAORouterRequest) {
-        request.reject(new Error('Not implemented'))
-    }
-
-    private _handleUserDbUpdate(request: IAORouterRequest) {
-        request.reject(new Error('Not implemented'))
     }
 
 }
