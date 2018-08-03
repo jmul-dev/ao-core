@@ -41,13 +41,13 @@ export default class AOP2P extends AORouterInterface {
             }
         }
         // Below commented out for the moment.
-        this.init()
-        .then(() => {
-            debug('started')
-        })
-        .catch(e => {
-            debug(e)
-        })
+        // this.init()
+        // .then(() => {
+        //     debug('started')
+        // })
+        // .catch(e => {
+        //     debug(e)
+        // })
     }
 
     private _handleRequestVideo(request:IAORouterRequest) {
