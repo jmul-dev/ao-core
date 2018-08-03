@@ -1,4 +1,12 @@
 'use strict';
+var __assign = (this && this.__assign) || Object.assign || function(t) {
+    for (var s, i = 1, n = arguments.length; i < n; i++) {
+        s = arguments[i];
+        for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+            t[p] = s[p];
+    }
+    return t;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -38,7 +46,7 @@ function default_1(router) {
                 version: function () { return packageJson.version; },
                 logs: function () {
                     return new Promise(function (resolve, reject) {
-                        router.send('/db/core/get', { key: 'logs' }).then(function (response) {
+                        router.send('/db/logs/get').then(function (response) {
                             resolve(response.data || []);
                         }).catch(reject);
                     });
@@ -47,7 +55,7 @@ function default_1(router) {
                 state: function () { return mockStore.state; },
                 settings: function () {
                     return new Promise(function (resolve, reject) {
-                        router.send('/db/core/get', { key: 'settings' }).then(function (response) {
+                        router.send('/db/settings/get').then(function (response) {
                             resolve(response.data);
                         }).catch(reject);
                     });
@@ -84,12 +92,8 @@ function default_1(router) {
                 },
                 updateSettings: function (obj, args, context, info) {
                     return new Promise(function (resolve, reject) {
-                        var updateData = {
-                            key: 'settings',
-                            value: args.inputs,
-                            merge: true
-                        };
-                        router.send('/db/core/update', updateData).then(function (response) {
+                        var updateData = __assign({}, args.inputs);
+                        router.send('/db/settings/update', updateData).then(function (response) {
                             resolve(response.data);
                         }).catch(reject);
                     });
@@ -113,7 +117,8 @@ function default_1(router) {
                                     var writeStreamData = {
                                         stream: stream,
                                         writePath: path_1.default.join(contentPath, fileName),
-                                        encrypt: fileInputName == 'video' ? true : false
+                                        encrypt: fileInputName == 'video' ? true : false,
+                                        videoStats: fileInputName.includes('video') ? true : false
                                     };
                                     router.send('/fs/writeStream', writeStreamData).then(localResolve).catch(localReject);
                                 }).catch(localReject);

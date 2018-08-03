@@ -8,7 +8,7 @@ import { generateMockVideoList } from './mockVideos';
 const packageJson = require('../../package.json');
 import { GraphQLUpload } from 'apollo-upload-server';
 import { AOSubprocessRouter } from '../router/AORouterInterface';
-import { AODB_CoreUpdate_Data } from '../modules/db/db';
+import { AODB_SettingsUpdate_Data } from '../modules/db/db';
 import md5 from 'md5';
 import { IAOFS_WriteStream_Data, IAOFS_Write_Data } from '../modules/fs/fs';
 import Debug from 'debug';
@@ -41,7 +41,7 @@ export default function (router: AOSubprocessRouter) {
                 version: () => packageJson.version,
                 logs: () => {
                     return new Promise((resolve, reject) => {
-                        router.send('/db/core/get', {key: 'logs'}).then(response => {
+                        router.send('/db/logs/get').then(response => {
                             resolve(response.data || [])
                         }).catch(reject)
                     })
@@ -50,7 +50,7 @@ export default function (router: AOSubprocessRouter) {
                 state: () => mockStore.state,
                 settings: () => {
                     return new Promise((resolve, reject) => {
-                        router.send('/db/core/get', {key: 'settings'}).then(response => {
+                        router.send('/db/settings/get').then(response => {
                             resolve(response.data)
                         }).catch(reject)
                     })
@@ -89,12 +89,10 @@ export default function (router: AOSubprocessRouter) {
                 },
                 updateSettings: (obj, args, context, info) => {
                     return new Promise((resolve, reject) => {
-                        const updateData: AODB_CoreUpdate_Data = {
-                            key: 'settings',
-                            value: args.inputs,
-                            merge: true
+                        const updateData: AODB_SettingsUpdate_Data = {
+                            ...args.inputs,
                         }
-                        router.send('/db/core/update', updateData).then((response) => {
+                        router.send('/db/settings/update', updateData).then((response) => {
                             resolve(response.data)
                         }).catch(reject)                    
                     })

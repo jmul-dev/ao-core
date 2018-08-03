@@ -38,12 +38,9 @@ export default class Core {
         } else {
             // TODO: append to a temp log somewhere (make this configurable via command line)
         }
-        this.coreRouter.router.send('/db/core/insert', {
-            table: 'logs',
-            value: {
-                message: data.message,
-                createdAt: Date.now()
-            }
+        this.coreRouter.router.send('/db/logs/insert', {
+            message: data.message,
+            createdAt: Date.now()
         }).then(request.respond).catch(request.reject)
     }
   

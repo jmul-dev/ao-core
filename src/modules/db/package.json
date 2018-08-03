@@ -8,11 +8,10 @@
     "bin":  "db/db.bin.js",
     "AO": {
         "events": [
-            "/db/core/get",
-            "/db/core/update",
-            "/db/core/insert",
-            "/db/user/get",
-            "/db/user/update"            
+            "/db/logs/get",
+            "/db/logs/insert",
+            "/db/settings/get",
+            "/db/settings/update"
         ],
         "activationEvents": [
             
