@@ -76,15 +76,15 @@ function default_1(router) {
                         var fsMakeDirData = {
                             dirPath: path_1.default.join(args.inputs.ethAddress, 'dat')
                         };
-                        router.send('/fs/mkdir', fsMakeDirData)
-                            .then(function () {
+                        router.send('/fs/mkdir', fsMakeDirData).then(function () {
                             //ResumeAll also initializes the multidat instance
                             var datResumeAllData = {
                                 ethAddress: args.inputs.ethAddress
                             };
-                            router.send('/dat/resumeAll', datResumeAllData)
-                                .then(resolve)
-                                .catch(reject);
+                            router.send('/dat/resumeAll', datResumeAllData).then(function () {
+                                router.send('/core/log', { message: "[AO Core] Registered as user " + args.inputs.ethAddress });
+                                resolve(mockStore.node);
+                            }).catch(reject);
                         }).catch(reject);
                     });
                 },
@@ -92,6 +92,7 @@ function default_1(router) {
                     return new Promise(function (resolve, reject) {
                         var updateData = __assign({}, args.inputs);
                         router.send('/db/settings/update', updateData).then(function (response) {
+                            router.send('/core/log', { message: "[AO DB] User settings updated" });
                             resolve(response.data);
                         }).catch(reject);
                     });
