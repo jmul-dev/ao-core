@@ -90,8 +90,9 @@ export default class AOFS extends AORouterInterface {
         const writePath = path.resolve(this.storageLocation, requestData.writePath)
         debug('writing stream to:', writePath)
         const destinationStream = fs.createWriteStream(writePath)
-        
-        requestData.stream.pipe(destinationStream)
+        const readStream = fs.createReadStream(null, {fd: 3})
+
+        readStream.pipe(destinationStream)
         .on('finish', () => {
             const fileStats = fs.statSync(writePath)
             let videoStats = {}

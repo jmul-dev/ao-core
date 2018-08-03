@@ -198,6 +198,12 @@ export default class AORouter extends AORouterCoreProcessInterface {
                     writeStream = new WriteStream()
                     message.data.stream = writeStream
                     debug('piping stream FROM subprocess TO core')
+                } else {
+                    //sub to sub
+                    readStream = fromProcess.stdio[4]
+                    writeStream = receivingProcess.stdio[3]
+                    message.data.stream = true // cannot send the stream object to subprocess
+                    debug('piping stream FROM subprocess TO subprocess')
                 }
                 readStream.pipe(writeStream)
             }
@@ -284,8 +290,16 @@ export default class AORouter extends AORouterCoreProcessInterface {
 
     private spawnProcessForEntry(entry: IRegistryEntry): ChildProcess | null {
         const processLocation = path.join(__dirname, '../modules', entry.bin);
-        const processArgs = [processLocation, '--storageLocation', this.args.storageLocation, '--httpOrigin', this.args.httpOrigin, '--ao-core']
-        let entryProcess: ChildProcess = spawn(process.execPath, processArgs, {
+        const processArgs = [
+                processLocation, 
+                '--storageLocation', this.args.storageLocation, 
+                '--httpOrigin', this.args.httpOrigin, 
+                '--coreOrigin', this.args.coreOrigin,
+                '--corePort', this.args.corePort+"",//Stupid hack around typescript
+                '--ao-core'
+            ]
+        let entryProcess: ChildProcess = spawn(process.execPath, processArgs
+            , {
             stdio: ['ipc', 'inherit', 'inherit', 'pipe', 'pipe'],            
         })
         entryProcess.on('error', (err) => {

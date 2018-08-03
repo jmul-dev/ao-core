@@ -12,7 +12,8 @@ const debug = Debug('ao:http');
 
 export interface Http_Args {
     httpOrigin: string;
-    httpPort: number;
+    coreOrigin: string;
+    corePort: number;
 }
 
 
@@ -23,7 +24,7 @@ export default class Http extends AORouterInterface {
     constructor(options: Http_Args) {
         super()
         this.express = express();
-        const graphqlSchema = schema(this.router);
+        const graphqlSchema = schema(this.router, options);
         this.express.use(
             '/graphql', 
             cors({origin: options.httpOrigin}), 
@@ -33,7 +34,7 @@ export default class Http extends AORouterInterface {
         );
         this.express.get('/graphiql', graphiqlExpress({ endpointURL: '/graphql' })); // TODO: enable based on process.env.NODE_ENV
         this.express.use('/assets', express.static(path.join(__dirname, '../../../assets')));
-        this.server = this.express.listen(options.httpPort, () => {
+        this.server = this.express.listen(options.corePort, () => {
             const address: AddressInfo = <AddressInfo> this.server.address();
             debug('Express server running on port: ' + address.port);
             this.router.send('/core/log', {message: `AO Core http server running on port ${address.port}`}).then(response => {

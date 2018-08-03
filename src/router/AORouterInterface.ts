@@ -115,8 +115,8 @@ export class AOSubprocessRouter extends EventEmitter implements AORouterInterfac
                  * process (core)
                  */
                 const readableStream = data.stream
-                const parent = fs.createWriteStream(null, {fd: 3})                
-                readableStream.pipe(parent)
+                const outputStream = fs.createWriteStream(null, {fd: 4})
+                readableStream.pipe(outputStream)
                 data.stream = true  // We dont pass the stream object through to the router 
             }
             this.process.send(request, (error?: Error) => {

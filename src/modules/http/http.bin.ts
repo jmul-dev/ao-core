@@ -7,7 +7,8 @@ import minimist = require('minimist')
 
 var argv: Http_Args = minimist<Http_Args>(process.argv.slice(2), {
     default: {
-        httpPort: 3003,
+        coreOrigin: 'http://localhost',
+        corePort: 3003,
         httpOrigin: 'http://localhost:3000'
     }
 });

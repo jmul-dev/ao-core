@@ -24,7 +24,8 @@ class TestMain {
         const coreRouter = new AORouter({            
             storageLocation: path.resolve(__dirname, '../../data'),
             disableHttpInterface: false,
-            httpPort: 3003,
+            corePort: 3003,
+            coreOrigin: 'http://localhost',
             httpOrigin: 'http://localhost:3000',
         });
         coreRouter.init()
