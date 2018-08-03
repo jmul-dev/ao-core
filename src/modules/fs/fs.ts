@@ -8,7 +8,6 @@ import ffprobeStatic from 'ffprobe-static'
 import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
 import path from 'path';
 import Debug from 'debug';
-import { resolve } from 'dns';
 const debug = Debug('ao:fs');
 
 

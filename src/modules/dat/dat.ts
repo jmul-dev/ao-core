@@ -23,10 +23,8 @@ export interface AODat_StopAll_Data {
 export interface AODat_Create_Data {
     newDatDir: string;
 }
-export interface AODat_DatFileJSON_Data {
-    datFolder: string;
-    fileData: string;
-    filePath: string;
+export interface AODat_JoinNetwork_Data {
+    datKey: string;
 }
 
 export interface AODat_Remove_Data {
@@ -48,16 +46,13 @@ export default class AODat extends AORouterInterface {
     private db: toilet  //That's right, we're going to use the toilet.
     private dats: Array<any>
     
-    private datFolders:Object = {} // A way to store details for dat uploaded files.
-    private datKeys:Object = {}
-
     constructor(args: AODat_Args) {
         super()
         this.storageLocation = args.storageLocation
         this.router.on('/dat/resumeAll', this._handleDatResumeAll.bind(this))
         this.router.on('/dat/stopAll', this._handleDatStopAll.bind(this))
         this.router.on('/dat/create', this._handleDatCreate.bind(this))
-        this.router.on('/dat/fileJSON', this._handleDatFileJSON.bind(this))
+        this.router.on('/dat/joinNetwork', this._handlejoinNetwork.bind(this))
         this.router.on('/dat/remove', this._handleDatRemove.bind(this))
         this.router.on('/dat/list', this._handleDatList.bind(this))
         debug(`started`)
@@ -102,57 +97,43 @@ export default class AODat extends AORouterInterface {
     private _handleDatCreate(request: IAORouterRequest) {
         const requestData: AODat_Create_Data = request.data
         const fullPath = path.resolve(this.datDir, requestData.newDatDir)
-        this.multidat.create( fullPath, (err, dat) => {
-            if(err) {
-                request.reject(err)
-            }
-            this.dats = this.multidat.list()//update list.
-            dat.importFiles()
-            //dat.joinNetwork()
-            const dat_folder = basename(fullPath)
-            debug(dat_folder)
-            const dat_hash =  dat.key.toString('hex')
-            debug('New link: dat://' + dat_hash)
-
-            request.respond({
-                    datFolder: dat_folder,
-                    hash: dat_hash
-            })
-        })
-    }
-
-    //Handles Video sharing JSON file creation.
-    private _handleDatFileJSON(request: IAORouterRequest) {
-        const requestData: AODat_DatFileJSON_Data = request.data
-        const {datFolder, fileData, filePath} = requestData
-        const fileName = basename(filePath)
-        if(fileName == 'featuredImage') {
-            fileData['file_type'] = 'image'
-        }
-
-        if(fileName == 'video') {
-            delete fileData['key']
-        }
-
-        //if first cycle
-        if( typeof this.datFolders[datFolder] == 'undefined') {
-            this.datFolders[datFolder] = {}
-        }
-
-        this.datFolders[datFolder][fileName] = fileData
-
-        if( Object.keys(this.datFolders[datFolder]).length == 3 ) {
-            debug('Fileuploads complete for ' + datFolder)
-            const basePath = path.resolve(this.ethAddress, 'dat', datFolder)
-            const fileData = {
-                ...this.datFolders[datFolder],
-                id:datFolder
-            }
-            request.respond({
-                fileData: fileData
-            })
+        if(!this.multidat) {
+            request.reject(new Error('Multidat is not ready? is EthAddress set?'))
         } else {
+            this.multidat.create( fullPath, (err, dat) => {
+                if(err) {
+                    request.reject(err)
+                }
+                this.dats = this.multidat.list()//update list.
+                dat.importFiles()
+                //dat.joinNetwork()
+                const datFolder = basename(fullPath)
+                debug(datFolder)
+                const datHash =  dat.key.toString('hex')
+                debug('New link: dat://' + datHash)
+
+                request.respond({
+                        datFolder: datFolder,
+                        hash: datHash
+                })
+            })
+        }
+    }
+    private _handlejoinNetwork(request: IAORouterRequest) {
+        const requestData: AODat_JoinNetwork_Data = request.data
+        if(this.multidat) {
+            const dat_list = []
+            const dats = this.multidat.list()
+            for (let i = 0; i < dats.length; i++) {
+                const dat = dats[i];
+                if(dat.key == requestData.datKey) {
+                    dat.joinNetwork()
+                    break;
+                }
+            }
             request.respond({})
+        } else {
+            request.reject(new Error('Not initialized'))
         }
     }
 

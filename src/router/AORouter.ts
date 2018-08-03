@@ -13,6 +13,7 @@ const fsPackageJson: IRegistryEntry = require('../modules/fs/package.json');
 const httpPackageJson: IRegistryEntry = require('../modules/http/package.json');
 const dbPackageJson: IRegistryEntry = require('../modules/db/package.json');
 const datPackageJson: IRegistryEntry = require('../modules/dat/package.json');
+const p2pPackageJson: IRegistryEntry = require('../modules/p2p/package.json');
 const corePackageJson = {
     name: 'ao-core',
     version: packageJson.version,
@@ -236,6 +237,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
         this.registerEntry(httpPackageJson)
         this.registerEntry(dbPackageJson)
         this.registerEntry(datPackageJson)
+        this.registerEntry(p2pPackageJson)
     }
 
     private registerEntry(entry: IRegistryEntry) {
