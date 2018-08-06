@@ -7,7 +7,7 @@ import { json } from "body-parser";
 import { graphqlExpress, graphiqlExpress } from "apollo-server-express";
 import { apolloUploadExpress } from 'apollo-upload-server';
 import Debug from 'debug';
-import AORouterInterface from "../../router/AORouterInterface";
+import {AOCoreProcessRouter} from "../../router/AORouterInterface";
 const debug = Debug('ao:http');
 
 export interface Http_Args {
@@ -17,12 +17,13 @@ export interface Http_Args {
 }
 
 
-export default class Http extends AORouterInterface {
+export default class Http {
     private express: Express;
     private server: Server;
+    private router: AOCoreProcessRouter;
 
-    constructor(options: Http_Args) {
-        super()
+    constructor(router:AOCoreProcessRouter, options: Http_Args) {
+        this.router = router;
         this.express = express();
         const graphqlSchema = schema(this.router, options);
         this.express.use(

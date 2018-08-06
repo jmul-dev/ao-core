@@ -240,7 +240,6 @@ export default class AORouter extends AORouterCoreProcessInterface {
         // NOTE: we could pull from the core package.json if we really wanted
         this.registerEntry(corePackageJson)
         this.registerEntry(fsPackageJson)
-        this.registerEntry(httpPackageJson)
         this.registerEntry(dbPackageJson)
         this.registerEntry(datPackageJson)
         this.registerEntry(p2pPackageJson)

@@ -7,7 +7,7 @@ import mocks from './mocks';
 import { generateMockVideoList } from './mockVideos';
 const packageJson = require('../../package.json');
 import { GraphQLUpload } from 'apollo-upload-server';
-import { AOSubprocessRouter } from '../router/AORouterInterface';
+import { AOCoreProcessRouter } from '../router/AORouterInterface';
 import { AODB_SettingsUpdate_Data } from '../modules/db/db';
 import md5 from 'md5';
 import { IAOFS_WriteStream_Data, IAOFS_Write_Data, IAOFS_Mkdir_Data } from '../modules/fs/fs';
@@ -32,7 +32,7 @@ let mockStore = {
     videos: null
 }
 
-export default function (router: AOSubprocessRouter, options: Http_Args) {
+export default function (router: AOCoreProcessRouter, options: Http_Args) {
     const schema = makeExecutableSchema({
         typeDefs: [graphqlSchema],
         resolvers: {
