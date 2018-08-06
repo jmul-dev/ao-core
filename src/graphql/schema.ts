@@ -84,19 +84,21 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                             creator: {
                                 content: generateMockVideoList(2, options.coreOrigin, options.corePort)
                             },
-                        }                        
-                        //Mkdir is to ensure that the folder exists.
-                        const fsMakeDirData: IAOFS_Mkdir_Data = {
-                            dirPath: path.join(args.inputs.ethAddress,'dat')
                         }
-                        router.send('/fs/mkdir',fsMakeDirData).then( () => {
-                            //ResumeAll also initializes the multidat instance
-                            const datResumeAllData: AODat_ResumeAll_Data = {
-                                ethAddress: args.inputs.ethAddress
-                            }
-                            router.send('/dat/resumeAll', datResumeAllData).then(() => {
-                                router.send('/core/log', {message: `[AO Core] Registered as user ${args.inputs.ethAddress}`})
-                                resolve(mockStore.node)
+                        router.send('/db/user/init', {ethAddress: args.inputs.ethAddress}).then(() => {
+                            //Mkdir is to ensure that the folder exists.
+                            const fsMakeDirData: IAOFS_Mkdir_Data = {
+                                dirPath: path.join(args.inputs.ethAddress, 'dat')
+                            }                        
+                            router.send('/fs/mkdir', fsMakeDirData).then(() => {
+                                //ResumeAll also initializes the multidat instance
+                                const datResumeAllData: AODat_ResumeAll_Data = {
+                                    ethAddress: args.inputs.ethAddress
+                                }
+                                router.send('/dat/resumeAll', datResumeAllData).then(() => {
+                                    router.send('/core/log', {message: `[AO Core] Registered as user ${args.inputs.ethAddress}`})
+                                    resolve(mockStore.node)
+                                }).catch(reject)
                             }).catch(reject)
                         }).catch(reject)
                     })

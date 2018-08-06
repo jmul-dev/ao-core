@@ -22,13 +22,6 @@ var apollo_upload_server_1 = require("apollo-upload-server");
 var md5_1 = __importDefault(require("md5"));
 var debug_1 = __importDefault(require("debug"));
 var debug = debug_1.default('ao:graphql');
-var error = debug_1.default('ao:graphql:error');
-//adding in series
-var PromiseSeries = function series(tasks) {
-    return function (x) {
-        return tasks.reduce(function (a, b) { return a.then(b); }, Promise.resolve(x));
-    };
-};
 // TODO: replace with actual db calls 
 var mockStore = {
     node: null,
@@ -94,18 +87,20 @@ function default_1(router, options) {
                                 content: mockVideos_1.generateMockVideoList(2, options.coreOrigin, options.corePort)
                             },
                         };
-                        //Mkdir is to ensure that the folder exists.
-                        var fsMakeDirData = {
-                            dirPath: path_1.default.join(args.inputs.ethAddress, 'dat')
-                        };
-                        router.send('/fs/mkdir', fsMakeDirData).then(function () {
-                            //ResumeAll also initializes the multidat instance
-                            var datResumeAllData = {
-                                ethAddress: args.inputs.ethAddress
+                        router.send('/db/user/init', { ethAddress: args.inputs.ethAddress }).then(function () {
+                            //Mkdir is to ensure that the folder exists.
+                            var fsMakeDirData = {
+                                dirPath: path_1.default.join(args.inputs.ethAddress, 'dat')
                             };
-                            router.send('/dat/resumeAll', datResumeAllData).then(function () {
-                                router.send('/core/log', { message: "[AO Core] Registered as user " + args.inputs.ethAddress });
-                                resolve(mockStore.node);
+                            router.send('/fs/mkdir', fsMakeDirData).then(function () {
+                                //ResumeAll also initializes the multidat instance
+                                var datResumeAllData = {
+                                    ethAddress: args.inputs.ethAddress
+                                };
+                                router.send('/dat/resumeAll', datResumeAllData).then(function () {
+                                    router.send('/core/log', { message: "[AO Core] Registered as user " + args.inputs.ethAddress });
+                                    resolve(mockStore.node);
+                                }).catch(reject);
                             }).catch(reject);
                         }).catch(reject);
                     });
