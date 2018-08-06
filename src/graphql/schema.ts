@@ -11,7 +11,7 @@ import { AOCoreProcessRouter } from '../router/AORouterInterface';
 import { AODB_SettingsUpdate_Data } from '../modules/db/db';
 import md5 from 'md5';
 import { IAOFS_WriteStream_Data, IAOFS_Write_Data, IAOFS_Mkdir_Data } from '../modules/fs/fs';
-import { AODat_Create_Data, AODat_ResumeAll_Data } from '../modules/dat/dat'
+import { AODat_Create_Data, AODat_ResumeAll_Data, AODat_JoinNetwork_Data } from '../modules/dat/dat'
 import Debug from 'debug';
 import { IAORouterMessage } from '../router/AORouter';
 import {Http_Args} from '../modules/http/http'
@@ -126,32 +126,6 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                         const fileInputs = ['video', 'videoTeaser', 'featuredImage']
                         let contentFileNames: Array<string> = []
                         let fileStorePromises: Array<Promise<any>> = []
-                        // const contentJson = {
-                        //     id: newContentId,
-                        //     creatorId: ethAddress,
-                        //     datKey: 'fakedatkey',
-                        //     contentType: 'VOD',
-                        //     isFolder: false, // TODO: determine if args.inputs.video is a folder
-                        //     isMutable: false,
-                        //     title: args.inputs.title,
-                        //     description: args.inputs.description,
-                        //     stake: args.inputs.stake,
-                        //     profit: args.inputs.profit,
-                        //     createdAt: Date.now(),
-
-                        //     fileName: contentFileNames[0],
-                        //     fileUrl: `${ethAddress}/dat/${newContentId}/video`,
-                        //     fileSize: '100000000000000000',
-                        //     teaserUrl: `${ethAddress}/dat/${newContentId}/videoTeaser`,
-                        //     featuredImageUrl: `${ethAddress}/dat/${newContentId}/featuredImage`,
-
-                        //     metadata: {
-                        //         duration: '6000',  
-                        //         resolution: '720',//we have the width too, but dunno
-                        //         encoding: 'h264',
-                        //     }
-                        // }
-                        // resolve(contentJson)
                         const newContentDirData:IAOFS_Mkdir_Data = {
                             dirPath: contentPath
                         }
@@ -226,7 +200,13 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                         data: JSON.stringify(contentJson)
                                     }
                                     router.send('/fs/write', contentWriteData).then((result: IAORouterMessage) => {
-                                        resolve(contentJson)
+                                        resolve(contentJson)//resolve happens earlier than joinnetork for now?
+                                        const datJoinNetworkData: AODat_JoinNetwork_Data = {
+                                            key: datKey
+                                        }
+                                        router.send('/dat/joinNetwork',datJoinNetworkData).then(() => {
+                                        }).catch(reject)
+
                                     }).catch((error: Error) => {
                                         // TODO: attempt to cleanup file storage
                                         reject(error)

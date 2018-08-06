@@ -127,30 +127,6 @@ function default_1(router, options) {
                         var fileInputs = ['video', 'videoTeaser', 'featuredImage'];
                         var contentFileNames = [];
                         var fileStorePromises = [];
-                        // const contentJson = {
-                        //     id: newContentId,
-                        //     creatorId: ethAddress,
-                        //     datKey: 'fakedatkey',
-                        //     contentType: 'VOD',
-                        //     isFolder: false, // TODO: determine if args.inputs.video is a folder
-                        //     isMutable: false,
-                        //     title: args.inputs.title,
-                        //     description: args.inputs.description,
-                        //     stake: args.inputs.stake,
-                        //     profit: args.inputs.profit,
-                        //     createdAt: Date.now(),
-                        //     fileName: contentFileNames[0],
-                        //     fileUrl: `${ethAddress}/dat/${newContentId}/video`,
-                        //     fileSize: '100000000000000000',
-                        //     teaserUrl: `${ethAddress}/dat/${newContentId}/videoTeaser`,
-                        //     featuredImageUrl: `${ethAddress}/dat/${newContentId}/featuredImage`,
-                        //     metadata: {
-                        //         duration: '6000',  
-                        //         resolution: '720',//we have the width too, but dunno
-                        //         encoding: 'h264',
-                        //     }
-                        // }
-                        // resolve(contentJson)
                         var newContentDirData = {
                             dirPath: contentPath
                         };
@@ -225,7 +201,12 @@ function default_1(router, options) {
                                         data: JSON.stringify(contentJson)
                                     };
                                     router.send('/fs/write', contentWriteData).then(function (result) {
-                                        resolve(contentJson);
+                                        resolve(contentJson); //resolve happens earlier than joinnetork for now?
+                                        var datJoinNetworkData = {
+                                            key: datKey
+                                        };
+                                        router.send('/dat/joinNetwork', datJoinNetworkData).then(function () {
+                                        }).catch(reject);
                                     }).catch(function (error) {
                                         // TODO: attempt to cleanup file storage
                                         reject(error);

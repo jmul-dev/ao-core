@@ -24,7 +24,7 @@ export interface AODat_Create_Data {
     newDatDir: string;
 }
 export interface AODat_JoinNetwork_Data {
-    datKey: string;
+    key: string;
 }
 
 export interface AODat_Remove_Data {
@@ -109,27 +109,29 @@ export default class AODat extends AORouterInterface {
                 }
                 this.dats = this.multidat.list()//update list.
                 dat.importFiles()
-                //dat.joinNetwork()
                 const datFolder = basename(fullPath)
                 debug(datFolder)
-                const datHash =  dat.key.toString('hex')
-                debug('New link: dat://' + datHash)
+                const datKey =  dat.key.toString('hex')
+                debug('New link: dat://' + datKey)
 
                 request.respond({
                         datFolder: datFolder,
-                        hash: datHash
+                        key: datKey
                 })
             })
         }
     }
     private _handlejoinNetwork(request: IAORouterRequest) {
         const requestData: AODat_JoinNetwork_Data = request.data
+        debug('requested join key'+requestData.key)
         if(this.multidat) {
             const dat_list = []
             const dats = this.multidat.list()
             for (let i = 0; i < dats.length; i++) {
                 const dat = dats[i];
-                if(dat.key == requestData.datKey) {
+                if(dat.key.toString('hex') == requestData.key) {
+                    debug('Joining network for '+requestData.key)
+                    dat.importFiles()
                     dat.joinNetwork()
                     break;
                 }
