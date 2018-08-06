@@ -1,0 +1,23 @@
+{
+    "name": "ao-fs",
+    "version": "0.0.1",
+    "publisher": "AO",
+    "displayName": "AO FS",
+    "description": "AO - FS package",
+    "main": "fs/fs.js",
+    "bin":  "fs/fs.bin.js",
+    "AO": {
+        "events": [
+            "/fs/read",
+            "/fs/readStream",
+            "/fs/write",
+            "/fs/writeStream",
+            "/fs/mkdir",
+            "/fs/unlink"
+        ],
+        "activationEvents": [
+            "/fs/readStream",
+            "/fs/writeStream"
+        ]
+    }
+  }

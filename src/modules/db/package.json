@@ -1,0 +1,20 @@
+{
+    "name": "ao-db",
+    "version": "0.0.1",
+    "publisher": "AO",
+    "displayName": "AO DB",
+    "description": "AO - DB package",
+    "main": "db/db.js",
+    "bin":  "db/db.bin.js",
+    "AO": {
+        "events": [
+            "/db/logs/get",
+            "/db/logs/insert",
+            "/db/settings/get",
+            "/db/settings/update"
+        ],
+        "activationEvents": [
+            
+        ]        
+    }
+  }

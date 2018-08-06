@@ -1,0 +1,22 @@
+{
+    "name": "ao-dat",
+    "version": "0.0.1",
+    "publisher": "AO",
+    "displayName": "AO Dat",
+    "description": "AO - Dat package",
+    "main": "dat/dat.js",
+    "bin":  "dat/dat.bin.js",
+    "AO": {
+        "events": [
+            "/dat/resumeAll",
+            "/dat/stopAll",
+            "/dat/create",
+            "/dat/joinNetwork",
+            "/dat/remove",
+            "/dat/list"
+        ],
+        "activationEvents": [
+            
+        ]        
+    }
+  }
