@@ -5,7 +5,6 @@
     "displayName": "AO HTTP",
     "description": "AO - HTTP package",
     "main": "http/http.js",
-    "bin":  "http/http.bin.js",
     "AO": {
         "events": [
             

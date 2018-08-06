@@ -95,51 +95,53 @@ export default class AOFS extends AORouterInterface {
         readStream.pipe(destinationStream)
         .on('finish', () => {
             const fileStats = fs.statSync(writePath)
-            let videoStats = {}
-            if(requestData.videoStats) {
-                videoStats = this._getVideoDataSync(writePath)
-            }
-            
-            if( !requestData.encrypt ) {
-                request.respond({
-                    fileSize: fileStats.size,
-                    filePath: writePath,
-                    videoStats: videoStats ? videoStats : false
-                })
-            } else {
-                const key = md5( new Date().getSeconds() + Math.random() )
-                const encrypt = crypto.createCipher(this.encryptionAlgorithm, key)
-                const readFrom = fs.createReadStream(writePath)
-                const encryptedPath = writePath+'.encrypted'
-                const writeToEncrypted = fs.createWriteStream( encryptedPath )
-
-                readFrom.pipe( encrypt ).pipe( writeToEncrypted )
-                .on('finish', () => {
-                    //get stats for the encrypted file.
-                    const fileStats = fs.statSync( encryptedPath )
-
-                    //remove the original file
-                    fsExtra.remove(writePath)
-                    .then(()=> {
-                        //finally move the encrypted file to the original path
-                        fsExtra.move(encryptedPath, writePath)
-                        .then(() => {
-                            request.respond({
-                                fileSize: fileStats.size,
-                                filePath: writePath,
-                                key: key,
-                                videoStats: videoStats ? videoStats : false
+            this._getVideoData(writePath, requestData.videoStats)
+            .then((videoStats) => {
+                if( !requestData.encrypt ) {
+                    request.respond({
+                        fileSize: fileStats.size,
+                        filePath: writePath,
+                        videoStats: videoStats ? videoStats : false
+                    })
+                } else {
+                    const key = md5( new Date().getSeconds() + Math.random() )
+                    const encrypt = crypto.createCipher(this.encryptionAlgorithm, key)
+                    const readFrom = fs.createReadStream(writePath)
+                    const encryptedPath = writePath+'.encrypted'
+                    const writeToEncrypted = fs.createWriteStream( encryptedPath )
+    
+                    readFrom.pipe( encrypt ).pipe( writeToEncrypted )
+                    .on('finish', () => {
+                        //get stats for the encrypted file.
+                        const fileStats = fs.statSync( encryptedPath )
+    
+                        //remove the original file
+                        fsExtra.remove(writePath)
+                        .then(()=> {
+                            //finally move the encrypted file to the original path
+                            fsExtra.move(encryptedPath, writePath)
+                            .then(() => {
+                                request.respond({
+                                    fileSize: fileStats.size,
+                                    filePath: writePath,
+                                    key: key,
+                                    videoStats: videoStats ? videoStats : false
+                                })
+                            })
+                            .catch(error => {
+                                request.reject(error)
                             })
                         })
                         .catch(error => {
                             request.reject(error)
                         })
                     })
-                    .catch(error => {
-                        request.reject(error)
-                    })
-                })
-            }
+                }
+            })
+            .catch(e=> {
+                request.reject(e)
+            })
+
         }).on('error', (error) => {
             console.log('fs rejecting', error)
             request.reject(error)
@@ -149,28 +151,31 @@ export default class AOFS extends AORouterInterface {
     }
 
     //helper method for stream writes/reads.
-    async _getVideoDataSync(fullPath) {
-        const videoData = new Promise((resolve,reject) => {
-            ffprobe(fullPath, { path: ffprobeStatic.path }, (err, info) => {
-                if(err) {
-                    reject(err)
-                }
-                const fileData = {}
-                for (let i = 0; i < info.streams.length; i++) {
-                    const stream = info.streams[i];
-                    if(stream.codec_type == 'video') {
-                        fileData['fileType'] = 'video'
-                        fileData['codec'] = stream.codec_name
-                        fileData['width'] = stream.width
-                        fileData['height'] = stream.height
-                        fileData['duration'] = stream.duration
-                        resolve(fileData)
-                        break;
+    _getVideoData(fullPath,videoStats) {
+        return new Promise((resolve,reject) => {
+            if(!videoStats) {
+                resolve(false)
+            } else {
+                ffprobe(fullPath, { path: ffprobeStatic.path }, (err, info) => {
+                    if(err) {
+                        reject(err)
                     }
-                }
-            })
+                    const fileData = {}
+                    for (let i = 0; i < info.streams.length; i++) {
+                        const stream = info.streams[i];
+                        if(stream.codec_type == 'video') {
+                            fileData['fileType'] = 'video'
+                            fileData['codec'] = stream.codec_name
+                            fileData['width'] = stream.width
+                            fileData['height'] = stream.height
+                            fileData['duration'] = stream.duration
+                            resolve(fileData)
+                            break;
+                        }
+                    }
+                })
+            }
         })
-        return await videoData
     }
 
     _handleRead(request: IAORouterRequest) {
