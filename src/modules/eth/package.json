@@ -1,0 +1,18 @@
+{
+    "name": "ao-eth",
+    "version": "0.0.1",
+    "publisher": "AO",
+    "displayName": "AO Eth",
+    "description": "AO - Eth package",
+    "main": "eth/eth.js",
+    "bin":  "eth/eth.bin.js",
+    "AO": {
+        "events": [
+            "/eth/network/set",
+            "/eth/content/isStaked",
+            "/eth/content/isPurchased"
+        ],
+        "activationEvents": [
+        ]
+    }
+  }
