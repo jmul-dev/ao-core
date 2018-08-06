@@ -12,7 +12,9 @@
             "/db/logs/insert",
             "/db/settings/get",
             "/db/settings/update",
-            "/db/user/init"
+            "/db/user/init",
+            "/db/user/content/get",
+            "/db/user/content/insert"
         ],
         "activationEvents": [
             

@@ -46,6 +46,10 @@ export interface AODB_Setting {
 export interface AODB_UserInit_Data {
     ethAddress: string;
 }
+export interface AODB_UserContentGet_Data {
+    ethAddress: string;
+    query?: Object;
+}
 
 
 export default class AODB extends AORouterInterface {
@@ -75,6 +79,8 @@ export default class AODB extends AORouterInterface {
         this.router.on('/db/settings/get', this._settingsGet.bind(this))
         this.router.on('/db/settings/update', this._settingsUpdate.bind(this))
         this.router.on('/db/user/init', this._setupUserDb.bind(this))
+        this.router.on('/db/user/content/get', this._userContentGet.bind(this))
+        this.router.on('/db/user/content/insert', this._userContentInsert.bind(this))        
         this._setupCoreDbs()
         debug(`started`)
         this.router.send('/core/log', {message: `[AO DB] Core database initialized`})
@@ -150,6 +156,29 @@ export default class AODB extends AORouterInterface {
             // TODO: we might need to drop some data (ex: peers) from previous session
         }
     }
+
+    private _userContentGet(request: IAORouterRequest) {
+        const requestData: AODB_UserContentGet_Data = request.data
+        let query = requestData.query || {}
+        this.userDbs[requestData.ethAddress].find(query).exec((error: Error, docs) => {
+            if ( error ) {
+                request.reject(error)
+            } else {
+                request.respond(docs)
+            }
+        })        
+    }
+
+    private _userContentInsert(request: IAORouterRequest) {
+        const requestData: any = request.data  // TODO: type check/validate content
+        this.userDbs[requestData.creatorId].insert(requestData, (error: Error, doc) => {
+            if ( error ) {
+                request.reject(error)
+            } else {
+                request.respond(doc)
+            }
+        })        
+    }    
 
     private _logsGet(request: IAORouterRequest) {
         const requestData: AODB_LogsGet_Data = request.data

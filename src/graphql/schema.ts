@@ -147,12 +147,11 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                         //         encoding: 'h264',
                         //     }
                         // }
-                        // resolve(contentJson)
-                        const newContentDirData:IAOFS_Mkdir_Data = {
+                        // resolve(contentJson)            
+                        const newContentDirData: IAOFS_Mkdir_Data = {
                             dirPath: contentPath
                         }
-                        router.send('/fs/mkdir',newContentDirData)
-                        .then( () => {
+                        router.send('/fs/mkdir', newContentDirData).then(() => {
                             for (let i = 0; i < fileInputs.length; i++) {
                                 const fileInputName = fileInputs[i];
                                 fileStorePromises.push(new Promise((localResolve, localReject) => {
@@ -166,7 +165,6 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                             encrypt: fileInputName == 'video' ? true: false,
                                             videoStats: fileInputName.includes('video') ? true: false
                                         }
-                                        
                                         router.send('/fs/writeStream', writeStreamData).then(localResolve).catch(localReject)
                                     }).catch(localReject)
                                 }))
@@ -177,20 +175,15 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                 let videoStats = {}
                                 for (let i = 0; i < results.length; i++) {
                                     const result = results[i];
-                                    //debug(result)
                                     if(result.data.videoStats && result.data.key) {
                                         videoStats = result.data.videoStats
-                                        fileSize = result.data.fileSize
-                                        
+                                        fileSize = result.data.fileSize                                        
                                     }
                                 }
-                                debug('content path: '+contentPath)
-                                //call the dat create
-                                const datCreateData:AODat_Create_Data = {
+                                const datCreateData: AODat_Create_Data = {
                                     newDatDir: path.join('dat', newContentId)
                                 }
-                                router.send('/dat/create', datCreateData)
-                                .then((datResponse) => {
+                                router.send('/dat/create', datCreateData).then((datResponse) => {
                                     const datKey = datResponse.data.key
                                     const contentJson = {
                                         id: newContentId,
@@ -217,14 +210,19 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                             encoding: videoStats['codec'],
                                         }
                                     }
+                                    const storagePromises = []
                                     const contentWriteData: IAOFS_Write_Data = {
                                         writePath: `${ethAddress}/dat/${newContentId}/content.json`,
                                         data: JSON.stringify(contentJson)
                                     }
-                                    router.send('/fs/write', contentWriteData).then((result: IAORouterMessage) => {
+                                    storagePromises.push(router.send('/fs/write', contentWriteData))
+                                    storagePromises.push(router.send('/db/user/content/insert', contentJson))
+                                    Promise.all(storagePromises).then((results: Array<IAORouterMessage>) => {
                                         resolve(contentJson)
                                     }).catch((error: Error) => {
-                                        // TODO: attempt to cleanup file storage
+                                        // We either failed to write contentJson to disk or db, lets cleanup to 
+                                        // avoid dirty state.
+                                        // TODO: attempt to cleanup file storage.
                                         reject(error)
                                     })
                                 }).catch(reject)
