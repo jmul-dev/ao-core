@@ -116,6 +116,30 @@ function default_1(router, options) {
                         var fileInputs = ['video', 'videoTeaser', 'featuredImage'];
                         var contentFileNames = [];
                         var fileStorePromises = [];
+                        // const contentJson = {
+                        //     id: newContentId,
+                        //     creatorId: ethAddress,
+                        //     datKey: 'fakedatkey',
+                        //     contentType: 'VOD',
+                        //     isFolder: false, // TODO: determine if args.inputs.video is a folder
+                        //     isMutable: false,
+                        //     title: args.inputs.title,
+                        //     description: args.inputs.description,
+                        //     stake: args.inputs.stake,
+                        //     profit: args.inputs.profit,
+                        //     createdAt: Date.now(),
+                        //     fileName: contentFileNames[0],
+                        //     fileUrl: `${ethAddress}/dat/${newContentId}/video`,
+                        //     fileSize: '100000000000000000',
+                        //     teaserUrl: `${ethAddress}/dat/${newContentId}/videoTeaser`,
+                        //     featuredImageUrl: `${ethAddress}/dat/${newContentId}/featuredImage`,
+                        //     metadata: {
+                        //         duration: '6000',  
+                        //         resolution: '720',//we have the width too, but dunno
+                        //         encoding: 'h264',
+                        //     }
+                        // }
+                        // resolve(contentJson)
                         var newContentDirData = {
                             dirPath: contentPath
                         };
@@ -142,20 +166,22 @@ function default_1(router, options) {
                             for (var i = 0; i < fileInputs.length; i++) {
                                 _loop_1(i);
                             }
-                            PromiseSeries(fileStorePromises).then(function (results) {
+                            Promise.all(fileStorePromises).then(function (results) {
                                 debug('submitVideoContent - all files stored');
                                 var fileSize = 0;
                                 var videoStats = {};
                                 for (var i = 0; i < results.length; i++) {
                                     var result = results[i];
+                                    //debug(result)
                                     if (result.data.videoStats && result.data.key) {
                                         videoStats = result.data.videoStats;
                                         fileSize = result.data.fileSize;
                                     }
                                 }
+                                debug('content path: ' + contentPath);
                                 //call the dat create
                                 var datCreateData = {
-                                    newDatDir: contentPath
+                                    newDatDir: path_1.default.join('dat', newContentId)
                                 };
                                 router.send('/dat/create', datCreateData)
                                     .then(function (datResponse) {

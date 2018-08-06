@@ -3,6 +3,9 @@ import { EVENT_LOG, DATA, DATA_TYPES } from './constants';
 import AORouter from './router/AORouter';
 import { ICoreOptions } from './bin';
 import { IAORouterRequest } from './router/AORouterInterface';
+
+import Http from './modules/http/http'
+
 import Debug from 'debug';
 const debug = Debug('ao:core');
 const error = Debug('ao:core:error');
@@ -15,6 +18,7 @@ export interface AOCore_Log_Data {
 export default class Core {
     public options: ICoreOptions;
     private coreRouter: AORouter;
+    private http: Http;
 
     constructor(args) {
         debug(args)
@@ -24,6 +28,10 @@ export default class Core {
         // TODO: setup coreRouter event listeners (eg: http shutdown/error)
         this.coreRouter.router.on('/core/log', this._handleLog.bind(this))
         process.stdin.resume();  // Hack to keep the core processes running
+        const httpOptions = {
+            ...args
+        }
+        this.http = new Http(this.coreRouter.router, httpOptions)
     }
 
     // NOTE: this is useful for sending event logs up to the 

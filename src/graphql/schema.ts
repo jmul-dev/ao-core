@@ -7,7 +7,7 @@ import mocks from './mocks';
 import { generateMockVideoList } from './mockVideos';
 const packageJson = require('../../package.json');
 import { GraphQLUpload } from 'apollo-upload-server';
-import { AOSubprocessRouter } from '../router/AORouterInterface';
+import { AOCoreProcessRouter } from '../router/AORouterInterface';
 import { AODB_SettingsUpdate_Data } from '../modules/db/db';
 import md5 from 'md5';
 import { IAOFS_WriteStream_Data, IAOFS_Write_Data, IAOFS_Mkdir_Data } from '../modules/fs/fs';
@@ -32,7 +32,7 @@ let mockStore = {
     videos: null
 }
 
-export default function (router: AOSubprocessRouter, options: Http_Args) {
+export default function (router: AOCoreProcessRouter, options: Http_Args) {
     const schema = makeExecutableSchema({
         typeDefs: [graphqlSchema],
         resolvers: {
@@ -115,110 +115,114 @@ export default function (router: AOSubprocessRouter, options: Http_Args) {
                         const fileInputs = ['video', 'videoTeaser', 'featuredImage']
                         let contentFileNames: Array<string> = []
                         let fileStorePromises: Array<Promise<any>> = []
-                        const contentJson = {
-                            id: newContentId,
-                            creatorId: ethAddress,
-                            datKey: 'fakedatkey',
-                            contentType: 'VOD',
-                            isFolder: false, // TODO: determine if args.inputs.video is a folder
-                            isMutable: false,
-                            title: args.inputs.title,
-                            description: args.inputs.description,
-                            stake: args.inputs.stake,
-                            profit: args.inputs.profit,
-                            createdAt: Date.now(),
+                        // const contentJson = {
+                        //     id: newContentId,
+                        //     creatorId: ethAddress,
+                        //     datKey: 'fakedatkey',
+                        //     contentType: 'VOD',
+                        //     isFolder: false, // TODO: determine if args.inputs.video is a folder
+                        //     isMutable: false,
+                        //     title: args.inputs.title,
+                        //     description: args.inputs.description,
+                        //     stake: args.inputs.stake,
+                        //     profit: args.inputs.profit,
+                        //     createdAt: Date.now(),
 
-                            fileName: contentFileNames[0],
-                            fileUrl: `${ethAddress}/dat/${newContentId}/video`,
-                            fileSize: '100000000000000000',
-                            teaserUrl: `${ethAddress}/dat/${newContentId}/videoTeaser`,
-                            featuredImageUrl: `${ethAddress}/dat/${newContentId}/featuredImage`,
+                        //     fileName: contentFileNames[0],
+                        //     fileUrl: `${ethAddress}/dat/${newContentId}/video`,
+                        //     fileSize: '100000000000000000',
+                        //     teaserUrl: `${ethAddress}/dat/${newContentId}/videoTeaser`,
+                        //     featuredImageUrl: `${ethAddress}/dat/${newContentId}/featuredImage`,
 
-                            metadata: {
-                                duration: '6000',  
-                                resolution: '720',//we have the width too, but dunno
-                                encoding: 'h264',
-                            }
-                        }
-                        resolve(contentJson)
-                        // const newContentDirData:IAOFS_Mkdir_Data = {
-                        //     dirPath: contentPath
-                        // }
-                        // router.send('/fs/mkdir',newContentDirData)
-                        // .then( () => {
-                        //     for (let i = 0; i < fileInputs.length; i++) {
-                        //         const fileInputName = fileInputs[i];
-                        //         fileStorePromises.push(new Promise((localResolve, localReject) => {
-                        //             args.inputs[fileInputName].then(({stream, filename, mimetype, encoding}) => {
-                        //                 // attaching the existing file extension if there is one
-                        //                 const fileName = fileInputName + '.' + filename.substr(filename.lastIndexOf('.') + 1)
-                        //                 contentFileNames[i] = fileName
-                        //                 const writeStreamData: IAOFS_WriteStream_Data = {
-                        //                     stream: stream,
-                        //                     writePath: path.join(contentPath, fileName),
-                        //                     encrypt: fileInputName == 'video' ? true: false,
-                        //                     videoStats: fileInputName.includes('video') ? true: false
-                        //                 }
-                        //                 router.send('/fs/writeStream', writeStreamData).then(localResolve).catch(localReject)
-                        //             }).catch(localReject)
-                        //         }))
+                        //     metadata: {
+                        //         duration: '6000',  
+                        //         resolution: '720',//we have the width too, but dunno
+                        //         encoding: 'h264',
                         //     }
-                        //     PromiseSeries(fileStorePromises).then((results: Array<IAORouterMessage>) => {
-                        //         debug('submitVideoContent - all files stored')
-                        //         let fileSize = 0
-                        //         let videoStats = {}
-                        //         for (let i = 0; i < results.length; i++) {
-                        //             const result = results[i];
-                        //             if(result.data.videoStats && result.data.key) {
-                        //                 videoStats = result.data.videoStats
-                        //                 fileSize = result.data.fileSize
-                        //             }
-                        //         }
-                        //         //call the dat create
-                        //         const datCreateData:AODat_Create_Data = {
-                        //             newDatDir: contentPath
-                        //         }
-                        //         router.send('/dat/create', datCreateData)
-                        //         .then((datResponse) => {
-                        //             const datKey = datResponse.data.key
-                        //             const contentJson = {
-                        //                 id: newContentId,
-                        //                 creatorId: ethAddress,
-                        //                 datKey: datKey,
-                        //                 contentType: 'VOD',
-                        //                 isFolder: false, // TODO: determine if args.inputs.video is a folder
-                        //                 isMutable: false,
-                        //                 title: args.inputs.title,
-                        //                 description: args.inputs.description,
-                        //                 stake: args.inputs.stake,
-                        //                 profit: args.inputs.profit,
-                        //                 createdAt: Date.now(),
+                        // }
+                        // resolve(contentJson)
+                        const newContentDirData:IAOFS_Mkdir_Data = {
+                            dirPath: contentPath
+                        }
+                        router.send('/fs/mkdir',newContentDirData)
+                        .then( () => {
+                            for (let i = 0; i < fileInputs.length; i++) {
+                                const fileInputName = fileInputs[i];
+                                fileStorePromises.push(new Promise((localResolve, localReject) => {
+                                    args.inputs[fileInputName].then(({stream, filename, mimetype, encoding}) => {
+                                        // attaching the existing file extension if there is one
+                                        const fileName = fileInputName + '.' + filename.substr(filename.lastIndexOf('.') + 1)
+                                        contentFileNames[i] = fileName
+                                        const writeStreamData: IAOFS_WriteStream_Data = {
+                                            stream: stream,
+                                            writePath: path.join(contentPath, fileName),
+                                            encrypt: fileInputName == 'video' ? true: false,
+                                            videoStats: fileInputName.includes('video') ? true: false
+                                        }
+                                        
+                                        router.send('/fs/writeStream', writeStreamData).then(localResolve).catch(localReject)
+                                    }).catch(localReject)
+                                }))
+                            }
+                            Promise.all(fileStorePromises).then((results: Array<IAORouterMessage>) => {
+                                debug('submitVideoContent - all files stored')
+                                let fileSize = 0
+                                let videoStats = {}
+                                for (let i = 0; i < results.length; i++) {
+                                    const result = results[i];
+                                    //debug(result)
+                                    if(result.data.videoStats && result.data.key) {
+                                        videoStats = result.data.videoStats
+                                        fileSize = result.data.fileSize
+                                        
+                                    }
+                                }
+                                debug('content path: '+contentPath)
+                                //call the dat create
+                                const datCreateData:AODat_Create_Data = {
+                                    newDatDir: path.join('dat', newContentId)
+                                }
+                                router.send('/dat/create', datCreateData)
+                                .then((datResponse) => {
+                                    const datKey = datResponse.data.key
+                                    const contentJson = {
+                                        id: newContentId,
+                                        creatorId: ethAddress,
+                                        datKey: datKey,
+                                        contentType: 'VOD',
+                                        isFolder: false, // TODO: determine if args.inputs.video is a folder
+                                        isMutable: false,
+                                        title: args.inputs.title,
+                                        description: args.inputs.description,
+                                        stake: args.inputs.stake,
+                                        profit: args.inputs.profit,
+                                        createdAt: Date.now(),
         
-                        //                 fileName: contentFileNames[0],
-                        //                 fileUrl: `${ethAddress}/dat/${newContentId}/${contentFileNames[0]}`,
-                        //                 fileSize: fileSize,
-                        //                 teaserUrl: `${ethAddress}/dat/${newContentId}/${contentFileNames[1]}`,
-                        //                 featuredImageUrl: `${ethAddress}/dat/${newContentId}/${contentFileNames[2]}`,
+                                        fileName: contentFileNames[0],
+                                        fileUrl: `${ethAddress}/dat/${newContentId}/${contentFileNames[0]}`,
+                                        fileSize: fileSize,
+                                        teaserUrl: `${ethAddress}/dat/${newContentId}/${contentFileNames[1]}`,
+                                        featuredImageUrl: `${ethAddress}/dat/${newContentId}/${contentFileNames[2]}`,
         
-                        //                 metadata: {
-                        //                     duration: videoStats['duration'],  
-                        //                     resolution: videoStats['height'],//we have the width too, but dunno
-                        //                     encoding: videoStats['codec'],
-                        //                 }
-                        //             }
-                        //             const contentWriteData: IAOFS_Write_Data = {
-                        //                 writePath: `${ethAddress}/dat/${newContentId}/content.json`,
-                        //                 data: JSON.stringify(contentJson)
-                        //             }
-                        //             router.send('/fs/write', contentWriteData).then((result: IAORouterMessage) => {
-                        //                 resolve(contentJson)
-                        //             }).catch((error: Error) => {
-                        //                 // TODO: attempt to cleanup file storage
-                        //                 reject(error)
-                        //             })
-                        //         }).catch(reject)
-                        //     }).catch(reject)
-                        // }).catch(reject)
+                                        metadata: {
+                                            duration: videoStats['duration'],  
+                                            resolution: videoStats['height'],//we have the width too, but dunno
+                                            encoding: videoStats['codec'],
+                                        }
+                                    }
+                                    const contentWriteData: IAOFS_Write_Data = {
+                                        writePath: `${ethAddress}/dat/${newContentId}/content.json`,
+                                        data: JSON.stringify(contentJson)
+                                    }
+                                    router.send('/fs/write', contentWriteData).then((result: IAORouterMessage) => {
+                                        resolve(contentJson)
+                                    }).catch((error: Error) => {
+                                        // TODO: attempt to cleanup file storage
+                                        reject(error)
+                                    })
+                                }).catch(reject)
+                            }).catch(reject)
+                        }).catch(reject)
                     })
                 },                
             },

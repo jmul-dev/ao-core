@@ -189,11 +189,11 @@ export default class AORouter extends AORouterCoreProcessInterface {
             if ( messageHasStream ) {                
                 if ( from.name === 'ao-core' ) {
                     readStream = message.data.stream
-                    writeStream = receivingProcess.stdio[4]
+                    writeStream = receivingProcess.stdio[3]
                     message.data.stream = true // cannot send the stream object to subprocess
                     debug('piping stream FROM core TO subprocess')
                 } else if ( receivingRegistryEntry.name === 'ao-core' ) {
-                    readStream = fs.createReadStream(null, {fd: 3})
+                    readStream = fs.createReadStream(null, {fd: 4})
                     writeStream = new WriteStream()
                     message.data.stream = writeStream
                     debug('piping stream FROM subprocess TO core')
@@ -205,6 +205,9 @@ export default class AORouter extends AORouterCoreProcessInterface {
                     debug('piping stream FROM subprocess TO subprocess')
                 }
                 readStream.pipe(writeStream)
+                .on('error', (err) => {
+                    debug(err)
+                })
             }
             const startTime = Date.now()
             debug(`routing event    [${message.routerMessageId}][${event}]: ${from.name} -> ${receivingRegistryEntry.name} ${messageHasStream ? '(with stream)' : ''}`)
@@ -240,7 +243,6 @@ export default class AORouter extends AORouterCoreProcessInterface {
         // NOTE: we could pull from the core package.json if we really wanted
         this.registerEntry(corePackageJson)
         this.registerEntry(fsPackageJson)
-        this.registerEntry(httpPackageJson)
         this.registerEntry(dbPackageJson)
         this.registerEntry(datPackageJson)
         this.registerEntry(p2pPackageJson)
