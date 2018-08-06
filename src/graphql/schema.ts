@@ -17,13 +17,7 @@ import { IAORouterMessage } from '../router/AORouter';
 import {Http_Args} from '../modules/http/http'
 import { IAOEth_NetworkChange_Data } from '../modules/eth/eth';
 const debug = Debug('ao:graphql');
-const error = Debug('ao:graphql:error');
 
-//adding in series
-const PromiseSeries:Function = function series(tasks) {
-return x=>
-    tasks.reduce((a,b)=> a.then(b), Promise.resolve(x));
-};
 
 // TODO: replace with actual db calls 
 let mockStore = {
