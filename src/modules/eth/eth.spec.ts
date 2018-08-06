@@ -3,7 +3,7 @@ import { expect } from 'chai'
 import 'mocha';
 
 
-describe('AO Eth', () => {
+describe('AO Eth module', () => {
     const aoEth = new AOEth({
         rpcMainnet: 'https://mainnet.infura.io/',
         rpcRinkeby: 'https://rinkeby.infura.io/',
