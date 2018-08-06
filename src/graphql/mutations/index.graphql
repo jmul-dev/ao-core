@@ -1,6 +1,7 @@
 # import * from "../types/index.graphql"
 
 type Mutation {
+    setNetwork(inputs: SetNetworkInputs): Boolean
     register(inputs: RegisterInputs): NodeIdentity
     updateSettings(inputs: SettingsInputs): Settings
     submitVideoContent(inputs: VideoContentSubmissionInputs): VideoContent
@@ -8,4 +9,8 @@ type Mutation {
 
 input RegisterInputs {
     ethAddress: String
+}
+
+input SetNetworkInputs {
+    networkId: String
 }

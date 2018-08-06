@@ -15,6 +15,7 @@ import { AODat_Create_Data, AODat_ResumeAll_Data } from '../modules/dat/dat'
 import Debug from 'debug';
 import { IAORouterMessage } from '../router/AORouter';
 import {Http_Args} from '../modules/http/http'
+import { IAOEth_NetworkChange_Data } from '../modules/eth/eth';
 const debug = Debug('ao:graphql');
 const error = Debug('ao:graphql:error');
 
@@ -71,6 +72,16 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                 // peers: () => db.Peer.all()
             },
             Mutation: {
+                setNetwork: (obj, args, context, info) => {
+                    return new Promise((resolve, reject) => {
+                        const networkSetData: IAOEth_NetworkChange_Data = {
+                            networkId: args.inputs.networkId
+                        }
+                        router.send('/eth/network/set', networkSetData).then(({networkId}) => {
+                            resolve(networkId ? true : false)
+                        }).catch(reject)
+                    })
+                },
                 register: (obj, args, context, info) => {
                     return new Promise((resolve, reject) => {
                         mockStore.node = {

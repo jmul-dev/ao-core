@@ -74,6 +74,17 @@ function default_1(router, options) {
                 },
             },
             Mutation: {
+                setNetwork: function (obj, args, context, info) {
+                    return new Promise(function (resolve, reject) {
+                        var networkSetData = {
+                            networkId: args.inputs.networkId
+                        };
+                        router.send('/eth/network/set', networkSetData).then(function (_a) {
+                            var networkId = _a.networkId;
+                            resolve(networkId ? true : false);
+                        }).catch(reject);
+                    });
+                },
                 register: function (obj, args, context, info) {
                     return new Promise(function (resolve, reject) {
                         mockStore.node = {
