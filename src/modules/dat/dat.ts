@@ -87,7 +87,7 @@ export default class AODat extends AORouterInterface {
                         dat.joinNetwork()
                         const dat_link = 'dat://' + dat.key.toString('hex')
                         debug('Joined network for: '+ dat_link)
-                        this.dats[key]['status'] = 'online'
+                        this.dats[key]['instance'] = dat
                         resolve()
                     })
                 }))
@@ -188,7 +188,7 @@ export default class AODat extends AORouterInterface {
     }
     private _handleDatDownload(request: IAORouterRequest) {
         const requestData: AODat_Download_Data = request.data
-        if(this.dats) {
+        if(!this.contents[requestData.key] && !this.dats[requestData.key]) {
             const options = {
                 key: requestData.key,
                 sparse: true
@@ -198,12 +198,31 @@ export default class AODat extends AORouterInterface {
                     request.reject(new Error('Issue with dat download'))
                 }
                 dat.joinNetwork()
-                dat.archive.readFile('')
+                dat.archive.readFile('content.json', (err,content) => {
+                    if(err) {
+                        request.reject(new Error('content.json download error'))
+                    }
+                    this.contents[requestData.key] = JSON.parse(content)
+                    const fileName = this.contents[requestData.key]['fileName']
+                    dat.archive.readFile(fileName, (err,video) => {
+                        if(err) {
+                            request.reject(new Error('video file download error'))
+                        }
+                        //TODO: Gotta stream that video back!
+                    })
+                })
             })
         } else {
-            request.reject(new Error('Not initialized'))
+            const dat = this.dats[requestData.key]
+            const fileName = this.contents[requestData.key]['fileName']
+            dat.archive.readFile(fileName, (err,video) => {
+                if(err) {
+                    request.reject(new Error('video file download error'))
+                }
+                //TODO: Gotta stream that video back!
+            })
+            
         }
-        
     }
 
     private _handleDatRemove(request: IAORouterRequest) {
