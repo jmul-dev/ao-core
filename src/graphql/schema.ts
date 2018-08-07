@@ -1,29 +1,24 @@
 'use strict';
-import { makeExecutableSchema, addMockFunctionsToSchema } from 'graphql-tools';
+import { GraphQLUpload } from 'apollo-upload-server';
+import Debug from 'debug';
 import { importSchema } from 'graphql-import';
+import { addMockFunctionsToSchema, makeExecutableSchema } from 'graphql-tools';
+import md5 from 'md5';
 import path from 'path';
-const graphqlSchema = importSchema( path.resolve(__dirname, './schema.graphql') );
+import { AODat_Create_Data, AODat_ResumeAll_Data } from '../modules/dat/dat';
+import { AODB_SettingsUpdate_Data } from '../modules/db/db';
+import { IAOEth_NetworkChange_Data } from '../modules/eth/eth';
+import { IAOFS_Mkdir_Data, IAOFS_WriteStream_Data, IAOFS_Write_Data } from '../modules/fs/fs';
+import { Http_Args } from '../modules/http/http';
+import { IAORouterMessage } from '../router/AORouter';
+import { AOCoreProcessRouter } from '../router/AORouterInterface';
 import mocks from './mocks';
 import { generateMockVideoList } from './mockVideos';
+const graphqlSchema = importSchema( path.resolve(__dirname, './schema.graphql') );
 const packageJson = require('../../package.json');
-import { GraphQLUpload } from 'apollo-upload-server';
-import { AOCoreProcessRouter } from '../router/AORouterInterface';
-import { AODB_SettingsUpdate_Data } from '../modules/db/db';
-import md5 from 'md5';
-import { IAOFS_WriteStream_Data, IAOFS_Write_Data, IAOFS_Mkdir_Data } from '../modules/fs/fs';
-import { AODat_Create_Data, AODat_ResumeAll_Data } from '../modules/dat/dat'
-import Debug from 'debug';
-import { IAORouterMessage } from '../router/AORouter';
-import {Http_Args} from '../modules/http/http'
-import { IAOEth_NetworkChange_Data } from '../modules/eth/eth';
 const debug = Debug('ao:graphql');
-const error = Debug('ao:graphql:error');
+import QueryResolvers from './resolvers/queryResolvers';
 
-//adding in series
-const PromiseSeries:Function = function series(tasks) {
-return x=>
-    tasks.reduce((a,b)=> a.then(b), Promise.resolve(x));
-};
 
 // TODO: replace with actual db calls 
 let mockStore = {
@@ -34,6 +29,7 @@ let mockStore = {
 }
 
 export default function (router: AOCoreProcessRouter, options: Http_Args) {
+    const queryResolvers = QueryResolvers(router)
     const schema = makeExecutableSchema({
         typeDefs: [graphqlSchema],
         resolvers: {
@@ -54,7 +50,7 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                         }).catch(reject)
                     })
                 },
-                node: () => mockStore.node,
+                node: queryResolvers.resolveLocalNode,
                 state: () => mockStore.state,
                 settings: () => {
                     return new Promise((resolve, reject) => {
@@ -90,19 +86,21 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                             creator: {
                                 content: generateMockVideoList(2, options.coreOrigin, options.corePort)
                             },
-                        }                        
-                        //Mkdir is to ensure that the folder exists.
-                        const fsMakeDirData: IAOFS_Mkdir_Data = {
-                            dirPath: path.join(args.inputs.ethAddress,'dat')
                         }
-                        router.send('/fs/mkdir',fsMakeDirData).then( () => {
-                            //ResumeAll also initializes the multidat instance
-                            const datResumeAllData: AODat_ResumeAll_Data = {
-                                ethAddress: args.inputs.ethAddress
-                            }
-                            router.send('/dat/resumeAll', datResumeAllData).then(() => {
-                                router.send('/core/log', {message: `[AO Core] Registered as user ${args.inputs.ethAddress}`})
-                                resolve(mockStore.node)
+                        router.send('/db/user/init', {ethAddress: args.inputs.ethAddress}).then(() => {
+                            //Mkdir is to ensure that the folder exists.
+                            const fsMakeDirData: IAOFS_Mkdir_Data = {
+                                dirPath: path.join(args.inputs.ethAddress, 'dat')
+                            }                        
+                            router.send('/fs/mkdir', fsMakeDirData).then(() => {
+                                //ResumeAll also initializes the multidat instance
+                                const datResumeAllData: AODat_ResumeAll_Data = {
+                                    ethAddress: args.inputs.ethAddress
+                                }
+                                router.send('/dat/resumeAll', datResumeAllData).then(() => {
+                                    router.send('/core/log', {message: `[AO Core] Registered as user ${args.inputs.ethAddress}`})
+                                    resolve(mockStore.node)
+                                }).catch(reject)
                             }).catch(reject)
                         }).catch(reject)
                     })
@@ -126,37 +124,10 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                         const fileInputs = ['video', 'videoTeaser', 'featuredImage']
                         let contentFileNames: Array<string> = []
                         let fileStorePromises: Array<Promise<any>> = []
-                        // const contentJson = {
-                        //     id: newContentId,
-                        //     creatorId: ethAddress,
-                        //     datKey: 'fakedatkey',
-                        //     contentType: 'VOD',
-                        //     isFolder: false, // TODO: determine if args.inputs.video is a folder
-                        //     isMutable: false,
-                        //     title: args.inputs.title,
-                        //     description: args.inputs.description,
-                        //     stake: args.inputs.stake,
-                        //     profit: args.inputs.profit,
-                        //     createdAt: Date.now(),
-
-                        //     fileName: contentFileNames[0],
-                        //     fileUrl: `${ethAddress}/dat/${newContentId}/video`,
-                        //     fileSize: '100000000000000000',
-                        //     teaserUrl: `${ethAddress}/dat/${newContentId}/videoTeaser`,
-                        //     featuredImageUrl: `${ethAddress}/dat/${newContentId}/featuredImage`,
-
-                        //     metadata: {
-                        //         duration: '6000',  
-                        //         resolution: '720',//we have the width too, but dunno
-                        //         encoding: 'h264',
-                        //     }
-                        // }
-                        // resolve(contentJson)
-                        const newContentDirData:IAOFS_Mkdir_Data = {
+                        const newContentDirData: IAOFS_Mkdir_Data = {
                             dirPath: contentPath
                         }
-                        router.send('/fs/mkdir',newContentDirData)
-                        .then( () => {
+                        router.send('/fs/mkdir', newContentDirData).then(() => {
                             for (let i = 0; i < fileInputs.length; i++) {
                                 const fileInputName = fileInputs[i];
                                 fileStorePromises.push(new Promise((localResolve, localReject) => {
@@ -170,7 +141,6 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                             encrypt: fileInputName == 'video' ? true: false,
                                             videoStats: fileInputName.includes('video') ? true: false
                                         }
-                                        
                                         router.send('/fs/writeStream', writeStreamData).then(localResolve).catch(localReject)
                                     }).catch(localReject)
                                 }))
@@ -181,20 +151,15 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                 let videoStats = {}
                                 for (let i = 0; i < results.length; i++) {
                                     const result = results[i];
-                                    //debug(result)
                                     if(result.data.videoStats && result.data.key) {
                                         videoStats = result.data.videoStats
-                                        fileSize = result.data.fileSize
-                                        
+                                        fileSize = result.data.fileSize                                        
                                     }
                                 }
-                                debug('content path: '+contentPath)
-                                //call the dat create
-                                const datCreateData:AODat_Create_Data = {
+                                const datCreateData: AODat_Create_Data = {
                                     newDatDir: path.join('dat', newContentId)
                                 }
-                                router.send('/dat/create', datCreateData)
-                                .then((datResponse) => {
+                                router.send('/dat/create', datCreateData).then((datResponse) => {
                                     const datKey = datResponse.data.key
                                     const contentJson = {
                                         id: newContentId,
@@ -221,14 +186,19 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                             encoding: videoStats['codec'],
                                         }
                                     }
+                                    const storagePromises: Array<Promise<any>> = []
                                     const contentWriteData: IAOFS_Write_Data = {
                                         writePath: `${ethAddress}/dat/${newContentId}/content.json`,
                                         data: JSON.stringify(contentJson)
                                     }
-                                    router.send('/fs/write', contentWriteData).then((result: IAORouterMessage) => {
+                                    storagePromises.push(router.send('/fs/write', contentWriteData))
+                                    storagePromises.push(router.send('/db/user/content/insert', contentJson))
+                                    Promise.all(storagePromises).then((results: Array<IAORouterMessage>) => {
                                         resolve(contentJson)
                                     }).catch((error: Error) => {
-                                        // TODO: attempt to cleanup file storage
+                                        // We either failed to write contentJson to disk or db, lets cleanup to 
+                                        // avoid dirty state.
+                                        // TODO: attempt to cleanup file storage.
                                         reject(error)
                                     })
                                 }).catch(reject)

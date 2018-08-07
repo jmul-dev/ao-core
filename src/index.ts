@@ -20,18 +20,15 @@ export default class Core {
     private coreRouter: AORouter;
     private http: Http;
 
-    constructor(args) {
+    constructor(args: ICoreOptions) {
         debug(args)
         this.options = args
         this.coreRouter = new AORouter(args)
         this.coreRouter.init()
         // TODO: setup coreRouter event listeners (eg: http shutdown/error)
         this.coreRouter.router.on('/core/log', this._handleLog.bind(this))
+        this.http = new Http(this.coreRouter.router, args)
         process.stdin.resume();  // Hack to keep the core processes running
-        const httpOptions = {
-            ...args
-        }
-        this.http = new Http(this.coreRouter.router, httpOptions)
     }
 
     // NOTE: this is useful for sending event logs up to the 
