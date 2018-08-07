@@ -2,9 +2,8 @@
 'use strict';
 import Core from './index';
 import minimist = require('minimist');
-import Debug from 'debug';
 import path from 'path';
-const debug = Debug('ao:core');
+
 
 export interface ICoreOptions {
     disableHttpInterface: boolean;
@@ -14,7 +13,7 @@ export interface ICoreOptions {
     storageLocation: string;
 }
 
-var argv = minimist(process.argv.slice(2), {
+var argv = minimist<ICoreOptions>(process.argv.slice(2), {
     default: {
         disableHttpInterface: false,
         corePort: 3003,

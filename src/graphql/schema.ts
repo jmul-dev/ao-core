@@ -1,22 +1,23 @@
 'use strict';
-import { makeExecutableSchema, addMockFunctionsToSchema } from 'graphql-tools';
+import { GraphQLUpload } from 'apollo-upload-server';
+import Debug from 'debug';
 import { importSchema } from 'graphql-import';
+import { addMockFunctionsToSchema, makeExecutableSchema } from 'graphql-tools';
+import md5 from 'md5';
 import path from 'path';
-const graphqlSchema = importSchema( path.resolve(__dirname, './schema.graphql') );
+import { AODat_Create_Data, AODat_ResumeAll_Data } from '../modules/dat/dat';
+import { AODB_SettingsUpdate_Data } from '../modules/db/db';
+import { IAOEth_NetworkChange_Data } from '../modules/eth/eth';
+import { IAOFS_Mkdir_Data, IAOFS_WriteStream_Data, IAOFS_Write_Data } from '../modules/fs/fs';
+import { Http_Args } from '../modules/http/http';
+import { IAORouterMessage } from '../router/AORouter';
+import { AOCoreProcessRouter } from '../router/AORouterInterface';
 import mocks from './mocks';
 import { generateMockVideoList } from './mockVideos';
+const graphqlSchema = importSchema( path.resolve(__dirname, './schema.graphql') );
 const packageJson = require('../../package.json');
-import { GraphQLUpload } from 'apollo-upload-server';
-import { AOCoreProcessRouter } from '../router/AORouterInterface';
-import { AODB_SettingsUpdate_Data } from '../modules/db/db';
-import md5 from 'md5';
-import { IAOFS_WriteStream_Data, IAOFS_Write_Data, IAOFS_Mkdir_Data } from '../modules/fs/fs';
-import { AODat_Create_Data, AODat_ResumeAll_Data } from '../modules/dat/dat'
-import Debug from 'debug';
-import { IAORouterMessage } from '../router/AORouter';
-import {Http_Args} from '../modules/http/http'
-import { IAOEth_NetworkChange_Data } from '../modules/eth/eth';
 const debug = Debug('ao:graphql');
+import QueryResolvers from './resolvers/queryResolvers';
 
 
 // TODO: replace with actual db calls 
@@ -28,6 +29,7 @@ let mockStore = {
 }
 
 export default function (router: AOCoreProcessRouter, options: Http_Args) {
+    const queryResolvers = QueryResolvers(router)
     const schema = makeExecutableSchema({
         typeDefs: [graphqlSchema],
         resolvers: {
@@ -48,7 +50,7 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                         }).catch(reject)
                     })
                 },
-                node: () => mockStore.node,
+                node: queryResolvers.resolveLocalNode,
                 state: () => mockStore.state,
                 settings: () => {
                     return new Promise((resolve, reject) => {
@@ -122,32 +124,6 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                         const fileInputs = ['video', 'videoTeaser', 'featuredImage']
                         let contentFileNames: Array<string> = []
                         let fileStorePromises: Array<Promise<any>> = []
-                        // const contentJson = {
-                        //     id: newContentId,
-                        //     creatorId: ethAddress,
-                        //     datKey: 'fakedatkey',
-                        //     contentType: 'VOD',
-                        //     isFolder: false, // TODO: determine if args.inputs.video is a folder
-                        //     isMutable: false,
-                        //     title: args.inputs.title,
-                        //     description: args.inputs.description,
-                        //     stake: args.inputs.stake,
-                        //     profit: args.inputs.profit,
-                        //     createdAt: Date.now(),
-
-                        //     fileName: contentFileNames[0],
-                        //     fileUrl: `${ethAddress}/dat/${newContentId}/video`,
-                        //     fileSize: '100000000000000000',
-                        //     teaserUrl: `${ethAddress}/dat/${newContentId}/videoTeaser`,
-                        //     featuredImageUrl: `${ethAddress}/dat/${newContentId}/featuredImage`,
-
-                        //     metadata: {
-                        //         duration: '6000',  
-                        //         resolution: '720',//we have the width too, but dunno
-                        //         encoding: 'h264',
-                        //     }
-                        // }
-                        // resolve(contentJson)            
                         const newContentDirData: IAOFS_Mkdir_Data = {
                             dirPath: contentPath
                         }
@@ -210,7 +186,7 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                             encoding: videoStats['codec'],
                                         }
                                     }
-                                    const storagePromises = []
+                                    const storagePromises: Array<Promise<any>> = []
                                     const contentWriteData: IAOFS_Write_Data = {
                                         writePath: `${ethAddress}/dat/${newContentId}/content.json`,
                                         data: JSON.stringify(contentJson)

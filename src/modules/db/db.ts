@@ -66,10 +66,11 @@ export default class AODB extends AORouterInterface {
     private db: {
         logs: Datastore,
         settings: Datastore,
-    }
+    };
     private userDbs: {
         [key: string]: Datastore
-    } = {}
+    } = {};
+    private activeUserId?: string;
 
     constructor(args: AODB_Args) {
         super()
@@ -79,6 +80,7 @@ export default class AODB extends AORouterInterface {
         this.router.on('/db/settings/get', this._settingsGet.bind(this))
         this.router.on('/db/settings/update', this._settingsUpdate.bind(this))
         this.router.on('/db/user/init', this._setupUserDb.bind(this))
+        this.router.on('/db/user/get', this._getUser.bind(this))
         this.router.on('/db/user/content/get', this._userContentGet.bind(this))
         this.router.on('/db/user/content/insert', this._userContentInsert.bind(this))        
         this._setupCoreDbs()
@@ -129,6 +131,7 @@ export default class AODB extends AORouterInterface {
             request.reject(new Error('user db init requires eth address'))
             return;
         }
+        this.activeUserId = requestData.ethAddress
         if ( this.userDbs[requestData.ethAddress] instanceof Datastore ) {
             request.respond({loaded: true})
             return;
@@ -148,6 +151,10 @@ export default class AODB extends AORouterInterface {
         })
     }
 
+    private _getUser(request: IAORouterRequest): void {
+        request.respond({ethAddress: this.activeUserId})
+    }
+
     private _handleCoreDbLoadError(error: Error): void {
         if ( error ) {
             debug('Error loading core db', error)
@@ -160,7 +167,12 @@ export default class AODB extends AORouterInterface {
     private _userContentGet(request: IAORouterRequest) {
         const requestData: AODB_UserContentGet_Data = request.data
         let query = requestData.query || {}
-        this.userDbs[requestData.ethAddress].find(query).exec((error: Error, docs) => {
+        const userDb = this.userDbs[requestData.ethAddress]
+        if ( !userDb ) {
+            request.reject(new Error(`User db not found for ${requestData.ethAddress}`))
+            return;
+        }
+        userDb.find(query).exec((error: Error, docs) => {
             if ( error ) {
                 request.reject(error)
             } else {
@@ -171,7 +183,12 @@ export default class AODB extends AORouterInterface {
 
     private _userContentInsert(request: IAORouterRequest) {
         const requestData: any = request.data  // TODO: type check/validate content
-        this.userDbs[requestData.creatorId].insert(requestData, (error: Error, doc) => {
+        const userDb = this.userDbs[requestData.ethAddress]
+        if ( !userDb ) {
+            request.reject(new Error(`User db not found for ${requestData.ethAddress}`))
+            return;
+        }
+        userDb.insert(requestData, (error: Error, doc) => {
             if ( error ) {
                 request.reject(error)
             } else {
