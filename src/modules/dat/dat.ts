@@ -1,7 +1,7 @@
 import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
-import crypto from 'crypto'
-import md5 from 'md5'
+
 import Multidat from 'multidat'
+import Dat from 'dat-node'
 import toilet from 'toiletdb'
 import path, { basename, dirname } from "path";
 import Debug from 'debug';
@@ -25,6 +25,11 @@ export interface AODat_Create_Data {
 }
 export interface AODat_JoinNetwork_Data {
     key: string;
+}
+
+export interface AODat_Download_Data {
+    key: string;
+    newDatDir: string;
 }
 
 export interface AODat_Remove_Data {
@@ -52,7 +57,8 @@ export default class AODat extends AORouterInterface {
         this.router.on('/dat/resumeAll', this._handleDatResumeAll.bind(this))
         this.router.on('/dat/stopAll', this._handleDatStopAll.bind(this))
         this.router.on('/dat/create', this._handleDatCreate.bind(this))
-        this.router.on('/dat/joinNetwork', this._handlejoinNetwork.bind(this))
+        this.router.on('/dat/joinNetwork', this._handlejoinNetwork.bind(this)) //this is separate from above since we want to include some information in the json files
+        this.router.on('/dat/download', this._handleDatDownload.bind(this))
         this.router.on('/dat/remove', this._handleDatRemove.bind(this))
         this.router.on('/dat/list', this._handleDatList.bind(this))
         debug(`started`)
@@ -97,9 +103,9 @@ export default class AODat extends AORouterInterface {
 
     private _handleDatCreate(request: IAORouterRequest) {
         const requestData: AODat_Create_Data = request.data
-        debug('datdir:'+this.datDir)
+        //debug('datdir:'+this.datDir)
         const fullPath = path.resolve(this.datDir, requestData.newDatDir)
-        debug('full path:' + fullPath)
+        //debug('full path:' + fullPath)
         if(!this.multidat) {
             request.reject(new Error('Multidat is not ready? is EthAddress set?'))
         } else {
@@ -110,7 +116,6 @@ export default class AODat extends AORouterInterface {
                 this.dats = this.multidat.list()//update list.
                 dat.importFiles()
                 const datFolder = basename(fullPath)
-                debug(datFolder)
                 const datKey =  dat.key.toString('hex')
                 debug('New link: dat://' + datKey)
 
@@ -125,7 +130,6 @@ export default class AODat extends AORouterInterface {
         const requestData: AODat_JoinNetwork_Data = request.data
         debug('requested join key'+requestData.key)
         if(this.multidat) {
-            const dat_list = []
             const dats = this.multidat.list()
             for (let i = 0; i < dats.length; i++) {
                 const dat = dats[i];
@@ -140,6 +144,24 @@ export default class AODat extends AORouterInterface {
         } else {
             request.reject(new Error('Not initialized'))
         }
+    }
+
+    private _handleDatDownload(request: IAORouterRequest) {
+        const requestData: AODat_Download_Data = request.data
+        if(this.multidat) {
+            const options = {
+                key: requestData.key
+            }
+            Dat(requestData.newDatDir, options, (err,dat) => {
+                if(err) {
+                    request.reject(new Error('Issue with dat download'))
+                }
+                dat.importFiles()
+            })
+        } else {
+            request.reject(new Error('Not initialized'))
+        }
+        
     }
 
     private _handleDatRemove(request: IAORouterRequest) {
