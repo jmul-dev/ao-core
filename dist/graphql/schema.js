@@ -11,24 +11,18 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-var graphql_tools_1 = require("graphql-tools");
+var apollo_upload_server_1 = require("apollo-upload-server");
+var debug_1 = __importDefault(require("debug"));
 var graphql_import_1 = require("graphql-import");
+var graphql_tools_1 = require("graphql-tools");
+var md5_1 = __importDefault(require("md5"));
 var path_1 = __importDefault(require("path"));
-var graphqlSchema = graphql_import_1.importSchema(path_1.default.resolve(__dirname, './schema.graphql'));
 var mocks_1 = __importDefault(require("./mocks"));
 var mockVideos_1 = require("./mockVideos");
+var graphqlSchema = graphql_import_1.importSchema(path_1.default.resolve(__dirname, './schema.graphql'));
 var packageJson = require('../../package.json');
-var apollo_upload_server_1 = require("apollo-upload-server");
-var md5_1 = __importDefault(require("md5"));
-var debug_1 = __importDefault(require("debug"));
 var debug = debug_1.default('ao:graphql');
-var error = debug_1.default('ao:graphql:error');
-//adding in series
-var PromiseSeries = function series(tasks) {
-    return function (x) {
-        return tasks.reduce(function (a, b) { return a.then(b); }, Promise.resolve(x));
-    };
-};
+var queryResolvers_1 = __importDefault(require("./resolvers/queryResolvers"));
 // TODO: replace with actual db calls 
 var mockStore = {
     node: null,
@@ -37,6 +31,7 @@ var mockStore = {
     videos: null
 };
 function default_1(router, options) {
+    var queryResolvers = queryResolvers_1.default(router);
     var schema = graphql_tools_1.makeExecutableSchema({
         typeDefs: [graphqlSchema],
         resolvers: {
@@ -57,7 +52,7 @@ function default_1(router, options) {
                         }).catch(reject);
                     });
                 },
-                node: function () { return mockStore.node; },
+                node: queryResolvers.resolveLocalNode,
                 state: function () { return mockStore.state; },
                 settings: function () {
                     return new Promise(function (resolve, reject) {
@@ -94,18 +89,20 @@ function default_1(router, options) {
                                 content: mockVideos_1.generateMockVideoList(2, options.coreOrigin, options.corePort)
                             },
                         };
-                        //Mkdir is to ensure that the folder exists.
-                        var fsMakeDirData = {
-                            dirPath: path_1.default.join(args.inputs.ethAddress, 'dat')
-                        };
-                        router.send('/fs/mkdir', fsMakeDirData).then(function () {
-                            //ResumeAll also initializes the multidat instance
-                            var datResumeAllData = {
-                                ethAddress: args.inputs.ethAddress
+                        router.send('/db/user/init', { ethAddress: args.inputs.ethAddress }).then(function () {
+                            //Mkdir is to ensure that the folder exists.
+                            var fsMakeDirData = {
+                                dirPath: path_1.default.join(args.inputs.ethAddress, 'dat')
                             };
-                            router.send('/dat/resumeAll', datResumeAllData).then(function () {
-                                router.send('/core/log', { message: "[AO Core] Registered as user " + args.inputs.ethAddress });
-                                resolve(mockStore.node);
+                            router.send('/fs/mkdir', fsMakeDirData).then(function () {
+                                //ResumeAll also initializes the multidat instance
+                                var datResumeAllData = {
+                                    ethAddress: args.inputs.ethAddress
+                                };
+                                router.send('/dat/resumeAll', datResumeAllData).then(function () {
+                                    router.send('/core/log', { message: "[AO Core] Registered as user " + args.inputs.ethAddress });
+                                    resolve(mockStore.node);
+                                }).catch(reject);
                             }).catch(reject);
                         }).catch(reject);
                     });
@@ -130,8 +127,7 @@ function default_1(router, options) {
                         var newContentDirData = {
                             dirPath: contentPath
                         };
-                        router.send('/fs/mkdir', newContentDirData)
-                            .then(function () {
+                        router.send('/fs/mkdir', newContentDirData).then(function () {
                             var _loop_1 = function (i) {
                                 var fileInputName = fileInputs[i];
                                 fileStorePromises.push(new Promise(function (localResolve, localReject) {
@@ -159,19 +155,15 @@ function default_1(router, options) {
                                 var videoStats = {};
                                 for (var i = 0; i < results.length; i++) {
                                     var result = results[i];
-                                    //debug(result)
                                     if (result.data.videoStats && result.data.key) {
                                         videoStats = result.data.videoStats;
                                         fileSize = result.data.fileSize;
                                     }
                                 }
-                                debug('content path: ' + contentPath);
-                                //call the dat create
                                 var datCreateData = {
                                     newDatDir: path_1.default.join('dat', newContentId)
                                 };
-                                router.send('/dat/create', datCreateData)
-                                    .then(function (datResponse) {
+                                router.send('/dat/create', datCreateData).then(function (datResponse) {
                                     var datKey = datResponse.data.key;
                                     var contentJson = {
                                         id: newContentId,
@@ -196,10 +188,12 @@ function default_1(router, options) {
                                             encoding: videoStats['codec'],
                                         }
                                     };
+                                    var storagePromises = [];
                                     var contentWriteData = {
                                         writePath: ethAddress + "/dat/" + newContentId + "/content.json",
                                         data: JSON.stringify(contentJson)
                                     };
+<<<<<<< HEAD
                                     router.send('/fs/write', contentWriteData).then(function (result) {
                                         resolve(contentJson); //resolve happens earlier than joinnetork for now?
                                         var datJoinNetworkData = {
@@ -207,8 +201,16 @@ function default_1(router, options) {
                                         };
                                         router.send('/dat/joinNetwork', datJoinNetworkData).then(function () {
                                         }).catch(reject);
+=======
+                                    storagePromises.push(router.send('/fs/write', contentWriteData));
+                                    storagePromises.push(router.send('/db/user/content/insert', contentJson));
+                                    Promise.all(storagePromises).then(function (results) {
+                                        resolve(contentJson);
+>>>>>>> 446cf68673d9fe0d7bf6b6685e2def15581df13b
                                     }).catch(function (error) {
-                                        // TODO: attempt to cleanup file storage
+                                        // We either failed to write contentJson to disk or db, lets cleanup to 
+                                        // avoid dirty state.
+                                        // TODO: attempt to cleanup file storage.
                                         reject(error);
                                     });
                                 }).catch(reject);

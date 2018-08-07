@@ -40,6 +40,16 @@ export interface AODB_Setting {
     setting: string;
     value: string;
 }
+/**
+ * User
+ */
+export interface AODB_UserInit_Data {
+    ethAddress: string;
+}
+export interface AODB_UserContentGet_Data {
+    ethAddress: string;
+    query?: Object;
+}
 
 
 export default class AODB extends AORouterInterface {
@@ -56,10 +66,11 @@ export default class AODB extends AORouterInterface {
     private db: {
         logs: Datastore,
         settings: Datastore,
-    }
+    };
     private userDbs: {
         [key: string]: Datastore
-    }
+    } = {};
+    private activeUserId?: string;
 
     constructor(args: AODB_Args) {
         super()
@@ -68,6 +79,10 @@ export default class AODB extends AORouterInterface {
         this.router.on('/db/logs/insert', this._logsInsert.bind(this))
         this.router.on('/db/settings/get', this._settingsGet.bind(this))
         this.router.on('/db/settings/update', this._settingsUpdate.bind(this))
+        this.router.on('/db/user/init', this._setupUserDb.bind(this))
+        this.router.on('/db/user/get', this._getUser.bind(this))
+        this.router.on('/db/user/content/get', this._userContentGet.bind(this))
+        this.router.on('/db/user/content/insert', this._userContentInsert.bind(this))        
         this._setupCoreDbs()
         debug(`started`)
         this.router.send('/core/log', {message: `[AO DB] Core database initialized`})
@@ -101,13 +116,43 @@ export default class AODB extends AORouterInterface {
         this.db.logs.ensureIndex({
             fieldName: 'createdAt',
             // @ts-ignore Types not quite up to par
-            expireAfterSeconds: 3600 * 24,
+            expireAfterSeconds: 3600 * 48,
         })
         // Settings indexed by name (unique)
         this.db.settings.ensureIndex({
             fieldName: 'setting',
             unique: true,
         })        
+    }
+
+    private _setupUserDb(request: IAORouterRequest): void {
+        const requestData: AODB_UserInit_Data = request.data
+        if ( !requestData || !requestData.ethAddress ) {
+            request.reject(new Error('user db init requires eth address'))
+            return;
+        }
+        this.activeUserId = requestData.ethAddress
+        if ( this.userDbs[requestData.ethAddress] instanceof Datastore ) {
+            request.respond({loaded: true})
+            return;
+        }
+        this.userDbs[requestData.ethAddress] = new Datastore({
+            filename: path.resolve(this.storageLocation, requestData.ethAddress, 'content.db.json'),
+            autoload: false,
+        })
+        this.userDbs[requestData.ethAddress].loadDatabase((error: Error) => {
+            this.router.send('/core/log', {message: `[AO DB] User database initialized for ${requestData.ethAddress}`})
+            if ( error ) {
+                request.reject(error)
+                this.userDbs[requestData.ethAddress] = undefined
+            } else {
+                request.respond({loaded: true})
+            }
+        })
+    }
+
+    private _getUser(request: IAORouterRequest): void {
+        request.respond({ethAddress: this.activeUserId})
     }
 
     private _handleCoreDbLoadError(error: Error): void {
@@ -118,6 +163,39 @@ export default class AODB extends AORouterInterface {
             // TODO: we might need to drop some data (ex: peers) from previous session
         }
     }
+
+    private _userContentGet(request: IAORouterRequest) {
+        const requestData: AODB_UserContentGet_Data = request.data
+        let query = requestData.query || {}
+        const userDb = this.userDbs[requestData.ethAddress]
+        if ( !userDb ) {
+            request.reject(new Error(`User db not found for ${requestData.ethAddress}`))
+            return;
+        }
+        userDb.find(query).exec((error: Error, docs) => {
+            if ( error ) {
+                request.reject(error)
+            } else {
+                request.respond(docs)
+            }
+        })        
+    }
+
+    private _userContentInsert(request: IAORouterRequest) {
+        const requestData: any = request.data  // TODO: type check/validate content
+        const userDb = this.userDbs[requestData.ethAddress]
+        if ( !userDb ) {
+            request.reject(new Error(`User db not found for ${requestData.ethAddress}`))
+            return;
+        }
+        userDb.insert(requestData, (error: Error, doc) => {
+            if ( error ) {
+                request.reject(error)
+            } else {
+                request.respond(doc)
+            }
+        })        
+    }    
 
     private _logsGet(request: IAORouterRequest) {
         const requestData: AODB_LogsGet_Data = request.data

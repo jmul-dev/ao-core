@@ -1,6 +1,4 @@
 import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
-
-import Multidat from 'multidat'
 import Dat from 'dat-node'
 import toilet from 'toiletdb'
 import path, { basename, dirname } from "path";
@@ -47,9 +45,9 @@ export default class AODat extends AORouterInterface {
     private ethAddress: string
     private storageLocation: string
     private datDir: string
-    private multidat: Multidat
     private db: toilet  //That's right, we're going to use the toilet.
     private dats: Array<any>
+    private contents: Object
     
     constructor(args: AODat_Args) {
         super()
@@ -72,20 +70,30 @@ export default class AODat extends AORouterInterface {
         this.ethAddress = requestData.ethAddress
         this.datDir = path.resolve(this.storageLocation, requestData.ethAddress)
         this.db = toilet( path.resolve(this.datDir, 'dat.json') )
+        this.dats = toilet( path.resolve(this.datDir, 'dat.json') )//For now.  Will replace quickly.
 
-        Multidat(this.db, (err, multidat) => {
-            if(err) {
-                request.reject(err)
+        let initPromises = []
+        for (const key in this.dats) {
+            if (this.dats.hasOwnProperty(key)) {
+                initPromises.push(new Promise((resolve,reject) => {
+                    const datInfo = this.dats[key];
+                    const datDir = datInfo.dir
+                    Dat(datDir, (err,dat) => {
+                        if(err) {
+                            debug('error starting dat ' + key )
+                            reject()
+                        }
+                        dat.importFiles()
+                        dat.joinNetwork()
+                        const dat_link = 'dat://' + dat.key.toString('hex')
+                        debug('Joined network for: '+ dat_link)
+                        this.dats[key]['status'] = 'online'
+                        resolve()
+                    })
+                }))
             }
-            this.multidat = multidat
-            this.dats = multidat.list()
-            for (let i = 0; i < this.dats.length; i++) {
-                const dat = this.dats[i];
-                dat.importFiles()
-                dat.joinNetwork()
-                const dat_link = 'dat://' + dat.key.toString('hex')
-                debug('Joined network for: '+ dat_link)
-            }
+        }
+        Promise.all(initPromises).then(() => {
             debug(`Dat process initialized for user ${this.ethAddress}`)
             this.router.send('/core/log', {message: `[AO Dat] Dat process initialized for user ${this.ethAddress}`})
             request.respond({dat:'All Dats have Resumed'})
@@ -106,22 +114,24 @@ export default class AODat extends AORouterInterface {
         //debug('datdir:'+this.datDir)
         const fullPath = path.resolve(this.datDir, requestData.newDatDir)
         //debug('full path:' + fullPath)
-        if(!this.multidat) {
+        if(!this.dats) {
             request.reject(new Error('Multidat is not ready? is EthAddress set?'))
         } else {
-            this.multidat.create( fullPath, (err, dat) => {
+            Dat( fullPath, (err, dat) => {
                 if(err) {
                     request.reject(err)
                 }
-                this.dats = this.multidat.list()//update list.
                 dat.importFiles()
                 const datFolder = basename(fullPath)
                 const datKey =  dat.key.toString('hex')
                 debug('New link: dat://' + datKey)
 
+                //TODO: Make sure to send the new path back to DB once DB is no longer toilet
+                this.dats[datKey]['dir'] = fullPath
+
                 request.respond({
-                        datFolder: datFolder,
-                        key: datKey
+                    datFolder: datFolder,
+                    key: datKey
                 })
             })
         }
@@ -129,15 +139,16 @@ export default class AODat extends AORouterInterface {
     private _handlejoinNetwork(request: IAORouterRequest) {
         const requestData: AODat_JoinNetwork_Data = request.data
         debug('requested join key'+requestData.key)
-        if(this.multidat) {
-            const dats = this.multidat.list()
-            for (let i = 0; i < dats.length; i++) {
-                const dat = dats[i];
-                if(dat.key.toString('hex') == requestData.key) {
-                    debug('Joining network for '+requestData.key)
-                    dat.importFiles()
-                    dat.joinNetwork()
-                    break;
+        if(this.dats) {
+            for (const key in this.dats) {
+                if (this.dats.hasOwnProperty(key)) {
+                    const dat = this.dats[key];
+                    if(dat.key.toString('hex') == requestData.key) {
+                        debug('Joining network for '+requestData.key)
+                        dat.importFiles()
+                        dat.joinNetwork()
+                        break;
+                    }
                 }
             }
             request.respond({})
@@ -146,17 +157,48 @@ export default class AODat extends AORouterInterface {
         }
     }
 
-    private _handleDatDownload(request: IAORouterRequest) {
+    private _handleDatPreview(request: IAORouterRequest) {
         const requestData: AODat_Download_Data = request.data
-        if(this.multidat) {
+        if(this.dats) {
             const options = {
-                key: requestData.key
+                key: requestData.key,
+                sparse: true
             }
             Dat(requestData.newDatDir, options, (err,dat) => {
                 if(err) {
                     request.reject(new Error('Issue with dat download'))
                 }
-                dat.importFiles()
+                //Don't run importFile here.  That'll cause this entire archive to be downloaded
+                dat.joinNetwork()
+                dat.archive.readFile('content.json', (err,content) => {
+                    if(err) {
+                        request.reject(new Error('content.json download error'))
+                    }
+                    this.contents[requestData.key] = JSON.parse(content)
+                    const teaserName = this.contents[requestData.key]['teaserName']
+                    dat.archive.readFile(teaserName, (err,teaser) => {
+                        //TODO: What to do with the teaser??
+                    })
+                })
+            })
+        } else {
+            request.reject(new Error('Not initialized'))
+        }
+        
+    }
+    private _handleDatDownload(request: IAORouterRequest) {
+        const requestData: AODat_Download_Data = request.data
+        if(this.dats) {
+            const options = {
+                key: requestData.key,
+                sparse: true
+            }
+            Dat(requestData.newDatDir, options, (err,dat) => {
+                if(err) {
+                    request.reject(new Error('Issue with dat download'))
+                }
+                dat.joinNetwork()
+                dat.archive.readFile('')
             })
         } else {
             request.reject(new Error('Not initialized'))
@@ -166,10 +208,17 @@ export default class AODat extends AORouterInterface {
 
     private _handleDatRemove(request: IAORouterRequest) {
         const requestData: AODat_Remove_Data = request.data
-        if(this.multidat) {
-            this.multidat.close(requestData.key,(err) => {
-                request.reject(err)
-            })
+        if(this.dats) {
+            for (const key in this.dats) {
+                if (this.dats.hasOwnProperty(key)) {
+                    const dat = this.dats[key];
+                    if(dat.key.toString('hex') == requestData.key) {
+                        dat.close(() => {
+                            request.respond({})
+                        })
+                    }
+                }
+            }
         } else {
             request.reject(new Error('Not initialized'))
         }
@@ -177,13 +226,15 @@ export default class AODat extends AORouterInterface {
 
     private _handleDatList(request: IAORouterRequest) {
         //const requestData: AODat_List_Data = request.data
-        if(this.multidat) {
-            const dat_list = []
-            for (let i = 0; i < this.multidat.list().length; i++) {
-                const dat = this.multidat.list()[i];
-                dat_list.push( dat.key.toString('hex') )
+        if(this.dats) {
+            const datList = []
+            for (const key in this.dats) {
+                if (this.dats.hasOwnProperty(key)) {
+                    const dat = this.dats[key];
+                    datList.push( dat.key.toString('hex') )
+                }
             }
-            request.respond({dat_list: dat_list})
+            request.respond({datList: datList})
         } else {
             request.reject(new Error('Not initialized'))
         }
