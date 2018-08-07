@@ -14,7 +14,12 @@
             "/db/settings/update",
             "/db/user/init",
             "/db/user/content/get",
-            "/db/user/content/insert"
+            "/db/user/content/insert",
+            "/db/dats/init",
+            "/db/dats/get",
+            "/db/dats/insert",
+            "/db/dats/update",
+            "/db/dats/remove"
         ],
         "activationEvents": [
             

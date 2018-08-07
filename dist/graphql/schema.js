@@ -19,10 +19,10 @@ var md5_1 = __importDefault(require("md5"));
 var path_1 = __importDefault(require("path"));
 var mocks_1 = __importDefault(require("./mocks"));
 var mockVideos_1 = require("./mockVideos");
+var queryResolvers_1 = __importDefault(require("./resolvers/queryResolvers"));
 var graphqlSchema = graphql_import_1.importSchema(path_1.default.resolve(__dirname, './schema.graphql'));
 var packageJson = require('../../package.json');
 var debug = debug_1.default('ao:graphql');
-var queryResolvers_1 = __importDefault(require("./resolvers/queryResolvers"));
 // TODO: replace with actual db calls 
 var mockStore = {
     node: null,
@@ -181,7 +181,9 @@ function default_1(router, options) {
                                         fileUrl: ethAddress + "/dat/" + newContentId + "/" + contentFileNames[0],
                                         fileSize: fileSize,
                                         teaserUrl: ethAddress + "/dat/" + newContentId + "/" + contentFileNames[1],
+                                        teaserName: "" + contentFileNames[1],
                                         featuredImageUrl: ethAddress + "/dat/" + newContentId + "/" + contentFileNames[2],
+                                        featuredImageName: "" + contentFileNames[2],
                                         metadata: {
                                             duration: videoStats['duration'],
                                             resolution: videoStats['height'],
@@ -193,20 +195,23 @@ function default_1(router, options) {
                                         writePath: ethAddress + "/dat/" + newContentId + "/content.json",
                                         data: JSON.stringify(contentJson)
                                     };
-<<<<<<< HEAD
-                                    router.send('/fs/write', contentWriteData).then(function (result) {
-                                        resolve(contentJson); //resolve happens earlier than joinnetork for now?
-                                        var datJoinNetworkData = {
-                                            key: datKey
-                                        };
-                                        router.send('/dat/joinNetwork', datJoinNetworkData).then(function () {
-                                        }).catch(reject);
-=======
+                                    var datContentupdateData = {
+                                        query: { key: datKey },
+                                        update: {
+                                            contentJSON: contentJson
+                                        }
+                                    };
+                                    // TODO: Make sure to add below when we know stuff has been staked correctly.
+                                    //     const datJoinNetworkData: AODat_JoinNetwork_Data = {
+                                    //         key: datKey
+                                    //     }
+                                    //     router.send('/dat/joinNetwork',datJoinNetworkData).then(() => {
+                                    //     }).catch(reject)
                                     storagePromises.push(router.send('/fs/write', contentWriteData));
                                     storagePromises.push(router.send('/db/user/content/insert', contentJson));
+                                    storagePromises.push(router.send('/db/dats/update', datContentupdateData));
                                     Promise.all(storagePromises).then(function (results) {
                                         resolve(contentJson);
->>>>>>> 446cf68673d9fe0d7bf6b6685e2def15581df13b
                                     }).catch(function (error) {
                                         // We either failed to write contentJson to disk or db, lets cleanup to 
                                         // avoid dirty state.

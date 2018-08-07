@@ -50,6 +50,36 @@ export interface AODB_UserContentGet_Data {
     ethAddress: string;
     query?: Object;
 }
+/**
+ * Dats
+ */
+export interface AODB_DatsInit_Data {
+    ethAddress: string;
+}
+export interface AODB_DatsGet_Data {
+    query?:Object;
+}
+export interface AODB_DatsInsert_Data {
+    key: string;
+    dir: string;
+    contentJSON?: Object;
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+export interface AODB_UpdateObject {
+    key?: string;
+    dir?: string;
+    contentJSON?: Object;
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+export interface AODB_DatsUpdate_Data {
+    query: Object;
+    update: AODB_UpdateObject
+}
+export interface AODB_DatsRemove_Data {
+    query: Object;
+}
 
 
 export default class AODB extends AORouterInterface {
@@ -66,6 +96,7 @@ export default class AODB extends AORouterInterface {
     private db: {
         logs: Datastore,
         settings: Datastore,
+        dats?: Datastore,
     };
     private userDbs: {
         [key: string]: Datastore
@@ -83,6 +114,12 @@ export default class AODB extends AORouterInterface {
         this.router.on('/db/user/get', this._getUser.bind(this))
         this.router.on('/db/user/content/get', this._userContentGet.bind(this))
         this.router.on('/db/user/content/insert', this._userContentInsert.bind(this))        
+        
+        this.router.on('/db/dats/init', this._datsInit.bind(this))
+        this.router.on('/db/dats/get', this._datsGet.bind(this))
+        this.router.on('/db/dats/insert', this._datsInsert.bind(this))
+        this.router.on('/db/dats/update', this._datsUpdate.bind(this))
+        this.router.on('/db/dats/remove', this._datsRemove.bind(this))
         this._setupCoreDbs()
         debug(`started`)
         this.router.send('/core/log', {message: `[AO DB] Core database initialized`})
@@ -110,7 +147,7 @@ export default class AODB extends AORouterInterface {
                         })   
                     }
                 }
-            }),
+            })
         }
         // Logs expire after 48 hrs
         this.db.logs.ensureIndex({
@@ -283,6 +320,94 @@ export default class AODB extends AORouterInterface {
                 }
             })
         }).catch(request.reject)
+    }
+
+    
+    private _datsInit(request: IAORouterRequest) {
+        const requestData: AODB_DatsInit_Data = request.data
+        this.db.dats = new Datastore({
+            filename: path.resolve(this.storageLocation, requestData.ethAddress, 'dats.db.json'),
+            autoload: true,
+            onload: (error: Error) => {
+                if ( error ){
+                    this._handleCoreDbLoadError(error)
+                    request.reject(new Error('Error loading up Dats DB'))
+                } else {
+                    //let's return everything from init
+                    this.db.dats.find({}).exec((err, results) => {
+                        if ( err ) {
+                            request.reject(err)
+                        } else {
+                            request.respond(results)
+                        }
+                    })
+                }
+            }
+        })
+    }
+    private _datsGet(request: IAORouterRequest) {
+        const requestData: AODB_DatsGet_Data = request.data
+        if(!this.db.dats) {
+            request.reject(new Error('Dats DB not initialized'))
+        } else {
+            let query = requestData.query || {}
+            this.db.dats.find(query).exec((err, results) => {
+                if ( err ) {
+                    request.reject(err)
+                } else {
+                    request.respond(results)
+                }
+            })
+        }
+        
+    }
+    private _datsInsert(request: IAORouterRequest) {
+        const requestData: AODB_DatsInsert_Data = request.data
+        if(!this.db.dats) {
+            request.reject(new Error('Dats DB not initialized'))
+        } else {
+            if ( !requestData.createdAt || !(requestData.createdAt instanceof Date) ) {
+                requestData.createdAt = new Date()
+            }
+            if ( !requestData.updatedAt || !(requestData.updatedAt instanceof Date) ) {
+                requestData.updatedAt = requestData.createdAt
+            }
+            this.db.dats.insert(requestData, (err,dat) => {
+                if(err) {
+                    request.reject(err)
+                }
+                request.respond(dat)
+            })
+        }
+    }
+    private _datsUpdate(request: IAORouterRequest) {
+        const requestData: AODB_DatsUpdate_Data = request.data
+        if(!this.db.dats) {
+            request.reject(new Error('Dats DB not initialized'))
+        } else {
+            requestData.update.updatedAt = new Date()
+            this.db.dats.update(requestData.query, requestData.update, {}, (err,numReplaced) => {
+                if(err) {
+                    request.reject(err)
+                }
+                debug('Update replaced '+numReplaced+' records')
+                request.respond({})
+            })
+        }
+    }
+    private _datsRemove(request: IAORouterRequest) {
+        const requestData: AODB_DatsRemove_Data = request.data
+        if(!this.db.dats) {
+            request.reject(new Error('Dats DB not initialized'))
+        } else {
+            this.db.dats.remove(requestData.query, {}, (err,numRemoved) => {
+                if(err) {
+                    request.reject(err)
+                }
+                debug('Update replaced '+numRemoved+' records')
+                request.respond({})
+            })
+        }
     }
 
 }

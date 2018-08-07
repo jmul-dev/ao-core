@@ -6,7 +6,7 @@ import { addMockFunctionsToSchema, makeExecutableSchema } from 'graphql-tools';
 import md5 from 'md5';
 import path from 'path';
 import { AODat_Create_Data, AODat_ResumeAll_Data } from '../modules/dat/dat';
-import { AODB_SettingsUpdate_Data } from '../modules/db/db';
+import { AODB_SettingsUpdate_Data, AODB_DatsUpdate_Data } from '../modules/db/db';
 import { IAOEth_NetworkChange_Data } from '../modules/eth/eth';
 import { IAOFS_Mkdir_Data, IAOFS_WriteStream_Data, IAOFS_Write_Data } from '../modules/fs/fs';
 import { Http_Args } from '../modules/http/http';
@@ -194,6 +194,12 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                         writePath: `${ethAddress}/dat/${newContentId}/content.json`,
                                         data: JSON.stringify(contentJson)
                                     }
+                                    const datContentupdateData: AODB_DatsUpdate_Data = {
+                                        query: { key: datKey },
+                                        update: {
+                                            contentJSON: contentJson
+                                        }
+                                    }
 
                                     // TODO: Make sure to add below when we know stuff has been staked correctly.
                                     //     const datJoinNetworkData: AODat_JoinNetwork_Data = {
@@ -204,6 +210,7 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
 
                                     storagePromises.push(router.send('/fs/write', contentWriteData))
                                     storagePromises.push(router.send('/db/user/content/insert', contentJson))
+                                    storagePromises.push(router.send('/db/dats/update', datContentupdateData))
                                     Promise.all(storagePromises).then((results: Array<IAORouterMessage>) => {
                                         resolve(contentJson)
                                     }).catch((error: Error) => {
