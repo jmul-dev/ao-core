@@ -129,10 +129,7 @@ export default class AODat extends AORouterInterface {
 
     private _handleDatCreate(request: IAORouterRequest) {
         const requestData: AODat_Create_Data = request.data
-        //debug('datdir:'+this.datDir)
         const fullPath = path.join(this.datDir, requestData.newDatDir)
-        debug('datdir: ' + this.datDir)
-        debug('full path:' + fullPath)
         if(!this.dats) {
             request.reject(new Error('Multidat is not ready? is EthAddress set?'))
         } else {
@@ -152,8 +149,10 @@ export default class AODat extends AORouterInterface {
                 }
                 this.router.send('/db/dats/insert',dbInsertData)
                 .then(()=> {
-                    
-                    //this.dats[datKey]['dir'] = fullPath
+                    this.dats[datKey] = {
+                        key: datKey,
+                        dir: fullPath
+                    }
                     request.respond({                    
                         key: datKey,
                         dir: datFolder
