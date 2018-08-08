@@ -93,7 +93,6 @@ function default_1(router, options) {
                             //ensuring decryption keys are loaded.
                             var initDecryptionData = {};
                             router.send('/db/decryptionKey/init', initDecryptionData).then(function () {
-                                debug('Decryption Key DB init good');
                             }).catch(reject);
                             //Mkdir is to ensure that the folder exists.
                             var fsMakeDirData = {
@@ -207,7 +206,7 @@ function default_1(router, options) {
                                         update: __assign({}, datResponse.data, { contentJSON: contentJson })
                                     };
                                     var decryptionKeyData = {
-                                        key: datKey,
+                                        datKey: datKey,
                                         decryptionKey: decryptionKey
                                     };
                                     // TODO: Make sure to add below when we know stuff has been staked correctly.

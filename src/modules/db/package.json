@@ -13,6 +13,7 @@
             "/db/settings/get",
             "/db/settings/update",            
             "/db/user/init",
+            "/db/user/get",
             "/db/user/content/get",
             "/db/user/content/insert",
 
