@@ -75,7 +75,7 @@ export interface AODB_UpdateObject {
 }
 export interface AODB_DatsUpdate_Data {
     query: Object;
-    update: AODB_UpdateObject
+    update: any;
 }
 export interface AODB_DatsRemove_Data {
     query: Object;
@@ -338,7 +338,12 @@ export default class AODB extends AORouterInterface {
                         if ( err ) {
                             request.reject(err)
                         } else {
-                            request.respond(results)
+                            let returnValue = {}
+                            for (let i = 0; i < results.length; i++) {
+                                const result = results[i];
+                                returnValue[result['key']] = result
+                            }
+                            request.respond(returnValue)
                         }
                     })
                 }
@@ -355,7 +360,16 @@ export default class AODB extends AORouterInterface {
                 if ( err ) {
                     request.reject(err)
                 } else {
-                    request.respond(results)
+                    if( Array.isArray(results) ) {
+                        let returnValue = {}
+                        for (let i = 0; i < results.length; i++) {
+                            const result = results[i];
+                            returnValue[result['key']] = result
+                        }
+                        request.respond(returnValue)
+                    } else {
+                        request.respond(results)
+                    }                    
                 }
             })
         }
@@ -372,11 +386,12 @@ export default class AODB extends AORouterInterface {
             if ( !requestData.updatedAt || !(requestData.updatedAt instanceof Date) ) {
                 requestData.updatedAt = requestData.createdAt
             }
-            this.db.dats.insert(requestData, (err,dat) => {
+            this.db.dats.insert(requestData, (err) => {
                 if(err) {
+                    debug('Error inserting new dat')
                     request.reject(err)
                 }
-                request.respond(dat)
+                request.respond(requestData)
             })
         }
     }
@@ -385,8 +400,10 @@ export default class AODB extends AORouterInterface {
         if(!this.db.dats) {
             request.reject(new Error('Dats DB not initialized'))
         } else {
+            let options = {
+            }
             requestData.update.updatedAt = new Date()
-            this.db.dats.update(requestData.query, requestData.update, {}, (err,numReplaced) => {
+            this.db.dats.update(requestData.query, requestData.update, options, (err,numReplaced) => {
                 if(err) {
                     request.reject(err)
                 }

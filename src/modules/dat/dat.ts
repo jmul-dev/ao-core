@@ -39,14 +39,22 @@ export interface AODat_List_Data {
     
 }
 
+export interface Dat_In_Array {
+    key?: string;
+    dir?: string;
+    contentJSON?: Object;
+    createdAt?: Date;
+    updatedAt?: Date;
+    instance?: Dat;
+}
+
 
 export default class AODat extends AORouterInterface {
-    private encryptionAlgorithm: string = 'aes-256-ctr'
 
     private ethAddress: string
     private storageLocation: string
     private datDir: string
-    private dats: Array<any>
+    private dats: Array<Dat_In_Array>
     private contents: Object
     
     constructor(args: AODat_Args) {
@@ -69,19 +77,19 @@ export default class AODat extends AORouterInterface {
 
         //Initialization
         this.ethAddress = requestData.ethAddress
-        this.datDir = path.resolve(this.storageLocation, requestData.ethAddress)
+        this.datDir = path.resolve(this.storageLocation, requestData.ethAddress, 'dat')
 
         const datInitData: AODB_DatsInit_Data = {
             ethAddress: this.ethAddress
         }
         this.router.send('/db/dats/init', datInitData).then((dats) => {
-            this.dats = dats
+            this.dats = dats.data
             let initPromises = []
             for (const key in this.dats) {
                 if (this.dats.hasOwnProperty(key)) {
                     initPromises.push(new Promise((resolve,reject) => {
                         const datInfo = this.dats[key];
-                        const datDir = datInfo.dir
+                        const datDir = path.join(this.datDir, datInfo.dir)
                         Dat(datDir, (err,dat) => {
                             if(err) {
                                 debug('error starting dat ' + key )
@@ -122,13 +130,15 @@ export default class AODat extends AORouterInterface {
     private _handleDatCreate(request: IAORouterRequest) {
         const requestData: AODat_Create_Data = request.data
         //debug('datdir:'+this.datDir)
-        const fullPath = path.resolve(this.datDir, requestData.newDatDir)
-        //debug('full path:' + fullPath)
+        const fullPath = path.join(this.datDir, requestData.newDatDir)
+        debug('datdir: ' + this.datDir)
+        debug('full path:' + fullPath)
         if(!this.dats) {
             request.reject(new Error('Multidat is not ready? is EthAddress set?'))
         } else {
             Dat( fullPath, (err, dat) => {
                 if(err) {
+                    debug('failed to create new dat')
                     request.reject(err)
                 }
                 dat.importFiles()
@@ -142,12 +152,17 @@ export default class AODat extends AORouterInterface {
                 }
                 this.router.send('/db/dats/insert',dbInsertData)
                 .then(()=> {
-                    this.dats[datKey]['dir'] = fullPath
+                    
+                    //this.dats[datKey]['dir'] = fullPath
                     request.respond({                    
                         key: datKey,
                         dir: datFolder
                     })    
-                }).catch(request.reject)
+                }).catch(e => {
+                    debug('trouble with insert in dat create')
+                    debug(e)
+                    request.reject(e)
+                })
             })
         }
     }
@@ -193,11 +208,22 @@ export default class AODat extends AORouterInterface {
                     if(err) {
                         request.reject(new Error('content.json download error'))
                     }
-                    this.contents[requestData.key] = JSON.parse(content)
-                    const teaserName = this.contents[requestData.key]['teaserName']
+                    const contentJSON = JSON.parse(content)
+                    const teaserName = contentJSON['teaserName']
                     dat.archive.readFile(teaserName, (err,teaser) => {
-                        //TODO: What to do with the teaser??
+                        //Should save directly to file
                     })
+
+                    const dbInsertData:AODB_DatsInsert_Data = {
+                        key: requestData.key,
+                        dir: requestData.newDatDir,
+                        contentJSON: contentJSON
+                    }
+                    this.router.send('/db/dats/insert', dbInsertData)
+                    .then(() => {
+                        this.dats[requestData.key] = dbInsertData
+                        this.dats[requestData.key].instance = dat
+                    }).catch(request.reject)
                 })
             })
         } else {
@@ -207,40 +233,17 @@ export default class AODat extends AORouterInterface {
     }
     private _handleDatDownload(request: IAORouterRequest) {
         const requestData: AODat_Download_Data = request.data
-        if(!this.contents[requestData.key] && !this.dats[requestData.key]) {
-            const options = {
-                key: requestData.key,
-                sparse: true
-            }
-            Dat(requestData.newDatDir, options, (err,dat) => {
-                if(err) {
-                    request.reject(new Error('Issue with dat download'))
-                }
-                dat.joinNetwork()
-                dat.archive.readFile('content.json', (err,content) => {
-                    if(err) {
-                        request.reject(new Error('content.json download error'))
-                    }
-                    this.contents[requestData.key] = JSON.parse(content)
-                    const fileName = this.contents[requestData.key]['fileName']
-                    dat.archive.readFile(fileName, (err,video) => {
-                        if(err) {
-                            request.reject(new Error('video file download error'))
-                        }
-                        //TODO: Gotta stream that video back!
-                    })
-                })
-            })
+        if(!this.dats[requestData.key]) {
+            request.reject(new Error('Preview not generated / no such instance'))
         } else {
-            const dat = this.dats[requestData.key]
-            const fileName = this.contents[requestData.key]['fileName']
+            const dat = this.dats[requestData.key].instance
+            const fileName = this.dats[requestData.key].contentJSON['fileName']
             dat.archive.readFile(fileName, (err,video) => {
                 if(err) {
                     request.reject(new Error('video file download error'))
                 }
-                //TODO: Gotta stream that video back!
+                
             })
-            
         }
     }
 
@@ -256,7 +259,12 @@ export default class AODat extends AORouterInterface {
                         instance.key.toString('hex') == requestData.key
                     ) {
                         instance.close(() => {
-                            request.respond({})
+                            const datRemoveData:AODB_DatsRemove_Data = {
+                                query: { key: requestData.key }
+                            }
+                            this.router.send('/db/dats/remove', datRemoveData).then(()=> {
+                                request.respond({})
+                            }).catch(request.reject)
                         })
                     }
                 }
@@ -267,7 +275,6 @@ export default class AODat extends AORouterInterface {
     }
 
     private _handleDatList(request: IAORouterRequest) {
-        //const requestData: AODat_List_Data = request.data
         if(this.dats) {
             const datList = []
             for (const key in this.dats) {

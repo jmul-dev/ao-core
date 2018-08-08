@@ -158,7 +158,7 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                     }
                                 }
                                 const datCreateData: AODat_Create_Data = {
-                                    newDatDir: path.join('dat', newContentId)
+                                    newDatDir: newContentId
                                 }
                                 router.send('/dat/create', datCreateData).then((datResponse) => {
                                     const datKey = datResponse.data.key
@@ -197,6 +197,7 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                     const datContentupdateData: AODB_DatsUpdate_Data = {
                                         query: { key: datKey },
                                         update: {
+                                            ...datResponse.data,
                                             contentJSON: contentJson
                                         }
                                     }

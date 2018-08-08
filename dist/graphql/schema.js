@@ -161,7 +161,7 @@ function default_1(router, options) {
                                     }
                                 }
                                 var datCreateData = {
-                                    newDatDir: path_1.default.join('dat', newContentId)
+                                    newDatDir: newContentId
                                 };
                                 router.send('/dat/create', datCreateData).then(function (datResponse) {
                                     var datKey = datResponse.data.key;
@@ -197,9 +197,7 @@ function default_1(router, options) {
                                     };
                                     var datContentupdateData = {
                                         query: { key: datKey },
-                                        update: {
-                                            contentJSON: contentJson
-                                        }
+                                        update: __assign({}, datResponse.data, { contentJSON: contentJson })
                                     };
                                     // TODO: Make sure to add below when we know stuff has been staked correctly.
                                     //     const datJoinNetworkData: AODat_JoinNetwork_Data = {
