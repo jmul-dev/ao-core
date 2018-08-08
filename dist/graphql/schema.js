@@ -90,6 +90,11 @@ function default_1(router, options) {
                             },
                         };
                         router.send('/db/user/init', { ethAddress: args.inputs.ethAddress }).then(function () {
+                            //ensuring decryption keys are loaded.
+                            var initDecryptionData = {};
+                            router.send('/db/decryptionKey/init', initDecryptionData).then(function () {
+                                debug('Decryption Key DB init good');
+                            }).catch(reject);
                             //Mkdir is to ensure that the folder exists.
                             var fsMakeDirData = {
                                 dirPath: path_1.default.join(args.inputs.ethAddress, 'dat')
@@ -153,15 +158,17 @@ function default_1(router, options) {
                                 debug('submitVideoContent - all files stored');
                                 var fileSize = 0;
                                 var videoStats = {};
+                                var decryptionKey;
                                 for (var i = 0; i < results.length; i++) {
                                     var result = results[i];
                                     if (result.data.videoStats && result.data.key) {
                                         videoStats = result.data.videoStats;
                                         fileSize = result.data.fileSize;
+                                        decryptionKey = result.data.key;
                                     }
                                 }
                                 var datCreateData = {
-                                    newDatDir: newContentId
+                                    newDatDir: newContentId + ''
                                 };
                                 router.send('/dat/create', datCreateData).then(function (datResponse) {
                                     var datKey = datResponse.data.key;
@@ -199,6 +206,10 @@ function default_1(router, options) {
                                         query: { key: datKey },
                                         update: __assign({}, datResponse.data, { contentJSON: contentJson })
                                     };
+                                    var decryptionKeyData = {
+                                        key: datKey,
+                                        decryptionKey: decryptionKey
+                                    };
                                     // TODO: Make sure to add below when we know stuff has been staked correctly.
                                     //     const datJoinNetworkData: AODat_JoinNetwork_Data = {
                                     //         key: datKey
@@ -208,6 +219,8 @@ function default_1(router, options) {
                                     storagePromises.push(router.send('/fs/write', contentWriteData));
                                     storagePromises.push(router.send('/db/user/content/insert', contentJson));
                                     storagePromises.push(router.send('/db/dats/update', datContentupdateData));
+                                    storagePromises.push(router.send('/db/decryptionKey/insert', decryptionKeyData));
+                                    //Maybe add another promise that attaches contentJSON data back into the dat.
                                     Promise.all(storagePromises).then(function (results) {
                                         resolve(contentJson);
                                     }).catch(function (error) {

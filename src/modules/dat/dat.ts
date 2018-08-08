@@ -55,7 +55,6 @@ export default class AODat extends AORouterInterface {
     private storageLocation: string
     private datDir: string
     private dats: Array<Dat_In_Array>
-    private contents: Object
     
     constructor(args: AODat_Args) {
         super()
@@ -149,6 +148,7 @@ export default class AODat extends AORouterInterface {
                 }
                 this.router.send('/db/dats/insert',dbInsertData)
                 .then(()=> {
+                    //TODO: Figure out if we want to have contentJSON be returned through another method.
                     this.dats[datKey] = {
                         key: datKey,
                         dir: fullPath
@@ -228,8 +228,8 @@ export default class AODat extends AORouterInterface {
         } else {
             request.reject(new Error('Not initialized'))
         }
-        
     }
+
     private _handleDatDownload(request: IAORouterRequest) {
         const requestData: AODat_Download_Data = request.data
         if(!this.dats[requestData.key]) {

@@ -47,14 +47,27 @@ export interface AODB_UserInit_Data {
     ethAddress: string;
 }
 export interface AODB_UserContentGet_Data {
-    ethAddress: string;
     query?: Object;
 }
+
+/**
+ * Decryption Keys
+ */
+export interface AODB_DecryptInit_Data {
+
+}
+export interface AODB_DecryptGet_Data {
+    key: string;
+}
+export interface AODB_DecryptInsert_Data {
+    datKey: string;
+    decryptionKey: string;
+}
+
 /**
  * Dats
  */
 export interface AODB_DatsInit_Data {
-    ethAddress: string;
 }
 export interface AODB_DatsGet_Data {
     query?:Object;
@@ -97,6 +110,7 @@ export default class AODB extends AORouterInterface {
         logs: Datastore,
         settings: Datastore,
         dats?: Datastore,
+        decryptionKeys?: Datastore
     };
     private userDbs: {
         [key: string]: Datastore
@@ -110,10 +124,15 @@ export default class AODB extends AORouterInterface {
         this.router.on('/db/logs/insert', this._logsInsert.bind(this))
         this.router.on('/db/settings/get', this._settingsGet.bind(this))
         this.router.on('/db/settings/update', this._settingsUpdate.bind(this))
+
         this.router.on('/db/user/init', this._setupUserDb.bind(this))
         this.router.on('/db/user/get', this._getUser.bind(this))
         this.router.on('/db/user/content/get', this._userContentGet.bind(this))
-        this.router.on('/db/user/content/insert', this._userContentInsert.bind(this))        
+        this.router.on('/db/user/content/insert', this._userContentInsert.bind(this))
+
+        this.router.on('/db/decryptionKey/init', this._decryptionKeyInit.bind(this))
+        this.router.on('/db/decryptionKey/get', this._decryptionKeyGet.bind(this))
+        this.router.on('/db/decryptionKey/insert', this._decryptionKeyInsert.bind(this))
         
         this.router.on('/db/dats/init', this._datsInit.bind(this))
         this.router.on('/db/dats/get', this._datsGet.bind(this))
@@ -169,19 +188,19 @@ export default class AODB extends AORouterInterface {
             return;
         }
         this.activeUserId = requestData.ethAddress
-        if ( this.userDbs[requestData.ethAddress] instanceof Datastore ) {
+        if ( this.userDbs[this.activeUserId] instanceof Datastore ) {
             request.respond({loaded: true})
             return;
         }
-        this.userDbs[requestData.ethAddress] = new Datastore({
-            filename: path.resolve(this.storageLocation, requestData.ethAddress, 'content.db.json'),
+        this.userDbs[this.activeUserId] = new Datastore({
+            filename: path.resolve(this.storageLocation, this.activeUserId, 'content.db.json'),
             autoload: false,
         })
-        this.userDbs[requestData.ethAddress].loadDatabase((error: Error) => {
-            this.router.send('/core/log', {message: `[AO DB] User database initialized for ${requestData.ethAddress}`})
+        this.userDbs[this.activeUserId].loadDatabase((error: Error) => {
+            this.router.send('/core/log', {message: `[AO DB] User database initialized for ${this.activeUserId}`})
             if ( error ) {
                 request.reject(error)
-                this.userDbs[requestData.ethAddress] = undefined
+                this.userDbs[this.activeUserId] = undefined
             } else {
                 request.respond({loaded: true})
             }
@@ -204,9 +223,9 @@ export default class AODB extends AORouterInterface {
     private _userContentGet(request: IAORouterRequest) {
         const requestData: AODB_UserContentGet_Data = request.data
         let query = requestData.query || {}
-        const userDb = this.userDbs[requestData.ethAddress]
+        const userDb = this.userDbs[this.activeUserId]
         if ( !userDb ) {
-            request.reject(new Error(`User db not found for ${requestData.ethAddress}`))
+            request.reject(new Error(`User db not found for ${this.activeUserId}`))
             return;
         }
         userDb.find(query).exec((error: Error, docs) => {
@@ -220,9 +239,9 @@ export default class AODB extends AORouterInterface {
 
     private _userContentInsert(request: IAORouterRequest) {
         const requestData: any = request.data  // TODO: type check/validate content
-        const userDb = this.userDbs[requestData.ethAddress]
+        const userDb = this.userDbs[this.activeUserId]
         if ( !userDb ) {
-            request.reject(new Error(`User db not found for ${requestData.ethAddress}`))
+            request.reject(new Error(`User db not found for ${this.activeUserId}`))
             return;
         }
         userDb.insert(requestData, (error: Error, doc) => {
@@ -232,7 +251,55 @@ export default class AODB extends AORouterInterface {
                 request.respond(doc)
             }
         })        
-    }    
+    }
+
+    private _decryptionKeyInit(request: IAORouterRequest) {
+        const fullPath = path.resolve(this.storageLocation, this.activeUserId, 'decryptionkeys.db.json')
+        this.db.decryptionKeys = new Datastore({
+            filename: fullPath,
+            autoload: true,
+            onload: (error: Error) => {
+                if ( error ){
+                    this._handleCoreDbLoadError(error)
+                    request.reject(new Error('Error loading up Decryption key DB'))
+                } else {
+                    request.respond({})
+                }
+            }
+        })
+    }
+
+    private _decryptionKeyGet(request: IAORouterRequest) {
+        const requestData: AODB_DecryptGet_Data = request.data
+        let query = {key: requestData.key}
+        if ( !this.db.decryptionKeys ) {
+            request.reject(new Error(`Db not found for ${this.activeUserId}`))
+            return;
+        }
+        this.db.decryptionKeys.find(query).exec((error: Error, keys) => {
+            if ( error ) {
+                request.reject(error)
+            } else {
+                request.respond(keys)
+            }
+        })
+    }
+
+    private _decryptionKeyInsert(request: IAORouterRequest) {
+        const requestData: AODB_DecryptInsert_Data = request.data
+        if ( !this.db.decryptionKeys ) {
+            request.reject(new Error(`Db not found for ${this.activeUserId}`))
+            return;
+        }
+        this.db.decryptionKeys.insert(requestData, (err, dk) => {
+            if(err) {
+                request.reject(err)
+            } else {
+                request.respond({})
+            }
+        })
+
+    }
 
     private _logsGet(request: IAORouterRequest) {
         const requestData: AODB_LogsGet_Data = request.data
@@ -324,9 +391,9 @@ export default class AODB extends AORouterInterface {
 
     
     private _datsInit(request: IAORouterRequest) {
-        const requestData: AODB_DatsInit_Data = request.data
+        //const requestData: AODB_DatsInit_Data = request.data
         this.db.dats = new Datastore({
-            filename: path.resolve(this.storageLocation, requestData.ethAddress, 'dats.db.json'),
+            filename: path.resolve(this.storageLocation, this.activeUserId, 'dats.db.json'),
             autoload: true,
             onload: (error: Error) => {
                 if ( error ){
@@ -407,7 +474,7 @@ export default class AODB extends AORouterInterface {
                 if(err) {
                     request.reject(err)
                 }
-                debug('Update replaced '+numReplaced+' records')
+                debug('Update replaced '+numReplaced+' dat record(s)')
                 request.respond({})
             })
         }
@@ -421,7 +488,7 @@ export default class AODB extends AORouterInterface {
                 if(err) {
                     request.reject(err)
                 }
-                debug('Update replaced '+numRemoved+' records')
+                debug('Removed '+numRemoved+' dat record(s)')
                 request.respond({})
             })
         }

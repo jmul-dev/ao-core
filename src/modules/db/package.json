@@ -11,10 +11,15 @@
             "/db/logs/get",
             "/db/logs/insert",
             "/db/settings/get",
-            "/db/settings/update",
+            "/db/settings/update",            
             "/db/user/init",
             "/db/user/content/get",
             "/db/user/content/insert",
+
+            "/db/decryptionKey/init",
+            "/db/decryptionKey/get",
+            "/db/decryptionKey/insert",
+
             "/db/dats/init",
             "/db/dats/get",
             "/db/dats/insert",

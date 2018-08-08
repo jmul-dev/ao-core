@@ -11,7 +11,7 @@ export default function(aoRouter: AOCoreProcessRouter) {
                     content: []
                 }
                 aoRouter.send('/db/user/content/get', {}).then((content) => {
-                    console.log(content)
+                    //console.log(content)
                     localNode.content = content
                     resolve(localNode)
                 }).catch(reject)
