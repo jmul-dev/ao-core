@@ -12,6 +12,8 @@
             "/dat/stopAll",
             "/dat/create",
             "/dat/joinNetwork",
+            "/dat/preview",
+            "/dat/download",
             "/dat/remove",
             "/dat/list"
         ],

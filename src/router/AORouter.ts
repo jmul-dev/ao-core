@@ -48,6 +48,7 @@ export interface IAORouterMessage {
     routerMessageId?: number;  // May not be assigned before it hits the router
     requestId: string;  // requestId is assigned in the originating process
     responseId?: string;
+    ethAddress?: string;
     event: string;    
     data?: any;
     error?: Error;
@@ -104,6 +105,9 @@ export default class AORouter extends AORouterCoreProcessInterface {
      */
     private messageCount: number = 0;
 
+    //Current activeEthAddress.  Used by many modules to indicate who we're helping out.
+    private activeEthAddress: string = null;
+
     constructor(args: ICoreOptions) {
         super()
         this.args = args;        
@@ -150,11 +154,20 @@ export default class AORouter extends AORouterCoreProcessInterface {
     private async relay(incomingMessage: IAORouterMessage, from: IRegistryEntry, fromProcess: Process): Promise<any> {
         const messageId = incomingMessage.routerMessageId || ++this.messageCount;
         const event = incomingMessage.event
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve, reject) => {            
+            // 0. See if we have an ethAddress set.
+            let ethAddress: string = this.activeEthAddress
+            // TODO: make the events more generic so we can catch this better
+            if(incomingMessage.event == '/db/user/init') {
+                ethAddress = incomingMessage.data.ethAddress
+                this.activeEthAddress = ethAddress
+            }
+            
             // 1. Ensure message format (NOTE: we leave data validation up to the event handler)
             const message: IAORouterMessage = {
                 routerMessageId: messageId,
                 requestId: incomingMessage.requestId,
+                ethAddress: ethAddress,
                 event: incomingMessage.event,
                 data: incomingMessage.data,
             }
