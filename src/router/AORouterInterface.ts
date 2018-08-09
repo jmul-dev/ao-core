@@ -14,6 +14,7 @@ export interface IAORouterRequest {
     id: string;
     event: string;
     data?: any;
+    ethAddress?: string;
     respond: (data: any) => void;
     reject: (error: Error) => void;
 }
@@ -75,6 +76,7 @@ export class AOSubprocessRouter extends EventEmitter implements AORouterInterfac
             id: message.requestId,
             event: message.event,
             data: message.data || {},
+            ethAddress: message.ethAddress,
             respond: this._routeMessageResponse.bind(this, message, false),
             reject: this._routeMessageResponse.bind(this, message, true),
         }
@@ -87,6 +89,7 @@ export class AOSubprocessRouter extends EventEmitter implements AORouterInterfac
             requestId: originatingMessage.requestId,
             responseId: originatingMessage.requestId,
             event: originatingMessage.event,
+            ethAddress: originatingMessage.ethAddress,
             data: !isReject ? responseData : undefined,
             error: isReject ? (responseData instanceof Error ? responseData.message : responseData) : undefined,
         }
@@ -171,6 +174,7 @@ export class AOCoreProcessRouter extends EventEmitter implements AORouterInterfa
             id: message.requestId,
             event: message.event,
             data: message.data || {},
+            ethAddress: message.ethAddress,
             respond: this._routeMessageResponse.bind(this, message, false),
             reject: this._routeMessageResponse.bind(this, message, true),
         }
@@ -183,6 +187,7 @@ export class AOCoreProcessRouter extends EventEmitter implements AORouterInterfa
             requestId: originatingMessage.requestId,
             responseId: originatingMessage.requestId,
             event: originatingMessage.event,
+            ethAddress: originatingMessage.ethAddress,
             data: !isReject ? responseData : undefined,
             error: isReject ? (responseData instanceof Error ? responseData.message : responseData) : undefined,
         }

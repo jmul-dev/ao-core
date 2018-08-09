@@ -12,11 +12,9 @@ export interface AODat_Args {
 
 
 export interface AODat_ResumeAll_Data {
-    ethAddress: string;
 }
 
 export interface AODat_StopAll_Data {
-    
 }
 
 export interface AODat_Create_Data {
@@ -36,7 +34,6 @@ export interface AODat_Remove_Data {
 }
 
 export interface AODat_List_Data {
-    
 }
 
 export interface Dat_In_Array {
@@ -50,8 +47,6 @@ export interface Dat_In_Array {
 
 
 export default class AODat extends AORouterInterface {
-
-    private ethAddress: string
     private storageLocation: string
     private datDir: string
     private dats: Array<Dat_In_Array>
@@ -72,14 +67,9 @@ export default class AODat extends AORouterInterface {
 
     //Should be the first method called by the core processes.
     private _handleDatResumeAll(request: IAORouterRequest) {
-        const requestData: AODat_ResumeAll_Data = request.data
-
-        //Initialization
-        this.ethAddress = requestData.ethAddress
-        this.datDir = path.resolve(this.storageLocation, requestData.ethAddress, 'dat')
-
+        this.datDir = path.resolve(this.storageLocation, request.ethAddress, 'dat')
         const datInitData: AODB_DatsInit_Data = {
-            ethAddress: this.ethAddress
+            ethAddress: request.ethAddress
         }
         this.router.send('/db/dats/init', datInitData).then((dats) => {
             this.dats = dats.data
@@ -105,8 +95,8 @@ export default class AODat extends AORouterInterface {
                 }
             }
             Promise.all(initPromises).then(() => {
-                debug(`Dat process initialized for user ${this.ethAddress}`)
-                this.router.send('/core/log', {message: `[AO Dat] Dat process initialized for user ${this.ethAddress}`})
+                debug(`Dat process initialized for user ${request.ethAddress}`)
+                this.router.send('/core/log', {message: `[AO Dat] Dat process initialized for user ${request.ethAddress}`})
                 request.respond({dat:'All Dats have Resumed'})
             }).catch(request.reject)
 
@@ -114,7 +104,6 @@ export default class AODat extends AORouterInterface {
     }
 
     private _handleDatStopAll(request: IAORouterRequest) {
-        const requestData: AODat_StopAll_Data = request.data
         for (const key in this.dats) {
             if (this.dats.hasOwnProperty(key)) {
                 const dat = this.dats[key]

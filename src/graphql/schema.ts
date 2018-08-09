@@ -96,10 +96,7 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                             }                        
                             router.send('/fs/mkdir', fsMakeDirData).then(() => {
                                 //ResumeAll also initializes the multidat instance
-                                const datResumeAllData: AODat_ResumeAll_Data = {
-                                    ethAddress: args.inputs.ethAddress
-                                }
-                                router.send('/dat/resumeAll', datResumeAllData).then(() => {
+                                router.send('/dat/resumeAll').then(() => {
                                     router.send('/core/log', {message: `[AO Core] Registered as user ${args.inputs.ethAddress}`})
                                     resolve(mockStore.node)
                                 }).catch(reject)
@@ -161,7 +158,7 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                     }
                                 }
                                 const datCreateData: AODat_Create_Data = {
-                                    newDatDir: newContentId+''
+                                    newDatDir: newContentId
                                 }
                                 router.send('/dat/create', datCreateData).then((datResponse) => {
                                     const datKey = datResponse.data.key

@@ -96,10 +96,7 @@ function default_1(router, options) {
                             };
                             router.send('/fs/mkdir', fsMakeDirData).then(function () {
                                 //ResumeAll also initializes the multidat instance
-                                var datResumeAllData = {
-                                    ethAddress: args.inputs.ethAddress
-                                };
-                                router.send('/dat/resumeAll', datResumeAllData).then(function () {
+                                router.send('/dat/resumeAll').then(function () {
                                     router.send('/core/log', { message: "[AO Core] Registered as user " + args.inputs.ethAddress });
                                     resolve(mockStore.node);
                                 }).catch(reject);
@@ -163,7 +160,7 @@ function default_1(router, options) {
                                     }
                                 }
                                 var datCreateData = {
-                                    newDatDir: newContentId + ''
+                                    newDatDir: newContentId
                                 };
                                 router.send('/dat/create', datCreateData).then(function (datResponse) {
                                     var datKey = datResponse.data.key;

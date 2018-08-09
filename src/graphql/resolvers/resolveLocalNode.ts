@@ -14,6 +14,7 @@ export default function(aoRouter: AOCoreProcessRouter) {
                     }
                 }
                 aoRouter.send('/db/user/content/get').then((response: IAORouterMessage) => {
+                    console.log(response.data)
                     localNode.creator.content = [].concat(response.data)  // ensures array in case response is single item
                     resolve(localNode)
                 }).catch(error => {

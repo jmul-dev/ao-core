@@ -153,19 +153,15 @@ export default class AORouter extends AORouterCoreProcessInterface {
         const messageId = incomingMessage.routerMessageId || ++this.messageCount;
         const event = incomingMessage.event
         return new Promise((resolve, reject) => {            
-            // 0. See if we have an ethAddress set.
-            let ethAddress: string = this.activeEthAddress
-            // TODO: make the events more generic so we can catch this better
-            if(incomingMessage.event == '/db/user/init') {
-                ethAddress = incomingMessage.data.ethAddress
-                this.activeEthAddress = ethAddress
+            // 0. For context, router passes along user id (ethAddress)
+            if ( incomingMessage.event == '/db/user/init' ) {
+                this.activeEthAddress = incomingMessage.data.ethAddress
             }
-            
             // 1. Ensure message format (NOTE: we leave data validation up to the event handler)
             const message: IAORouterMessage = {
                 routerMessageId: messageId,
                 requestId: incomingMessage.requestId,
-                ethAddress: ethAddress,
+                ethAddress: this.activeEthAddress,
                 event: incomingMessage.event,
                 data: incomingMessage.data,
                 error: incomingMessage.error ? (incomingMessage.error instanceof Error ? incomingMessage.error : new Error(incomingMessage.error) ) : undefined,
