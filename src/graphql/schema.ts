@@ -6,7 +6,7 @@ import { addMockFunctionsToSchema, makeExecutableSchema } from 'graphql-tools';
 import md5 from 'md5';
 import path from 'path';
 import { AODat_Create_Data, AODat_ResumeAll_Data } from '../modules/dat/dat';
-import { AODB_SettingsUpdate_Data, AODB_DatsUpdate_Data, AODB_DecryptInsert_Data, AODB_DecryptInit_Data } from '../modules/db/db';
+import { AODB_SettingsUpdate_Data, AODB_DatsUpdate_Data } from '../modules/db/db';
 import { IAOEth_NetworkChange_Data } from '../modules/eth/eth';
 import { IAOFS_Mkdir_Data, IAOFS_WriteStream_Data, IAOFS_Write_Data } from '../modules/fs/fs';
 import { Http_Args } from '../modules/http/http';
@@ -89,13 +89,7 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                             },
                         }
                         router.send('/db/user/init', {ethAddress: args.inputs.ethAddress}).then(() => {
-
-                            //ensuring decryption keys are loaded.
-                            const initDecryptionData: AODB_DecryptInit_Data = {}
-                            router.send('/db/decryptionKey/init',initDecryptionData).then(()=> {
-                                
-                            }).catch(reject)
-
+                            
                             //Mkdir is to ensure that the folder exists.
                             const fsMakeDirData: IAOFS_Mkdir_Data = {
                                 dirPath: path.join(args.inputs.ethAddress, 'dat')
@@ -210,10 +204,6 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                             contentJSON: contentJson
                                         }
                                     }
-                                    const decryptionKeyData: AODB_DecryptInsert_Data = {
-                                        datKey: datKey,
-                                        decryptionKey: decryptionKey
-                                    }
 
                                     // TODO: Make sure to add below when we know stuff has been staked correctly.
                                     //     const datJoinNetworkData: AODat_JoinNetwork_Data = {
@@ -222,10 +212,14 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                     //     router.send('/dat/joinNetwork',datJoinNetworkData).then(() => {
                                     //     }).catch(reject)
 
+                                    const userContentJson = {
+                                        ...contentJson,
+                                        decryptionKey: decryptionKey
+                                    }
+
                                     storagePromises.push(router.send('/fs/write', contentWriteData))
-                                    storagePromises.push(router.send('/db/user/content/insert', contentJson))
+                                    storagePromises.push(router.send('/db/user/content/insert', userContentJson))
                                     storagePromises.push(router.send('/db/dats/update', datContentupdateData))
-                                    storagePromises.push(router.send('/db/decryptionKey/insert', decryptionKeyData))
                                     //Maybe add another promise that attaches contentJSON data back into the dat.
 
                                     Promise.all(storagePromises).then((results: Array<IAORouterMessage>) => {

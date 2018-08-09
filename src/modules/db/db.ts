@@ -130,10 +130,6 @@ export default class AODB extends AORouterInterface {
         this.router.on('/db/user/content/get', this._userContentGet.bind(this))
         this.router.on('/db/user/content/insert', this._userContentInsert.bind(this))
 
-        this.router.on('/db/decryptionKey/init', this._decryptionKeyInit.bind(this))
-        this.router.on('/db/decryptionKey/get', this._decryptionKeyGet.bind(this))
-        this.router.on('/db/decryptionKey/insert', this._decryptionKeyInsert.bind(this))
-        
         this.router.on('/db/dats/init', this._datsInit.bind(this))
         this.router.on('/db/dats/get', this._datsGet.bind(this))
         this.router.on('/db/dats/insert', this._datsInsert.bind(this))
@@ -251,54 +247,6 @@ export default class AODB extends AORouterInterface {
                 request.respond(doc)
             }
         })        
-    }
-
-    private _decryptionKeyInit(request: IAORouterRequest) {
-        const fullPath = path.resolve(this.storageLocation, this.activeUserId, 'decryptionkeys.db.json')
-        this.db.decryptionKeys = new Datastore({
-            filename: fullPath,
-            autoload: true,
-            onload: (error: Error) => {
-                if ( error ){
-                    this._handleCoreDbLoadError(error)
-                    request.reject(new Error('Error loading up Decryption key DB'))
-                } else {
-                    request.respond({})
-                }
-            }
-        })
-    }
-
-    private _decryptionKeyGet(request: IAORouterRequest) {
-        const requestData: AODB_DecryptGet_Data = request.data
-        let query = {key: requestData.key}
-        if ( !this.db.decryptionKeys ) {
-            request.reject(new Error(`Db not found for ${this.activeUserId}`))
-            return;
-        }
-        this.db.decryptionKeys.find(query).exec((error: Error, keys) => {
-            if ( error ) {
-                request.reject(error)
-            } else {
-                request.respond(keys)
-            }
-        })
-    }
-
-    private _decryptionKeyInsert(request: IAORouterRequest) {
-        const requestData: AODB_DecryptInsert_Data = request.data
-        if ( !this.db.decryptionKeys ) {
-            request.reject(new Error(`Db not found for ${this.activeUserId}`))
-            return;
-        }
-        this.db.decryptionKeys.insert(requestData, (err, dk) => {
-            if(err) {
-                request.reject(err)
-            } else {
-                request.respond({})
-            }
-        })
-
     }
 
     private _logsGet(request: IAORouterRequest) {
