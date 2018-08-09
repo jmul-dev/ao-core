@@ -9,12 +9,18 @@ export default function(aoRouter: AOCoreProcessRouter) {
                 let localNode = {
                     id: response.data.ethAddress,
                     ethAddress: response.data.ethAddress,
-                    content: []
+                    creator: {
+                        content: []
+                    }
                 }
-                aoRouter.send('/db/user/content/get', {ethAddress: response.data.ethAddress}).then((response: IAORouterMessage) => {
-                    localNode.content = response.data
+                aoRouter.send('/db/user/content/get').then((response: IAORouterMessage) => {
+                    localNode.creator.content = [].concat(response.data)  // ensures array in case response is single item
                     resolve(localNode)
-                }).catch(reject)
+                }).catch(error => {
+                    // resolve(localNode)
+                    // For now we just resolve without user content
+                    reject(error)
+                })
             }).catch(reject)            
         })
     }    
