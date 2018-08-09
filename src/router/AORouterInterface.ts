@@ -88,7 +88,7 @@ export class AOSubprocessRouter extends EventEmitter implements AORouterInterfac
             responseId: originatingMessage.requestId,
             event: originatingMessage.event,
             data: !isReject ? responseData : undefined,
-            error: isReject ? responseData : undefined,
+            error: isReject ? (responseData instanceof Error ? responseData.message : responseData) : undefined,
         }
         this.process.send(outgoingResponse)
     }
@@ -184,7 +184,7 @@ export class AOCoreProcessRouter extends EventEmitter implements AORouterInterfa
             responseId: originatingMessage.requestId,
             event: originatingMessage.event,
             data: !isReject ? responseData : undefined,
-            error: isReject ? responseData : undefined,
+            error: isReject ? (responseData instanceof Error ? responseData.message : responseData) : undefined,
         }
         this.process.send(outgoingResponse)
     }

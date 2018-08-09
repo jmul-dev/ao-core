@@ -51,7 +51,7 @@ export interface IAORouterMessage {
     ethAddress?: string;
     event: string;    
     data?: any;
-    error?: Error;
+    error?: Error | string;
 }
 
 /**
@@ -134,9 +134,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
                 const responseError: IAORouterMessage = {
                     ...message,
                     responseId: message.requestId,
-                    data: {
-                        error: err
-                    }                    
+                    error: err instanceof Error ? err.message : err
                 }
                 fromProcess.send(responseError)
             })
@@ -170,6 +168,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
                 ethAddress: ethAddress,
                 event: incomingMessage.event,
                 data: incomingMessage.data,
+                error: incomingMessage.error ? (incomingMessage.error instanceof Error ? incomingMessage.error : new Error(incomingMessage.error) ) : undefined,
             }
             // 2. Make sure we have a registered process that can handle this event
             const entryNameThatCanHandleEvent = this.eventToRegistryEntryName[event]
@@ -239,7 +238,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
                     if ( message.routerMessageId === response.routerMessageId ) {
                         const responseTime = Date.now() - startTime
                         const responseTimeFormated = (responseTime / 1000).toFixed(2)
-                        debug(`routing response [${message.routerMessageId}][${event}]: ${from.name} <- ${receivingRegistryEntry.name}, duration[${responseTimeFormated}s]`)
+                        debug(`routing response [${message.routerMessageId}][${event}]: ${from.name} <- ${receivingRegistryEntry.name}, duration[${responseTimeFormated}s] ${response.error ? ', rejecting with error' : ''}`)
                         if ( response.error ) {
                             reject(response.error)
                         } else {
