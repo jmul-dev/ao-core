@@ -51,20 +51,6 @@ export interface AODB_UserContentGet_Data {
 }
 
 /**
- * Decryption Keys
- */
-export interface AODB_DecryptInit_Data {
-
-}
-export interface AODB_DecryptGet_Data {
-    key: string;
-}
-export interface AODB_DecryptInsert_Data {
-    datKey: string;
-    decryptionKey: string;
-}
-
-/**
  * Dats
  */
 export interface AODB_DatsInit_Data {
