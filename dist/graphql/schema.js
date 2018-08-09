@@ -90,10 +90,6 @@ function default_1(router, options) {
                             },
                         };
                         router.send('/db/user/init', { ethAddress: args.inputs.ethAddress }).then(function () {
-                            //ensuring decryption keys are loaded.
-                            var initDecryptionData = {};
-                            router.send('/db/decryptionKey/init', initDecryptionData).then(function () {
-                            }).catch(reject);
                             //Mkdir is to ensure that the folder exists.
                             var fsMakeDirData = {
                                 dirPath: path_1.default.join(args.inputs.ethAddress, 'dat')
@@ -205,20 +201,16 @@ function default_1(router, options) {
                                         query: { key: datKey },
                                         update: __assign({}, datResponse.data, { contentJSON: contentJson })
                                     };
-                                    var decryptionKeyData = {
-                                        datKey: datKey,
-                                        decryptionKey: decryptionKey
-                                    };
                                     // TODO: Make sure to add below when we know stuff has been staked correctly.
                                     //     const datJoinNetworkData: AODat_JoinNetwork_Data = {
                                     //         key: datKey
                                     //     }
                                     //     router.send('/dat/joinNetwork',datJoinNetworkData).then(() => {
                                     //     }).catch(reject)
+                                    var userContentJson = __assign({}, contentJson, { decryptionKey: decryptionKey });
                                     storagePromises.push(router.send('/fs/write', contentWriteData));
-                                    storagePromises.push(router.send('/db/user/content/insert', contentJson));
+                                    storagePromises.push(router.send('/db/user/content/insert', userContentJson));
                                     storagePromises.push(router.send('/db/dats/update', datContentupdateData));
-                                    storagePromises.push(router.send('/db/decryptionKey/insert', decryptionKeyData));
                                     //Maybe add another promise that attaches contentJSON data back into the dat.
                                     Promise.all(storagePromises).then(function (results) {
                                         resolve(contentJson);
