@@ -173,7 +173,7 @@ export default class AODB extends AORouterInterface {
             return;
         }
         this.userDbs[request.ethAddress] = new Datastore({
-            filename: path.resolve(this.storageLocation, request.ethAddress, 'content.db.json'),
+            filename: path.resolve(this.storageLocation, 'users', request.ethAddress, 'content.db.json'),
             autoload: false,
         })
         this.userDbs[request.ethAddress].loadDatabase((error: Error) => {
@@ -325,7 +325,7 @@ export default class AODB extends AORouterInterface {
     private _datsInit(request: IAORouterRequest) {
         //const requestData: AODB_DatsInit_Data = request.data
         this.db.dats = new Datastore({
-            filename: path.resolve(this.storageLocation, request.ethAddress, 'dats.db.json'),
+            filename: path.resolve(this.storageLocation, 'users', request.ethAddress, 'dats.db.json'),
             autoload: true,
             onload: (error: Error) => {
                 if ( error ){
@@ -342,7 +342,6 @@ export default class AODB extends AORouterInterface {
                                 const result = results[i];
                                 returnValue[result['key']] = result
                             }
-                            debug(results)
                             request.respond(returnValue)
                         }
                     })
