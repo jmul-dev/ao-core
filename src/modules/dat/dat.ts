@@ -115,7 +115,7 @@ export default class AODat extends AORouterInterface {
         const requestData: AODat_Create_Data = request.data
         const fullPath = path.join(this.datDir, requestData.newDatDir)
         if(!this.dats) {
-            request.reject(new Error('Multidat is not ready? is EthAddress set?'))
+            request.reject(new Error('Dat is not ready? is EthAddress set?'))
         } else {
             Dat( fullPath, (err, dat) => {
                 if(err) {
