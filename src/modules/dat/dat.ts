@@ -78,7 +78,8 @@ export default class AODat extends AORouterInterface {
                 if (this.dats.hasOwnProperty(key)) {
                     initPromises.push(new Promise((resolve,reject) => {
                         const datInfo = this.dats[key];
-                        const datDir = path.join(this.datDir, datInfo.dir)
+                        const datDir = path.join(this.datDir, datInfo.key)
+                        debug(datDir)
                         Dat(datDir, (err,dat) => {
                             if(err) {
                                 debug('error starting dat ' + key )
@@ -140,7 +141,7 @@ export default class AODat extends AORouterInterface {
                     //TODO: Figure out if we want to have contentJSON be returned through another method.
                     this.dats[datKey] = {
                         key: datKey,
-                        dir: fullPath
+                        dir: requestData.newDatDir
                     }
                     request.respond({                    
                         key: datKey,

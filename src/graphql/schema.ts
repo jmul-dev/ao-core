@@ -230,13 +230,6 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                         writePath: `content/${newPreviewId}/content.json`,
                                         data: JSON.stringify(contentJson)
                                     }
-                                    const datContentupdateData: AODB_DatsUpdate_Data = {
-                                        query: { key: previewDatKey },
-                                        update: {
-                                            ...previewDatResponseData,
-                                            contentJSON: contentJson
-                                        }
-                                    }
 
                                     const userContentJson = {
                                         ...contentJson,
@@ -245,7 +238,6 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
 
                                     storagePromises.push(router.send('/fs/write', contentWriteData))
                                     storagePromises.push(router.send('/db/user/content/insert', userContentJson))
-                                    storagePromises.push(router.send('/db/dats/update', datContentupdateData))
 
                                     Promise.all(storagePromises).then((results: Array<IAORouterMessage>) => {
                                         const movePreviewDatData: IAOFS_Move_Data = {
@@ -262,6 +254,28 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                         ]
                                         Promise.all(folderMovePromises).then(() => {
                                             resolve(contentJson)
+
+                                            const previewDatDirUpdate: AODB_DatsUpdate_Data = {
+                                                query: { key: previewDatKey },
+                                                update: {
+                                                    key: previewDatKey,
+                                                    contentJSON: contentJson
+                                                }
+                                            }
+                                            const contentDatDirUpdate: AODB_DatsUpdate_Data = {
+                                                query: { key: contentDatKey },
+                                                update: {
+                                                    key: contentDatKey
+                                                }
+                                            }
+                                            const datDbUpdates:Array<Promise<any>> = [
+                                                router.send('/db/dats/update', contentDatDirUpdate),
+                                                router.send('/db/dats/update', previewDatDirUpdate)
+                                            ]
+                                            Promise.all(datDbUpdates).then(()=> {
+
+                                            }).catch(reject)
+
                                             // TODO: remember that we haven't "joined" the network here yet. The repo isn't up and running.
                                         }).catch(reject)
                                     }).catch((error: Error) => {

@@ -342,6 +342,7 @@ export default class AODB extends AORouterInterface {
                                 const result = results[i];
                                 returnValue[result['key']] = result
                             }
+                            debug(results)
                             request.respond(returnValue)
                         }
                     })

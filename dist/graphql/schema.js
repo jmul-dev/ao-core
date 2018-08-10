@@ -227,14 +227,9 @@ function default_1(router, options) {
                                         writePath: "content/" + newPreviewId + "/content.json",
                                         data: JSON.stringify(contentJson)
                                     };
-                                    var datContentupdateData = {
-                                        query: { key: previewDatKey },
-                                        update: __assign({}, previewDatResponseData, { contentJSON: contentJson })
-                                    };
                                     var userContentJson = __assign({}, contentJson, { decryptionKey: decryptionKey });
                                     storagePromises.push(router.send('/fs/write', contentWriteData));
                                     storagePromises.push(router.send('/db/user/content/insert', userContentJson));
-                                    storagePromises.push(router.send('/db/dats/update', datContentupdateData));
                                     Promise.all(storagePromises).then(function (results) {
                                         var movePreviewDatData = {
                                             srcPath: path_1.default.join('content', newPreviewId),
@@ -250,6 +245,25 @@ function default_1(router, options) {
                                         ];
                                         Promise.all(folderMovePromises).then(function () {
                                             resolve(contentJson);
+                                            var previewDatDirUpdate = {
+                                                query: { key: previewDatKey },
+                                                update: {
+                                                    key: previewDatKey,
+                                                    contentJSON: contentJson
+                                                }
+                                            };
+                                            var contentDatDirUpdate = {
+                                                query: { key: contentDatKey },
+                                                update: {
+                                                    key: contentDatKey
+                                                }
+                                            };
+                                            var datDbUpdates = [
+                                                router.send('/db/dats/update', contentDatDirUpdate),
+                                                router.send('/db/dats/update', previewDatDirUpdate)
+                                            ];
+                                            Promise.all(datDbUpdates).then(function () {
+                                            }).catch(reject);
                                             // TODO: remember that we haven't "joined" the network here yet. The repo isn't up and running.
                                         }).catch(reject);
                                     }).catch(function (error) {
