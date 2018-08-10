@@ -186,13 +186,16 @@ export default class AODat extends AORouterInterface {
                         createdAt: now,
                         updatedAt: now
                     }
-                    this.dats[requestData.key] = dat
+                    this.dats[requestData.key] = dat //Store locally
+
+                    instance.joinNetwork()
+
+                    //Store dat key in dats db
                     const insertNewDatData: AODB_DatsInsert_Data = {
                         key: requestData.key
                     }
-                    instance.joinNetwork()
-
-                    this.router.send('/db/dats/insert',insertNewDatData).then(() => {
+                    this.router.send('/db/dats/insert',insertNewDatData)
+                    .then(() => {
                         let importer = instance.importFiles({watch:true}, () => {
                             request.respond({})
                         })
