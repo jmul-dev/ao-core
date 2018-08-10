@@ -90,11 +90,18 @@ function default_1(router, options) {
                             },
                         };
                         router.send('/db/user/init', { ethAddress: args.inputs.ethAddress }).then(function () {
-                            //Mkdir is to ensure that the folder exists.
-                            var fsMakeDirData = {
-                                dirPath: path_1.default.join(args.inputs.ethAddress, 'dat')
+                            //Mkdir is to ensure that data folders exist.
+                            var fsMakeContentDirData = {
+                                dirPath: 'content'
                             };
-                            router.send('/fs/mkdir', fsMakeDirData).then(function () {
+                            var fsMakeEthDirData = {
+                                dirPath: args.inputs.ethAddress
+                            };
+                            var mkdirPromises = [
+                                router.send('/fs/mkdir', fsMakeContentDirData),
+                                router.send('/fs/mkdir', fsMakeEthDirData)
+                            ];
+                            Promise.all(mkdirPromises).then(function () {
                                 //ResumeAll also initializes the multidat instance
                                 router.send('/dat/resumeAll').then(function () {
                                     router.send('/core/log', { message: "[AO Core] Registered as user " + args.inputs.ethAddress });
@@ -115,16 +122,25 @@ function default_1(router, options) {
                 },
                 submitVideoContent: function (obj, args, context, info) {
                     return new Promise(function (resolve, reject) {
-                        var newContentId = md5_1.default(new Date);
                         var ethAddress = args.inputs.ethAddress;
-                        var contentPath = path_1.default.join(ethAddress, 'dat', newContentId);
+                        var newContentId = md5_1.default(new Date);
+                        var newPreviewId = md5_1.default(new Date + '-preview');
+                        var contentPath = path_1.default.join('content', newContentId);
+                        var previewPath = path_1.default.join('content', newPreviewId);
                         var fileInputs = ['video', 'videoTeaser', 'featuredImage'];
                         var contentFileNames = [];
                         var fileStorePromises = [];
                         var newContentDirData = {
                             dirPath: contentPath
                         };
-                        router.send('/fs/mkdir', newContentDirData).then(function () {
+                        var newPreviewDirData = {
+                            dirPath: previewPath
+                        };
+                        var mkdirPromises = [
+                            router.send('/fs/mkdir', newContentDirData),
+                            router.send('/fs/mkdir', newPreviewDirData)
+                        ];
+                        Promise.all(mkdirPromises).then(function () {
                             var _loop_1 = function (i) {
                                 var fileInputName = fileInputs[i];
                                 fileStorePromises.push(new Promise(function (localResolve, localReject) {
@@ -135,7 +151,7 @@ function default_1(router, options) {
                                         contentFileNames[i] = fileName;
                                         var writeStreamData = {
                                             stream: stream,
-                                            writePath: path_1.default.join(contentPath, fileName),
+                                            writePath: fileInputName == 'video' ? path_1.default.join(contentPath, fileName) : path_1.default.join(previewPath, fileName),
                                             encrypt: fileInputName == 'video' ? true : false,
                                             videoStats: fileInputName.includes('video') ? true : false
                                         };
@@ -159,15 +175,34 @@ function default_1(router, options) {
                                         decryptionKey = result.data.key;
                                     }
                                 }
-                                var datCreateData = {
+                                var datCreateContentData = {
                                     newDatDir: newContentId
                                 };
-                                router.send('/dat/create', datCreateData).then(function (datResponse) {
-                                    var datKey = datResponse.data.key;
+                                var datCreatePreviewData = {
+                                    newDatDir: newPreviewId
+                                };
+                                var datCreatePromises = [
+                                    router.send('/dat/create', datCreateContentData),
+                                    router.send('/dat/create', datCreatePreviewData)
+                                ];
+                                Promise.all(datCreatePromises).then(function (datResponses) {
+                                    var previewDatKey;
+                                    var contentDatKey;
+                                    var previewDatResponseData;
+                                    for (var i = 0; i < datResponses.length; i++) {
+                                        var datResponseData = datResponses[i].data;
+                                        if (datResponseData.dir == newPreviewId) {
+                                            previewDatKey = datResponseData.key;
+                                            previewDatResponseData = datResponseData;
+                                        }
+                                        else {
+                                            contentDatKey = datResponseData.key;
+                                        }
+                                    }
                                     var contentJson = {
                                         id: newContentId,
                                         creatorId: ethAddress,
-                                        datKey: datKey,
+                                        datKey: previewDatKey,
                                         contentType: 'VOD',
                                         isFolder: false,
                                         isMutable: false,
@@ -176,12 +211,10 @@ function default_1(router, options) {
                                         stake: args.inputs.stake,
                                         profit: args.inputs.profit,
                                         createdAt: Date.now(),
+                                        fileDatKey: contentDatKey,
                                         fileName: contentFileNames[0],
-                                        fileUrl: ethAddress + "/dat/" + newContentId + "/" + contentFileNames[0],
                                         fileSize: fileSize,
-                                        teaserUrl: ethAddress + "/dat/" + newContentId + "/" + contentFileNames[1],
                                         teaserName: "" + contentFileNames[1],
-                                        featuredImageUrl: ethAddress + "/dat/" + newContentId + "/" + contentFileNames[2],
                                         featuredImageName: "" + contentFileNames[2],
                                         metadata: {
                                             duration: videoStats['duration'],
@@ -191,35 +224,43 @@ function default_1(router, options) {
                                     };
                                     var storagePromises = [];
                                     var contentWriteData = {
-                                        writePath: ethAddress + "/dat/" + newContentId + "/content.json",
+                                        writePath: "content/" + newPreviewId + "/content.json",
                                         data: JSON.stringify(contentJson)
                                     };
                                     var datContentupdateData = {
-                                        query: { key: datKey },
-                                        update: __assign({}, datResponse.data, { contentJSON: contentJson })
+                                        query: { key: previewDatKey },
+                                        update: __assign({}, previewDatResponseData, { contentJSON: contentJson })
                                     };
-                                    // TODO: Make sure to add below when we know stuff has been staked correctly.
-                                    //     const datJoinNetworkData: AODat_JoinNetwork_Data = {
-                                    //         key: datKey
-                                    //     }
-                                    //     router.send('/dat/joinNetwork',datJoinNetworkData).then(() => {
-                                    //     }).catch(reject)
                                     var userContentJson = __assign({}, contentJson, { decryptionKey: decryptionKey });
                                     storagePromises.push(router.send('/fs/write', contentWriteData));
                                     storagePromises.push(router.send('/db/user/content/insert', userContentJson));
                                     storagePromises.push(router.send('/db/dats/update', datContentupdateData));
-                                    //Maybe add another promise that attaches contentJSON data back into the dat.
                                     Promise.all(storagePromises).then(function (results) {
-                                        resolve(contentJson);
+                                        var movePreviewDatData = {
+                                            srcPath: path_1.default.join('content', newPreviewId),
+                                            destPath: path_1.default.join('content', previewDatKey)
+                                        };
+                                        var moveContentDatData = {
+                                            srcPath: path_1.default.join('content', newContentId),
+                                            destPath: path_1.default.join('content', contentDatKey)
+                                        };
+                                        var folderMovePromises = [
+                                            router.send('/fs/move', movePreviewDatData),
+                                            router.send('/fs/move', moveContentDatData)
+                                        ];
+                                        Promise.all(folderMovePromises).then(function () {
+                                            resolve(contentJson);
+                                            // TODO: remember that we haven't "joined" the network here yet. The repo isn't up and running.
+                                        }).catch(reject);
                                     }).catch(function (error) {
                                         // We either failed to write contentJson to disk or db, lets cleanup to 
                                         // avoid dirty state.
                                         // TODO: attempt to cleanup file storage.
                                         reject(error);
                                     });
-                                }).catch(reject);
-                            }).catch(reject);
-                        }).catch(reject);
+                                }).catch(reject); //double dat creation
+                            }).catch(reject); //filestore/encrypt/get stats
+                        }).catch(reject); //mkdir
                     });
                 },
             },
