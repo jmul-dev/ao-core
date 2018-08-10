@@ -94,7 +94,7 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                 dirPath: 'content'
                             }
                             const fsMakeEthDirData: IAOFS_Mkdir_Data = {
-                                dirPath: args.inputs.ethAddress
+                                dirPath: path.join('users',args.inputs.ethAddress)
                             }
                             const mkdirPromises: Array<Promise<any>> = [
                                 router.send('/fs/mkdir', fsMakeContentDirData),

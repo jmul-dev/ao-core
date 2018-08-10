@@ -95,7 +95,7 @@ function default_1(router, options) {
                                 dirPath: 'content'
                             };
                             var fsMakeEthDirData = {
-                                dirPath: args.inputs.ethAddress
+                                dirPath: path_1.default.join('users', args.inputs.ethAddress)
                             };
                             var mkdirPromises = [
                                 router.send('/fs/mkdir', fsMakeContentDirData),
