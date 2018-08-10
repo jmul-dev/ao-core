@@ -67,7 +67,7 @@ export default class AODat extends AORouterInterface {
 
     //Should be the first method called by the core processes.
     private _handleDatResumeAll(request: IAORouterRequest) {
-        this.datDir = path.resolve(this.storageLocation, request.ethAddress, 'dat')
+        this.datDir = path.resolve(this.storageLocation, 'content')
         const datInitData: AODB_DatsInit_Data = {
             ethAddress: request.ethAddress
         }
@@ -144,7 +144,7 @@ export default class AODat extends AORouterInterface {
                     }
                     request.respond({                    
                         key: datKey,
-                        dir: datFolder
+                        dir: requestData.newDatDir
                     })    
                 }).catch(e => {
                     debug('trouble with insert in dat create')

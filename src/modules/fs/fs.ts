@@ -40,6 +40,11 @@ export interface IAOFS_Mkdir_Data {
     dirPath: string;
 }
 
+export interface IAOFS_Move_Data {
+    srcPath: string;
+    destPath: string;
+}
+
 export interface IAOFS_Unlink_Data {
     removePath: string;
 }
@@ -62,6 +67,7 @@ export default class AOFS extends AORouterInterface {
         this.router.on('/fs/read', this._handleRead.bind(this))
         this.router.on('/fs/readStream', this._handleReadStream.bind(this))
         this.router.on('/fs/mkdir', this._handleMkdir.bind(this))
+        this.router.on('/fs/move', this._handleMove.bind(this))
         this.router.on('/fs/unlink', this._handleUnlink.bind(this))
         debug(`started`)
     }
@@ -221,6 +227,15 @@ export default class AOFS extends AORouterInterface {
         .catch( (err) => {
             request.reject(err)
         })
+    }
+    _handleMove(request: IAORouterRequest) {
+        const requestData: IAOFS_Move_Data = request.data
+        const srcPath = path.resolve(this.storageLocation, requestData.srcPath)
+        const destPath = path.resolve(this.storageLocation, requestData.destPath)
+        fsExtra.move(srcPath, destPath)
+        .then(() => {
+            request.respond({})
+        }).catch(request.reject)
     }
 
     _handleUnlink(request: IAORouterRequest) {

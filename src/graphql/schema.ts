@@ -8,7 +8,7 @@ import path from 'path';
 import { AODat_Create_Data, AODat_ResumeAll_Data } from '../modules/dat/dat';
 import { AODB_SettingsUpdate_Data, AODB_DatsUpdate_Data } from '../modules/db/db';
 import { IAOEth_NetworkChange_Data } from '../modules/eth/eth';
-import { IAOFS_Mkdir_Data, IAOFS_WriteStream_Data, IAOFS_Write_Data } from '../modules/fs/fs';
+import { IAOFS_Mkdir_Data, IAOFS_WriteStream_Data, IAOFS_Write_Data, IAOFS_Move_Data } from '../modules/fs/fs';
 import { Http_Args } from '../modules/http/http';
 import { IAORouterMessage } from '../router/AORouter';
 import { AOCoreProcessRouter } from '../router/AORouterInterface';
@@ -89,12 +89,18 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                             },
                         }
                         router.send('/db/user/init', {ethAddress: args.inputs.ethAddress}).then(() => {
-                            
-                            //Mkdir is to ensure that the folder exists.
-                            const fsMakeDirData: IAOFS_Mkdir_Data = {
-                                dirPath: path.join(args.inputs.ethAddress, 'dat')
-                            }                        
-                            router.send('/fs/mkdir', fsMakeDirData).then(() => {
+                            //Mkdir is to ensure that data folders exist.
+                            const fsMakeContentDirData: IAOFS_Mkdir_Data = {
+                                dirPath: 'content'
+                            }
+                            const fsMakeEthDirData: IAOFS_Mkdir_Data = {
+                                dirPath: args.inputs.ethAddress
+                            }
+                            const mkdirPromises: Array<Promise<any>> = [
+                                router.send('/fs/mkdir', fsMakeContentDirData),
+                                router.send('/fs/mkdir', fsMakeEthDirData)
+                            ]
+                            Promise.all(mkdirPromises).then(() => {
                                 //ResumeAll also initializes the multidat instance
                                 router.send('/dat/resumeAll').then(() => {
                                     router.send('/core/log', {message: `[AO Core] Registered as user ${args.inputs.ethAddress}`})
@@ -117,16 +123,28 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                 },
                 submitVideoContent: (obj, args, context, info) => {
                     return new Promise((resolve, reject) => {
-                        const newContentId: string = md5(new Date);
                         const ethAddress: string = args.inputs.ethAddress;
-                        const contentPath: string = path.join(ethAddress, 'dat', newContentId)
+
+                        const newContentId: string = md5(new Date);
+                        const newPreviewId: string = md5(new Date + '-preview');
+                        const contentPath: string = path.join('content', newContentId)
+                        const previewPath: string = path.join('content', newPreviewId)
+
                         const fileInputs = ['video', 'videoTeaser', 'featuredImage']
+
                         let contentFileNames: Array<string> = []
                         let fileStorePromises: Array<Promise<any>> = []
                         const newContentDirData: IAOFS_Mkdir_Data = {
                             dirPath: contentPath
                         }
-                        router.send('/fs/mkdir', newContentDirData).then(() => {
+                        const newPreviewDirData: IAOFS_Mkdir_Data = {
+                            dirPath: previewPath
+                        }
+                        const mkdirPromises:Array<Promise<any>> = [
+                            router.send('/fs/mkdir', newContentDirData),
+                            router.send('/fs/mkdir', newPreviewDirData)
+                        ]
+                        Promise.all(mkdirPromises).then( () => {
                             for (let i = 0; i < fileInputs.length; i++) {
                                 const fileInputName = fileInputs[i];
                                 fileStorePromises.push(new Promise((localResolve, localReject) => {
@@ -136,7 +154,7 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                         contentFileNames[i] = fileName
                                         const writeStreamData: IAOFS_WriteStream_Data = {
                                             stream: stream,
-                                            writePath: path.join(contentPath, fileName),
+                                            writePath: fileInputName == 'video' ? path.join(contentPath, fileName): path.join(previewPath, fileName),
                                             encrypt: fileInputName == 'video' ? true: false,
                                             videoStats: fileInputName.includes('video') ? true: false
                                         }
@@ -157,15 +175,35 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                         decryptionKey = result.data.key
                                     }
                                 }
-                                const datCreateData: AODat_Create_Data = {
+
+                                const datCreateContentData: AODat_Create_Data = {
                                     newDatDir: newContentId
                                 }
-                                router.send('/dat/create', datCreateData).then((datResponse) => {
-                                    const datKey = datResponse.data.key
+                                const datCreatePreviewData: AODat_Create_Data = {
+                                    newDatDir: newPreviewId
+                                }
+                                const datCreatePromises: Array<Promise<any>> = [
+                                    router.send('/dat/create', datCreateContentData),
+                                    router.send('/dat/create', datCreatePreviewData)
+                                ]
+                                Promise.all(datCreatePromises).then((datResponses) => {
+                                    let previewDatKey:string 
+                                    let contentDatKey:string 
+                                    let previewDatResponseData: Object
+                                    for (let i = 0; i < datResponses.length; i++) {
+                                        const datResponseData = datResponses[i].data;
+                                        if( datResponseData.dir == newPreviewId) {
+                                            previewDatKey = datResponseData.key
+                                            previewDatResponseData = datResponseData
+                                        } else {
+                                            contentDatKey = datResponseData.key
+                                        }
+                                    }
+                                    
                                     const contentJson = {
                                         id: newContentId,
                                         creatorId: ethAddress,
-                                        datKey: datKey,
+                                        datKey: previewDatKey,
                                         contentType: 'VOD',
                                         isFolder: false, // TODO: determine if args.inputs.video is a folder
                                         isMutable: false,
@@ -175,12 +213,10 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                         profit: args.inputs.profit,
                                         createdAt: Date.now(),
         
+                                        fileDatKey: contentDatKey,
                                         fileName: contentFileNames[0],
-                                        fileUrl: `${ethAddress}/dat/${newContentId}/${contentFileNames[0]}`,
                                         fileSize: fileSize,
-                                        teaserUrl: `${ethAddress}/dat/${newContentId}/${contentFileNames[1]}`,
                                         teaserName: `${contentFileNames[1]}`,
-                                        featuredImageUrl: `${ethAddress}/dat/${newContentId}/${contentFileNames[2]}`,
                                         featuredImageName: `${contentFileNames[2]}`,
         
                                         metadata: {
@@ -191,23 +227,16 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                     }
                                     const storagePromises: Array<Promise<any>> = []
                                     const contentWriteData: IAOFS_Write_Data = {
-                                        writePath: `${ethAddress}/dat/${newContentId}/content.json`,
+                                        writePath: `content/${newPreviewId}/content.json`,
                                         data: JSON.stringify(contentJson)
                                     }
                                     const datContentupdateData: AODB_DatsUpdate_Data = {
-                                        query: { key: datKey },
+                                        query: { key: previewDatKey },
                                         update: {
-                                            ...datResponse.data,
+                                            ...previewDatResponseData,
                                             contentJSON: contentJson
                                         }
                                     }
-
-                                    // TODO: Make sure to add below when we know stuff has been staked correctly.
-                                    //     const datJoinNetworkData: AODat_JoinNetwork_Data = {
-                                    //         key: datKey
-                                    //     }
-                                    //     router.send('/dat/joinNetwork',datJoinNetworkData).then(() => {
-                                    //     }).catch(reject)
 
                                     const userContentJson = {
                                         ...contentJson,
@@ -217,19 +246,37 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                     storagePromises.push(router.send('/fs/write', contentWriteData))
                                     storagePromises.push(router.send('/db/user/content/insert', userContentJson))
                                     storagePromises.push(router.send('/db/dats/update', datContentupdateData))
-                                    //Maybe add another promise that attaches contentJSON data back into the dat.
 
                                     Promise.all(storagePromises).then((results: Array<IAORouterMessage>) => {
-                                        resolve(contentJson)
+                                        const movePreviewDatData: IAOFS_Move_Data = {
+                                            srcPath: path.join('content', newPreviewId),
+                                            destPath: path.join('content', previewDatKey)
+                                        }
+                                        const moveContentDatData: IAOFS_Move_Data = {
+                                            srcPath: path.join('content', newContentId),
+                                            destPath: path.join('content', contentDatKey)
+                                        }
+                                        const folderMovePromises: Array<Promise<any>> = [
+                                            router.send('/fs/move', movePreviewDatData),
+                                            router.send('/fs/move', moveContentDatData)
+                                        ]
+                                        Promise.all(folderMovePromises).then(() => {
+                                            resolve(contentJson)
+                                            // TODO: remember that we haven't "joined" the network here yet. The repo isn't up and running.
+                                        }).catch(reject)
                                     }).catch((error: Error) => {
                                         // We either failed to write contentJson to disk or db, lets cleanup to 
                                         // avoid dirty state.
                                         // TODO: attempt to cleanup file storage.
                                         reject(error)
                                     })
-                                }).catch(reject)
-                            }).catch(reject)
-                        }).catch(reject)
+
+                                }).catch(reject)//double dat creation
+
+                            }).catch(reject)//filestore/encrypt/get stats
+
+                        }).catch(reject)//mkdir
+
                     })
                 },                
             },
