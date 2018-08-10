@@ -1,11 +1,10 @@
 {
   "name": "ao-core",
-  "version": "1.0.13",
+  "version": "1.0.15",
   "description": "AO - Core",
   "main": "src/index.js",
   "bin": {
-    "ao-core": "dist/bin.js",
-    "ao-p2p": "dist/p2p/p2p.js"
+    "ao-core": "dist/bin.js"
   },
   "scripts": {
     "start": "yarn copyfiles && DEBUG=ao:* node dist/bin.js",
