@@ -38,8 +38,6 @@ export interface AODat_List_Data {
 
 export interface Dat_In_Array {
     key?: string;
-    dir?: string;
-    contentJSON?: Object;
     createdAt?: Date;
     updatedAt?: Date;
     instance?: Dat;
@@ -58,8 +56,6 @@ export default class AODat extends AORouterInterface {
         this.router.on('/dat/stopAll', this._handleDatStopAll.bind(this))
         this.router.on('/dat/create', this._handleDatCreate.bind(this))
         this.router.on('/dat/joinNetwork', this._handlejoinNetwork.bind(this)) //this is separate from above since we want to include some information in the json files
-        this.router.on('/dat/preview', this._handleDatPreview.bind(this))
-        this.router.on('/dat/download', this._handleDatDownload.bind(this))
         this.router.on('/dat/remove', this._handleDatRemove.bind(this))
         this.router.on('/dat/list', this._handleDatList.bind(this))
         debug(`started`)
@@ -69,7 +65,6 @@ export default class AODat extends AORouterInterface {
     private _handleDatResumeAll(request: IAORouterRequest) {
         this.datDir = path.resolve(this.storageLocation, 'content')
         const datInitData: AODB_DatsInit_Data = {
-            ethAddress: request.ethAddress
         }
         this.router.send('/db/dats/init', datInitData).then((dats) => {
             this.dats = dats.data
@@ -120,7 +115,7 @@ export default class AODat extends AORouterInterface {
         const requestData: AODat_Create_Data = request.data
         const fullPath = path.join(this.datDir, requestData.newDatDir)
         if(!this.dats) {
-            request.reject(new Error('Multidat is not ready? is EthAddress set?'))
+            request.reject(new Error('Dat is not ready? is EthAddress set?'))
         } else {
             Dat( fullPath, (err, dat) => {
                 if(err) {
@@ -128,24 +123,20 @@ export default class AODat extends AORouterInterface {
                     request.reject(err)
                 }
                 dat.importFiles()
-                const datFolder = basename(fullPath)
                 const datKey =  dat.key.toString('hex')
                 debug('New link: dat://' + datKey)
 
                 const dbInsertData:AODB_DatsInsert_Data = {
-                    key: datKey,
-                    dir: fullPath
+                    key: datKey
                 }
                 this.router.send('/db/dats/insert',dbInsertData)
                 .then(()=> {
-                    //TODO: Figure out if we want to have contentJSON be returned through another method.
                     this.dats[datKey] = {
-                        key: datKey,
-                        dir: requestData.newDatDir
+                        key: datKey
                     }
                     request.respond({                    
                         key: datKey,
-                        dir: requestData.newDatDir
+                        dir: requestData.newDatDir //Note that this is used to mark the dir that this was created against.  Important for uploads as its diffrent from the final dir name
                     })    
                 }).catch(e => {
                     debug('trouble with insert in dat create')
@@ -159,6 +150,7 @@ export default class AODat extends AORouterInterface {
         const requestData: AODat_JoinNetwork_Data = request.data
         debug('requested join key'+requestData.key)
         if(this.dats) {
+            let found = false
             for (const key in this.dats) {
                 if (this.dats.hasOwnProperty(key)) {
                     const dat = this.dats[key];
@@ -168,71 +160,51 @@ export default class AODat extends AORouterInterface {
                         instance.key.toString('hex') == requestData.key
                     ) {
                         debug('Joining network for '+requestData.key)
-                        instance.importFiles()
                         instance.joinNetwork()
-                        break;
+
+                        //importer options https://github.com/datproject/dat-node#var-importer--datimportfilessrc-opts-cb
+                        let importer = instance.importFiles({watch: true}, () => {
+                            request.respond({})
+                        })
+                        found = true
+                        break
+                        //importer.on()
                     }
                 }
             }
-            request.respond({})
-        } else {
-            request.reject(new Error('Not initialized'))
-        }
-    }
-
-    private _handleDatPreview(request: IAORouterRequest) {
-        const requestData: AODat_Download_Data = request.data
-        if(this.dats) {
-            const options = {
-                key: requestData.key,
-                sparse: true
-            }
-            Dat(requestData.newDatDir, options, (err,dat) => {
-                if(err) {
-                    request.reject(new Error('Issue with dat download'))
+            if(!found) {
+                debug('Provided key is new, adding '+requestData.key.substr(0,8)+'... to dats')
+                const fullPath = path.join(this.datDir, requestData.key)
+                const options = {
+                    key: requestData.key
                 }
-                //Don't run importFile here.  That'll cause this entire archive to be downloaded
-                dat.joinNetwork()
-                dat.archive.readFile('content.json', (err,content) => {
-                    if(err) {
-                        request.reject(new Error('content.json download error'))
-                    }
-                    const contentJSON = JSON.parse(content)
-                    const teaserName = contentJSON['teaserName']
-                    dat.archive.readFile(teaserName, (err,teaser) => {
-                        //Should save directly to file
-                    })
-
-                    const dbInsertData:AODB_DatsInsert_Data = {
+                Dat(fullPath, options, (err, instance) => {
+                    const now = new Date()
+                    let dat: Dat_In_Array = {
                         key: requestData.key,
-                        dir: requestData.newDatDir,
-                        contentJSON: contentJSON
+                        instance: instance,
+                        createdAt: now,
+                        updatedAt: now
                     }
-                    this.router.send('/db/dats/insert', dbInsertData)
+                    this.dats[requestData.key] = dat //Store locally
+
+                    instance.joinNetwork()
+
+                    //Store dat key in dats db
+                    const insertNewDatData: AODB_DatsInsert_Data = {
+                        key: requestData.key
+                    }
+                    this.router.send('/db/dats/insert',insertNewDatData)
                     .then(() => {
-                        this.dats[requestData.key] = dbInsertData
-                        this.dats[requestData.key].instance = dat
+                        let importer = instance.importFiles({watch:true}, () => {
+                            request.respond({})
+                        })
                     }).catch(request.reject)
                 })
-            })
+            }
+
         } else {
             request.reject(new Error('Not initialized'))
-        }
-    }
-
-    private _handleDatDownload(request: IAORouterRequest) {
-        const requestData: AODat_Download_Data = request.data
-        if(!this.dats[requestData.key]) {
-            request.reject(new Error('Preview not generated / no such instance'))
-        } else {
-            const dat = this.dats[requestData.key].instance
-            const fileName = this.dats[requestData.key].contentJSON['fileName']
-            dat.archive.readFile(fileName, (err,video) => {
-                if(err) {
-                    request.reject(new Error('video file download error'))
-                }
-                
-            })
         }
     }
 
