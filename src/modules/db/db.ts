@@ -51,20 +51,6 @@ export interface AODB_UserContentGet_Data {
 }
 
 /**
- * Decryption Keys
- */
-export interface AODB_DecryptInit_Data {
-
-}
-export interface AODB_DecryptGet_Data {
-    key: string;
-}
-export interface AODB_DecryptInsert_Data {
-    datKey: string;
-    decryptionKey: string;
-}
-
-/**
  * Dats
  */
 export interface AODB_DatsInit_Data {
@@ -187,7 +173,7 @@ export default class AODB extends AORouterInterface {
             return;
         }
         this.userDbs[request.ethAddress] = new Datastore({
-            filename: path.resolve(this.storageLocation, request.ethAddress, 'content.db.json'),
+            filename: path.resolve(this.storageLocation, 'users', request.ethAddress, 'content.db.json'),
             autoload: false,
         })
         this.userDbs[request.ethAddress].loadDatabase((error: Error) => {
@@ -339,7 +325,7 @@ export default class AODB extends AORouterInterface {
     private _datsInit(request: IAORouterRequest) {
         //const requestData: AODB_DatsInit_Data = request.data
         this.db.dats = new Datastore({
-            filename: path.resolve(this.storageLocation, request.ethAddress, 'dats.db.json'),
+            filename: path.resolve(this.storageLocation, 'users', request.ethAddress, 'dats.db.json'),
             autoload: true,
             onload: (error: Error) => {
                 if ( error ){
