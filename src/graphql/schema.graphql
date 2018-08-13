@@ -1,5 +1,5 @@
-# import Query.* from "queries/index.graphql"
-# import Mutation.* from "mutations/index.graphql"
+# import Query.* from "src/graphql/queries/index.graphql"
+# import Mutation.* from "src/graphql/mutations/index.graphql"
 
 scalar Upload
 

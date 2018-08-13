@@ -299,8 +299,9 @@ export default class AORouter extends AORouterCoreProcessInterface {
     }
 
     private spawnProcessForEntry(entry: IRegistryEntry): ChildProcess | null {
-        let processLocation = path.join(__dirname, '../modules', entry.bin);
+        let processLocation = path.join(__dirname, 'modules', entry.bin);        
         processLocation = processLocation.replace('app.asar', 'app.asar.unpacked');  // Sry, but if running within electron the paths are off
+        debug(`Attempting to spawn process ${entry.name} at: ${processLocation}`)
         const processArgs = [
                 processLocation, 
                 '--storageLocation', this.args.storageLocation, 

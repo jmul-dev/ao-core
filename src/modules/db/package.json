@@ -5,7 +5,7 @@
     "displayName": "AO DB",
     "description": "AO - DB package",
     "main": "db/db.js",
-    "bin":  "db/db.bin.js",
+    "bin":  "db.bin.js",
     "AO": {
         "events": [
             "/db/logs/get",

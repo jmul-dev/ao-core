@@ -5,7 +5,7 @@
     "displayName": "AO FS",
     "description": "AO - FS package",
     "main": "fs/fs.js",
-    "bin":  "fs/fs.bin.js",
+    "bin":  "fs.bin.js",
     "AO": {
         "events": [
             "/fs/read",

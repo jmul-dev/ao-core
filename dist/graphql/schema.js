@@ -13,14 +13,15 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 var apollo_upload_server_1 = require("apollo-upload-server");
 var debug_1 = __importDefault(require("debug"));
-var graphql_import_1 = require("graphql-import");
+// import { importSchema } from 'graphql-import';
 var graphql_tools_1 = require("graphql-tools");
 var md5_1 = __importDefault(require("md5"));
 var path_1 = __importDefault(require("path"));
 var mocks_1 = __importDefault(require("./mocks"));
 var mockVideos_1 = require("./mockVideos");
 var queryResolvers_1 = __importDefault(require("./resolvers/queryResolvers"));
-var graphqlSchema = graphql_import_1.importSchema(path_1.default.resolve(__dirname, './schema.graphql'));
+var graphqlSchema = require('./schema.graphql');
+// const graphqlSchema = importSchema( 'src/graphql/schema.graphql' );
 var packageJson = require('../../package.json');
 var debug = debug_1.default('ao:graphql');
 // TODO: replace with actual db calls 
