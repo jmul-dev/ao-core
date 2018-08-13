@@ -35,12 +35,17 @@ export interface AODat_Remove_Data {
 
 export interface AODat_List_Data {
 }
+export interface AODat_Check_Data {
+    key: string;
+
+}
 
 export interface Dat_In_Array {
     key?: string;
     createdAt?: Date;
     updatedAt?: Date;
     instance?: Dat;
+    complete?: boolean;
 }
 
 
@@ -58,6 +63,7 @@ export default class AODat extends AORouterInterface {
         this.router.on('/dat/joinNetwork', this._handlejoinNetwork.bind(this)) //this is separate from above since we want to include some information in the json files
         this.router.on('/dat/remove', this._handleDatRemove.bind(this))
         this.router.on('/dat/list', this._handleDatList.bind(this))
+        this.router.on('/dat/check', this._handleDatCheck.bind(this))
         debug(`started`)
     }
 
@@ -80,7 +86,9 @@ export default class AODat extends AORouterInterface {
                                 debug('error starting dat ' + key )
                                 reject()
                             }
-                            dat.importFiles()
+                            dat.importFiles({},() => {
+                                this.dats[key].complete = true
+                            })
                             dat.joinNetwork()
                             const dat_link = 'dat://' + dat.key.toString('hex')
                             debug('Joined network for: '+ dat_link)
@@ -164,6 +172,7 @@ export default class AODat extends AORouterInterface {
 
                         //importer options https://github.com/datproject/dat-node#var-importer--datimportfilessrc-opts-cb
                         let importer = instance.importFiles({watch: true}, () => {
+                            this.dats[key].complete = true
                             request.respond({})
                         })
                         found = true
@@ -197,6 +206,7 @@ export default class AODat extends AORouterInterface {
                     this.router.send('/db/dats/insert',insertNewDatData)
                     .then(() => {
                         let importer = instance.importFiles({watch:true}, () => {
+                            this.dats[requestData.key].complete = true
                             request.respond({})
                         })
                     }).catch(request.reject)
@@ -252,6 +262,16 @@ export default class AODat extends AORouterInterface {
         }
     }
 
+    private _handleDatCheck(request: IAORouterRequest) {
+        const requestData: AODat_Check_Data = request.data
+        if(this.dats) {
+            if(this.dats[requestData.key] && this.dats[requestData.key].complete) {
+                request.respond({})
+            }
+        } else {
+            request.reject(new Error('Not initialized'))
+        }
+    }
     
 
 }

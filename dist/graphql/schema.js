@@ -102,7 +102,6 @@ function default_1(router, options) {
                                 router.send('/fs/mkdir', fsMakeEthDirData)
                             ];
                             Promise.all(mkdirPromises).then(function () {
-                                //ResumeAll also initializes the multidat instance
                                 router.send('/dat/resumeAll').then(function () {
                                     router.send('/core/log', { message: "[AO Core] Registered as user " + args.inputs.ethAddress });
                                     resolve(mockStore.node);
@@ -151,6 +150,7 @@ function default_1(router, options) {
                                         contentFileNames[i] = fileName;
                                         var writeStreamData = {
                                             stream: stream,
+                                            streamDirection: 'write',
                                             writePath: fileInputName == 'video' ? path_1.default.join(contentPath, fileName) : path_1.default.join(previewPath, fileName),
                                             encrypt: fileInputName == 'video' ? true : false,
                                             videoStats: fileInputName.includes('video') ? true : false
@@ -215,7 +215,9 @@ function default_1(router, options) {
                                         fileName: contentFileNames[0],
                                         fileSize: fileSize,
                                         teaserName: "" + contentFileNames[1],
+                                        teaserUrl: previewDatKey + "/" + contentFileNames[1],
                                         featuredImageName: "" + contentFileNames[2],
+                                        featuredImageUrl: previewDatKey + "/" + contentFileNames[2],
                                         metadata: {
                                             duration: videoStats['duration'],
                                             resolution: videoStats['height'],

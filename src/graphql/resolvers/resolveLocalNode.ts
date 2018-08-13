@@ -2,6 +2,7 @@ import { AOCoreProcessRouter } from "../../router/AORouterInterface";
 import { IAORouterMessage } from "../../router/AORouter";
 
 
+
 export default function(aoRouter: AOCoreProcessRouter) {
     return (obj: any, args: any, context: any, info: any) => {
         return new Promise((resolve, reject) => {
@@ -14,7 +15,8 @@ export default function(aoRouter: AOCoreProcessRouter) {
                     }
                 }
                 aoRouter.send('/db/user/content/get').then((response: IAORouterMessage) => {
-                    localNode.creator.content = [].concat(response.data)  // ensures array in case response is single item
+                    let responseData = [].concat(response.data)// ensures array in case response is single item
+                    localNode.creator.content = responseData  
                     resolve(localNode)
                 }).catch(error => {
                     reject(error)

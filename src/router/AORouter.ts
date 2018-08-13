@@ -195,23 +195,45 @@ export default class AORouter extends AORouterCoreProcessInterface {
             const messageHasStream = message.data && message.data.stream
             let readStream: ReadStream;
             let writeStream: WriteStream;
-            if ( messageHasStream ) {                
-                if ( from.name === 'ao-core' ) {
-                    readStream = message.data.stream
-                    writeStream = receivingProcess.stdio[3]
-                    message.data.stream = true // cannot send the stream object to subprocess
-                    debug('piping stream FROM core TO subprocess')
-                } else if ( receivingRegistryEntry.name === 'ao-core' ) {
-                    readStream = fs.createReadStream(null, {fd: 4})
-                    writeStream = new WriteStream()
-                    message.data.stream = writeStream
-                    debug('piping stream FROM subprocess TO core')
-                } else {
-                    //sub to sub
-                    readStream = fromProcess.stdio[4]
-                    writeStream = receivingProcess.stdio[3]
-                    message.data.stream = true // cannot send the stream object to subprocess
-                    debug('piping stream FROM subprocess TO subprocess')
+            let reattachStream: Object = null
+            if ( messageHasStream ) {
+                if(message.data.streamDirection == 'write'){
+                    if ( from.name === 'ao-core' ) {
+                        readStream = message.data.stream
+                        writeStream = receivingProcess.stdio[3]
+                        message.data.stream = true // cannot send the stream object to subprocess
+                        debug('piping stream FROM core TO subprocess')
+                    } else if ( receivingRegistryEntry.name === 'ao-core' ) {
+                        //write from sub to core
+                        readStream = fs.createReadStream(null, {fd: 4})
+                        writeStream = new WriteStream()
+                        message.data.stream = writeStream
+                        reattachStream = writeStream
+                        debug('piping stream FROM subprocess TO core')
+                    } else {
+                        //sub to sub
+                        readStream = fromProcess.stdio[4]
+                        writeStream = receivingProcess.stdio[3]
+                        message.data.stream = true // cannot send the stream object to subprocess
+                        debug('piping stream FROM subprocess TO subprocess')
+                    }
+                } else if(message.data.streamDirection == 'read') {
+                    if ( from.name === 'ao-core') {
+                        //request core read a sub process
+                        readStream = receivingProcess.stdio[4]//4 is output!
+                        writeStream = message.data.stream
+                        reattachStream = writeStream
+                        message.data.stream = true // cannot send the stream object to subprocess
+                    } else if( receivingRegistryEntry.name === 'ao-core' ) {
+                        //request sub wants to read a core process
+                        readStream = new ReadStream() //TODO: Figure out how to read from core
+                        writeStream = fs.createWriteStream(null, {fd: 3} ) //3 is for input
+                    } else {
+                        //sub to sub
+                        readStream = receivingProcess.stdio[4]
+                        writeStream = fromProcess.stdio[3]
+                        message.data.stream = true // cannot send the stream object to subprocess
+                    }
                 }
                 readStream.pipe(writeStream)
                 .on('error', (err) => {
@@ -238,6 +260,10 @@ export default class AORouter extends AORouterCoreProcessInterface {
                         if ( response.error ) {
                             reject(response.error)
                         } else {
+                            //for certain scenarios, we need to re-attach a read/write stream back to core.
+                            if(messageHasStream && from.name === 'ao-core' && reattachStream) {
+                                response.data['stream'] = reattachStream
+                            }
                             resolve(response)
                         }
                         receivingProcess.removeListener('message', receivingProcessResponseHandler)

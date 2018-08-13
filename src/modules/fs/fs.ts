@@ -1,4 +1,5 @@
-import fs, { ReadStream } from 'fs';
+import fs, { ReadStream,WriteStream } from 'fs';
+import stream from 'stream'
 import fsExtra from 'fs-extra'
 import crypto from 'crypto'
 import md5 from 'md5'
@@ -17,6 +18,7 @@ export interface AOFS_Args {
 
 export interface IAOFS_WriteStream_Data {
     stream: ReadStream;
+    streamDirection: string;
     writePath: string;
     encrypt: boolean;
     videoStats: boolean;
@@ -32,8 +34,10 @@ export interface IAOFS_Read_Data {
 }
 
 export interface IAOFS_ReadStream_Data {
+    stream: stream.Writable;
+    streamDirection: string;
     readPath: string;
-    key: string;
+    key?: string;   //decrypt key
 }
 
 export interface IAOFS_Mkdir_Data {
@@ -205,7 +209,7 @@ export default class AOFS extends AORouterInterface {
         })
 
         readStream.on('open', () => {
-            var receiver = fs.createWriteStream(null, {fd:3})
+            var receiver = fs.createWriteStream(null, {fd:4})
             if(requestData.key) {
                 const decrypt = crypto.createDecipher( this.encryptionAlgorithm, requestData.key )
                 readStream.pipe(decrypt).pipe(receiver)
