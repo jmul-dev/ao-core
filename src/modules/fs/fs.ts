@@ -37,6 +37,7 @@ export interface IAOFS_ReadStream_Data {
     stream: stream.Writable;
     streamDirection: string;
     readPath: string;
+    streamOptions?: Object;
     key?: string;   //decrypt key
 }
 
@@ -202,7 +203,8 @@ export default class AOFS extends AORouterInterface {
     _handleReadStream(request: IAORouterRequest) {
         const requestData: IAOFS_ReadStream_Data = request.data
         const readPath = path.resolve(this.storageLocation, requestData.readPath)
-        const readStream = fs.createReadStream(readPath)
+        const streamOptions = requestData.streamOptions || {}
+        const readStream = fs.createReadStream(readPath, streamOptions)
 
         readStream.on('error', (err) => {
             request.reject(err)
