@@ -34,9 +34,9 @@ export default class Http {
             graphqlExpress({ schema: graphqlSchema })
         );
         this.express.get('/graphiql', graphiqlExpress({ endpointURL: '/graphql' })); // TODO: enable based on process.env.NODE_ENV
-        // NOTE: this file is compiled down to 'dist/main.js' so referencing assets folder up one dir
+        // NOTE: this file is compiled down to 'dist/main.js' so referencing assets folder within dist
         // TODO: remove when ready
-        let staticAssetPath = path.join(__dirname, '../assets');
+        let staticAssetPath = path.join(__dirname, './assets');
         staticAssetPath = staticAssetPath.replace('app.asar', 'app.asar.unpacked')
         debug('Static asset path: ', staticAssetPath);
         this.express.use('/assets', express.static(staticAssetPath));
