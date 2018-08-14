@@ -357,12 +357,22 @@ export default class AORouter extends AORouterCoreProcessInterface {
 
     public shutdown(): void {
         // TODO: attempt to kill all subprocesses
+        Object.keys(this.registry).forEach((entryName: string) => {
+            const instances = this.registryEntryNameToProcessInstances[entryName]
+            if ( instances ) {
+                instances.forEach((processInstance: Process) => {
+                    if ( processInstance.kill ) {
+                        processInstance.kill()
+                    }
+                })
+            }
+        })
     }
 
     private _printRouterState() {
         const timestamp = Date.now()
         debug(`=======  AORouter state (${timestamp}) =======`)
-        const registeredEntries = Object.keys(this.registry).forEach((entryName: string) => {
+        Object.keys(this.registry).forEach((entryName: string) => {
             const entry: IRegistryEntry = this.registry[entryName]
             const instances = this.registryEntryNameToProcessInstances[entryName]
             debug(`${entry.displayName} (${entry.name}):`)
