@@ -36,8 +36,10 @@ export default class Http {
         this.express.get('/graphiql', graphiqlExpress({ endpointURL: '/graphql' })); // TODO: enable based on process.env.NODE_ENV
         // NOTE: this file is compiled down to 'dist/main.js' so referencing assets folder up one dir
         // TODO: remove when ready
-        debug('Static asset path: ', path.join(__dirname, '../assets'));
-        this.express.use('/assets', express.static(path.join(__dirname, '../assets')));
+        let staticAssetPath = path.join(__dirname, '../assets');
+        staticAssetPath = staticAssetPath.replace('app.asar', 'app.asar.unpacked')
+        debug('Static asset path: ', staticAssetPath);
+        this.express.use('/assets', express.static(staticAssetPath));
         this.server = this.express.listen(options.corePort, () => {
             const address: AddressInfo = <AddressInfo> this.server.address();
             debug('Express server running on port: ' + address.port);
