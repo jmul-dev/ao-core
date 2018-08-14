@@ -2,19 +2,14 @@
   "name": "ao-core",
   "version": "1.0.15",
   "description": "AO - Core",
-  "main": "src/index.js",
+  "main": "dist/index.js",
   "bin": {
     "ao-core": "bin/bin.js"
   },
   "scripts": {
-    "start": "yarn copyfiles && DEBUG=ao:* node dist/bin.js",
-    "dev": "tsc-watch --onSuccess \"yarn start\"",
-    "watch": "tsc --watch",
-    "build": "npm run build-ts && npm run build-bin",
-    "build-bin": "webpack",
-    "build-ts": "tsc && yarn copyfiles",
+    "start": "DEBUG=ao:* node dist/bin.js",
+    "build": "webpack",
     "clean": "rimraf dist",
-    "copyfiles": "copyfiles -u 1 \"./src/**/*.graphql\"  \"./src/modules/**/*.json\" dist",
     "test": "mocha -r ts-node/register src/**/*.spec.ts"
   },
   "publishConfig": {
