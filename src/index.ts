@@ -16,6 +16,7 @@ export interface ICoreOptions {
     coreOrigin: string;
     httpOrigin: string;
     storageLocation: string;
+    nodeBin: string;
 }
 
 export interface AOCore_Log_Data {
@@ -29,6 +30,7 @@ export default class Core extends EventEmitter {
         coreOrigin: 'http://localhost',
         httpOrigin: 'http://localhost:3000',
         storageLocation: path.resolve(__dirname, '..', 'data'),
+        nodeBin: process.execPath,
     }
     public options: ICoreOptions;
     private coreRouter: AORouter;

@@ -310,7 +310,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
                 '--corePort', this.args.corePort+"",//Stupid hack around typescript
                 '--ao-core'
             ]
-        let entryProcess: ChildProcess = spawn(process.execPath, processArgs, {
+        let entryProcess: ChildProcess = spawn(this.args.nodeBin, processArgs, {
             stdio: ['ipc', 'inherit', 'inherit', 'pipe', 'pipe'],
         })
         entryProcess.on('error', (err) => {
