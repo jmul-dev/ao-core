@@ -17,7 +17,6 @@ module.exports = {
         dat: "./src/modules/dat/dat.bin.ts",
         db: "./src/modules/db/db.bin.ts",
         fs: "./src/modules/fs/fs.bin.ts",
-        // p2p: "./src/modules/p2p/p2p.bin.ts",
         eth: "./src/modules/eth/eth.bin.ts",
     },
     output: {
