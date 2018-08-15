@@ -189,13 +189,13 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                     router.send('/dat/create', datCreatePreviewData)
                                 ]
                                 Promise.all(datCreatePromises).then((datResponses) => {
-                                    let previewDatKey:string 
-                                    let contentDatKey:string 
-                                    let previewDatResponseData: Object
+                                    let metadataDatKey: string;
+                                    let contentDatKey: string;
+                                    let previewDatResponseData: Object;
                                     for (let i = 0; i < datResponses.length; i++) {
                                         const datResponseData = datResponses[i].data;
                                         if( datResponseData.dir == newPreviewId) {
-                                            previewDatKey = datResponseData.key
+                                            metadataDatKey = datResponseData.key
                                             previewDatResponseData = datResponseData
                                         } else {
                                             contentDatKey = datResponseData.key
@@ -205,7 +205,7 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                     const contentJson = {
                                         id: newContentId,
                                         creatorId: ethAddress,
-                                        datKey: previewDatKey,
+                                        metadataDatKey: metadataDatKey,
                                         contentType: 'VOD',
                                         isFolder: false, // TODO: determine if args.inputs.video is a folder
                                         isMutable: false,
@@ -220,9 +220,9 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                         fileName: contentFileNames[0],
                                         fileSize: fileSize,
                                         teaserName: `${contentFileNames[1]}`,
-                                        teaserUrl:`${previewDatKey}/${contentFileNames[1]}`,
+                                        teaserUrl:`${metadataDatKey}/${contentFileNames[1]}`,
                                         featuredImageName: `${contentFileNames[2]}`,
-                                        featuredImageUrl: `${previewDatKey}/${contentFileNames[2]}`,
+                                        featuredImageUrl: `${metadataDatKey}/${contentFileNames[2]}`,
         
                                         metadata: {
                                             duration: videoStats['duration'],  
@@ -247,7 +247,7 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                     Promise.all(storagePromises).then((results: Array<IAORouterMessage>) => {
                                         const movePreviewDatData: IAOFS_Move_Data = {
                                             srcPath: path.join('content', newPreviewId),
-                                            destPath: path.join('content', previewDatKey)
+                                            destPath: path.join('content', metadataDatKey)
                                         }
                                         const moveContentDatData: IAOFS_Move_Data = {
                                             srcPath: path.join('content', newContentId),
@@ -261,9 +261,9 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                             resolve(contentJson)
 
                                             const previewDatDirUpdate: AODB_DatsUpdate_Data = {
-                                                query: { key: previewDatKey },
+                                                query: { key: metadataDatKey },
                                                 update: {
-                                                    key: previewDatKey,
+                                                    key: metadataDatKey,
                                                     contentJSON: contentJson
                                                 }
                                             }

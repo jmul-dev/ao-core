@@ -8,7 +8,6 @@ enum ContentType {
 # Shared interface between all content types
 interface IContent {
     id: ID!
-    datKey: ID
     stakeID: ID
     nodeID: ID!
     creatorID: ID!
@@ -18,6 +17,7 @@ interface IContent {
     fileName: String
     fileDatKey: String
     fileUrl: String
+    metadataDatKey: ID!
     title: String
     description: String    
     # Econ
@@ -31,8 +31,7 @@ interface IContent {
 }
 
 type VideoContent implements IContent {
-    id: ID!
-    datKey: ID
+    id: ID!    
     stakeID: ID
     nodeID: ID!
     creatorID: ID!
@@ -42,6 +41,7 @@ type VideoContent implements IContent {
     fileName: String
     fileDatKey: String
     fileUrl: String
+    metadataDatKey: ID!
     title: String
     description: String    
     # Econ
