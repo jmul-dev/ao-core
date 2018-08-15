@@ -6,7 +6,7 @@ import { addMockFunctionsToSchema, makeExecutableSchema } from 'graphql-tools';
 import md5 from 'md5';
 import path from 'path';
 import { AODat_Create_Data, AODat_ResumeAll_Data } from '../modules/dat/dat';
-import { AODB_SettingsUpdate_Data, AODB_DatsUpdate_Data } from '../modules/db/db';
+import { AODB_SettingsUpdate_Data, AODB_DatsUpdate_Data, AODB_UserContentGet_Data } from '../modules/db/db';
 import { IAOEth_NetworkChange_Data } from '../modules/eth/eth';
 import { IAOFS_Mkdir_Data, IAOFS_WriteStream_Data, IAOFS_Write_Data, IAOFS_Move_Data } from '../modules/fs/fs';
 import { Http_Args } from '../modules/http/http';
@@ -15,6 +15,7 @@ import { AOCoreProcessRouter } from '../router/AORouterInterface';
 import mocks from './mocks';
 import { generateMockVideoList } from './mockVideos';
 import QueryResolvers from './resolvers/queryResolvers';
+import { resolve } from 'dns';
 
 const graphqlSchema = importSchema( path.resolve(__dirname, './schema.graphql') );
 const packageJson = require('../../package.json');
@@ -101,7 +102,6 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                 router.send('/fs/mkdir', fsMakeEthDirData)
                             ]
                             Promise.all(mkdirPromises).then(() => {
-                                //ResumeAll also initializes the multidat instance
                                 router.send('/dat/resumeAll').then(() => {
                                     router.send('/core/log', {message: `[AO Core] Registered as user ${args.inputs.ethAddress}`})
                                     resolve(mockStore.node)
@@ -154,6 +154,7 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                         contentFileNames[i] = fileName
                                         const writeStreamData: IAOFS_WriteStream_Data = {
                                             stream: stream,
+                                            streamDirection: 'write',
                                             writePath: fileInputName == 'video' ? path.join(contentPath, fileName): path.join(previewPath, fileName),
                                             encrypt: fileInputName == 'video' ? true: false,
                                             videoStats: fileInputName.includes('video') ? true: false
@@ -217,7 +218,9 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                         fileName: contentFileNames[0],
                                         fileSize: fileSize,
                                         teaserName: `${contentFileNames[1]}`,
+                                        teaserUrl:`${previewDatKey}/${contentFileNames[1]}`,
                                         featuredImageName: `${contentFileNames[2]}`,
+                                        featuredImageUrl: `${previewDatKey}/${contentFileNames[2]}`,
         
                                         metadata: {
                                             duration: videoStats['duration'],  

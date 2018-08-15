@@ -13,7 +13,8 @@
             "/dat/create",
             "/dat/joinNetwork",
             "/dat/remove",
-            "/dat/list"
+            "/dat/list",
+            "/dat/check"
         ],
         "activationEvents": [
             
