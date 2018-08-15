@@ -5,12 +5,11 @@ import { ReadStream, WriteStream } from "fs";
 import fs from 'fs';
 import AORouterCoreProcessPretender from "./AORouterCoreProcessPretender";
 import { AORouterCoreProcessInterface } from "./AORouterInterface";
-import { ICoreOptions } from "../bin";
+import { ICoreOptions } from "../index";
 const debug = Debug('ao:router');
 const packageJson = require('../../package.json');
 // Core modules
 const fsPackageJson: IRegistryEntry = require('../modules/fs/package.json');
-const httpPackageJson: IRegistryEntry = require('../modules/http/package.json');
 const dbPackageJson: IRegistryEntry = require('../modules/db/package.json');
 const datPackageJson: IRegistryEntry = require('../modules/dat/package.json');
 const p2pPackageJson: IRegistryEntry = require('../modules/p2p/package.json');
@@ -280,7 +279,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
         this.registerEntry(fsPackageJson)
         this.registerEntry(dbPackageJson)
         this.registerEntry(datPackageJson)
-        this.registerEntry(p2pPackageJson)
+        // this.registerEntry(p2pPackageJson)
         this.registerEntry(ethPackageJson)
     }
 
@@ -326,7 +325,9 @@ export default class AORouter extends AORouterCoreProcessInterface {
     }
 
     private spawnProcessForEntry(entry: IRegistryEntry): ChildProcess | null {
-        const processLocation = path.join(__dirname, '../modules', entry.bin);
+        let processLocation = path.join(__dirname, 'modules', entry.bin);        
+        processLocation = processLocation.replace('app.asar', 'app.asar.unpacked');  // Sry, but if running within electron the paths are off
+        debug(`Attempting to spawn process ${entry.name} at: ${processLocation}`)
         const processArgs = [
                 processLocation, 
                 '--storageLocation', this.args.storageLocation, 
@@ -335,9 +336,8 @@ export default class AORouter extends AORouterCoreProcessInterface {
                 '--corePort', this.args.corePort+"",//Stupid hack around typescript
                 '--ao-core'
             ]
-        let entryProcess: ChildProcess = spawn(process.execPath, processArgs
-            , {
-            stdio: ['ipc', 'inherit', 'inherit', 'pipe', 'pipe'],            
+        let entryProcess: ChildProcess = spawn(this.args.nodeBin, processArgs, {
+            stdio: ['ipc', 'inherit', 'inherit', 'pipe', 'pipe'],
         })
         entryProcess.on('error', (err) => {
             debug(`[${entry.name}] process: error`, err.message)
@@ -383,12 +383,22 @@ export default class AORouter extends AORouterCoreProcessInterface {
 
     public shutdown(): void {
         // TODO: attempt to kill all subprocesses
+        Object.keys(this.registry).forEach((entryName: string) => {
+            const instances = this.registryEntryNameToProcessInstances[entryName]
+            if ( instances ) {
+                instances.forEach((processInstance: Process) => {
+                    if ( processInstance.kill ) {
+                        processInstance.kill()
+                    }
+                })
+            }
+        })
     }
 
     private _printRouterState() {
         const timestamp = Date.now()
         debug(`=======  AORouter state (${timestamp}) =======`)
-        const registeredEntries = Object.keys(this.registry).forEach((entryName: string) => {
+        Object.keys(this.registry).forEach((entryName: string) => {
             const entry: IRegistryEntry = this.registry[entryName]
             const instances = this.registryEntryNameToProcessInstances[entryName]
             debug(`${entry.displayName} (${entry.name}):`)

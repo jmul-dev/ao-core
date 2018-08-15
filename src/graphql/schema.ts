@@ -1,7 +1,7 @@
 'use strict';
 import { GraphQLUpload } from 'apollo-upload-server';
 import Debug from 'debug';
-import { importSchema } from 'graphql-import';
+// import { importSchema } from 'graphql-import';
 import { addMockFunctionsToSchema, makeExecutableSchema } from 'graphql-tools';
 import md5 from 'md5';
 import path from 'path';
@@ -17,7 +17,8 @@ import { generateMockVideoList } from './mockVideos';
 import QueryResolvers from './resolvers/queryResolvers';
 import { resolve } from 'dns';
 
-const graphqlSchema = importSchema( path.resolve(__dirname, './schema.graphql') );
+const graphqlSchema = require('./schema.graphql');
+// const graphqlSchema = importSchema( 'src/graphql/schema.graphql' );
 const packageJson = require('../../package.json');
 const debug = Debug('ao:graphql');
 
