@@ -26,13 +26,6 @@ build-master:
     - centos7
   script:
     - npm run build
-  artifacts:
-    when: on_success
-    expire_in: 6 hrs
-    untracked: true
-    paths:
-      - src/
-      - dist/
 
 release-master:
   stage: release
@@ -47,6 +40,7 @@ release-master:
   before_script:
     - npm install gitlab-ci-releaser
   script:
+    - npm run build
     - $(npm bin)/gitlab-ci-releaser
     - npm publish
   when: manual
