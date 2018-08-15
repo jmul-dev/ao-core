@@ -3,6 +3,7 @@ import path from 'path';
 import Debug from 'debug';
 import { ReadStream, WriteStream } from "fs";
 import fs from 'fs';
+import ffprobeStatic from 'ffprobe-static';
 import AORouterCoreProcessPretender from "./AORouterCoreProcessPretender";
 import { AORouterCoreProcessInterface } from "./AORouterInterface";
 import { ICoreOptions } from "../index";
@@ -47,7 +48,7 @@ export interface IAORouterMessage {
     requestId: string;  // requestId is assigned in the originating process
     responseId?: string;
     ethAddress?: string;
-    event: string;    
+    event: string;
     data?: any;
     error?: Error | string;
 }
@@ -108,7 +109,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
 
     constructor(args: ICoreOptions) {
         super()
-        this.args = args;        
+        this.args = args;
     }
 
     public init() {
@@ -120,7 +121,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
     }
 
     private incomingMessageRouter(message: IAORouterMessage, from: IRegistryEntry, fromProcess: Process) {
-        if ( message.responseId || message.routerMessageId && !message.responseId ) {
+        if (message.responseId || message.routerMessageId && !message.responseId) {
             // NOTE: this is a response to an earlier message, see the AORouter.send 
             // method for how that response is handled
         } else if (message.event) {
@@ -140,7 +141,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
             debug(`[${from.name}] sent a message with no event`)
         }
     }
-    
+
     /**
      * Sends a message to the appropriate registered process(es). 
      * 
@@ -150,9 +151,9 @@ export default class AORouter extends AORouterCoreProcessInterface {
     private async relay(incomingMessage: IAORouterMessage, from: IRegistryEntry, fromProcess: Process): Promise<any> {
         const messageId = incomingMessage.routerMessageId || ++this.messageCount;
         const event = incomingMessage.event
-        return new Promise((resolve, reject) => {            
+        return new Promise((resolve, reject) => {
             // 0. For context, router passes along user id (ethAddress)
-            if ( incomingMessage.event == '/db/user/init' ) {
+            if (incomingMessage.event == '/db/user/init') {
                 this.activeEthAddress = incomingMessage.data.ethAddress
             }
             // 1. Ensure message format (NOTE: we leave data validation up to the event handler)
@@ -162,11 +163,11 @@ export default class AORouter extends AORouterCoreProcessInterface {
                 ethAddress: this.activeEthAddress,
                 event: incomingMessage.event,
                 data: incomingMessage.data,
-                error: incomingMessage.error ? (incomingMessage.error instanceof Error ? incomingMessage.error : new Error(incomingMessage.error) ) : undefined,
+                error: incomingMessage.error ? (incomingMessage.error instanceof Error ? incomingMessage.error : new Error(incomingMessage.error)) : undefined,
             }
             // 2. Make sure we have a registered process that can handle this event
             const entryNameThatCanHandleEvent = this.eventToRegistryEntryName[event]
-            if ( !entryNameThatCanHandleEvent ) {
+            if (!entryNameThatCanHandleEvent) {
                 const err = new Error('No process entries can handle event: ' + event)
                 debug(err.message)
                 reject(err)
@@ -174,18 +175,18 @@ export default class AORouter extends AORouterCoreProcessInterface {
             }
             const receivingRegistryEntry = this.registry[entryNameThatCanHandleEvent]
             const existingProcesses = this.registryEntryNameToProcessInstances[entryNameThatCanHandleEvent]
-            let receivingProcess: Process = null            
-            if ( receivingRegistryEntry.AO.activationEvents && receivingRegistryEntry.AO.activationEvents.indexOf(event) > -1 ) {
+            let receivingProcess: Process = null
+            if (receivingRegistryEntry.AO.activationEvents && receivingRegistryEntry.AO.activationEvents.indexOf(event) > -1) {
                 // 3a. If this is an activation event for the entry, lets spawn another instance
                 receivingProcess = this.spawnProcessForEntry(receivingRegistryEntry)
-            } else if ( existingProcesses.length > 0 ) {
+            } else if (existingProcesses.length > 0) {
                 // 3b. Not an activation event & we have a running process that can handle this event
                 receivingProcess = existingProcesses[0]
             } else {
                 // 3c. Not an activation event, but no existing process
                 receivingProcess = this.spawnProcessForEntry(receivingRegistryEntry)
             }
-            if ( !receivingProcess ) {
+            if (!receivingProcess) {
                 reject(new Error(`Unable to locate process for event: ${event}`))
                 return;
             }
@@ -194,16 +195,16 @@ export default class AORouter extends AORouterCoreProcessInterface {
             let readStream: ReadStream;
             let writeStream: WriteStream;
             let reattachStream: Object = null
-            if ( messageHasStream ) {
-                if(message.data.streamDirection == 'write'){
-                    if ( from.name === 'ao-core' ) {
+            if (messageHasStream) {
+                if (message.data.streamDirection == 'write') {
+                    if (from.name === 'ao-core') {
                         readStream = message.data.stream
                         writeStream = receivingProcess.stdio[3]
                         message.data.stream = true // cannot send the stream object to subprocess
                         debug('piping stream FROM core TO subprocess')
-                    } else if ( receivingRegistryEntry.name === 'ao-core' ) {
+                    } else if (receivingRegistryEntry.name === 'ao-core') {
                         //write from sub to core
-                        readStream = fs.createReadStream(null, {fd: 4})
+                        readStream = fs.createReadStream(null, { fd: 4 })
                         writeStream = new WriteStream()
                         message.data.stream = writeStream
                         reattachStream = writeStream
@@ -215,17 +216,17 @@ export default class AORouter extends AORouterCoreProcessInterface {
                         message.data.stream = true // cannot send the stream object to subprocess
                         debug('piping stream FROM subprocess TO subprocess')
                     }
-                } else if(message.data.streamDirection == 'read') {
-                    if ( from.name === 'ao-core') {
+                } else if (message.data.streamDirection == 'read') {
+                    if (from.name === 'ao-core') {
                         //request core read a sub process
                         readStream = receivingProcess.stdio[4]//4 is output!
                         writeStream = message.data.stream
                         reattachStream = writeStream
                         message.data.stream = true // cannot send the stream object to subprocess
-                    } else if( receivingRegistryEntry.name === 'ao-core' ) {
+                    } else if (receivingRegistryEntry.name === 'ao-core') {
                         //request sub wants to read a core process
                         readStream = new ReadStream() //TODO: Figure out how to read from core
-                        writeStream = fs.createWriteStream(null, {fd: 3} ) //3 is for input
+                        writeStream = fs.createWriteStream(null, { fd: 3 }) //3 is for input
                     } else {
                         //sub to sub
                         readStream = receivingProcess.stdio[4]
@@ -233,8 +234,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
                         message.data.stream = true // cannot send the stream object to subprocess
                     }
                 }
-                readStream.pipe(writeStream)
-                .on('error', (err) => {
+                readStream.pipe(writeStream).on('error', (err) => {
                     debug(err)
                 })
             }
@@ -242,8 +242,8 @@ export default class AORouter extends AORouterCoreProcessInterface {
             debug(`routing event    [${message.routerMessageId}][${event}]: ${from.name} -> ${receivingRegistryEntry.name} ${messageHasStream ? '(with stream)' : ''}`)
             // 5. Send the request out 
             receivingProcess.send(message, (error?: Error) => {
-                if ( error ) {
-                    if ( messageHasStream ) {
+                if (error) {
+                    if (messageHasStream) {
                         readStream.unpipe(writeStream)
                     }
                     reject(error)
@@ -251,15 +251,15 @@ export default class AORouter extends AORouterCoreProcessInterface {
                 }
                 // 6. Match incoming messages to the requestId, this will be our response
                 receivingProcess.on('message', function receivingProcessResponseHandler(response: IAORouterMessage) {
-                    if ( message.routerMessageId === response.routerMessageId ) {
+                    if (message.routerMessageId === response.routerMessageId) {
                         const responseTime = Date.now() - startTime
                         const responseTimeFormated = (responseTime / 1000).toFixed(2)
                         debug(`routing response [${message.routerMessageId}][${event}]: ${from.name} <- ${receivingRegistryEntry.name}, duration[${responseTimeFormated}s] ${response.error ? ', rejecting with error' : ''}`)
-                        if ( response.error ) {
+                        if (response.error) {
                             reject(response.error)
                         } else {
                             //for certain scenarios, we need to re-attach a read/write stream back to core.
-                            if(messageHasStream && from.name === 'ao-core' && reattachStream) {
+                            if (messageHasStream && from.name === 'ao-core' && reattachStream) {
                                 response.data['stream'] = reattachStream
                             }
                             resolve(response)
@@ -282,13 +282,13 @@ export default class AORouter extends AORouterCoreProcessInterface {
     }
 
     private registerEntry(entry: IRegistryEntry) {
-        if ( this.registry[entry.name] ) {            
+        if (this.registry[entry.name]) {
             debug('Registry name collision, possibly duplicate entry name. Not registering...', entry)
             this._printRouterState()
         } else {
             this.registry[entry.name] = entry
             this.registry[entry.name].AO.events.forEach(event => {
-                if ( this.eventToRegistryEntryName[event] ) {
+                if (this.eventToRegistryEntryName[event]) {
                     // Current limitation of AORouter is that there is a one-to-one
                     // relation between registry entry and event
                     const err = new Error(`Registry entry is attempting to listen for an event[${event}] that is already registered by entry[${this.eventToRegistryEntryName[event]}]`)
@@ -304,36 +304,37 @@ export default class AORouter extends AORouterCoreProcessInterface {
     private spawnCoreProcesses() {
         Object.keys(this.registry).forEach((entryName: string) => {
             const registryEntry: IRegistryEntry = this.registry[entryName]
-            if ( registryEntry.AO.runUnderCore ) {
+            if (registryEntry.AO.runUnderCore) {
                 this.bindCoreProcess(registryEntry)
-            } else if ( !registryEntry.AO.activationEvents || registryEntry.AO.activationEvents.length === 0 ) {
+            } else if (!registryEntry.AO.activationEvents || registryEntry.AO.activationEvents.length === 0) {
                 this.spawnProcessForEntry(registryEntry)
             }
         })
     }
 
-    private bindCoreProcess(entry: IRegistryEntry): AORouterCoreProcessPretender {        
+    private bindCoreProcess(entry: IRegistryEntry): AORouterCoreProcessPretender {
         let coreEntryProcess: AORouterCoreProcessPretender = this.router.process
         coreEntryProcess.on('exit', this.shutdown.bind(this))
         coreEntryProcess.on('message', (message: IAORouterMessage) => {
             this.incomingMessageRouter(message, entry, coreEntryProcess)
         })
-        this.addProcessIntanceToEntry(entry.name, coreEntryProcess)        
+        this.addProcessIntanceToEntry(entry.name, coreEntryProcess)
         return coreEntryProcess
     }
 
     private spawnProcessForEntry(entry: IRegistryEntry): ChildProcess | null {
-        let processLocation = path.join(__dirname, 'modules', entry.bin);        
+        let processLocation = path.join(__dirname, 'modules', entry.bin);
         processLocation = processLocation.replace('app.asar', 'app.asar.unpacked');  // Sry, but if running within electron the paths are off
         debug(`Attempting to spawn process ${entry.name} at: ${processLocation}`)
         const processArgs = [
-                processLocation, 
-                '--storageLocation', this.args.storageLocation, 
-                '--httpOrigin', this.args.httpOrigin, 
-                '--coreOrigin', this.args.coreOrigin,
-                '--corePort', this.args.corePort+"",//Stupid hack around typescript
-                '--ao-core'
-            ]
+            processLocation,
+            '--storageLocation', this.args.storageLocation,
+            '--httpOrigin', this.args.httpOrigin,
+            '--coreOrigin', this.args.coreOrigin,
+            '--corePort', `${this.args.corePort}`,
+            '--ffprobeBin', ffprobeStatic.path,
+            '--ao-core'
+        ]
         let entryProcess: ChildProcess = spawn(this.args.nodeBin, processArgs, {
             stdio: ['ipc', 'inherit', 'inherit', 'pipe', 'pipe'],
         })
@@ -349,8 +350,8 @@ export default class AORouter extends AORouterCoreProcessInterface {
         entryProcess.on('message', (message: IAORouterMessage) => {
             this.incomingMessageRouter(message, entry, entryProcess)
         })
-        if ( entryProcess.pid ) {
-            this.addProcessIntanceToEntry(entry.name, entryProcess)        
+        if (entryProcess.pid) {
+            this.addProcessIntanceToEntry(entry.name, entryProcess)
             return entryProcess
         } else {
             debug(new Error('Could not spawn process: ' + entry.name))
@@ -358,7 +359,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
         }
     }
 
-    private addProcessIntanceToEntry(entryName: string, processInstance: Process) {        
+    private addProcessIntanceToEntry(entryName: string, processInstance: Process) {
         this.registryEntryNameToProcessInstances[entryName].push(processInstance);
         debug(`[${entryName}] adding process instance, instances running: ${this.registryEntryNameToProcessInstances[entryName].length}`)
     }
@@ -367,7 +368,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
         let existingProcesses = this.registryEntryNameToProcessInstances[entryName]
         for (let i = 0; i < existingProcesses.length; i++) {
             const existingProcess = existingProcesses[i];
-            if ( existingProcess === processInstance ) {
+            if (existingProcess === processInstance) {
                 debug(`[${entryName}] removing process instance, instances remaining: ${existingProcesses.length - 1}`)
                 this.registryEntryNameToProcessInstances[entryName] = existingProcesses.splice(i, 1)
                 break;
@@ -383,9 +384,9 @@ export default class AORouter extends AORouterCoreProcessInterface {
         // TODO: attempt to kill all subprocesses
         Object.keys(this.registry).forEach((entryName: string) => {
             const instances = this.registryEntryNameToProcessInstances[entryName]
-            if ( instances ) {
+            if (instances) {
                 instances.forEach((processInstance: Process) => {
-                    if ( processInstance.kill ) {
+                    if (processInstance.kill) {
                         processInstance.kill()
                     }
                 })
