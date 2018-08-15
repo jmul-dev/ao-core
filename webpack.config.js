@@ -1,5 +1,7 @@
-var webpack = require('webpack');
-var path = require('path');
+const webpack = require('webpack');
+const path = require('path');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
+const PermissionsOutputPlugin = require('webpack-permissions-plugin');
 
 module.exports = {
     mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
@@ -15,7 +17,7 @@ module.exports = {
         dat: "./src/modules/dat/dat.bin.ts",
         db: "./src/modules/db/db.bin.ts",
         fs: "./src/modules/fs/fs.bin.ts",
-        p2p: "./src/modules/p2p/p2p.bin.ts",
+        // p2p: "./src/modules/p2p/p2p.bin.ts",
         eth: "./src/modules/eth/eth.bin.ts",
     },
     output: {
@@ -54,6 +56,19 @@ module.exports = {
         ]
     },
     plugins: [
-        new webpack.BannerPlugin({banner: '#!/usr/bin/env node', raw: true})
+        new webpack.BannerPlugin({banner: '#!/usr/bin/env node', raw: true}),
+        new CopyWebpackPlugin([
+            { from: 'node_modules/ffprobe-static/bin', to: 'bin' }
+        ]),
+        new PermissionsOutputPlugin({
+            // buildFolders: [
+            //     path.resolve(__dirname, 'dist/bin')
+            // ]
+            buildFiles: [
+                path.resolve(__dirname, 'dist/bin/darwin/x64/ffprobe'),
+                path.resolve(__dirname, 'dist/bin/win32/x64/ffprobe.exe'),
+                path.resolve(__dirname, 'dist/bin/linux/x64/ffprobe')
+            ]
+        })
     ]
 };
