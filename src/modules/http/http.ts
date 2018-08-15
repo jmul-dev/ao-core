@@ -22,6 +22,8 @@ export interface Http_Args {
 }
 
 export default class Http {
+    public static RESOURCES_ENDPOINT = 'resources';
+    public static ENCRYPTED_RESOURCES_ENDPOINT = 'resources/user';
     private express: Express;
     private server: Server;
     private router: AOCoreProcessRouter;
@@ -38,7 +40,7 @@ export default class Http {
             graphqlExpress({ schema: graphqlSchema })
         );
         this.express.get('/graphiql', graphiqlExpress({ endpointURL: '/graphql' })); // TODO: enable based on process.env.NODE_ENV
-        this.express.get('/resources/:key/:filename', async (request, response: Response, next) => {
+        this.express.get(`/${Http.RESOURCES_ENDPOINT}/:key/:filename`, async (request, response: Response, next) => {
             try {
                 this._streamFile(request,response)
             } catch(e) {
@@ -46,7 +48,7 @@ export default class Http {
                 next(e)
             }
         })
-        this.express.get('/resources/decrypt/:key/:filename', async (request, response: Response, next) => {
+        this.express.get(`/${Http.ENCRYPTED_RESOURCES_ENDPOINT}/:key/:filename`, async (request, response: Response, next) => {
             try {
                 this._streamEncryptedFile(request,response)
             } catch(e) {

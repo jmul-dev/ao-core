@@ -32,7 +32,7 @@ let mockStore = {
 }
 
 export default function (router: AOCoreProcessRouter, options: Http_Args) {
-    const queryResolvers = QueryResolvers(router)
+    const queryResolvers = QueryResolvers(router, options)
     const schema = makeExecutableSchema({
         typeDefs: [graphqlSchema],
         resolvers: {
@@ -215,6 +215,7 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                         profit: args.inputs.profit,
                                         createdAt: Date.now(),
         
+                                        fileUrl: `${contentDatKey}/${contentFileNames[0]}`,
                                         fileDatKey: contentDatKey,
                                         fileName: contentFileNames[0],
                                         fileSize: fileSize,
