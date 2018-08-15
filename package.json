@@ -45,7 +45,6 @@
     "libp2p-rpc": "git://github.com/nharlow89/libp2p-rpc.git",
     "md5": "^2.2.1",
     "minimist": "^1.2.0",
-    "multidat": "^5.1.0",
     "nedb": "^1.8.0",
     "node-ipc": "^9.1.1",
     "peer-info": "^0.14.1",

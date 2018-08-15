@@ -60,14 +60,12 @@ export interface AODB_DatsGet_Data {
 }
 export interface AODB_DatsInsert_Data {
     key: string;
-    dir: string;
     contentJSON?: Object;
     createdAt?: Date;
     updatedAt?: Date;
 }
 export interface AODB_UpdateObject {
     key?: string;
-    dir?: string;
     contentJSON?: Object;
     createdAt?: Date;
     updatedAt?: Date;
@@ -323,7 +321,6 @@ export default class AODB extends AORouterInterface {
 
     
     private _datsInit(request: IAORouterRequest) {
-        //const requestData: AODB_DatsInit_Data = request.data
         this.db.dats = new Datastore({
             filename: path.resolve(this.storageLocation, 'users', request.ethAddress, 'dats.db.json'),
             autoload: true,
