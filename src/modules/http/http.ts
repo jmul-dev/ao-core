@@ -82,31 +82,18 @@ export default class Http {
                 }
                 this.router.send('/fs/stats', statFileData).then((fileStats) => {
                     const fileSize = fileStats.data.size
-                    if(request.headers.range) {
-                        //Videos and stuff
-                        var range = request.headers.range;
-                        var positions = range.replace(/bytes=/, "").split("-");
-                        var start = parseInt(positions[0], 10);
-                        var total = fileSize;
-                        var end = positions[1] ? parseInt(positions[1], 10) : total - 1;
-                        var chunksize = (end - start) + 1;
-                        let head206 = {
-                            "Content-Range": "bytes " + start + "-" + end + "/" + total,
-                            "Accept-Ranges": "bytes",
-                            "Content-Length": chunksize
-                        }
-                        response.writeHead(206, head206);
-                    } else {
-                        //Images and smaller files
-                        let head200 = {
-                            "Accept-Ranges": "bytes",
-                            "Content-Length": fileSize
-                        }
-                        response.writeHead(200, head200);
+                    let streamOptions:Object = {}
+                    //Images and smaller files
+                    let head200 = {
+                        "Accept-Ranges": "bytes",
+                        "Content-Length": fileSize
                     }
+                    response.writeHead(200, head200);
+                    
                     const readFileData: IAOFS_ReadStream_Data = {
                         stream: response,
                         streamDirection: 'read',
+                        streamOptions: streamOptions,
                         readPath: filePath
                     }
                     this.router.send('/fs/readStream',readFileData).then(() => {
@@ -140,38 +127,22 @@ export default class Http {
                 .then( (doc) => {
                     if(doc.data.length) {
                         let docData = doc.data[0]
-                        if(request.headers.range) {
-                            var range = request.headers.range;
-                            var positions = range.replace(/bytes=/, "").split("-");
-                            var start = parseInt(positions[0], 10);
-                            var total = docData.fileSize;
-                            var end = positions[1] ? parseInt(positions[1], 10) : total - 1;
-                            var chunksize = (end - start) + 1;
-                            let head206 = {
-                                "Content-Range": "bytes " + start + "-" + end + "/" + total,
-                                "Accept-Ranges": "bytes",
-                                "Content-Length": chunksize,
-                                "Content-Type": "video/mp4"
-                            }
-                            response.writeHead(206, head206);
-                        } else {
-                            let head200 = {
-                                "Accept-Ranges": "bytes",
-                                "Content-Length": total,
-                                "Content-Type": "video/mp4"
-                            }
-                            response.writeHead(200, head200);
+                        let total = docData.fileSize;
+                        let streamOptions:Object = {}
+                        let head200 = {
+                            "Accept-Ranges": "bytes",
+                            "Content-Length": total
                         }
+                        response.writeHead(200, head200);
                         
                         //Stream the freaken file
                         const readFileData: IAOFS_ReadStream_Data = {
                             stream: response,
                             streamDirection: 'read',
-                            streamOptions: { start: start, end: end },
+                            streamOptions: streamOptions,
                             readPath: path.join('content',datKey,filename),
                             key: docData.decryptionKey
                         }
-                        debug(docData.decryptionKey)
                         this.router.send('/fs/readStream',readFileData).then(() => {
                             debug('got past readFile')
                             resolve()
