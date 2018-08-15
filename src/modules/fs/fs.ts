@@ -53,6 +53,10 @@ export interface IAOFS_Move_Data {
 export interface IAOFS_Unlink_Data {
     removePath: string;
 }
+export interface IAOFS_FileStat_data {
+    path: string;
+}
+
 
 /**
  * AOFS
@@ -74,6 +78,7 @@ export default class AOFS extends AORouterInterface {
         this.router.on('/fs/mkdir', this._handleMkdir.bind(this))
         this.router.on('/fs/move', this._handleMove.bind(this))
         this.router.on('/fs/unlink', this._handleUnlink.bind(this))
+        this.router.on('/fs/stats', this._handleFileStat.bind(this))
         debug(`started`)
     }
 
@@ -124,7 +129,7 @@ export default class AOFS extends AORouterInterface {
                     readFrom.pipe( encrypt ).pipe( writeToEncrypted )
                     .on('finish', () => {
                         //get stats for the encrypted file.
-                        const fileStats = fs.statSync( encryptedPath )
+                        //const fileStats = fs.statSync( encryptedPath )
     
                         //remove the original file
                         fsExtra.remove(writePath)
@@ -253,5 +258,16 @@ export default class AOFS extends AORouterInterface {
             }
             request.respond({})
         })
+    }
+
+    _handleFileStat(request: IAORouterRequest) {
+        const requestData: IAOFS_FileStat_data = request.data
+        const filePath = path.resolve(this.storageLocation, requestData.path)
+        try {
+            const fileStats = fs.statSync(filePath)
+            request.respond(fileStats)
+        } catch(e) {
+            request.reject(e)
+        }
     }
 }

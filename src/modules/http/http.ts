@@ -9,7 +9,7 @@ import { apolloUploadExpress } from 'apollo-upload-server';
 import Debug from 'debug';
 import {AOCoreProcessRouter} from "../../router/AORouterInterface";
 import { AODat_Check_Data } from '../dat/dat';
-import { IAOFS_ReadStream_Data } from '../fs/fs';
+import { IAOFS_ReadStream_Data, IAOFS_FileStat_data } from '../fs/fs';
 import { createWriteStream, WriteStream } from 'fs';
 import { resolve } from 'dns';
 import { AODB_UserContentGet_Data } from '../db/db';
@@ -32,7 +32,7 @@ export default class Http {
         const graphqlSchema = schema(this.router, options);
         this.express.use(
             '/graphql', 
-            cors({origin: options.httpOrigin}), 
+            cors({origin: options.httpOrigin}),
             json(), 
             apolloUploadExpress({maxFieldSize: "1gb"}),
             graphqlExpress({ schema: graphqlSchema })
@@ -47,7 +47,6 @@ export default class Http {
             }
         })
         this.express.get('/resources/decrypt/:key/:filename', async (request, response: Response, next) => {
-            
             try {
                 this._streamEncryptedFile(request,response)
             } catch(e) {
@@ -77,20 +76,52 @@ export default class Http {
             }
             this.router.send('/dat/check',datCheckData)
             .then(() => {
-                const readFileData: IAOFS_ReadStream_Data = {
-                    stream: response,
-                    streamDirection: 'read',
-                    readPath: path.join('content',datKey,filename)
+                const filePath = path.join('content',datKey,filename)
+                const statFileData: IAOFS_FileStat_data = {
+                    path: filePath
                 }
-                this.router.send('/fs/readStream',readFileData).then(() => {
-                    resolve()
+                this.router.send('/fs/stats', statFileData).then((fileStats) => {
+                    const fileSize = fileStats.data.size
+                    if(request.headers.range) {
+                        //Videos and stuff
+                        var range = request.headers.range;
+                        var positions = range.replace(/bytes=/, "").split("-");
+                        var start = parseInt(positions[0], 10);
+                        var total = fileSize;
+                        var end = positions[1] ? parseInt(positions[1], 10) : total - 1;
+                        var chunksize = (end - start) + 1;
+                        let head206 = {
+                            "Content-Range": "bytes " + start + "-" + end + "/" + total,
+                            "Accept-Ranges": "bytes",
+                            "Content-Length": chunksize
+                        }
+                        response.writeHead(206, head206);
+                    } else {
+                        //Images and smaller files
+                        let head200 = {
+                            "Accept-Ranges": "bytes",
+                            "Content-Length": fileSize
+                        }
+                        response.writeHead(200, head200);
+                    }
+                    const readFileData: IAOFS_ReadStream_Data = {
+                        stream: response,
+                        streamDirection: 'read',
+                        readPath: filePath
+                    }
+                    this.router.send('/fs/readStream',readFileData).then(() => {
+                        resolve()
+                    }).catch(reject)
                 }).catch(reject)
+
+                
             }).catch(reject)
         })
     }
 
     private _streamEncryptedFile(request,response) {
         return new Promise( (resolve, reject) => {
+            debug('Gettin hit at the encrypted stream!')
             const datKey = request.params.key
             const filename = request.params.filename
 
@@ -109,19 +140,29 @@ export default class Http {
                 .then( (doc) => {
                     if(doc.data.length) {
                         let docData = doc.data[0]
-                        var range = request.headers.range;
-                        var positions = range.replace(/bytes=/, "").split("-");
-                        var start = parseInt(positions[0], 10);
-                        var total = docData.fileSize;
-                        var end = positions[1] ? parseInt(positions[1], 10) : total - 1;
-                        var chunksize = (end - start) + 1;
-
-                        response.writeHead(206, {
-                            "Content-Range": "bytes " + start + "-" + end + "/" + total,
-                            "Accept-Ranges": "bytes",
-                            "Content-Length": chunksize,
-                            "Content-Type": "video/mp4"
-                        });
+                        if(request.headers.range) {
+                            var range = request.headers.range;
+                            var positions = range.replace(/bytes=/, "").split("-");
+                            var start = parseInt(positions[0], 10);
+                            var total = docData.fileSize;
+                            var end = positions[1] ? parseInt(positions[1], 10) : total - 1;
+                            var chunksize = (end - start) + 1;
+                            let head206 = {
+                                "Content-Range": "bytes " + start + "-" + end + "/" + total,
+                                "Accept-Ranges": "bytes",
+                                "Content-Length": chunksize,
+                                "Content-Type": "video/mp4"
+                            }
+                            response.writeHead(206, head206);
+                        } else {
+                            let head200 = {
+                                "Accept-Ranges": "bytes",
+                                "Content-Length": total,
+                                "Content-Type": "video/mp4"
+                            }
+                            response.writeHead(200, head200);
+                        }
+                        
                         //Stream the freaken file
                         const readFileData: IAOFS_ReadStream_Data = {
                             stream: response,

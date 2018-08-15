@@ -14,7 +14,8 @@
             "/fs/writeStream",
             "/fs/mkdir",
             "/fs/move",
-            "/fs/unlink"
+            "/fs/unlink",
+            "/fs/stats"
         ],
         "activationEvents": [
             "/fs/readStream",
