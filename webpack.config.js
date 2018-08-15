@@ -64,9 +64,18 @@ module.exports = {
             //     path.resolve(__dirname, 'dist/bin')
             // ]
             buildFiles: [
-                path.resolve(__dirname, 'dist/bin/darwin/x64/ffprobe'),
-                path.resolve(__dirname, 'dist/bin/win32/x64/ffprobe.exe'),
-                path.resolve(__dirname, 'dist/bin/linux/x64/ffprobe')
+                {
+                    path: path.resolve(__dirname, 'dist/bin/darwin/x64/ffprobe'),
+                    fileMode: '755'
+                },
+                {
+                    path: path.resolve(__dirname, 'dist/bin/win32/x64/ffprobe.exe'),
+                    fileMode: '755'
+                },
+                {
+                    path: path.resolve(__dirname, 'dist/bin/linux/x64/ffprobe'),
+                    fileMode: '755'
+                }
             ]
         })
     ]
