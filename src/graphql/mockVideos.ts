@@ -21,8 +21,8 @@ function generateRandomVideo(coreOrigin,corePort) {
     return {
         // IContent
         id: casual.uuid,
-        nodeID: casual.uuid,
-        creatorID: casual.uuid,
+        nodeId: casual.uuid,
+        creatorId: casual.uuid,
         contentType: 'VOD',
         isFolder: false,
         isMutable: false,

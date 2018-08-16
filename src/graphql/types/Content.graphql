@@ -8,9 +8,9 @@ enum ContentType {
 # Shared interface between all content types
 interface IContent {
     id: ID!
-    stakeID: ID
-    nodeID: ID!
-    creatorID: ID!
+    stakeId: ID
+    nodeId: ID!
+    creatorId: ID!
     contentType: ContentType!
     isFolder: Boolean!
     isMutable: Boolean!
@@ -32,9 +32,9 @@ interface IContent {
 
 type VideoContent implements IContent {
     id: ID!    
-    stakeID: ID
-    nodeID: ID!
-    creatorID: ID!
+    stakeId: ID
+    nodeId: ID!
+    creatorId: ID!
     contentType: ContentType!
     isFolder: Boolean!
     isMutable: Boolean!
