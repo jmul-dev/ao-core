@@ -204,6 +204,8 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                                     
                                     const contentJson = {
                                         id: contentDatKey,
+                                        nodeId: ethAddress,
+
                                         creatorId: ethAddress,
                                         metadataDatKey: metadataDatKey,
                                         contentType: 'VOD',
