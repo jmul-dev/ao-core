@@ -1,7 +1,6 @@
 import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
 import Datastore from 'nedb';
 import path from 'path';
-import fs from 'fs';
 import Debug from 'debug';
 const debug = Debug('ao:db');
 
@@ -50,34 +49,6 @@ export interface AODB_UserContentGet_Data {
     query?: Object;
 }
 
-/**
- * Dats
- */
-export interface AODB_DatsInit_Data {
-}
-export interface AODB_DatsGet_Data {
-    query?:Object;
-}
-export interface AODB_DatsInsert_Data {
-    key: string;
-    contentJSON?: Object;
-    createdAt?: Date;
-    updatedAt?: Date;
-}
-export interface AODB_UpdateObject {
-    key?: string;
-    contentJSON?: Object;
-    createdAt?: Date;
-    updatedAt?: Date;
-}
-export interface AODB_DatsUpdate_Data {
-    query: Object;
-    update: any;
-}
-export interface AODB_DatsRemove_Data {
-    query: Object;
-}
-
 
 export default class AODB extends AORouterInterface {
     public static DEFAULT_SETTINGS = {
@@ -93,11 +64,12 @@ export default class AODB extends AORouterInterface {
     private db: {
         logs: Datastore,
         settings: Datastore,
-        dats?: Datastore,
-        decryptionKeys?: Datastore
+        dats: Datastore,
     };
     private userDbs: {
-        [key: string]: Datastore
+        [key: string]: {
+            content: Datastore,
+        }
     } = {};
 
     constructor(args: AODB_Args) {
@@ -107,17 +79,10 @@ export default class AODB extends AORouterInterface {
         this.router.on('/db/logs/insert', this._logsInsert.bind(this))
         this.router.on('/db/settings/get', this._settingsGet.bind(this))
         this.router.on('/db/settings/update', this._settingsUpdate.bind(this))
-
-        this.router.on('/db/user/init', this._setupUserDb.bind(this))
+        this.router.on('/db/user/init', this._setupUserDbs.bind(this))
         this.router.on('/db/user/get', this._getUser.bind(this))
         this.router.on('/db/user/content/get', this._userContentGet.bind(this))
-        this.router.on('/db/user/content/insert', this._userContentInsert.bind(this))
-
-        this.router.on('/db/dats/init', this._datsInit.bind(this))
-        this.router.on('/db/dats/get', this._datsGet.bind(this))
-        this.router.on('/db/dats/insert', this._datsInsert.bind(this))
-        this.router.on('/db/dats/update', this._datsUpdate.bind(this))
-        this.router.on('/db/dats/remove', this._datsRemove.bind(this))
+        this.router.on('/db/user/content/insert', this._userContentInsert.bind(this))        
         this._setupCoreDbs()
         debug(`started`)
         this.router.send('/core/log', {message: `[AO DB] Core database initialized`})
@@ -145,6 +110,15 @@ export default class AODB extends AORouterInterface {
                         })   
                     }
                 }
+            }),
+            dats: new Datastore({
+                filename: path.resolve(this.storageLocation, 'dats.db.json'),
+                autoload: true,
+                onload: (error: Error) => {
+                    if ( error ){
+                        this._handleCoreDbLoadError(error)
+                    }
+                }
             })
         }
         // Logs expire after 48 hrs
@@ -157,32 +131,48 @@ export default class AODB extends AORouterInterface {
         this.db.settings.ensureIndex({
             fieldName: 'setting',
             unique: true,
-        })        
+        })
+        // Dats db indexed by key
+        this.db.dats.ensureIndex({
+            fieldName: 'key',
+            unique: true,
+        })
     }
 
-    private _setupUserDb(request: IAORouterRequest): void {
+    private _setupUserDbs(request: IAORouterRequest): void {
         const requestData: AODB_UserInit_Data = request.data
         if ( !request.ethAddress ) {
             request.reject(new Error('user db init requires eth address'))
             return;
         }
-        if ( this.userDbs[request.ethAddress] instanceof Datastore ) {
+        if ( this.userDbs[request.ethAddress] ) {
             request.respond({loaded: true})
             return;
         }
-        this.userDbs[request.ethAddress] = new Datastore({
-            filename: path.resolve(this.storageLocation, 'users', request.ethAddress, 'content.db.json'),
-            autoload: false,
-        })
-        this.userDbs[request.ethAddress].loadDatabase((error: Error) => {
-            this.router.send('/core/log', {message: `[AO DB] User database initialized for ${request.ethAddress}`})
+        const dbLoadHandler = (error: Error) => {
             if ( error ) {
-                request.reject(error)
-                this.userDbs[request.ethAddress] = undefined
-            } else {
-                request.respond({loaded: true})
+                this._handleCoreDbLoadError(error)
             }
-        })
+        }
+        this.userDbs[request.ethAddress] = {
+            content: new Datastore({
+                filename: path.resolve(this.storageLocation, 'users', request.ethAddress, 'content.db.json'),
+                autoload: true,
+                onload: dbLoadHandler,
+            })
+        }
+        this.router.send('/core/log', {message: `[AO DB] User database initialized for ${request.ethAddress}`})
+        request.respond({loaded: true})
+        // TODO: should probably use Promise.all to ensure each user db is loaded before responding!        
+        // this.userDbs[request.ethAddress].loadDatabase((error: Error) => {
+        //     this.router.send('/core/log', {message: `[AO DB] User database initialized for ${request.ethAddress}`})
+        //     if ( error ) {
+        //         request.reject(error)
+        //         this.userDbs[request.ethAddress] = undefined
+        //     } else {
+        //         request.respond({loaded: true})
+        //     }
+        // })
     }
 
     private _getUser(request: IAORouterRequest): void {
@@ -190,23 +180,19 @@ export default class AODB extends AORouterInterface {
     }
 
     private _handleCoreDbLoadError(error: Error): void {
-        if ( error ) {
-            debug('Error loading core db', error)
-            // TODO: handle gracefully?
-        } else {
-            // TODO: we might need to drop some data (ex: peers) from previous session
-        }
+        debug('Error loading db: ', error)
+        this.router.send('/core/log', {message: error.message})
     }
 
     private _userContentGet(request: IAORouterRequest) {
         const requestData: AODB_UserContentGet_Data = request.data
         let query = requestData.query || {}
-        const userDb = this.userDbs[request.ethAddress]
-        if ( !userDb ) {
+        const userDbs = this.userDbs[request.ethAddress]
+        if ( !userDbs ) {
             request.reject(new Error(`User db not found for ${request.ethAddress}`))
             return;
         }
-        userDb.find(query).exec((error: Error, docs) => {
+        userDbs.content.find(query).exec((error: Error, docs) => {
             if ( error ) {
                 request.reject(error)
             } else {
@@ -217,12 +203,12 @@ export default class AODB extends AORouterInterface {
 
     private _userContentInsert(request: IAORouterRequest) {
         const requestData: any = request.data  // TODO: type check/validate content
-        const userDb = this.userDbs[request.ethAddress]
-        if ( !userDb ) {
+        const userDbs = this.userDbs[request.ethAddress]
+        if ( !userDbs ) {
             request.reject(new Error(`User db not found for ${request.ethAddress}`))
             return;
         }
-        userDb.insert(requestData, (error: Error, doc) => {
+        userDbs.content.insert(requestData, (error: Error, doc) => {
             if ( error ) {
                 request.reject(error)
             } else {
@@ -317,110 +303,6 @@ export default class AODB extends AORouterInterface {
                 }
             })
         }).catch(request.reject)
-    }
-
-    
-    private _datsInit(request: IAORouterRequest) {
-        this.db.dats = new Datastore({
-            filename: path.resolve(this.storageLocation, 'users', request.ethAddress, 'dats.db.json'),
-            autoload: true,
-            onload: (error: Error) => {
-                if ( error ){
-                    this._handleCoreDbLoadError(error)
-                    request.reject(new Error('Error loading up Dats DB'))
-                } else {
-                    //let's return everything from init
-                    this.db.dats.find({}).exec((err, results) => {
-                        if ( err ) {
-                            request.reject(err)
-                        } else {
-                            let returnValue = {}
-                            for (let i = 0; i < results.length; i++) {
-                                const result = results[i];
-                                returnValue[result['key']] = result
-                            }
-                            request.respond(returnValue)
-                        }
-                    })
-                }
-            }
-        })
-    }
-    private _datsGet(request: IAORouterRequest) {
-        const requestData: AODB_DatsGet_Data = request.data
-        if(!this.db.dats) {
-            request.reject(new Error('Dats DB not initialized'))
-        } else {
-            let query = requestData.query || {}
-            this.db.dats.find(query).exec((err, results) => {
-                if ( err ) {
-                    request.reject(err)
-                } else {
-                    if( Array.isArray(results) ) {
-                        let returnValue = {}
-                        for (let i = 0; i < results.length; i++) {
-                            const result = results[i];
-                            returnValue[result['key']] = result
-                        }
-                        request.respond(returnValue)
-                    } else {
-                        request.respond(results)
-                    }                    
-                }
-            })
-        }
-        
-    }
-    private _datsInsert(request: IAORouterRequest) {
-        const requestData: AODB_DatsInsert_Data = request.data
-        if(!this.db.dats) {
-            request.reject(new Error('Dats DB not initialized'))
-        } else {
-            if ( !requestData.createdAt || !(requestData.createdAt instanceof Date) ) {
-                requestData.createdAt = new Date()
-            }
-            if ( !requestData.updatedAt || !(requestData.updatedAt instanceof Date) ) {
-                requestData.updatedAt = requestData.createdAt
-            }
-            this.db.dats.insert(requestData, (err) => {
-                if(err) {
-                    debug('Error inserting new dat')
-                    request.reject(err)
-                }
-                request.respond(requestData)
-            })
-        }
-    }
-    private _datsUpdate(request: IAORouterRequest) {
-        const requestData: AODB_DatsUpdate_Data = request.data
-        if(!this.db.dats) {
-            request.reject(new Error('Dats DB not initialized'))
-        } else {
-            let options = {
-            }
-            requestData.update.updatedAt = new Date()
-            this.db.dats.update(requestData.query, requestData.update, options, (err,numReplaced) => {
-                if(err) {
-                    request.reject(err)
-                }
-                debug('Update replaced '+numReplaced+' dat record(s)')
-                request.respond({})
-            })
-        }
-    }
-    private _datsRemove(request: IAORouterRequest) {
-        const requestData: AODB_DatsRemove_Data = request.data
-        if(!this.db.dats) {
-            request.reject(new Error('Dats DB not initialized'))
-        } else {
-            this.db.dats.remove(requestData.query, {}, (err,numRemoved) => {
-                if(err) {
-                    request.reject(err)
-                }
-                debug('Removed '+numRemoved+' dat record(s)')
-                request.respond({})
-            })
-        }
     }
 
 }

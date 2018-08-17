@@ -2,14 +2,13 @@ import Dat from 'dat-node';
 import Debug from 'debug';
 import path from "path";
 import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
-import { AODB_DatsInit_Data, AODB_DatsInsert_Data, AODB_DatsRemove_Data } from '../db/db';
-
+import Datastore from 'nedb';
 const debug = Debug('ao:dat');
+
 
 export interface AODat_Args {
     storageLocation: string;
 }
-
 
 export interface AODat_ResumeAll_Data {
 }
@@ -20,99 +19,126 @@ export interface AODat_StopAll_Data {
 export interface AODat_Create_Data {
     newDatDir: string;
 }
-export interface AODat_JoinNetwork_Data {
-    key: string;
-}
 
-export interface AODat_Download_Data {
-    key: string;
-    newDatDir: string;
-}
-
-export interface AODat_Remove_Data {
-    key: string;
-}
-
-export interface AODat_List_Data {
-}
 export interface AODat_Check_Data {
     key: string;
-
 }
 
-export interface Dat_In_Array {
-    key?: string;
+export interface DatEntry {
+    key: string;
     createdAt?: Date;
     updatedAt?: Date;
-    instance?: Dat;
     complete?: boolean;
 }
 
 
 export default class AODat extends AORouterInterface {
-    private storageLocation: string
-    private datDir: string
-    private dats: Array<Dat_In_Array>
+    private storageLocation: string;
+    private datDir: string;
+    private dats: {
+        [key: string]: Dat
+    } = {};
+    private datsDb: Datastore;
 
     constructor(args: AODat_Args) {
         super()
         this.storageLocation = args.storageLocation
-        this.router.on('/dat/resumeAll', this._handleDatResumeAll.bind(this))
+        this.datDir = path.resolve(this.storageLocation, 'content')
+        this.router.on('/dat/resumeAll', this._handleResumeAll.bind(this))
         this.router.on('/dat/stopAll', this._handleDatStopAll.bind(this))
         this.router.on('/dat/create', this._handleDatCreate.bind(this))
-        this.router.on('/dat/joinNetwork', this._handlejoinNetwork.bind(this)) //this is separate from above since we want to include some information in the json files
-        this.router.on('/dat/remove', this._handleDatRemove.bind(this))
-        this.router.on('/dat/list', this._handleDatList.bind(this))
         this.router.on('/dat/check', this._handleDatCheck.bind(this))
+        this.datsDb = new Datastore({
+            filename: path.resolve(this.storageLocation, 'dats.db.json'),
+            autoload: true,
+            onload: (error?: Error) => {
+                if ( error ) {
+                    debug('Error loading dats database', error)
+                    this.router.send('/core/log', {message: 'Error loading dats database'})
+                }
+                this._resumeAll().catch((error: Error) => {
+                    debug(`Error resuming all dats`, error)
+                })
+            }
+        })
+        this.datsDb.ensureIndex({
+            fieldName: 'key',
+            unique: true
+        })
         debug(`started`)
     }
 
-    //Should be the first method called by the core processes.
-    private _handleDatResumeAll(request: IAORouterRequest) {
-        this.datDir = path.resolve(this.storageLocation, 'content')
-        const datInitData: AODB_DatsInit_Data = {
-        }
-        this.router.send('/db/dats/init', datInitData).then((dats) => {
-            this.dats = dats.data
-            let initPromises = []
-            for (const key in this.dats) {
-                if (this.dats.hasOwnProperty(key)) {
-                    initPromises.push(new Promise((resolve, reject) => {
-                        const datInfo = this.dats[key];
-                        const datDir = path.join(this.datDir, datInfo.key)
-                        debug(datDir)
-                        Dat(datDir, (err, dat) => {
-                            if (err) {
-                                debug('error starting dat ' + key)
-                                reject()
-                            }
-                            dat.importFiles({}, () => {
-                                this.dats[key].complete = true
-                            })
-                            dat.joinNetwork()
-                            const dat_link = 'dat://' + dat.key.toString('hex')
-                            debug('Joined network for: ' + dat_link)
-                            this.dats[key]['instance'] = dat
-                            resolve()
-                        })
-                    }))
+    private _resumeAll(): Promise<any> {
+        return new Promise((resolve, reject) => {
+            this.datsDb.find({}).exec((error: Error, docs) => {
+                if ( error ) {
+                    debug('Error loading dats from datsDb', error)
+                    reject(error)
+                    return;
                 }
-            }
-            Promise.all(initPromises).then(() => {
-                debug(`Dat process initialized for user ${request.ethAddress}`)
-                this.router.send('/core/log', { message: `[AO Dat] Dat process initialized for user ${request.ethAddress}` })
-                request.respond({ dat: 'All Dats have Resumed' })
-            }).catch(request.reject)
+                let datKeyPromises = []
+                docs.forEach((datEntry: DatEntry) => {
+                    datKeyPromises.push(this._resume(datEntry))
+                })
+                Promise.all(datKeyPromises).then(() => {
+                    debug('Resumed all dats')
+                    this.router.send('/core/log', { message: `[AO Dat] All local dats resumed` })
+                    resolve()
+                }).catch(reject)
+            })
+        })
+    }
 
-        }).catch(request.reject)
+    private _resume(datEntry: DatEntry): Promise<any> {
+        return new Promise((resolve, reject) => {
+            const datDir = path.join(this.datDir, datEntry.key)
+            debug(`Resuming dat: ${datDir}`)
+            Dat(datDir, (err: Error, dat: Dat) => {
+                if (err) {
+                    debug('Error resuming dat ' + datEntry.key)
+                    reject(err)
+                }
+                dat.importFiles({}, () => {
+                    this._updateDatEntry({
+                        ...datEntry,
+                        complete: true,
+                    })
+                })
+                dat.joinNetwork()
+                debug(`Joined network: dat://${dat.key.toString('hex')}`)
+                this.dats[datEntry.key] = dat
+                resolve()
+            })
+        })
+    }
+
+    private _updateDatEntry(datEntry: DatEntry) {
+        this.datsDb.update({key: datEntry.key}, datEntry, {upsert: true})
+    }
+    private _getDatEntry(datKey: string): Promise<any> {
+        return new Promise((resolve, reject) => {
+            this.datsDb.findOne({key: datKey}, function(error: Error, doc: DatEntry) {
+                if ( error ) {
+                    reject(error)
+                } else if ( !doc ) {
+                    reject( new Error(`No dat entry found for key: ${datKey}`) )
+                } else {
+                    resolve(doc)
+                }
+            })
+        })
+    }
+    
+    private _handleResumeAll(request: IAORouterRequest) {
+        this._resumeAll().then(request.respond).catch(request.reject)
     }
 
     private _handleDatStopAll(request: IAORouterRequest) {
         for (const key in this.dats) {
             if (this.dats.hasOwnProperty(key)) {
-                const dat = this.dats[key]
-                if (dat.instance) {
-                    dat.instance.close()
+                const datInstance = this.dats[key]
+                if (datInstance) {
+                    datInstance.close()
                 }
             }
         }
@@ -122,156 +148,38 @@ export default class AODat extends AORouterInterface {
     private _handleDatCreate(request: IAORouterRequest) {
         const requestData: AODat_Create_Data = request.data
         const fullPath = path.join(this.datDir, requestData.newDatDir)
-        if (!this.dats) {
-            request.reject(new Error('Dat is not ready? is EthAddress set?'))
-        } else {
-            Dat(fullPath, (err, dat) => {
-                if (err) {
-                    debug('failed to create new dat')
-                    request.reject(err)
-                }
-                dat.importFiles()
-                const datKey = dat.key.toString('hex')
-                debug('New link: dat://' + datKey)
-
-                const dbInsertData: AODB_DatsInsert_Data = {
-                    key: datKey
-                }
-                this.router.send('/db/dats/insert', dbInsertData)
-                    .then(() => {
-                        this.dats[datKey] = {
-                            key: datKey
-                        }
-                        request.respond({
-                            key: datKey,
-                            dir: requestData.newDatDir //Note that this is used to mark the dir that this was created against.  Important for uploads as its diffrent from the final dir name
-                        })
-                    }).catch(e => {
-                        debug('trouble with insert in dat create')
-                        debug(e)
-                        request.reject(e)
-                    })
+        Dat(fullPath, (err, dat) => {
+            if (err) {
+                debug('failed to create new dat')
+                request.reject(err)
+                return;
+            }
+            dat.importFiles()
+            const datKey = dat.key.toString('hex')
+            debug('Created new dat file: dat://' + datKey)
+            this.dats[datKey] = dat;
+            const newDatEntry: DatEntry = {
+                key: datKey,
+                complete: true, // assume its complete since already on disk
+                updatedAt: new Date(),
+                createdAt: new Date(),
+            }
+            this._updateDatEntry(newDatEntry)            
+            request.respond({
+                ...newDatEntry,
+                dir: requestData.newDatDir
             })
-        }
-    }
-    private _handlejoinNetwork(request: IAORouterRequest) {
-        const requestData: AODat_JoinNetwork_Data = request.data
-        debug('requested join key' + requestData.key)
-        if (this.dats) {
-            let found = false
-            for (const key in this.dats) {
-                if (this.dats.hasOwnProperty(key)) {
-                    const dat = this.dats[key];
-                    const instance = dat.instance
-                    if (
-                        instance &&
-                        instance.key.toString('hex') == requestData.key
-                    ) {
-                        debug('Joining network for ' + requestData.key)
-                        instance.joinNetwork()
-
-                        //importer options https://github.com/datproject/dat-node#var-importer--datimportfilessrc-opts-cb
-                        let importer = instance.importFiles({ watch: true }, () => {
-                            this.dats[key].complete = true
-                            request.respond({})
-                        })
-                        found = true
-                        break
-                        //importer.on()
-                    }
-                }
-            }
-            if (!found) {
-                debug('Provided key is new, adding ' + requestData.key.substr(0, 8) + '... to dats')
-                const fullPath = path.join(this.datDir, requestData.key)
-                const options = {
-                    key: requestData.key
-                }
-                Dat(fullPath, options, (err, instance) => {
-                    const now = new Date()
-                    let dat: Dat_In_Array = {
-                        key: requestData.key,
-                        instance: instance,
-                        createdAt: now,
-                        updatedAt: now
-                    }
-                    this.dats[requestData.key] = dat //Store locally
-
-                    instance.joinNetwork()
-
-                    //Store dat key in dats db
-                    const insertNewDatData: AODB_DatsInsert_Data = {
-                        key: requestData.key
-                    }
-                    this.router.send('/db/dats/insert', insertNewDatData)
-                        .then(() => {
-                            let importer = instance.importFiles({ watch: true }, () => {
-                                this.dats[requestData.key].complete = true
-                                request.respond({})
-                            })
-                        }).catch(request.reject)
-                })
-            }
-
-        } else {
-            request.reject(new Error('Not initialized'))
-        }
-    }
-
-    private _handleDatRemove(request: IAORouterRequest) {
-        const requestData: AODat_Remove_Data = request.data
-        if (this.dats) {
-            for (const key in this.dats) {
-                if (this.dats.hasOwnProperty(key)) {
-                    const dat = this.dats[key];
-                    const instance = dat.instance
-                    if (
-                        instance &&
-                        instance.key.toString('hex') == requestData.key
-                    ) {
-                        instance.close(() => {
-                            const datRemoveData: AODB_DatsRemove_Data = {
-                                query: { key: requestData.key }
-                            }
-                            this.router.send('/db/dats/remove', datRemoveData).then(() => {
-                                request.respond({})
-                            }).catch(request.reject)
-                        })
-                    }
-                }
-            }
-        } else {
-            request.reject(new Error('Not initialized'))
-        }
-    }
-
-    private _handleDatList(request: IAORouterRequest) {
-        if (this.dats) {
-            const datList = []
-            for (const key in this.dats) {
-                if (this.dats.hasOwnProperty(key)) {
-                    const dat = this.dats[key];
-                    if (dat.instance) {
-                        datList.push(dat.instance.key.toString('hex'))
-                    }
-                }
-            }
-            request.respond({ datList: datList })
-        } else {
-            request.reject(new Error('Not initialized'))
-        }
+        })
     }
 
     private _handleDatCheck(request: IAORouterRequest) {
         const requestData: AODat_Check_Data = request.data
-        if (this.dats) {
-            if (this.dats[requestData.key] && this.dats[requestData.key].complete) {
-                request.respond({})
+        this._getDatEntry(requestData.key).then((datEntry: DatEntry) => {
+            if ( datEntry.complete ) {
+                request.respond(datEntry)
+            } else {
+                request.reject(new Error(`Dat not initialized or complete: ${requestData.key}`))
             }
-        } else {
-            request.reject(new Error('Not initialized'))
-        }
+        }).catch(request.reject)
     }
-
-
 }
