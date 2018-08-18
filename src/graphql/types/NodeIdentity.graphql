@@ -2,7 +2,7 @@
 
 type NodeIdentity {
     # Universal
-    id: ID!
+    id: ID
     ethAddress: ID    
     datProfile: ID
     datStorage: ID

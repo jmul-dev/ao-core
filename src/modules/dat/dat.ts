@@ -24,6 +24,10 @@ export interface AODat_Check_Data {
     key: string;
 }
 
+export interface AODat_GetDatStats_Data {
+    key: string;
+}
+
 export interface DatEntry {
     key: string;
     createdAt?: Date;
@@ -48,6 +52,7 @@ export default class AODat extends AORouterInterface {
         this.router.on('/dat/stopAll', this._handleDatStopAll.bind(this))
         this.router.on('/dat/create', this._handleDatCreate.bind(this))
         this.router.on('/dat/check', this._handleDatCheck.bind(this))
+        this.router.on('/dat/stats', this._handleGetDatStats.bind(this))
         this.datsDb = new Datastore({
             filename: path.resolve(this.storageLocation, 'dats.db.json'),
             autoload: true,
@@ -115,6 +120,7 @@ export default class AODat extends AORouterInterface {
     private _updateDatEntry(datEntry: DatEntry) {
         this.datsDb.update({key: datEntry.key}, datEntry, {upsert: true})
     }
+
     private _getDatEntry(datKey: string): Promise<any> {
         return new Promise((resolve, reject) => {
             this.datsDb.findOne({key: datKey}, function(error: Error, doc: DatEntry) {
@@ -126,6 +132,23 @@ export default class AODat extends AORouterInterface {
                     resolve(doc)
                 }
             })
+        })
+    }
+
+    private _handleGetDatStats(request: IAORouterRequest) {
+        const requestData: AODat_GetDatStats_Data = request.data
+        if ( !this.dats[requestData.key] ) {
+            debug(`No dat instance found for dat://${requestData.key}`)
+            request.reject(new Error(`Dat instance not found`))
+            return;
+        }
+        const datInstance = this.dats[requestData.key]
+        const stats = datInstance.trackStats()
+        const datStats = datInstance.stats.get()
+        request.respond({
+            ...datStats,
+            network: stats.network,
+            peers: stats.peers,
         })
     }
     

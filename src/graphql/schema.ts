@@ -34,6 +34,10 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                 __resolveType(data, ctx, info) {
                     return info.schema.getType(data.__typename) // __typename property must be set by your mock functions
                 },
+                metadataDatStats: resolvers.resolveDatStats,
+            },
+            NodeIdentityContentCreator: {
+                content: resolvers.resolveContentCreatorContent,
             },
             // TODO: refactor resolvers into seperate files
             Query: {
@@ -45,7 +49,7 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                         }).catch(reject)
                     })
                 },
-                node: resolvers.resolveLocalNode,
+                node: resolvers.resolveLocalNode,                
                 state: () => mockStore.state,
                 settings: () => {
                     return new Promise((resolve, reject) => {

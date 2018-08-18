@@ -46,6 +46,7 @@ export interface AODB_UserInit_Data {
     ethAddress: string;
 }
 export interface AODB_UserContentGet_Data {
+    id?: string;
     query?: Object;
 }
 
@@ -184,12 +185,17 @@ export default class AODB extends AORouterInterface {
         this.router.send('/core/log', {message: error.message})
     }
 
+    /**
+     * Get the content for a given user. If a user id is not passed,
+     * then the current logged in user is assumed.
+     */
     private _userContentGet(request: IAORouterRequest) {
         const requestData: AODB_UserContentGet_Data = request.data
-        let query = requestData.query || {}
-        const userDbs = this.userDbs[request.ethAddress]
+        let query = requestData.query || {}       
+        let userId = requestData.id ? requestData.id : request.ethAddress
+        const userDbs = this.userDbs[userId]
         if ( !userDbs ) {
-            request.reject(new Error(`User db not found for ${request.ethAddress}`))
+            request.reject(new Error(`User db not found for ${userId}`))
             return;
         }
         userDbs.content.find(query).exec((error: Error, docs) => {
