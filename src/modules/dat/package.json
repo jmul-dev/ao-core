@@ -12,7 +12,8 @@
             "/dat/stopAll",
             "/dat/create",
             "/dat/check",
-            "/dat/stats"
+            "/dat/stats",
+            "/dat/download"
         ],
         "activationEvents": [
             

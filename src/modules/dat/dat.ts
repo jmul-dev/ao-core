@@ -20,6 +20,10 @@ export interface AODat_Create_Data {
     newDatDir: string;
 }
 
+export interface AODat_Download_Data {
+    key: string;
+}
+
 export interface AODat_Check_Data {
     key: string;
 }
@@ -51,6 +55,7 @@ export default class AODat extends AORouterInterface {
         this.router.on('/dat/resumeAll', this._handleResumeAll.bind(this))
         this.router.on('/dat/stopAll', this._handleDatStopAll.bind(this))
         this.router.on('/dat/create', this._handleDatCreate.bind(this))
+        this.router.on('/dat/download', this._handleDatDownload.bind(this))
         this.router.on('/dat/check', this._handleDatCheck.bind(this))
         this.router.on('/dat/stats', this._handleGetDatStats.bind(this))
         this.datsDb = new Datastore({
@@ -193,6 +198,49 @@ export default class AODat extends AORouterInterface {
                 dir: requestData.newDatDir
             })
         })
+    }
+
+    private _handleDatDownload(request: IAORouterRequest) {
+        const requestData: AODat_Download_Data = request.data;        
+        if ( this.dats[requestData.key] ) {
+            // A. This dat already exists!
+            this._getDatEntry(requestData.key).then(request.respond).catch(request.reject)
+        } else {
+            // B. We do not have this dat, proceed to create and download
+            const newDatPath = path.join(this.datDir, requestData.key);
+            Dat(newDatPath, {key: requestData.key}, (err, dat) => {
+                if ( err ) {
+                    debug('failed to download dat', err)
+                    request.reject(err)
+                    return;
+                }
+                dat.joinNetwork((err) => {
+                    if ( err ) {
+                        debug('failed to join network for dat download', err)
+                        request.reject(err)
+                        return;
+                    } else if ( !dat.network.connected || !dat.network.connecting ) {
+                        debug('no one is hosting dat://' + requestData.key)
+                        request.reject(new Error('No users are hosting the requested content'))
+                        return;
+                    } else {
+                        debug('succesfully joined network for dat://' + requestData.key)
+                        const datKey = dat.key.toString('hex');
+                        this.dats[datKey] = dat;
+                        const newDatEntry: DatEntry = {
+                            key: datKey,
+                            complete: false,
+                            updatedAt: new Date(),
+                            createdAt: new Date(),
+                        }
+                        this._updateDatEntry(newDatEntry)            
+                        request.respond({
+                            ...newDatEntry,
+                        })
+                    }
+                })           
+            })
+        }
     }
 
     private _handleDatCheck(request: IAORouterRequest) {

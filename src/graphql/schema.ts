@@ -64,6 +64,7 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                     }
                     return mockStore.videos
                 },
+                video: resolvers.resolveVideo
             },
             Mutation: {
                 setNetwork: (obj, args, context, info) => {
