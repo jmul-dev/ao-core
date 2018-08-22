@@ -1,4 +1,5 @@
 import Dat from 'dat-node';
+import mirror from 'mirror-folder';
 import Debug from 'debug';
 import path from "path";
 import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
@@ -39,6 +40,19 @@ export interface DatEntry {
     complete?: boolean;
 }
 
+export interface DatStats {
+    files: number;
+    byteLength: number;
+    length: number;
+    version: number;
+    downloadSpeed: number;
+    uploadSpeed: number;
+    downloadTotal: number;
+    uploadTotal: number;
+    peersTotal: number;
+    peersComplete: number;
+}
+
 
 export default class AODat extends AORouterInterface {
     private storageLocation: string;
@@ -56,7 +70,7 @@ export default class AODat extends AORouterInterface {
         this.router.on('/dat/stopAll', this._handleDatStopAll.bind(this))
         this.router.on('/dat/create', this._handleDatCreate.bind(this))
         this.router.on('/dat/download', this._handleDatDownload.bind(this))
-        this.router.on('/dat/check', this._handleDatCheck.bind(this))
+        this.router.on('/dat/exists', this._handleDatExists.bind(this))
         this.router.on('/dat/stats', this._handleGetDatStats.bind(this))
         this.datsDb = new Datastore({
             filename: path.resolve(this.storageLocation, 'dats.db.json'),
@@ -208,6 +222,7 @@ export default class AODat extends AORouterInterface {
         } else {
             // B. We do not have this dat, proceed to create and download
             const newDatPath = path.join(this.datDir, requestData.key);
+            let downloadComplete = false
             Dat(newDatPath, {key: requestData.key}, (err, dat) => {
                 if ( err ) {
                     debug('failed to download dat', err)
@@ -229,7 +244,7 @@ export default class AODat extends AORouterInterface {
                         this.dats[datKey] = dat;
                         const newDatEntry: DatEntry = {
                             key: datKey,
-                            complete: false,
+                            complete: downloadComplete,
                             updatedAt: new Date(),
                             createdAt: new Date(),
                         }
@@ -238,12 +253,28 @@ export default class AODat extends AORouterInterface {
                             ...newDatEntry,
                         })
                     }
-                })           
+                })
+                dat.archive.metadata.update(() => {
+                    var progress = mirror({fs: dat.archive, name: '/'}, newDatPath, (err) => {
+                        if ( err ) {
+                            debug('Error downloading dat file:', err)
+                        } else {
+                            debug('fully downloaded the goods!')
+                            downloadComplete = true
+                            const updatedDatEntry: DatEntry = {
+                                key: requestData.key,
+                                complete: true,
+                                updatedAt: new Date(),
+                            }
+                            this._updateDatEntry(updatedDatEntry)
+                        }                        
+                    })
+                })
             })
         }
     }
 
-    private _handleDatCheck(request: IAORouterRequest) {
+    private _handleDatExists(request: IAORouterRequest) {
         const requestData: AODat_Check_Data = request.data
         this._getDatEntry(requestData.key).then((datEntry: DatEntry) => {
             if ( datEntry.complete ) {
