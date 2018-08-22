@@ -5,7 +5,7 @@ type Mutation {
     register(inputs: RegisterInputs): NodeIdentity
     updateSettings(inputs: SettingsInputs): Settings
     submitVideoContent(inputs: VideoContentSubmissionInputs): VideoContent
-    stakeContent(inputs: StakeContentInputs): Content
+    stakeContent(inputs: StakeContentInputs): IContent
 }
 
 input StakeContentInputs {
