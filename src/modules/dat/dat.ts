@@ -214,6 +214,7 @@ export default class AODat extends AORouterInterface {
         })
     }
 
+    // https://github.com/datproject/dat-node/blob/master/examples/download.js
     private _handleDatDownload(request: IAORouterRequest) {
         const requestData: AODat_Download_Data = request.data;        
         if ( this.dats[requestData.key] ) {

@@ -22,7 +22,7 @@
     "src"
   ],
   "dependencies": {
-    "ao-contracts": "^1.0.2",
+    "ao-contracts": "^1.0.3",
     "apollo-server-express": "^1.3.6",
     "apollo-upload-server": "^5.0.0",
     "assert": "^1.4.1",
