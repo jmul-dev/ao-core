@@ -5,16 +5,15 @@
     "displayName": "AO Dat",
     "description": "AO - Dat package",
     "main": "dat/dat.js",
-    "bin":  "dat/dat.bin.js",
+    "bin":  "dat.bin.js",
     "AO": {
         "events": [
             "/dat/resumeAll",
             "/dat/stopAll",
             "/dat/create",
-            "/dat/joinNetwork",
-            "/dat/remove",
-            "/dat/list",
-            "/dat/check"
+            "/dat/exists",
+            "/dat/stats",
+            "/dat/download"
         ],
         "activationEvents": [
             

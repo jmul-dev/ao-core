@@ -1,39 +1,53 @@
 'use strict';
 import { EVENT_LOG, DATA, DATA_TYPES } from './constants';
 import AORouter from './router/AORouter';
-import { ICoreOptions } from './bin';
 import { IAORouterRequest } from './router/AORouterInterface';
-
 import Http from './modules/http/http'
-
 import Debug from 'debug';
+import { EventEmitter } from 'events';
+import path from 'path';
 const debug = Debug('ao:core');
 const error = Debug('ao:core:error');
 
+
+export interface ICoreOptions {
+    disableHttpInterface: boolean;
+    corePort: number;
+    coreOrigin: string;
+    httpOrigin: string;
+    storageLocation: string;
+    nodeBin: string;
+}
 
 export interface AOCore_Log_Data {
     message: string;
 }
 
-export default class Core {
+export default class Core extends EventEmitter {
+    public static DEFAULT_OPTIONS = {
+        disableHttpInterface: false,
+        corePort: 3003,
+        coreOrigin: 'http://localhost',
+        httpOrigin: 'http://localhost:3000',
+        storageLocation: path.resolve(__dirname, '..', 'data'),
+        nodeBin: process.execPath,
+    }
     public options: ICoreOptions;
     private coreRouter: AORouter;
     private http: Http;
 
-    constructor(args: ICoreOptions) {
-        debug(args)
-        this.options = args
-        this.coreRouter = new AORouter(args)
+    constructor(args: ICoreOptions = Core.DEFAULT_OPTIONS) {
+        super()
+        this.options = Object.assign({}, Core.DEFAULT_OPTIONS, args)
+        debug(this.options)
+        this.coreRouter = new AORouter(this.options)
         this.coreRouter.init()
         // TODO: setup coreRouter event listeners (eg: http shutdown/error)
         this.coreRouter.router.on('/core/log', this._handleLog.bind(this))
-        this.http = new Http(this.coreRouter.router, args)
+        this.http = new Http(this.coreRouter.router, this.options)
         process.stdin.resume();  // Hack to keep the core processes running
     }
-
-    // NOTE: this is useful for sending event logs up to the 
-    // electron wrapper (if exists) without going through the http
-    // interface. 
+    
     _handleLog(request: IAORouterRequest) {
         const data: AOCore_Log_Data = request.data
         if ( process.send ) {
@@ -42,11 +56,12 @@ export default class Core {
             process.send({event: EVENT_LOG, message: data.message});
         } else {
             // TODO: append to a temp log somewhere (make this configurable via command line)
-        }
+        }        
         this.coreRouter.router.send('/db/logs/insert', {
             message: data.message,
             createdAt: Date.now()
         }).then(request.respond).catch(request.reject)
+        this.emit('log', {message: data.message})
     }
   
     shutdownWithError(err) {

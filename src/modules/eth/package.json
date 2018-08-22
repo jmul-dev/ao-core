@@ -5,7 +5,7 @@
     "displayName": "AO Eth",
     "description": "AO - Eth package",
     "main": "eth/eth.js",
-    "bin":  "eth/eth.bin.js",
+    "bin":  "eth.bin.js",
     "AO": {
         "events": [
             "/eth/network/set",

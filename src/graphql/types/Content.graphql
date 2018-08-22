@@ -5,19 +5,33 @@ enum ContentType {
     APP
 }
 
+type DatStats {
+    files: Int
+    byteLength: Int
+    length: Int
+    version: Int
+    downloadSpeed: Float
+    uploadSpeed: Float
+    downloadTotal: Float
+    uploadTotal: Float
+    peersTotal: Int
+    peersComplete: Int
+}
+
 # Shared interface between all content types
 interface IContent {
     id: ID!
-    datKey: ID
-    stakeID: ID
-    nodeID: ID!
-    creatorID: ID!
+    stakeId: ID
+    nodeId: ID!
+    creatorId: ID!
     contentType: ContentType!
     isFolder: Boolean!
     isMutable: Boolean!
     fileName: String
     fileDatKey: String
     fileUrl: String
+    metadataDatKey: ID!
+    metadataDatStats: DatStats
     title: String
     description: String    
     # Econ
@@ -31,17 +45,18 @@ interface IContent {
 }
 
 type VideoContent implements IContent {
-    id: ID!
-    datKey: ID
-    stakeID: ID
-    nodeID: ID!
-    creatorID: ID!
+    id: ID!    
+    stakeId: ID
+    nodeId: ID!
+    creatorId: ID!
     contentType: ContentType!
     isFolder: Boolean!
     isMutable: Boolean!
     fileName: String
     fileDatKey: String
     fileUrl: String
+    metadataDatKey: ID!
+    metadataDatStats: DatStats
     title: String
     description: String    
     # Econ

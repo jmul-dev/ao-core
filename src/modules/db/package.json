@@ -5,7 +5,7 @@
     "displayName": "AO DB",
     "description": "AO - DB package",
     "main": "db/db.js",
-    "bin":  "db/db.bin.js",
+    "bin":  "db.bin.js",
     "AO": {
         "events": [
             "/db/logs/get",
@@ -15,17 +15,7 @@
             "/db/user/init",
             "/db/user/get",
             "/db/user/content/get",
-            "/db/user/content/insert",
-
-            "/db/decryptionKey/init",
-            "/db/decryptionKey/get",
-            "/db/decryptionKey/insert",
-
-            "/db/dats/init",
-            "/db/dats/get",
-            "/db/dats/insert",
-            "/db/dats/update",
-            "/db/dats/remove"
+            "/db/user/content/insert"
         ],
         "activationEvents": [
             

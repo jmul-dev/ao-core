@@ -1,19 +1,18 @@
-import fs, { ReadStream,WriteStream } from 'fs';
-import stream from 'stream'
-import fsExtra from 'fs-extra'
-import crypto from 'crypto'
-import md5 from 'md5'
-import ffprobe from 'ffprobe'
-import ffprobeStatic from 'ffprobe-static'
-
-import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
-import path from 'path';
+import crypto from 'crypto';
 import Debug from 'debug';
+import ffprobe from 'ffprobe';
+import fs, { ReadStream } from 'fs';
+import fsExtra from 'fs-extra';
+import md5 from 'md5';
+import path from 'path';
+import stream from 'stream';
+import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
 const debug = Debug('ao:fs');
 
 
 export interface AOFS_Args {
     storageLocation: string;
+    ffprobeBin: string;
 }
 
 export interface IAOFS_WriteStream_Data {
@@ -66,11 +65,13 @@ export interface IAOFS_FileStat_data {
  */
 export default class AOFS extends AORouterInterface {
     private storageLocation: string;
+    private ffprobeBin: string;
     private encryptionAlgorithm: string = 'aes-256-ctr';
 
     constructor(args: AOFS_Args) {
         super()
         this.storageLocation = args.storageLocation
+        this.ffprobeBin = args.ffprobeBin
         this.router.on('/fs/write', this._handleWrite.bind(this))
         this.router.on('/fs/writeStream', this._handleWriteStream.bind(this))
         this.router.on('/fs/read', this._handleRead.bind(this))
@@ -86,18 +87,18 @@ export default class AOFS extends AORouterInterface {
         const requestData: IAOFS_Write_Data = request.data;
         const writePath = path.resolve(this.storageLocation, requestData.writePath)
         fsExtra.outputFile(writePath, requestData.data)
-        .then( () => {
-            //fs.readFile(full_path) will return the file
-        })
-        .then( (data) => {
-            var fileData = {
-                stats: fs.statSync(writePath)
-            }
-            request.respond(fileData)
-        })
-        .catch( (err) => {
-            request.reject(err)
-        })
+            .then(() => {
+                //fs.readFile(full_path) will return the file
+            })
+            .then((data) => {
+                var fileData = {
+                    stats: fs.statSync(writePath)
+                }
+                request.respond(fileData)
+            })
+            .catch((err) => {
+                request.reject(err)
+            })
     }
 
     _handleWriteStream(request: IAORouterRequest) {
@@ -106,80 +107,80 @@ export default class AOFS extends AORouterInterface {
         const writePath = path.resolve(this.storageLocation, requestData.writePath)
         debug('writing stream to:', writePath)
         const destinationStream = fs.createWriteStream(writePath)
-        const readStream = fs.createReadStream(null, {fd: 3})
+        const readStream = fs.createReadStream(null, { fd: 3 })
 
         readStream.pipe(destinationStream)
-        .on('finish', () => {
-            const fileStats = fs.statSync(writePath)
-            this._getVideoData(writePath, requestData.videoStats)
-            .then((videoStats) => {
-                if( !requestData.encrypt ) {
-                    request.respond({
-                        fileSize: fileStats.size,
-                        filePath: writePath,
-                        videoStats: videoStats ? videoStats : false
-                    })
-                } else {
-                    const key = md5( new Date().getSeconds() + Math.random() )
-                    const encrypt = crypto.createCipher(this.encryptionAlgorithm, key)
-                    const readFrom = fs.createReadStream(writePath)
-                    const encryptedPath = writePath+'.encrypted'
-                    const writeToEncrypted = fs.createWriteStream( encryptedPath )
-    
-                    readFrom.pipe( encrypt ).pipe( writeToEncrypted )
-                    .on('finish', () => {
-                        //get stats for the encrypted file.
-                        //const fileStats = fs.statSync( encryptedPath )
-    
-                        //remove the original file
-                        fsExtra.remove(writePath)
-                        .then(()=> {
-                            //finally move the encrypted file to the original path
-                            fsExtra.move(encryptedPath, writePath)
-                            .then(() => {
-                                request.respond({
-                                    fileSize: fileStats.size,
-                                    filePath: writePath,
-                                    key: key,
-                                    videoStats: videoStats ? videoStats : false
-                                })
+            .on('finish', () => {
+                const fileStats = fs.statSync(writePath)
+                this._getVideoData(writePath, requestData.videoStats)
+                    .then((videoStats) => {
+                        if (!requestData.encrypt) {
+                            request.respond({
+                                fileSize: fileStats.size,
+                                filePath: writePath,
+                                videoStats: videoStats ? videoStats : false
                             })
-                            .catch(error => {
-                                request.reject(error)
-                            })
-                        })
-                        .catch(error => {
-                            request.reject(error)
-                        })
-                    })
-                }
-            })
-            .catch(e=> {
-                request.reject(e)
-            })
+                        } else {
+                            const key = md5(new Date().getSeconds() + Math.random())
+                            const encrypt = crypto.createCipher(this.encryptionAlgorithm, key)
+                            const readFrom = fs.createReadStream(writePath)
+                            const encryptedPath = writePath + '.encrypted'
+                            const writeToEncrypted = fs.createWriteStream(encryptedPath)
 
-        }).on('error', (error) => {
-            console.log('fs rejecting', error)
-            request.reject(error)
-            // TODO: 'error' event does not mean the stream is closed, 
-            // should probably close up streams/cleanup
-        })
+                            readFrom.pipe(encrypt).pipe(writeToEncrypted)
+                                .on('finish', () => {
+                                    //get stats for the encrypted file.
+                                    //const fileStats = fs.statSync( encryptedPath )
+
+                                    //remove the original file
+                                    fsExtra.remove(writePath)
+                                        .then(() => {
+                                            //finally move the encrypted file to the original path
+                                            fsExtra.move(encryptedPath, writePath)
+                                                .then(() => {
+                                                    request.respond({
+                                                        fileSize: fileStats.size,
+                                                        filePath: writePath,
+                                                        key: key,
+                                                        videoStats: videoStats ? videoStats : false
+                                                    })
+                                                })
+                                                .catch(error => {
+                                                    request.reject(error)
+                                                })
+                                        })
+                                        .catch(error => {
+                                            request.reject(error)
+                                        })
+                                })
+                        }
+                    })
+                    .catch(e => {
+                        request.reject(e)
+                    })
+
+            }).on('error', (error) => {
+                console.log('fs rejecting', error)
+                request.reject(error)
+                // TODO: 'error' event does not mean the stream is closed, 
+                // should probably close up streams/cleanup
+            })
     }
 
     //helper method for stream writes/reads.
-    _getVideoData(fullPath,videoStats) {
-        return new Promise((resolve,reject) => {
-            if(!videoStats) {
+    _getVideoData(fullPath, videoStats) {
+        return new Promise((resolve, reject) => {
+            if (!videoStats) {
                 resolve(false)
             } else {
-                ffprobe(fullPath, { path: ffprobeStatic.path }, (err, info) => {
-                    if(err) {
+                ffprobe(fullPath, { path: this.ffprobeBin }, (err, info) => {
+                    if (err) {
                         reject(err)
                     }
                     const fileData = {}
                     for (let i = 0; i < info.streams.length; i++) {
                         const stream = info.streams[i];
-                        if(stream.codec_type == 'video') {
+                        if (stream.codec_type == 'video') {
                             fileData['fileType'] = 'video'
                             fileData['codec'] = stream.codec_name
                             fileData['width'] = stream.width
@@ -198,7 +199,7 @@ export default class AOFS extends AORouterInterface {
         const requestData: IAOFS_Read_Data = request.data;
         const readPath = path.resolve(this.storageLocation, requestData.readPath)
         fs.readFile(readPath, (err, data) => {
-            if(err) {
+            if (err) {
                 request.reject(err)
             }
             request.respond(data)
@@ -216,9 +217,9 @@ export default class AOFS extends AORouterInterface {
         })
 
         readStream.on('open', () => {
-            var receiver = fs.createWriteStream(null, {fd:4})
-            if(requestData.key) {
-                const decrypt = crypto.createDecipher( this.encryptionAlgorithm, requestData.key )
+            var receiver = fs.createWriteStream(null, { fd: 4 })
+            if (requestData.key) {
+                const decrypt = crypto.createDecipher(this.encryptionAlgorithm, requestData.key)
                 readStream.pipe(decrypt).pipe(receiver)
             } else {
                 readStream.pipe(receiver)
@@ -232,28 +233,28 @@ export default class AOFS extends AORouterInterface {
         const requestData: IAOFS_Mkdir_Data = request.data
         const dirPath = path.resolve(this.storageLocation, requestData.dirPath)
         fsExtra.ensureDir(dirPath)
-        .then( () => {
-            request.respond({})
-        })
-        .catch( (err) => {
-            request.reject(err)
-        })
+            .then(() => {
+                request.respond({})
+            })
+            .catch((err) => {
+                request.reject(err)
+            })
     }
     _handleMove(request: IAORouterRequest) {
         const requestData: IAOFS_Move_Data = request.data
         const srcPath = path.resolve(this.storageLocation, requestData.srcPath)
         const destPath = path.resolve(this.storageLocation, requestData.destPath)
         fsExtra.move(srcPath, destPath)
-        .then(() => {
-            request.respond({})
-        }).catch(request.reject)
+            .then(() => {
+                request.respond({})
+            }).catch(request.reject)
     }
 
     _handleUnlink(request: IAORouterRequest) {
         const requestData: IAOFS_Unlink_Data = request.data
         const removePath = path.resolve(this.storageLocation, requestData.removePath)
         fs.unlink(removePath, (err) => {
-            if(err) {
+            if (err) {
                 request.reject(err)
             }
             request.respond({})
@@ -266,7 +267,7 @@ export default class AOFS extends AORouterInterface {
         try {
             const fileStats = fs.statSync(filePath)
             request.respond(fileStats)
-        } catch(e) {
+        } catch (e) {
             request.reject(e)
         }
     }

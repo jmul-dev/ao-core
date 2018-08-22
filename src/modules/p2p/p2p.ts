@@ -1,14 +1,16 @@
 
 import AORouterInterface, { IAORouterRequest, AORouterArgs } from "../../router/AORouterInterface";
-import fs from 'fs'
-import path from 'path'
-
-import Debug from 'debug';
 import { AO_Hyper_Options } from "../../router/AOHyperDB";
+import path from 'path'
+import Debug from 'debug';
 const debug = Debug('ao:p2p');
 
 export interface AOP2P_Args {
     storageLocation: string;
+}
+
+export interface AOP2P_Init_Data {
+    dbPath: string;
 }
 
 export interface AOP2P_New_Content_Data {
@@ -64,10 +66,11 @@ export default class AOP2P extends AORouterInterface {
     }
 
     private _handleInit(request: IAORouterRequest) {
+        const requestData: AOP2P_Init_Data = request.data
         //TODO: Should this be a file or just a key assigned per module?
         const hyperDBOptions: AO_Hyper_Options = {
             dbKey: this.dbKey,
-            dbPath: this.dbPath
+            dbPath: requestData.dbPath
         }
         this.hyperdb.init(hyperDBOptions).then(() => {
             request.respond({})

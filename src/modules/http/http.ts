@@ -22,6 +22,8 @@ export interface Http_Args {
 }
 
 export default class Http {
+    public static RESOURCES_ENDPOINT = 'resources';
+    public static ENCRYPTED_RESOURCES_ENDPOINT = 'resources/user';
     private express: Express;
     private server: Server;
     private router: AOCoreProcessRouter;
@@ -38,7 +40,7 @@ export default class Http {
             graphqlExpress({ schema: graphqlSchema })
         );
         this.express.get('/graphiql', graphiqlExpress({ endpointURL: '/graphql' })); // TODO: enable based on process.env.NODE_ENV
-        this.express.get('/resources/:key/:filename', async (request, response: Response, next) => {
+        this.express.get(`/${Http.RESOURCES_ENDPOINT}/:key/:filename`, async (request, response: Response, next) => {
             try {
                 this._streamFile(request,response)
             } catch(e) {
@@ -46,7 +48,7 @@ export default class Http {
                 next(e)
             }
         })
-        this.express.get('/resources/decrypt/:key/:filename', async (request, response: Response, next) => {
+        this.express.get(`/${Http.ENCRYPTED_RESOURCES_ENDPOINT}/:key/:filename`, async (request, response: Response, next) => {
             try {
                 this._streamEncryptedFile(request,response)
             } catch(e) {
@@ -54,7 +56,12 @@ export default class Http {
                 next(e)
             }
         })
-        this.express.use('/assets', express.static(path.join(__dirname, '../../../assets')));
+        // NOTE: this file is compiled down to 'dist/main.js' so referencing assets folder within dist
+        // TODO: remove when ready
+        let staticAssetPath = path.join(__dirname, './assets');
+        staticAssetPath = staticAssetPath.replace('app.asar', 'app.asar.unpacked')
+        debug('Static asset path: ', staticAssetPath);
+        this.express.use('/assets', express.static(staticAssetPath));
         this.server = this.express.listen(options.corePort, () => {
             const address: AddressInfo = <AddressInfo> this.server.address();
             debug('Express server running on port: ' + address.port);
@@ -74,7 +81,7 @@ export default class Http {
             const datCheckData: AODat_Check_Data = {
                 key: datKey
             }
-            this.router.send('/dat/check',datCheckData)
+            this.router.send('/dat/exists',datCheckData)
             .then(() => {
                 const filePath = path.join('content',datKey,filename)
                 const statFileData: IAOFS_FileStat_data = {
@@ -116,7 +123,7 @@ export default class Http {
             const datCheckData: AODat_Check_Data = {
                 key: datKey
             }
-            this.router.send('/dat/check', datCheckData)
+            this.router.send('/dat/exists', datCheckData)
             .then( () => {
                 debug('got to dat check')
                 //get the decryption key

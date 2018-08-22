@@ -27,6 +27,7 @@ class TestMain {
             corePort: 3003,
             coreOrigin: 'http://localhost',
             httpOrigin: 'http://localhost:3000',
+            nodeBin: process.execPath,
         });
         coreRouter.init()
         this.router = coreRouter.router
