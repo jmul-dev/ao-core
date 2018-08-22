@@ -15,7 +15,8 @@
             "/db/user/init",
             "/db/user/get",
             "/db/user/content/get",
-            "/db/user/content/insert"
+            "/db/user/content/insert",
+            "/db/user/content/update"
         ],
         "activationEvents": [
             

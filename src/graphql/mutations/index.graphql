@@ -5,6 +5,14 @@ type Mutation {
     register(inputs: RegisterInputs): NodeIdentity
     updateSettings(inputs: SettingsInputs): Settings
     submitVideoContent(inputs: VideoContentSubmissionInputs): VideoContent
+    stakeContent(inputs: StakeContentInputs): IContent
+}
+
+input StakeContentInputs {
+    stakeId: String!    
+    contentId: String!
+    stakeAmount: Int!
+    profitPercentage: Int!
 }
 
 input RegisterInputs {
