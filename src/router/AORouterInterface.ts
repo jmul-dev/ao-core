@@ -2,6 +2,7 @@ import { EventEmitter } from 'events';
 import { IAORouterMessage } from './AORouter';
 import fs from 'fs';
 import AORouterCoreProcessPretender from './AORouterCoreProcessPretender';
+import AOHyperDB from './AOHyperDB';
 
 
 /**
@@ -237,11 +238,19 @@ export class AOCoreProcessRouter extends EventEmitter implements AORouterInterfa
  * will extend to handle lifecycle events as well.
  */
 
+export interface AORouterArgs {
+    enableHyperDB: Boolean;
+}
+
 export default abstract class AORouterSubprocessInterface {
     router: AOSubprocessRouter;
+    hyperdb: AOHyperDB;
 
-    constructor() {
+    constructor(routerArgs: AORouterArgs) {
         this.router = new AOSubprocessRouter()
+        if(routerArgs.enableHyperDB) {
+            this.hyperdb = new AOHyperDB()
+        }
     }
 }
 

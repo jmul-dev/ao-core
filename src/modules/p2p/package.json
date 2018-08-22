@@ -1,0 +1,16 @@
+{
+    "name": "ao-hyperdb",
+    "version": "0.0.1",
+    "publisher": "AO",
+    "displayName": "AO P2P",
+    "description": "AO - P2P package",
+    "main": "p2p/p2p.js",
+    "AO": {
+        "events": [
+            
+        ],
+        "activationEvents": [
+            
+        ]        
+    }
+  }
