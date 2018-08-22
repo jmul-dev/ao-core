@@ -5,6 +5,7 @@ import resolveSubmitVideoContent from './resolveSubmitVideoContent';
 import resolveDatStats from './resolveDatStats';
 import resolveContentCreatorContent from './resolveContentCreatorContent';
 import resolveVideo from './resolveVideo';
+import resolveStakeContent from './resolveStakeContent';
 
 
 export default function(aoRouter: AOCoreProcessRouter, options: Http_Args) {
@@ -16,5 +17,6 @@ export default function(aoRouter: AOCoreProcessRouter, options: Http_Args) {
         resolveVideo: resolveVideo(aoRouter, options),
         // Mutation resolvers
         resolveSubmitVideoContent: resolveSubmitVideoContent(aoRouter, options),
+        resolveStakeContent: resolveStakeContent(aoRouter, options),
     }
 }

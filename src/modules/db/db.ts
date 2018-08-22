@@ -83,7 +83,8 @@ export default class AODB extends AORouterInterface {
         this.router.on('/db/user/init', this._setupUserDbs.bind(this))
         this.router.on('/db/user/get', this._getUser.bind(this))
         this.router.on('/db/user/content/get', this._userContentGet.bind(this))
-        this.router.on('/db/user/content/insert', this._userContentInsert.bind(this))        
+        this.router.on('/db/user/content/insert', this._userContentInsert.bind(this))
+        this.router.on('/db/user/content/update', this._userContentUpdate.bind(this))
         this._setupCoreDbs()
         debug(`started`)
         this.router.send('/core/log', {message: `[AO DB] Core database initialized`})
@@ -222,6 +223,24 @@ export default class AODB extends AORouterInterface {
             }
         })        
     }
+
+    private _userContentUpdate(request: IAORouterRequest) {
+        const requestData: any = request.data  // TODO: type check/validate content
+        const userDbs = this.userDbs[request.ethAddress]
+        if ( !userDbs ) {
+            request.reject(new Error(`User db not found for ${request.ethAddress}`))
+            return;
+        }
+        userDbs.content.update({id: requestData.id},  requestData, {returnUpdatedDocs: true, multi: false}, (error: Error, numAffected, updatedDoc, upsert) => {
+            if ( error ) {
+                request.reject(error)
+            } else if ( numAffected !== 1 || !updatedDoc ) {
+                request.reject(new Error(`User content not found or failed to update for query: id = ${requestData.id}`))
+            } else {
+                request.respond(updatedDoc)
+            }
+        })        
+    }    
 
     private _logsGet(request: IAORouterRequest) {
         const requestData: AODB_LogsGet_Data = request.data

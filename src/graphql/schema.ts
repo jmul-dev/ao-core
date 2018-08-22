@@ -116,7 +116,8 @@ export default function (router: AOCoreProcessRouter, options: Http_Args) {
                         }).catch(reject)
                     })
                 },
-                submitVideoContent: resolvers.resolveSubmitVideoContent,                
+                submitVideoContent: resolvers.resolveSubmitVideoContent,
+                stakeContent: resolvers.resolveStakeContent,
             },
         },
         resolverValidationOptions: {

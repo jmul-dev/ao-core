@@ -6,6 +6,7 @@ import path from 'path';
 import { AODat_Create_Data } from '../../modules/dat/dat';
 import { IAOFS_Mkdir_Data, IAOFS_WriteStream_Data, IAOFS_Write_Data, IAOFS_Move_Data } from '../../modules/fs/fs';
 import Debug from 'debug';
+import { AOContentState } from '../../models/AOContent';
 const debug = Debug('ao:graphql:submitVideoContent');
 
 
@@ -96,7 +97,7 @@ export default function (aoRouter: AOCoreProcessRouter, options: Http_Args) {
 
                             creatorId: ethAddress,
                             metadataDatKey: metadataDatKey,
-                            contentType: 'VOD',
+                            contentType: 'VOD',                            
                             isFolder: false, // TODO: determine if args.inputs.video is a folder
                             isMutable: false,
                             title: args.inputs.title,
@@ -128,7 +129,8 @@ export default function (aoRouter: AOCoreProcessRouter, options: Http_Args) {
 
                         const userContentJson = {
                             ...contentJson,
-                            decryptionKey: decryptionKey
+                            decryptionKey: decryptionKey,
+                            state: AOContentState.ENCRYPTED,
                         }
 
                         storagePromises.push(aoRouter.send('/fs/write', contentWriteData))

@@ -5,6 +5,18 @@ enum ContentType {
     APP
 }
 
+enum ContentState {
+    DOWNLOADING
+    DOWNLOADED
+    PURCHASED
+    DECRYPTION_KEY_RECEIVED
+    DECRYPTED
+    VERIFIED
+    ENCRYPTED
+    STAKED
+    DISCOVERABLE
+}
+
 type DatStats {
     files: Int
     byteLength: Int
@@ -21,6 +33,7 @@ type DatStats {
 # Shared interface between all content types
 interface IContent {
     id: ID!
+    state: ContentState!
     stakeId: ID
     nodeId: ID!
     creatorId: ID!
@@ -45,7 +58,8 @@ interface IContent {
 }
 
 type VideoContent implements IContent {
-    id: ID!    
+    id: ID!
+    state: ContentState!
     stakeId: ID
     nodeId: ID!
     creatorId: ID!
