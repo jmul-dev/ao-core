@@ -9,9 +9,6 @@ export interface AOP2P_Args {
     storageLocation: string;
 }
 
-export interface AOP2P_Init_Data {
-    dbPath: string;
-}
 
 export interface AOP2P_New_Content_Data {
     contentType: string;
@@ -66,11 +63,10 @@ export default class AOP2P extends AORouterInterface {
     }
 
     private _handleInit(request: IAORouterRequest) {
-        const requestData: AOP2P_Init_Data = request.data
         //TODO: Should this be a file or just a key assigned per module?
         const hyperDBOptions: AO_Hyper_Options = {
             dbKey: this.dbKey,
-            dbPath: requestData.dbPath
+            dbPath: this.dbPath
         }
         this.hyperdb.init(hyperDBOptions).then(() => {
             request.respond({})

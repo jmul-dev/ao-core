@@ -1,4 +1,4 @@
-import AOP2P, { AOP2P_Args, AOP2P_Init_Data, AOP2P_New_Content_Data, AOP2P_Add_Discovery_Data, AOP2P_Watch_Key_Data, } from './p2p'
+import AOP2P, { AOP2P_Args, AOP2P_New_Content_Data, AOP2P_Add_Discovery_Data, AOP2P_Watch_Key_Data, } from './p2p'
 import {expect} from 'chai'
 import path from 'path'
 import fs from 'fs-extra'
@@ -15,11 +15,8 @@ describe('AO P2P module', () => {
         fs.ensureDir(storageLocation)
         .then(() => {
             aoP2P = new AOP2P(args)
-            const initData: AOP2P_Init_Data = {
-                dbPath: storageLocation
-            }
             aoP2P.router.emit('/p2p/init', {
-                data: initData,
+                data: {},
                 respond: done,
                 reject: done
             })
@@ -39,11 +36,8 @@ describe('AO P2P module', () => {
     
     // The init is part of "before"
     // it('initialize p2p/hyperdb',(done) => {
-    //     const initData: AOP2P_Init_Data = {
-    //         dbPath: storageLocation
-    //     }
     //     aoP2P.router.emit('/p2p/init', {
-    //         data: initData,
+    //         data: {},
     //         respond: done,
     //         reject: done
     //     })
