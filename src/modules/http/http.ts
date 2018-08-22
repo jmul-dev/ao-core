@@ -81,7 +81,7 @@ export default class Http {
             const datCheckData: AODat_Check_Data = {
                 key: datKey
             }
-            this.router.send('/dat/check',datCheckData)
+            this.router.send('/dat/exists',datCheckData)
             .then(() => {
                 const filePath = path.join('content',datKey,filename)
                 const statFileData: IAOFS_FileStat_data = {
@@ -123,7 +123,7 @@ export default class Http {
             const datCheckData: AODat_Check_Data = {
                 key: datKey
             }
-            this.router.send('/dat/check', datCheckData)
+            this.router.send('/dat/exists', datCheckData)
             .then( () => {
                 debug('got to dat check')
                 //get the decryption key

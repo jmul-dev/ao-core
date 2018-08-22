@@ -11,8 +11,9 @@
             "/dat/resumeAll",
             "/dat/stopAll",
             "/dat/create",
-            "/dat/check",
-            "/dat/stats"
+            "/dat/exists",
+            "/dat/stats",
+            "/dat/download"
         ],
         "activationEvents": [
             

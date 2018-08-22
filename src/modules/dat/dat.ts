@@ -1,4 +1,5 @@
 import Dat from 'dat-node';
+import mirror from 'mirror-folder';
 import Debug from 'debug';
 import path from "path";
 import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
@@ -20,6 +21,10 @@ export interface AODat_Create_Data {
     newDatDir: string;
 }
 
+export interface AODat_Download_Data {
+    key: string;
+}
+
 export interface AODat_Check_Data {
     key: string;
 }
@@ -33,6 +38,19 @@ export interface DatEntry {
     createdAt?: Date;
     updatedAt?: Date;
     complete?: boolean;
+}
+
+export interface DatStats {
+    files: number;
+    byteLength: number;
+    length: number;
+    version: number;
+    downloadSpeed: number;
+    uploadSpeed: number;
+    downloadTotal: number;
+    uploadTotal: number;
+    peersTotal: number;
+    peersComplete: number;
 }
 
 
@@ -51,7 +69,8 @@ export default class AODat extends AORouterInterface {
         this.router.on('/dat/resumeAll', this._handleResumeAll.bind(this))
         this.router.on('/dat/stopAll', this._handleDatStopAll.bind(this))
         this.router.on('/dat/create', this._handleDatCreate.bind(this))
-        this.router.on('/dat/check', this._handleDatCheck.bind(this))
+        this.router.on('/dat/download', this._handleDatDownload.bind(this))
+        this.router.on('/dat/exists', this._handleDatExists.bind(this))
         this.router.on('/dat/stats', this._handleGetDatStats.bind(this))
         this.datsDb = new Datastore({
             filename: path.resolve(this.storageLocation, 'dats.db.json'),
@@ -195,7 +214,68 @@ export default class AODat extends AORouterInterface {
         })
     }
 
-    private _handleDatCheck(request: IAORouterRequest) {
+    // https://github.com/datproject/dat-node/blob/master/examples/download.js
+    private _handleDatDownload(request: IAORouterRequest) {
+        const requestData: AODat_Download_Data = request.data;        
+        if ( this.dats[requestData.key] ) {
+            // A. This dat already exists!
+            this._getDatEntry(requestData.key).then(request.respond).catch(request.reject)
+        } else {
+            // B. We do not have this dat, proceed to create and download
+            const newDatPath = path.join(this.datDir, requestData.key);
+            let downloadComplete = false
+            Dat(newDatPath, {key: requestData.key}, (err, dat) => {
+                if ( err ) {
+                    debug('failed to download dat', err)
+                    request.reject(err)
+                    return;
+                }
+                dat.joinNetwork((err) => {
+                    if ( err ) {
+                        debug('failed to join network for dat download', err)
+                        request.reject(err)
+                        return;
+                    } else if ( !dat.network.connected || !dat.network.connecting ) {
+                        debug('no one is hosting dat://' + requestData.key)
+                        request.reject(new Error('No users are hosting the requested content'))
+                        return;
+                    } else {
+                        debug('succesfully joined network for dat://' + requestData.key)
+                        const datKey = dat.key.toString('hex');
+                        this.dats[datKey] = dat;
+                        const newDatEntry: DatEntry = {
+                            key: datKey,
+                            complete: downloadComplete,
+                            updatedAt: new Date(),
+                            createdAt: new Date(),
+                        }
+                        this._updateDatEntry(newDatEntry)            
+                        request.respond({
+                            ...newDatEntry,
+                        })
+                    }
+                })
+                dat.archive.metadata.update(() => {
+                    var progress = mirror({fs: dat.archive, name: '/'}, newDatPath, (err) => {
+                        if ( err ) {
+                            debug('Error downloading dat file:', err)
+                        } else {
+                            debug('fully downloaded the goods!')
+                            downloadComplete = true
+                            const updatedDatEntry: DatEntry = {
+                                key: requestData.key,
+                                complete: true,
+                                updatedAt: new Date(),
+                            }
+                            this._updateDatEntry(updatedDatEntry)
+                        }                        
+                    })
+                })
+            })
+        }
+    }
+
+    private _handleDatExists(request: IAORouterRequest) {
         const requestData: AODat_Check_Data = request.data
         this._getDatEntry(requestData.key).then((datEntry: DatEntry) => {
             if ( datEntry.complete ) {

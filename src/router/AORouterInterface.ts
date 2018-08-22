@@ -93,7 +93,10 @@ export class AOSubprocessRouter extends EventEmitter implements AORouterInterfac
             data: !isReject ? responseData : undefined,
             error: isReject ? (responseData instanceof Error ? responseData.message : responseData) : undefined,
         }
-        this.process.send(outgoingResponse)
+        if ( this.process && this.process.send )
+            this.process.send(outgoingResponse)
+        else
+            console.warn('AOSubprocessRouter possibly used in wrong context. Expected parent process.')
     }
 
     /**
@@ -106,12 +109,14 @@ export class AOSubprocessRouter extends EventEmitter implements AORouterInterfac
      */
     public send(event: string, data?: any): Promise<any> {
         return new Promise((resolve, reject) => {
+            if ( !this.process || !this.process.send )
+                return console.warn('AOSubprocessRouter possibly used in wrong context. Expected parent process.')
             const requestId = `${this.processIdentifier}:${++this.requestCount}`;
             const request: IAORouterMessage = {
                 requestId,
                 event,
                 data,
-            }            
+            };
             if ( data && data.stream ) {
                 /**
                  * Reminder: we are sending the stream up to the parent

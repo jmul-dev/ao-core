@@ -4,6 +4,7 @@ import resolveLocalNode from './resolveLocalNode'
 import resolveSubmitVideoContent from './resolveSubmitVideoContent';
 import resolveDatStats from './resolveDatStats';
 import resolveContentCreatorContent from './resolveContentCreatorContent';
+import resolveVideo from './resolveVideo';
 
 
 export default function(aoRouter: AOCoreProcessRouter, options: Http_Args) {
@@ -12,6 +13,7 @@ export default function(aoRouter: AOCoreProcessRouter, options: Http_Args) {
         resolveLocalNode: resolveLocalNode(aoRouter, options),
         resolveDatStats: resolveDatStats(aoRouter, options),
         resolveContentCreatorContent: resolveContentCreatorContent(aoRouter, options),
+        resolveVideo: resolveVideo(aoRouter, options),
         // Mutation resolvers
         resolveSubmitVideoContent: resolveSubmitVideoContent(aoRouter, options),
     }
