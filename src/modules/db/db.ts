@@ -184,7 +184,6 @@ export default class AODB extends AORouterInterface {
             request.reject(new Error(`User db not found for ${userId}`))
             return;
         }
-        debug(query)
         userDbs.content.find(query).exec((error: Error, docs) => {
             if ( error ) {
                 request.reject(error)
