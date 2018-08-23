@@ -64,8 +64,7 @@ export default class AODB extends AORouterInterface {
     private storageLocation: string;
     private db: {
         logs: Datastore,
-        settings: Datastore,
-        dats: Datastore,
+        settings: Datastore
     };
     private userDbs: {
         [key: string]: {
@@ -112,15 +111,6 @@ export default class AODB extends AORouterInterface {
                         })   
                     }
                 }
-            }),
-            dats: new Datastore({
-                filename: path.resolve(this.storageLocation, 'dats.db.json'),
-                autoload: true,
-                onload: (error: Error) => {
-                    if ( error ){
-                        this._handleCoreDbLoadError(error)
-                    }
-                }
             })
         }
         // Logs expire after 48 hrs
@@ -132,11 +122,6 @@ export default class AODB extends AORouterInterface {
         // Settings indexed by name (unique)
         this.db.settings.ensureIndex({
             fieldName: 'setting',
-            unique: true,
-        })
-        // Dats db indexed by key
-        this.db.dats.ensureIndex({
-            fieldName: 'key',
             unique: true,
         })
     }
