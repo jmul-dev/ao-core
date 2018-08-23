@@ -1,5 +1,8 @@
 export type AOContentType = "VOD" | 'STREAM' | 'FILE' | 'APP'
+
+// NOTE: match graphql/types/content.graphql -> ContentState enum
 export const AOContentState = Object.freeze({
+    DISCOVERED: 'DISCOVERED',
     DOWNLOADING: 'DOWNLOADING',
     DOWNLOADED: 'DOWNLOADED',
     PURCHASED: 'PURCHASED',
@@ -10,6 +13,34 @@ export const AOContentState = Object.freeze({
     STAKED: 'STAKED',
     DISCOVERABLE: 'DISCOVERABLE',
 })
+
+/**
+ * For a content to be considered in a completed state if must
+ * have been made discoverable.
+ */
+export function getListOfContentCompletedStates() {
+    return [
+        AOContentState.DISCOVERABLE
+    ]
+}
+
+/**
+ * These are all intermediate steps before a piece of content
+ * is fully brought into the node and re-hosted (or uploaded
+ * and hosted).
+ */
+export function getListOfContentIncompleteStates() {
+    return [
+        AOContentState.DOWNLOADING,
+        AOContentState.DOWNLOADED,
+        AOContentState.PURCHASED,
+        AOContentState.DECRYPTION_KEY_RECEIVED,
+        AOContentState.DECRYPTED,
+        AOContentState.VERIFIED,
+        AOContentState.ENCRYPTED,
+        AOContentState.STAKED,
+    ]
+}
 
 // NOTE: Data models should be implemented at *some* point. A few thoughts:
 // - these models/classes should reflect the graphql types (possibly even generate those types)

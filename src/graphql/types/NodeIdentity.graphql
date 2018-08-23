@@ -9,15 +9,12 @@ type NodeIdentity {
     # Local node specific
     local: NodeIdentityLocal
     # Content specific
-    content: NodeIdentityContent
+    # Staked content = uploaded/owned by user
+    stakedContent: [VideoContent]
+    # Hosted content = downloaded/re-hosted by user
+    hostedContent(incomplete: Boolean): [VideoContent]
     # Advertiser specific
     # Channel Specific
-}
-type NodeIdentityContent {
-    # Staked content = uploaded/owned by user
-    staked: [VideoContent]
-    # Hosted content = downloaded/re-hosted by user
-    hosted: [VideoContent]
 }
 type NodeIdentityLocal {
     localStorageReserved: Int

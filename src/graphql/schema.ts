@@ -25,9 +25,9 @@ export default function () {
                 teaserUrl: resolvers.resolveUrl,
                 featuredImageUrl: resolvers.resolveUrl,
             },
-            NodeIdentityContent: {
-                staked: resolvers.resolveLocalNodeStakedContent,
-                hosted: resolvers.resolveLocalNodeHostedContent,
+            NodeIdentity: {
+                stakedContent: resolvers.resolveLocalNodeStakedContent,
+                hostedContent: resolvers.resolveLocalNodeHostedContent,
             },
             Query: {
                 version: () => packageJson.version,
