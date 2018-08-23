@@ -10,8 +10,6 @@ import Debug from 'debug';
 import {AOCoreProcessRouter} from "../../router/AORouterInterface";
 import { AODat_Check_Data } from '../dat/dat';
 import { IAOFS_ReadStream_Data, IAOFS_FileStat_data } from '../fs/fs';
-import { createWriteStream, WriteStream } from 'fs';
-import { resolve } from 'dns';
 import { AODB_UserContentGet_Data } from '../db/db';
 const debug = Debug('ao:http');
 
@@ -19,6 +17,11 @@ export interface Http_Args {
     httpOrigin: string;
     coreOrigin: string;
     corePort: number;
+}
+
+export interface IGraphqlResolverContext {
+    router: AOCoreProcessRouter
+    options: Http_Args
 }
 
 export default class Http {
@@ -31,13 +34,20 @@ export default class Http {
     constructor(router:AOCoreProcessRouter, options: Http_Args) {
         this.router = router;
         this.express = express();
-        const graphqlSchema = schema(this.router, options);
+        const graphqlSchema = schema();
         this.express.use(
             '/graphql', 
             cors({origin: options.httpOrigin}),
             json(), 
             apolloUploadExpress({maxFieldSize: "1gb"}),
-            graphqlExpress({ schema: graphqlSchema })
+            graphqlExpress({ 
+                schema: graphqlSchema,
+                // context given to our graphql resolvers
+                context: {
+                    router,
+                    options,
+                }
+            })
         );
         this.express.get('/graphiql', graphiqlExpress({ endpointURL: '/graphql' })); // TODO: enable based on process.env.NODE_ENV
         this.express.get(`/${Http.RESOURCES_ENDPOINT}/:key/:filename`, async (request, response: Response, next) => {

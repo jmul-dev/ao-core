@@ -1,11 +1,7 @@
-import { AOCoreProcessRouter } from "../../router/AORouterInterface";
-import { Http_Args } from '../../modules/http/http';
-import { IAORouterMessage } from "../../router/AORouter";
+import { IGraphqlResolverContext } from '../../modules/http/http';
 
 
-export default function (aoRouter: AOCoreProcessRouter, options: Http_Args) {
-    return (obj: any, args: any, context: any, info: any) => {
-        const contentId = args.id
-        // 1. First we ping user db to see if current user 
-    }
+export default  (obj: any, args: any, context: IGraphqlResolverContext, info: any) => {
+    const contentId = args.id
+    // 1. First we ping user db to see if current user 
 }
