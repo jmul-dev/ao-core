@@ -69,7 +69,7 @@ export default class AOP2P extends AORouterInterface {
             dbPath: this.dbPath
         }
         this.hyperdb.init(hyperDBOptions).then(() => {
-            request.respond({})
+            request.respond({success:true})
         }).catch( e => {
             request.reject(e)
         })
@@ -96,7 +96,7 @@ export default class AOP2P extends AORouterInterface {
         allInserts.push( this.hyperdb.insert(appRegistrationPrefix + registrationData + '/on/signature', requestData.signature) )
 
         Promise.all(allInserts).then(() => {
-            request.respond({})
+            request.respond({success:true})
         }).catch((e) => {
             request.reject(e)
         })
@@ -107,7 +107,7 @@ export default class AOP2P extends AORouterInterface {
         //TODO: We might consider helping construct the specific key here.  Dunno what exactly we're looking for yet 100%
         this.hyperdb.watch(requestData.key)
         .then(() => {
-            request.respond({})
+            request.respond({success:true})
         }).catch( e => {
             request.reject(e)
         })
@@ -119,7 +119,7 @@ export default class AOP2P extends AORouterInterface {
         const registrationData = requestData.ethAddress  + '/' + requestData.datKey + '/indexData'
         this.hyperdb.insert(appRegistrationPrefix + registrationData, requestData.indexData)
         .then(() => {
-            request.respond({})
+            request.respond({success:true})
         })
         .catch(e => {
             request.reject(e)
