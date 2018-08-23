@@ -12,16 +12,22 @@ export default function () {
     const schema = makeExecutableSchema({
         typeDefs: [graphqlSchema],
         resolvers: {
-            Upload: GraphQLUpload,
+            Upload: GraphQLUpload,            
             // Interface (required for mocks)
             IContent: {
                 __resolveType(data, ctx, info) {
                     return info.schema.getType(data.__typename) // __typename property must be set by your mock functions
                 },
                 metadataDatStats: resolvers.resolveDatStats,
+                fileUrl: resolvers.resolveUrl,                
             },
-            NodeIdentityContentCreator: {
-                content: resolvers.resolveContentCreatorContent,
+            VideoContent: {
+                teaserUrl: resolvers.resolveUrl,
+                featuredImageUrl: resolvers.resolveUrl,
+            },
+            NodeIdentityContent: {
+                staked: resolvers.resolveLocalNodeStakedContent,
+                hosted: resolvers.resolveLocalNodeHostedContent,
             },
             Query: {
                 version: () => packageJson.version,

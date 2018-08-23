@@ -46,7 +46,7 @@ export interface AODB_UserInit_Data {
     ethAddress: string;
 }
 export interface AODB_UserContentGet_Data {
-    id?: string;
+    userId?: string;
     query?: Object;
 }
 
@@ -193,7 +193,7 @@ export default class AODB extends AORouterInterface {
     private _userContentGet(request: IAORouterRequest) {
         const requestData: AODB_UserContentGet_Data = request.data
         let query = requestData.query || {}       
-        let userId = requestData.id ? requestData.id : request.ethAddress
+        let userId = requestData.userId ? requestData.userId : request.ethAddress
         const userDbs = this.userDbs[userId]
         if ( !userDbs ) {
             request.reject(new Error(`User db not found for ${userId}`))

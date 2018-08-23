@@ -8,13 +8,16 @@ type NodeIdentity {
     datStorage: ID
     # Local node specific
     local: NodeIdentityLocal
-    # Creator specific
-    creator: NodeIdentityContentCreator
+    # Content specific
+    content: NodeIdentityContent
     # Advertiser specific
     # Channel Specific
 }
-type NodeIdentityContentCreator {
-    content: [VideoContent]
+type NodeIdentityContent {
+    # Staked content = uploaded/owned by user
+    staked: [VideoContent]
+    # Hosted content = downloaded/re-hosted by user
+    hosted: [VideoContent]
 }
 type NodeIdentityLocal {
     localStorageReserved: Int

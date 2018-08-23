@@ -1,7 +1,8 @@
 import resolveLocalNode from './resolveLocalNode'
 import resolveSubmitVideoContent from './resolveSubmitVideoContent';
 import resolveDatStats from './resolveDatStats';
-import resolveContentCreatorContent from './resolveContentCreatorContent';
+import resolveLocalNodeStakedContent from './resolveLocalNodeStakedContent';
+import resolveLocalNodeHostedContent from './resolveLocalNodeHostedContent';
 import resolveVideo from './resolveVideo';
 import resolveStakeContent from './resolveStakeContent';
 import resolveLogs from './resolveLogs';
@@ -11,12 +12,14 @@ import resolveRegister from './resolveRegister';
 import resolveUpdateSettings from './resolveUpdateSettings';
 import resolveVideos from './resolveVideos';
 import resolveState from './resolveState';
+import resolveUrl from './resolveUrl';
 
 export default {
     // Query resolvers
-    resolveLocalNode,
+    resolveLocalNode,    
+    resolveLocalNodeStakedContent,    
+    resolveLocalNodeHostedContent,
     resolveDatStats,
-    resolveContentCreatorContent,
     resolveVideo,
     resolveVideos,
     resolveLogs,
@@ -28,4 +31,6 @@ export default {
     resolveSetNetwork,
     resolveRegister,
     resolveUpdateSettings,
+    // Field resolvers
+    resolveUrl,
 }
