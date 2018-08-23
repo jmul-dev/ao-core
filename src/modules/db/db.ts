@@ -50,6 +50,15 @@ export interface AODB_UserContentGet_Data {
     query?: Object;
 }
 
+export interface AODB_NetworkContentGet_Data {
+    query?:Object;
+}
+
+export interface AODB_NetworkContentInsert_Data {
+    key: string;
+    value: Object;
+}
+
 
 export default class AODB extends AORouterInterface {
     public static DEFAULT_SETTINGS = {
@@ -64,7 +73,8 @@ export default class AODB extends AORouterInterface {
     private storageLocation: string;
     private db: {
         logs: Datastore,
-        settings: Datastore
+        settings: Datastore,
+        networkContent: Datastore
     };
     private userDbs: {
         [key: string]: {
@@ -84,6 +94,9 @@ export default class AODB extends AORouterInterface {
         this.router.on('/db/user/content/get', this._userContentGet.bind(this))
         this.router.on('/db/user/content/insert', this._userContentInsert.bind(this))
         this.router.on('/db/user/content/update', this._userContentUpdate.bind(this))
+
+        this.router.on('/db/network/content/get', this._getNetworkContent.bind(this))
+        this.router.on('/db/network/content/insert', this._insertNetworkContent.bind(this))
         this._setupCoreDbs()
         debug(`started`)
         this.router.send('/core/log', {message: `[AO DB] Core database initialized`})
@@ -109,6 +122,15 @@ export default class AODB extends AORouterInterface {
                             const settingValue = AODB.DEFAULT_SETTINGS[settingName]
                             this.db.settings.insert({setting: settingName, value: settingValue})
                         })   
+                    }
+                }
+            }),
+            networkContent: new Datastore({
+                filename: path.resolve(this.storageLocation, 'networkContent.db.json'),
+                autoload: true,
+                onload: (error: Error) => {
+                    if ( error ){
+                        this._handleCoreDbLoadError(error)
                     }
                 }
             })
@@ -313,6 +335,23 @@ export default class AODB extends AORouterInterface {
                 }
             })
         }).catch(request.reject)
+    }
+
+    private _getNetworkContent(request: IAORouterRequest) {
+        const requestData:AODB_NetworkContentGet_Data = request.data
+        let query = requestData.query || {}
+        this.db.networkContent.find(query).exec((error, results) => {
+            if ( error ) {
+                request.reject(error)
+            } else {
+                request.respond(results)
+            }
+        })
+        
+    }
+
+    private _insertNetworkContent(request: IAORouterRequest) {
+        const requestData:AODB_NetworkContentInsert_Data = request.data
     }
 
 }

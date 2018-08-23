@@ -24,7 +24,7 @@ export default class AOHyperDB {
             this.dbKey = hyperOptions.dbKey
             this.dbPath = hyperOptions.dbPath
             
-            this.db = hyperdb(this.dbPath, this.dbKey, { valueEncoding: 'json'} )
+            this.db = hyperdb(this.dbPath, this.dbKey, { valueEncoding: 'utf-8'} )
             this.db.on('ready', () => {
                 this.swarm = discovery(
                     swarmDefaults({
@@ -47,7 +47,11 @@ export default class AOHyperDB {
     
     public insert(key, value) {
         return new Promise( (resolve, reject) => {
-            this.db.put(key, value, (err) => {
+            let insertValue = value
+            if(typeof value == "object") {
+                insertValue = JSON.stringify(value)
+            }
+            this.db.put(key, insertValue, (err) => {
                 if(err) {
                     reject(err)
                 } else {
