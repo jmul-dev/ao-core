@@ -352,6 +352,13 @@ export default class AODB extends AORouterInterface {
 
     private _insertNetworkContent(request: IAORouterRequest) {
         const requestData:AODB_NetworkContentInsert_Data = request.data
+        this.db.networkContent.insert(requestData, (err, doc) => {
+            if(err) {
+                request.reject(err)
+            } else {
+                request.respond(doc)
+            }
+        })
     }
 
 }

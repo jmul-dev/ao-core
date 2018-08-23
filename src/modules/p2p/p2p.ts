@@ -70,7 +70,8 @@ export default class AOP2P extends AORouterInterface {
             //TODO: Should this be a file or just a key assigned per module?
             const hyperDBOptions: AO_Hyper_Options = {
                 dbKey: this.dbKey,
-                dbPath: this.dbPath
+                dbPath: this.dbPath,
+                autoAuth: true
             }
             this.hyperdb.init(hyperDBOptions).then(() => {
                 //Initialize discovery
@@ -89,14 +90,16 @@ export default class AOP2P extends AORouterInterface {
         .then( ()=> {
             let contentCompare = []
             contentCompare.push( this.hyperdb.list( contentWatchKey ) )
-            contentCompare.push( this.router.send( '/db/network/content/get',{query: {}}) )
+            contentCompare.push( this.router.send( '/db/network/content/get',{ query: {} } ) )
 
             Promise.all(contentCompare).then((results) => {
                 const hyperPreviewList = results[0]
                 const dbPreviewList = results[1]
                 let hyperPreviewKeys = []
+                let hyperKeyValue = {}
                 for (const preview of hyperPreviewList) {
                     hyperPreviewKeys.push(preview.key)
+                    hyperKeyValue[preview.key] = preview.value //for later use
                 }
                 
                 let dbPreviewKeys = []
@@ -106,8 +109,40 @@ export default class AOP2P extends AORouterInterface {
                 let newKeys = hyperPreviewKeys.filter( function( el ) {
                     return dbPreviewKeys.indexOf( el ) < 0;
                 });
-
-                debug(newKeys)
+                
+                if(newKeys.length) {
+                    let networkContentInserts = []
+                    let downloadNewPreviewDats = []
+                    for (const newKey of newKeys) {
+                        networkContentInserts.push(
+                            this.router.send('/db/network/content/insert',{
+                                key: newKey,
+                                value: hyperKeyValue[newKey]
+                            })
+                        )
+                        downloadNewPreviewDats.push(
+                            this.router.send('/dat/download', {
+                                key: newKey
+                            })
+                        )
+                    }
+                    //Record all new Preview Dats into content
+                    Promise.all(networkContentInserts)
+                    .then(()=> {
+                        debug('All new previews inserted to network Db')
+                    })
+                    .catch(e => {
+                        debug(e)
+                    })
+                    //Download all new Preview Dats
+                    Promise.all(downloadNewPreviewDats)
+                    .then(()=> {
+                        debug('All new previews downloaded')
+                    })
+                    .catch(e => {
+                        debug(e)
+                    })
+                }
             })
             .catch(e => {
                 debug(e)

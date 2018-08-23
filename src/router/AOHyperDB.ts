@@ -5,14 +5,16 @@ import Debug from 'debug';
 const debug = Debug('ao:hyperdb');
 
 export interface AO_Hyper_Options {
-    dbKey:string;
-    dbPath:string
+    dbKey: string;
+    dbPath: string;
+    autoAuth: boolean;
 }
 
 export default class AOHyperDB {
     private db:hyperdb
     private dbKey:string
     private dbPath:string
+    private autoAuth: boolean
     private swarm: discovery
 
     constructor() {
@@ -23,6 +25,7 @@ export default class AOHyperDB {
         return new Promise((resolve,reject) => {
             this.dbKey = hyperOptions.dbKey
             this.dbPath = hyperOptions.dbPath
+            this.autoAuth = hyperOptions.autoAuth
             
             this.db = hyperdb(this.dbPath, this.dbKey, { valueEncoding: 'utf-8'} )
             this.db.on('ready', () => {
@@ -30,7 +33,10 @@ export default class AOHyperDB {
                     swarmDefaults({
                         id: this.dbKey,
                         stream: (peer) => {
-                            return this.db.replicate({live:true})
+                            return this.db.replicate({
+                                live:true,
+                                userData: this.db.local.key
+                            })
                         }
                     })
                 )
@@ -39,6 +45,37 @@ export default class AOHyperDB {
                 this.swarm.on('connection', (peer) => {
                     //TODO: Get rid of this debug when we're all done.
                     debug('swarm peer connected: ' + peer.id.toString('hex'))
+                    if (!this.autoAuth) {
+                        return
+                    }
+
+                    if (!peer.remoteUserData) {
+                        debug("peer missing user data")
+                        return
+                    }
+
+                    let remotePeerKey
+                    try { 
+                        remotePeerKey = Buffer.from(peer.remoteUserData) 
+                    } catch (err) { 
+                        console.error(err); 
+                        return 
+                    }
+            
+                    this.db.authorized(remotePeerKey, (err, auth) => {
+                        debug(remotePeerKey.toString("hex"), "authorized? " + auth)
+                        if (err) {
+                            return debug(err)
+                        }
+                        if (!auth) {
+                            this.db.authorize(remotePeerKey, (err) => {
+                                if (err) {
+                                    return debug(err)
+                                }
+                                debug(remotePeerKey.toString("hex"), "was just authorized!")
+                            })
+                        }
+                    })
                 })
                 resolve()
             })
