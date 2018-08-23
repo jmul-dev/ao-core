@@ -1,0 +1,20 @@
+{
+    "name": "ao-p2p",
+    "version": "0.0.1",
+    "publisher": "AO",
+    "displayName": "AO P2P",
+    "description": "AO - P2P package",
+    "main": "p2p/p2p.js",
+    "bin":  "p2p.bin.js",
+    "AO": {
+        "events": [
+            "/p2p/init",
+            "/p2p/newContent",
+            "/p2p/watchKey",
+            "/p2p/addDiscovery"
+        ],
+        "activationEvents": [
+            
+        ]        
+    }
+  }
