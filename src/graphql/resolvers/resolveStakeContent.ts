@@ -1,4 +1,5 @@
 import { AOContentState } from "../../models/AOContent";
+import { IGraphqlResolverContext } from "../../http";
 
 interface IStakeContentInputs {
     contentId: string;
@@ -7,7 +8,7 @@ interface IStakeContentInputs {
     profitPercentage: number;
 }
 
-export default (obj: any, args: IStakeContentInputs, context: any, info: any) => {
+export default (obj: any, args: IStakeContentInputs, context: IGraphqlResolverContext, info: any) => {
     return new Promise((resolve, reject) => {
         // 1. TODO: we may want to verify stake occured via blockchain
         // 2. Update the user's content state

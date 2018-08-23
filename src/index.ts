@@ -2,7 +2,7 @@
 import { EVENT_LOG, DATA, DATA_TYPES } from './constants';
 import AORouter from './router/AORouter';
 import { IAORouterRequest } from './router/AORouterInterface';
-import Http from './modules/http/http'
+import Http from './http'
 import Debug from 'debug';
 import { EventEmitter } from 'events';
 import path from 'path';

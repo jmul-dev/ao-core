@@ -1,4 +1,4 @@
-import { IGraphqlResolverContext } from '../../modules/http/http';
+import { IGraphqlResolverContext } from '../../http';
 import { IAORouterMessage } from "../../router/AORouter";
 
 export default (obj: any, args: any, context: IGraphqlResolverContext, info: any) => {

@@ -1,4 +1,4 @@
-import { IGraphqlResolverContext } from '../../modules/http/http';
+import { IGraphqlResolverContext } from '../../http';
 import { IAORouterMessage } from "../../router/AORouter";
 
 // TODO: obj is of type Content (sorry still no types outside of graphql)

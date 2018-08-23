@@ -1,4 +1,4 @@
-import { IGraphqlResolverContext } from '../../modules/http/http';
+import { IGraphqlResolverContext } from '../../http';
 import { IAOFS_Mkdir_Data } from '../../modules/fs/fs';
 import path from 'path';
 

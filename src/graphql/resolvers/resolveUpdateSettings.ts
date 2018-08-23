@@ -1,5 +1,5 @@
 import { AODB_SettingsUpdate_Data } from '../../modules/db/db';
-import { IGraphqlResolverContext } from '../../modules/http/http';
+import { IGraphqlResolverContext } from '../../http';
 
 
 export default (obj: any, args: any, context: IGraphqlResolverContext, info: any) => {

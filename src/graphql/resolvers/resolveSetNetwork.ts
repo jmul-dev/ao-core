@@ -1,4 +1,4 @@
-import { IGraphqlResolverContext } from '../../modules/http/http';
+import { IGraphqlResolverContext } from '../../http';
 import { IAOEth_NetworkChange_Data } from '../../modules/eth/eth';
 
 export default (obj: any, args: any, context: IGraphqlResolverContext, info: any) => {

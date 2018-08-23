@@ -1,4 +1,4 @@
-import { IGraphqlResolverContext } from '../../modules/http/http';
+import { IGraphqlResolverContext } from '../../http';
 import { generateMockVideoList } from '../mockVideos';
 
 

@@ -4,7 +4,7 @@ import path from 'path';
 import { AOContentState } from '../../models/AOContent';
 import { AODat_Create_Data } from '../../modules/dat/dat';
 import { IAOFS_Mkdir_Data, IAOFS_Move_Data, IAOFS_WriteStream_Data, IAOFS_Write_Data } from '../../modules/fs/fs';
-import { IGraphqlResolverContext } from '../../modules/http/http';
+import { IGraphqlResolverContext } from '../../http';
 import { IAORouterMessage } from "../../router/AORouter";
 const debug = Debug('ao:graphql:submitVideoContent');
 

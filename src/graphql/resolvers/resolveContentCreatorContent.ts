@@ -1,4 +1,4 @@
-import Http, { IGraphqlResolverContext } from '../../modules/http/http';
+import Http, { IGraphqlResolverContext } from '../../http';
 import { IAORouterMessage } from "../../router/AORouter";
 
 // TODO: obj is of type NodeIdentity (sorry still no types outside of graphql)
