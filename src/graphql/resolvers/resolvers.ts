@@ -13,6 +13,7 @@ import resolveUpdateSettings from './resolveUpdateSettings';
 import resolveVideos from './resolveVideos';
 import resolveState from './resolveState';
 import resolveUrl from './resolveUrl';
+import resolveContentRequest from './resolveContentRequest';
 
 export default {
     // Query resolvers
@@ -31,6 +32,7 @@ export default {
     resolveSetNetwork,
     resolveRegister,
     resolveUpdateSettings,
+    resolveContentRequest,
     // Field resolvers
     resolveUrl,
 }

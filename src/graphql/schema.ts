@@ -44,6 +44,7 @@ export default function () {
                 updateSettings: resolvers.resolveUpdateSettings,
                 submitVideoContent: resolvers.resolveSubmitVideoContent,
                 stakeContent: resolvers.resolveStakeContent,
+                contentRequest: resolvers.resolveContentRequest,
             },
         },
         resolverValidationOptions: {
