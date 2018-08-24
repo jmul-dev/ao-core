@@ -85,7 +85,7 @@ export default class AOP2P extends AORouterInterface {
 
     //Discovery from watching the P2P networks.
     private _discovery() {
-        const contentWatchKey = this.dbPrefix + 'VOD'
+        const contentWatchKey = this.dbPrefix + 'VOD'; // /AOSpace/VOD/*
         this.hyperdb.watch(contentWatchKey)
         .then( ()=> {
             let contentCompare = []
