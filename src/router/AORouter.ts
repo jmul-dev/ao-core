@@ -105,7 +105,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
      */
     private messageCount: number = 0;
 
-    //Current activeEthAddress.  Used by many modules to indicate who we're helping out.
+    // Used by many modules to indicate who we're helping out.
     private activeEthAddress: string = null;
 
     constructor(args: ICoreOptions) {
@@ -240,7 +240,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
                 })
             }
             const startTime = Date.now()
-            debug(`routing event    [${message.routerMessageId}][${event}]: ${from.name} -> ${receivingRegistryEntry.name} ${messageHasStream ? '(with stream)' : ''}`)
+            // debug(`routing event    [${message.routerMessageId}][${event}]: ${from.name} -> ${receivingRegistryEntry.name} ${messageHasStream ? '(with stream)' : ''}`)
             // 5. Send the request out 
             receivingProcess.send(message, (error?: Error) => {
                 if (error) {
@@ -255,7 +255,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
                     if (message.routerMessageId === response.routerMessageId) {
                         const responseTime = Date.now() - startTime
                         const responseTimeFormated = (responseTime / 1000).toFixed(2)
-                        debug(`routing response [${message.routerMessageId}][${event}]: ${from.name} <- ${receivingRegistryEntry.name}, duration[${responseTimeFormated}s] ${response.error ? ', rejecting with error' : ''}`)
+                        // debug(`routing response [${message.routerMessageId}][${event}]: ${from.name} <- ${receivingRegistryEntry.name}, duration[${responseTimeFormated}s] ${response.error ? ', rejecting with error' : ''}`)
                         if (response.error) {
                             reject(response.error)
                         } else {
