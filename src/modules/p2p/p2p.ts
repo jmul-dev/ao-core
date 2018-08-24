@@ -39,7 +39,7 @@ const routerArgs:AORouterArgs = {
 
 export default class AOP2P extends AORouterInterface {
     private dbPath:string
-    private dbKey: string = 'e621d41a7fa1649583b70a47423115001476ebc7dd63fd6ba503145e8daea6f3'//TODO: Set the production static dbKey
+    private dbKey: string = '006c3ce5918f7a577156adc74668a8bfad80b2420d1f11d4b5d66cbbe36e49d2'//TODO: Set the production static dbKey
     private dbPrefix: string
     
     private storageLocation: string
@@ -50,28 +50,106 @@ export default class AOP2P extends AORouterInterface {
         this.dbPath = path.join(this.storageLocation, 'p2p')
         this.dbPrefix = '/AOSpace/' //Also known as App ID
 
-        //Routes
-        this.router.on('/p2p/init', this._handleInit.bind(this) )
         //New Content upload
         this.router.on('/p2p/newContent', this._handleNewContent.bind(this) )
         //Watch for New Key
         this.router.on('/p2p/watchKey', this._handleWatchKey.bind(this))
         //Add content into Discovery
         this.router.on('/p2p/addDiscovery', this._handleAddDiscovery.bind(this))
-
-        debug('started')
+        this.init().then(()=> {
+            debug('started')
+        })
+        .catch(e=> {
+            debug(e)
+        })
+        
     }
 
-    private _handleInit(request: IAORouterRequest) {
-        //TODO: Should this be a file or just a key assigned per module?
-        const hyperDBOptions: AO_Hyper_Options = {
-            dbKey: this.dbKey,
-            dbPath: this.dbPath
-        }
-        this.hyperdb.init(hyperDBOptions).then(() => {
-            request.respond({success:true})
-        }).catch( e => {
-            request.reject(e)
+    private init() {
+        return new Promise((resolve,reject) => {
+            //TODO: Should this be a file or just a key assigned per module?
+            const hyperDBOptions: AO_Hyper_Options = {
+                dbKey: this.dbKey,
+                dbPath: this.dbPath,
+                autoAuth: true
+            }
+            this.hyperdb.init(hyperDBOptions).then(() => {
+                //Initialize discovery
+                this._discovery()
+                resolve({success:true})
+            }).catch( e => {
+                reject(e)
+            })
+        })
+    }
+
+    //Discovery from watching the P2P networks.
+    private _discovery() {
+        const contentWatchKey = this.dbPrefix + 'VOD'; // /AOSpace/VOD/*
+        this.hyperdb.watch(contentWatchKey)
+        .then( ()=> {
+            let contentCompare = []
+            contentCompare.push( this.hyperdb.list( contentWatchKey ) )
+            contentCompare.push( this.router.send( '/db/network/content/get',{ query: {} } ) )
+
+            Promise.all(contentCompare).then((results) => {
+                const hyperPreviewList = results[0]
+                const dbPreviewList = results[1]
+                let hyperPreviewKeys = []
+                let hyperKeyValue = {}
+                for (const preview of hyperPreviewList) {
+                    hyperPreviewKeys.push(preview.key)
+                    hyperKeyValue[preview.key] = preview.value //for later use
+                }
+                
+                let dbPreviewKeys = []
+                for (const preview of dbPreviewList) {
+                    dbPreviewKeys.push(preview.key)
+                }
+                let newKeys = hyperPreviewKeys.filter( function( el ) {
+                    return dbPreviewKeys.indexOf( el ) < 0;
+                });
+                
+                if(newKeys.length) {
+                    let networkContentInserts = []
+                    let downloadNewPreviewDats = []
+                    for (const newKey of newKeys) {
+                        networkContentInserts.push(
+                            this.router.send('/db/network/content/insert',{
+                                key: newKey,
+                                value: hyperKeyValue[newKey]
+                            })
+                        )
+                        downloadNewPreviewDats.push(
+                            this.router.send('/dat/download', {
+                                key: newKey
+                            })
+                        )
+                    }
+                    //Record all new Preview Dats into content
+                    Promise.all(networkContentInserts)
+                    .then(()=> {
+                        debug('All new previews inserted to network Db')
+                    })
+                    .catch(e => {
+                        debug(e)
+                    })
+                    //Download all new Preview Dats
+                    Promise.all(downloadNewPreviewDats)
+                    .then(()=> {
+                        debug('All new previews downloaded')
+                    })
+                    .catch(e => {
+                        debug(e)
+                    })
+                }
+            })
+            .catch(e => {
+                debug(e)
+            })
+        })
+        .catch(e => {
+            debug(e)
         })
     }
 

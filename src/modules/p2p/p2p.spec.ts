@@ -6,7 +6,7 @@ import 'mocha'
 
 
 describe('AO P2P module', () => {
-    const storageLocation = path.resolve(__dirname, '../../../data/test/p2p')
+    const storageLocation = path.resolve(__dirname, '../../../data/p2ptest')
     const args:AOP2P_Args =  {
         storageLocation: storageLocation
     }
@@ -15,16 +15,7 @@ describe('AO P2P module', () => {
         fs.ensureDir(storageLocation)
         .then(() => {
             aoP2P = new AOP2P(args)
-            aoP2P.router.emit('/p2p/init', {
-                data: {},
-                respond: (message) => {
-                    assert(true)
-                    done()
-                },
-                reject: (message) => {
-                    throw new Error(message)
-                }
-            })
+            done()
         }).catch(e => {
             console.log(e)
         })
@@ -40,15 +31,6 @@ describe('AO P2P module', () => {
             done(e)
         })
     })
-    
-    // The init is part of "before"
-    // it('initialize p2p/hyperdb',(done) => {
-    //     aoP2P.router.emit('/p2p/init', {
-    //         data: {},
-    //         respond: done,
-    //         reject: done
-    //     })
-    // })
 
     it('new content upload', (done) => {
         const newContentData: AOP2P_New_Content_Data = {
@@ -56,9 +38,9 @@ describe('AO P2P module', () => {
             //TODO: Assign more believable values?
             datKey: 'boguskey',
             ethAddress: 'bogusEth',
-            metaData: {},
-            indexData: {},
-            signature: 'Signature'
+            metaData: {test:'testMeta'},
+            indexData: {test:'testIndex'},
+            signature: 'sigs'
         }
         aoP2P.router.emit('/p2p/newContent',{
             data: newContentData,
@@ -86,7 +68,6 @@ describe('AO P2P module', () => {
         })
         aoP2P.hyperdb.insert(watchKeyData.key, 'testing')
         .then(()=> {
-
         }).catch(e => {
             console.log(e)
         })
