@@ -5,6 +5,7 @@ enum ContentType {
     APP
 }
 
+# Keep in sync with `src/models/AOContent.ts`
 enum ContentState {
     DISCOVERED
     DOWNLOADING
@@ -14,6 +15,8 @@ enum ContentState {
     DECRYPTION_KEY_RECEIVED
     DECRYPTED
     VERIFIED
+    VERIFICATION_FAILED
+    ENCRYPTING
     ENCRYPTED
     STAKING
     STAKED
