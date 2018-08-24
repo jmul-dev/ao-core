@@ -80,7 +80,9 @@ export default class AODat extends AORouterInterface {
                     debug('Error loading dats database', error)
                     this.router.send('/core/log', {message: 'Error loading dats database'})
                 }
-                this._resumeAll().catch((error: Error) => {
+                this._resumeAll().then(() => {
+                    debug(`Resumed all dats`)
+                }).catch((error: Error) => {
                     debug(`Error resuming all dats`, error)
                 })
             }
@@ -105,7 +107,6 @@ export default class AODat extends AORouterInterface {
                     datKeyPromises.push(this._resume(datEntry))
                 })
                 Promise.all(datKeyPromises).then(() => {
-                    debug('Resumed all dats')
                     this.router.send('/core/log', { message: `[AO Dat] All local dats resumed` })
                     resolve()
                 }).catch(reject)

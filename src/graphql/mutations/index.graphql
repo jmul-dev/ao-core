@@ -6,6 +6,8 @@ type Mutation {
     updateSettings(inputs: SettingsInputs): Settings
     submitVideoContent(inputs: VideoContentSubmissionInputs): VideoContent
     stakeContent(inputs: StakeContentInputs): IContent
+
+    contentRequest(id: ID!): IContent
 }
 
 input StakeContentInputs {

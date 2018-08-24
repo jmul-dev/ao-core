@@ -3,6 +3,8 @@ import { GraphQLUpload } from 'apollo-upload-server';
 import { addMockFunctionsToSchema, makeExecutableSchema } from 'graphql-tools';
 import mocks from './mocks';
 import resolvers from './resolvers/resolvers';
+import Debug from 'debug'
+const debug = Debug('ao:graphql');
 
 const graphqlSchema = require('./schema.graphql');
 const packageJson = require('../../package.json');
@@ -10,13 +12,16 @@ const packageJson = require('../../package.json');
 
 export default function () {
     const schema = makeExecutableSchema({
+        logger: {
+            log: debug
+        },
         typeDefs: [graphqlSchema],
         resolvers: {
             Upload: GraphQLUpload,            
-            // Interface (required for mocks)
             IContent: {
                 __resolveType(data, ctx, info) {
-                    return info.schema.getType(data.__typename) // __typename property must be set by your mock functions
+                    // NOTE: data.__typename is specifically used by mocks
+                    return info.schema.getType(data.__typename || 'VideoContent'); // TODO: resolve type based off of data.contentType
                 },
                 metadataDatStats: resolvers.resolveDatStats,
                 fileUrl: resolvers.resolveUrl,                
@@ -44,6 +49,7 @@ export default function () {
                 updateSettings: resolvers.resolveUpdateSettings,
                 submitVideoContent: resolvers.resolveSubmitVideoContent,
                 stakeContent: resolvers.resolveStakeContent,
+                contentRequest: resolvers.resolveContentRequest,
             },
         },
         resolverValidationOptions: {

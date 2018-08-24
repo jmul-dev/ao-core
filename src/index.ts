@@ -46,6 +46,9 @@ export default class Core extends EventEmitter {
         this.coreRouter.router.on('/core/log', this._handleLog.bind(this))
         this.http = new Http(this.coreRouter.router, this.options)
         process.stdin.resume();  // Hack to keep the core processes running
+        process.on('exit', () => {
+            debug('Core process exiting...')
+        })
     }
     
     _handleLog(request: IAORouterRequest) {
