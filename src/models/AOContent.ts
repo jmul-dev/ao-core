@@ -5,11 +5,13 @@ export const AOContentState = Object.freeze({
     DISCOVERED: 'DISCOVERED',
     DOWNLOADING: 'DOWNLOADING',
     DOWNLOADED: 'DOWNLOADED',
+    PURCHASING: 'PURCHASING',
     PURCHASED: 'PURCHASED',
     DECRYPTION_KEY_RECEIVED: 'DECRYPTION_KEY_RECEIVED',
     DECRYPTED: 'DECRYPTED',
     VERIFIED: 'VERIFIED',
     ENCRYPTED: 'ENCRYPTED',
+    STAKING: 'STAKING',
     STAKED: 'STAKED',
     DISCOVERABLE: 'DISCOVERABLE',
 })
@@ -33,11 +35,13 @@ export function getListOfContentIncompleteStates() {
     return [
         AOContentState.DOWNLOADING,
         AOContentState.DOWNLOADED,
-        AOContentState.PURCHASED,
+        AOContentState.PURCHASING,
+        AOContentState.PURCHASED,        
         AOContentState.DECRYPTION_KEY_RECEIVED,
         AOContentState.DECRYPTED,
         AOContentState.VERIFIED,
         AOContentState.ENCRYPTED,
+        AOContentState.STAKING,
         AOContentState.STAKED,
     ]
 }

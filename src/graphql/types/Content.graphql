@@ -9,11 +9,13 @@ enum ContentState {
     DISCOVERED
     DOWNLOADING
     DOWNLOADED
+    PURCHASING
     PURCHASED
     DECRYPTION_KEY_RECEIVED
     DECRYPTED
     VERIFIED
     ENCRYPTED
+    STAKING
     STAKED
     DISCOVERABLE
 }
@@ -29,6 +31,12 @@ type DatStats {
     uploadTotal: Float
     peersTotal: Int
     peersComplete: Int
+}
+
+type ContentTransactions {
+    stakeTx: String
+    purchaseTx: String
+    hostTx: String
 }
 
 # Shared interface between all content types
@@ -56,6 +64,7 @@ interface IContent {
     adSupport: Boolean
     # Network
     createdAt: String
+    transactions: ContentTransactions
 }
 
 type VideoContent implements IContent {
@@ -82,6 +91,7 @@ type VideoContent implements IContent {
     adSupport: Boolean
     # Network
     createdAt: String
+    transactions: ContentTransactions
     # VideoContent
     teaserUrl: String
     featuredImageUrl: String
