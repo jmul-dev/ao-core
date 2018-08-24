@@ -49,11 +49,12 @@ export interface AODB_UserContentGet_Data {
     userId?: string;
     query?: Object;
 }
-
+/**
+ * Network Content
+ */
 export interface AODB_NetworkContentGet_Data {
-    query?:Object;
+    query?: Object;
 }
-
 export interface AODB_NetworkContentInsert_Data {
     key: string;
     value: Object;
@@ -99,7 +100,7 @@ export default class AODB extends AORouterInterface {
         this.router.on('/db/network/content/insert', this._insertNetworkContent.bind(this))
         this._setupCoreDbs()
         debug(`started`)
-        this.router.send('/core/log', {message: `[AO DB] Core database initialized`})
+        this.router.send('/core/log', { message: `[AO DB] Core database initialized` })
     }
 
     private _setupCoreDbs(): void {
@@ -114,14 +115,14 @@ export default class AODB extends AORouterInterface {
                 filename: path.resolve(this.storageLocation, 'settings.db.json'),
                 autoload: true,
                 onload: (error: Error) => {
-                    if ( error ){
+                    if (error) {
                         this._handleCoreDbLoadError(error)
                     } else {
                         // Load default settings (insert will not overwrite existing settings)
                         Object.keys(AODB.DEFAULT_SETTINGS).forEach(settingName => {
                             const settingValue = AODB.DEFAULT_SETTINGS[settingName]
-                            this.db.settings.insert({setting: settingName, value: settingValue})
-                        })   
+                            this.db.settings.insert({ setting: settingName, value: settingValue })
+                        })
                     }
                 }
             }),
@@ -129,7 +130,7 @@ export default class AODB extends AORouterInterface {
                 filename: path.resolve(this.storageLocation, 'networkContent.db.json'),
                 autoload: true,
                 onload: (error: Error) => {
-                    if ( error ){
+                    if (error) {
                         this._handleCoreDbLoadError(error)
                     }
                 }
@@ -150,16 +151,16 @@ export default class AODB extends AORouterInterface {
 
     private _setupUserDbs(request: IAORouterRequest): void {
         const requestData: AODB_UserInit_Data = request.data
-        if ( !request.ethAddress ) {
+        if (!request.ethAddress) {
             request.reject(new Error('user db init requires eth address'))
             return;
         }
-        if ( this.userDbs[request.ethAddress] ) {
-            request.respond({loaded: true})
+        if (this.userDbs[request.ethAddress]) {
+            request.respond({ loaded: true })
             return;
         }
         const dbLoadHandler = (error: Error) => {
-            if ( error ) {
+            if (error) {
                 this._handleCoreDbLoadError(error)
             }
         }
@@ -170,8 +171,8 @@ export default class AODB extends AORouterInterface {
                 onload: dbLoadHandler,
             })
         }
-        this.router.send('/core/log', {message: `[AO DB] User database initialized for ${request.ethAddress}`})
-        request.respond({loaded: true})
+        this.router.send('/core/log', { message: `[AO DB] User database initialized for ${request.ethAddress}` })
+        request.respond({ loaded: true })
         // TODO: should probably use Promise.all to ensure each user db is loaded before responding!        
         // this.userDbs[request.ethAddress].loadDatabase((error: Error) => {
         //     this.router.send('/core/log', {message: `[AO DB] User database initialized for ${request.ethAddress}`})
@@ -185,12 +186,12 @@ export default class AODB extends AORouterInterface {
     }
 
     private _getUser(request: IAORouterRequest): void {
-        request.respond({ethAddress: request.ethAddress})
+        request.respond({ ethAddress: request.ethAddress })
     }
 
     private _handleCoreDbLoadError(error: Error): void {
         debug('Error loading db: ', error)
-        this.router.send('/core/log', {message: error.message})
+        this.router.send('/core/log', { message: error.message })
     }
 
     /**
@@ -199,61 +200,61 @@ export default class AODB extends AORouterInterface {
      */
     private _userContentGet(request: IAORouterRequest) {
         const requestData: AODB_UserContentGet_Data = request.data
-        let query = requestData.query || {}       
+        let query = requestData.query || {}
         let userId = requestData.userId ? requestData.userId : request.ethAddress
         const userDbs = this.userDbs[userId]
-        if ( !userDbs ) {
+        if (!userDbs) {
             request.reject(new Error(`User db not found for ${userId}`))
             return;
         }
         userDbs.content.find(query).exec((error: Error, docs) => {
-            if ( error ) {
+            if (error) {
                 request.reject(error)
             } else {
                 request.respond(docs)
             }
-        })        
+        })
     }
 
     private _userContentInsert(request: IAORouterRequest) {
         const requestData: any = request.data  // TODO: type check/validate content
         const userDbs = this.userDbs[request.ethAddress]
-        if ( !userDbs ) {
+        if (!userDbs) {
             request.reject(new Error(`User db not found for ${request.ethAddress}`))
             return;
         }
         userDbs.content.insert(requestData, (error: Error, doc) => {
-            if ( error ) {
+            if (error) {
                 request.reject(error)
             } else {
                 request.respond(doc)
             }
-        })        
+        })
     }
 
     private _userContentUpdate(request: IAORouterRequest) {
         const requestData: any = request.data  // TODO: type check/validate content
         const userDbs = this.userDbs[request.ethAddress]
-        if ( !userDbs ) {
+        if (!userDbs) {
             request.reject(new Error(`User db not found for ${request.ethAddress}`))
             return;
         }
-        userDbs.content.update({id: requestData.id},  requestData, {returnUpdatedDocs: true, multi: false}, (error: Error, numAffected, updatedDoc, upsert) => {
-            if ( error ) {
+        userDbs.content.update({ id: requestData.id }, requestData, { returnUpdatedDocs: true, multi: false }, (error: Error, numAffected, updatedDoc, upsert) => {
+            if (error) {
                 request.reject(error)
-            } else if ( numAffected !== 1 || !updatedDoc ) {
+            } else if (numAffected !== 1 || !updatedDoc) {
                 request.reject(new Error(`User content not found or failed to update for query: id = ${requestData.id}`))
             } else {
                 request.respond(updatedDoc)
             }
-        })        
-    }    
+        })
+    }
 
     private _logsGet(request: IAORouterRequest) {
         const requestData: AODB_LogsGet_Data = request.data
         let query = requestData.query || {}
-        this.db.logs.find(query).sort({createdAt: 1}).exec((error, results) => {
-            if ( error ) {
+        this.db.logs.find(query).sort({ createdAt: 1 }).exec((error, results) => {
+            if (error) {
                 request.reject(error)
             } else {
                 request.respond(results)
@@ -264,15 +265,15 @@ export default class AODB extends AORouterInterface {
     private _logsInsert(request: IAORouterRequest) {
         const requestData: AODB_LogsInsert_Data = request.data
         const log = requestData
-        if ( !log.message ) {
+        if (!log.message) {
             request.reject(new Error('Invalid data format for log insert, "message" field required'))
             return;
         }
-        if ( !log.createdAt || !(log.createdAt instanceof Date) ) {
+        if (!log.createdAt || !(log.createdAt instanceof Date)) {
             log.createdAt = new Date()
         }
-        this.db.logs.insert(log, function(error: Error, doc) {
-            if ( error ) {
+        this.db.logs.insert(log, function (error: Error, doc) {
+            if (error) {
                 request.reject(error)
             } else {
                 request.respond(doc)
@@ -284,7 +285,7 @@ export default class AODB extends AORouterInterface {
         const requestData: AODB_SettingsGet_Data = request.data
         let query = requestData.query || {}
         this.db.settings.find(query).exec((error, results) => {
-            if ( error ) {
+            if (error) {
                 request.reject(error)
             } else {
                 let keyValueSettings = results.reduce((values, settingEntry: AODB_Setting) => ({
@@ -313,7 +314,7 @@ export default class AODB extends AORouterInterface {
                     value: settings[settingName]
                 }
                 this.db.settings.update(query, update, options, (error: Error) => {
-                    if ( error ) {
+                    if (error) {
                         reject(error)
                     } else {
                         resolve()
@@ -324,7 +325,7 @@ export default class AODB extends AORouterInterface {
         Promise.all(updatePromises).then(() => {
             // We return all settings
             this.db.settings.find({}).exec((error: Error, results) => {
-                if ( error ) {
+                if (error) {
                     request.reject(error)
                 } else {
                     let keyValueSettings = results.reduce((values, settingEntry: AODB_Setting) => ({
@@ -338,22 +339,22 @@ export default class AODB extends AORouterInterface {
     }
 
     private _getNetworkContent(request: IAORouterRequest) {
-        const requestData:AODB_NetworkContentGet_Data = request.data
+        const requestData: AODB_NetworkContentGet_Data = request.data
         let query = requestData.query || {}
         this.db.networkContent.find(query).exec((error, results) => {
-            if ( error ) {
+            if (error) {
                 request.reject(error)
             } else {
                 request.respond(results)
             }
         })
-        
+
     }
 
     private _insertNetworkContent(request: IAORouterRequest) {
-        const requestData:AODB_NetworkContentInsert_Data = request.data
+        const requestData: AODB_NetworkContentInsert_Data = request.data
         this.db.networkContent.insert(requestData, (err, doc) => {
-            if(err) {
+            if (err) {
                 request.reject(err)
             } else {
                 request.respond(doc)
