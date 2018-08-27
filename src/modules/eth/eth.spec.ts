@@ -62,7 +62,7 @@ describe('AO Eth module', () => {
                 transactionHash: mainnetKnownFailedTx,
             },
             respond: ({status}) => {
-                expect(status).to.be.false
+                expect(status).to.not.be.ok
                 done()
             },
             reject: done
@@ -75,7 +75,20 @@ describe('AO Eth module', () => {
                 transactionHash: mainnetKnownSuccessfulTx,
             },
             respond: ({status}) => {
-                expect(status).to.be.true
+                expect(status).to.be.ok
+                done()
+            },
+            reject: done
+        })
+    })
+
+    it('should return status 0 for invalid BuyContent event transaction hash', (done) => {
+        aoEth.router.emit('/eth/events/buyContent', {
+            data: {
+                transactionHash: mainnetKnownSuccessfulTx,
+            },
+            respond: ({status}) => {
+                expect(status).to.not.be.ok
                 done()
             },
             reject: done
