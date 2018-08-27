@@ -56,12 +56,14 @@ export default (obj: any, args: any, context: IGraphqlResolverContext, info: any
                 let fileSize = 0
                 let videoStats = {}
                 let decryptionKey: string
+                let checksum: string;
                 for (let i = 0; i < results.length; i++) {
                     const result = results[i];
                     if (result.data.videoStats && result.data.key) {
                         videoStats = result.data.videoStats
                         fileSize = result.data.fileSize
                         decryptionKey = result.data.key
+                        checksum = result.data.checksum
                     }
                 }
 
@@ -108,6 +110,7 @@ export default (obj: any, args: any, context: IGraphqlResolverContext, info: any
                         fileDatKey: contentDatKey,
                         fileName: contentFileNames[0],
                         fileSize: fileSize,
+                        fileChecksum: checksum,
                         teaserName: `${contentFileNames[1]}`,
                         teaserUrl: `${metadataDatKey}/${contentFileNames[1]}`,
                         featuredImageName: `${contentFileNames[2]}`,

@@ -3,6 +3,7 @@ import Debug from 'debug';
 import ffprobe from 'ffprobe';
 import fs, { ReadStream } from 'fs';
 import fsExtra from 'fs-extra';
+import checksum from 'checksum';
 import md5 from 'md5';
 import path from 'path';
 import stream from 'stream';
@@ -127,32 +128,45 @@ export default class AOFS extends AORouterInterface {
                             const encryptedPath = writePath + '.encrypted'
                             const writeToEncrypted = fs.createWriteStream(encryptedPath)
 
-                            readFrom.pipe(encrypt).pipe(writeToEncrypted)
-                                .on('finish', () => {
-                                    //get stats for the encrypted file.
-                                    //const fileStats = fs.statSync( encryptedPath )
-
-                                    //remove the original file
-                                    fsExtra.remove(writePath)
-                                        .then(() => {
-                                            //finally move the encrypted file to the original path
-                                            fsExtra.move(encryptedPath, writePath)
+                            //Grab the file checksum prior to encryption.
+                            checksum.file(
+                                writePath,
+                                {algorith: 'sha256', encoding: 'hex'},
+                                (err, hash) => {
+                                    if(err) {
+                                        request.reject(err)
+                                    } else {
+                                        readFrom.pipe(encrypt).pipe(writeToEncrypted)
+                                        .on('finish', () => {
+                                            //get stats for the encrypted file.
+                                            //const fileStats = fs.statSync( encryptedPath )
+                                            
+                                            //remove the original file
+                                            fsExtra.remove(writePath)
                                                 .then(() => {
-                                                    request.respond({
-                                                        fileSize: fileStats.size,
-                                                        filePath: writePath,
-                                                        key: key,
-                                                        videoStats: videoStats ? videoStats : false
-                                                    })
+                                                    //finally move the encrypted file to the original path
+                                                    fsExtra.move(encryptedPath, writePath)
+                                                        .then(() => {
+                                                            request.respond({
+                                                                fileSize: fileStats.size,
+                                                                filePath: writePath,
+                                                                key: key,
+                                                                videoStats: videoStats ? videoStats : false,
+                                                                checksum: hash
+                                                            })
+                                                        })
+                                                        .catch(error => {
+                                                            request.reject(error)
+                                                        })
                                                 })
                                                 .catch(error => {
                                                     request.reject(error)
                                                 })
                                         })
-                                        .catch(error => {
-                                            request.reject(error)
-                                        })
-                                })
+                                    }
+                                }
+                            )//checksum end
+                            
                         }
                     })
                     .catch(e => {
