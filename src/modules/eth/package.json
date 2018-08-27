@@ -10,7 +10,8 @@
         "events": [
             "/eth/network/set",
             "/eth/content/isStaked",
-            "/eth/content/isPurchased"
+            "/eth/content/isPurchased",
+            "/eth/tx"
         ],
         "activationEvents": [
         ]
