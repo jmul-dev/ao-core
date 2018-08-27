@@ -83,7 +83,7 @@ describe('AO Eth module', () => {
     })
 
     it('should return status 0 for invalid BuyContent event transaction hash', (done) => {
-        aoEth.router.emit('/eth/events/buyContent', {
+        aoEth.router.emit('/eth/tx/BuyContent', {
             data: {
                 transactionHash: mainnetKnownSuccessfulTx,
             },

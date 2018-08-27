@@ -61,7 +61,7 @@ export default class AOEth extends AORouterInterface {
         this.router.on('/eth/network/set', this._handleNetworkChange.bind(this))
         this.router.on('/eth/content/isStaked', this._handleContentIsStaked.bind(this))        
         this.router.on('/eth/tx', this._handleTx.bind(this))
-        this.router.on('/eth/events/buyContent', this._getBuyContentEventForTransaction.bind(this))
+        this.router.on('/eth/tx/BuyContent', this._getBuyContentEventForTransaction.bind(this))
         debug(`started`)
     }
 
