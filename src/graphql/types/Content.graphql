@@ -89,7 +89,6 @@ type VideoContent implements IContent {
     # Econ
     stake: Float
     fileSize: Float
-    fileChecksum: String
     premium: Float
     split: Float
     adSupport: Boolean
