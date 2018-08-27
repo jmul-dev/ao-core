@@ -14,6 +14,7 @@ import resolveVideos from './resolveVideos';
 import resolveState from './resolveState';
 import resolveUrl from './resolveUrl';
 import resolveContentRequest from './resolveContentRequest';
+import resolveContentDecryptionKey from './resolveContentDecryptionKey';
 
 export default {
     // Query resolvers
@@ -33,6 +34,7 @@ export default {
     resolveRegister,
     resolveUpdateSettings,
     resolveContentRequest,
+    resolveContentDecryptionKey,
     // Field resolvers
     resolveUrl,
 }
