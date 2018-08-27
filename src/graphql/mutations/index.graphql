@@ -8,6 +8,13 @@ type Mutation {
     stakeContent(inputs: StakeContentInputs): IContent
 
     contentRequest(id: ID!): IContent
+    contentPurchased(inputs: contentPurchaseInputs): IContent
+}
+
+input contentPurchaseInputs {
+    contentId: String
+    purchaseId: String
+    hostId: String
 }
 
 input StakeContentInputs {
