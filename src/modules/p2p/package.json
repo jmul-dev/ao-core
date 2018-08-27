@@ -11,6 +11,7 @@
             "/p2p/init",
             "/p2p/newContent",
             "/p2p/watchKey",
+            "/p2p/watchAndGetKey",
             "/p2p/addDiscovery"
         ],
         "activationEvents": [

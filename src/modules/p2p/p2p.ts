@@ -24,6 +24,10 @@ export interface AOP2P_Watch_Key_Data {
     key: string;
 }
 
+export interface AOP2P_Watch_AND_Get_Key_Data {
+    key: string;
+}
+
 export interface AOP2P_Add_Discovery_Data {
     contentType: string;
     datKey: string;
@@ -54,6 +58,8 @@ export default class AOP2P extends AORouterInterface {
         this.router.on('/p2p/newContent', this._handleNewContent.bind(this) )
         //Watch for New Key
         this.router.on('/p2p/watchKey', this._handleWatchKey.bind(this))
+        //Watch and Get
+        this.router.on('/p2p/watchAndGetKey', this._handleWatchAndGetKey.bind(this))
         //Add content into Discovery
         this.router.on('/p2p/addDiscovery', this._handleAddDiscovery.bind(this))
         this.init().then(()=> {
@@ -189,7 +195,23 @@ export default class AOP2P extends AORouterInterface {
         }).catch( e => {
             request.reject(e)
         })
-    }    
+    }
+
+    private _handleWatchAndGetKey(request:IAORouterRequest) {
+        const requestData: AOP2P_Watch_AND_Get_Key_Data = request.data
+        this.hyperdb.watch(requestData.key)
+        .then(() => {
+            //Query
+            this.hyperdb.query(requestData.key)
+            .then((value) => {
+                request.respond(value)
+            }).catch( e => {
+                request.reject(e)
+            })
+        }).catch( e => {
+            request.reject(e)
+        })
+    }
 
     private _handleAddDiscovery(request:IAORouterRequest) {
         const requestData: AOP2P_Add_Discovery_Data = request.data
