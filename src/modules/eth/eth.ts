@@ -16,8 +16,8 @@ export interface IAOEth_NetworkChange_Data {
     networkId: '1' | '4'
 }
 
-export interface IAOEth_ContentIsStaked_Data {
-    contentId: string;
+export interface IAOEth_Stake_Content_Data {
+    transactionHash: string;
 }
 
 export interface IAOEth_TX_Data {
@@ -59,9 +59,9 @@ export default class AOEth extends AORouterInterface {
         this.rpcMainnet = args.rpcMainnet
         this.rpcRinkeby = args.rpcRinkeby
         this.router.on('/eth/network/set', this._handleNetworkChange.bind(this))
-        this.router.on('/eth/content/isStaked', this._handleContentIsStaked.bind(this))        
         this.router.on('/eth/tx', this._handleTx.bind(this))
         this.router.on('/eth/tx/BuyContent', this._getBuyContentEventForTransaction.bind(this))
+        this.router.on('/eth/tx/stakeContent', this._handleStakeContent.bind(this) )
         debug(`started`)
     }
 
@@ -139,15 +139,29 @@ export default class AOEth extends AORouterInterface {
         }).catch(request.reject)
     }
 
-    _handleContentIsStaked(request: IAORouterRequest) {
-        const requestData: IAOEth_ContentIsStaked_Data = request.data;
-        try {
-            const aoContent = this.web3.eth.contract(AOContent.abi).at(AOContent.networks[this.networkId].address)
-            // TODO: check if content is staked
-            request.respond(true)
-        } catch( error ) {
-            debug('Error checking if content is staked:', error)
-            request.reject(error)
+    _handleStakeContent(request:IAORouterRequest) {
+        const requestData: IAOEth_Stake_Content_Data = request.data
+        if(requestData.transactionHash) {
+            this._listenForTransactionStatus(requestData.transactionHash)
+            .then( (response) => {
+                if(response.data.receipt) {
+                    const receipt = response.data.receipt
+                    const storeContentEvent = receipt.logs[0];
+                    const stakeContentEvent = receipt.logs[1];
+                    const hostContentEvent = receipt.logs[2];
+                    const contentId = storeContentEvent.args.contentId;
+                    const stakeId = stakeContentEvent.args.stakeId;
+                    const contentHostId = hostContentEvent.args.contentHostId;
+                    request.respond({
+                        contentId: contentId,
+                        stakeId: stakeId,
+                        contentHostId: contentHostId
+                    })
+                } else {
+                    //Fail!
+                    request.respond({})
+                }
+            }).catch(request.reject)
         }
     }
 
