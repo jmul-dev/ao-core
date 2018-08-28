@@ -1,9 +1,10 @@
+import Debug from 'debug'
 import { IGraphqlResolverContext } from '../../http';
 import { IAORouterMessage } from "../../router/AORouter";
 import { AODB_UserContentUpdate_Data } from '../../modules/db/db';
 import { AOContentState } from '../../models/AOContent';
 import { IAOEth_BuyContentEvent_Data, BuyContentEvent } from '../../modules/eth/eth';
-const debug = require('Debug')('ao:graphql:contentPurchaseTransaction')
+const debug = Debug('ao:graphql:contentPurchaseTransaction')
 
 
 interface IContentRequest_Args {
