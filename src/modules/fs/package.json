@@ -19,7 +19,9 @@
         ],
         "activationEvents": [
             "/fs/readStream",
-            "/fs/writeStream"
+            "/fs/writeStream",
+            "/fs/decryptChecksum",
+            "/fs/reencrypt"
         ]
     }
   }
