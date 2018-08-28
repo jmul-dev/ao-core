@@ -13,7 +13,6 @@ enum ContentState {
     PURCHASING
     PURCHASED
     DECRYPTION_KEY_RECEIVED
-    DECRYPTED
     VERIFIED
     VERIFICATION_FAILED
     ENCRYPTING
@@ -55,6 +54,7 @@ interface IContent {
     fileName: String
     fileDatKey: String
     fileUrl: String
+    fileChecksum: String
     metadataDatKey: ID!
     metadataDatStats: DatStats
     title: String
@@ -82,6 +82,7 @@ type VideoContent implements IContent {
     fileName: String
     fileDatKey: String
     fileUrl: String
+    fileChecksum: String
     metadataDatKey: ID!
     metadataDatStats: DatStats
     title: String

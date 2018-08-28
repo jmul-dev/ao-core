@@ -53,8 +53,20 @@ export interface IAOFS_Move_Data {
 export interface IAOFS_Unlink_Data {
     removePath: string;
 }
+
 export interface IAOFS_FileStat_data {
     path: string;
+}
+
+export interface IAOFS_DecryptCheck_Data {
+    path: string;
+    decryptionKey: string;
+}
+
+export interface IAOFS_Reencrypt_Data {
+    originalPath: string;
+    decryptionKey: string;
+    finalPath: string;
 }
 
 
@@ -68,6 +80,8 @@ export default class AOFS extends AORouterInterface {
     private storageLocation: string;
     private ffprobeBin: string;
     private encryptionAlgorithm: string = 'aes-256-ctr';
+    private checksumAlgorithm: string = 'sha256'
+    private checksumEncoding: string = 'hex'
 
     constructor(args: AOFS_Args) {
         super()
@@ -81,6 +95,10 @@ export default class AOFS extends AORouterInterface {
         this.router.on('/fs/move', this._handleMove.bind(this))
         this.router.on('/fs/unlink', this._handleUnlink.bind(this))
         this.router.on('/fs/stats', this._handleFileStat.bind(this))
+
+        //Specific usecase methods
+        this.router.on('/fs/decryptChecksum', this._handleDecryptChecksum.bind(this))
+        this.router.on('/fs/reencrypt', this._handleReencrypt.bind(this) )
         debug(`started`)
     }
 
@@ -131,7 +149,7 @@ export default class AOFS extends AORouterInterface {
                             //Grab the file checksum prior to encryption.
                             checksum.file(
                                 writePath,
-                                {algorith: 'sha256', encoding: 'hex'},
+                                {algorith: this.checksumAlgorithm, encoding: this.checksumEncoding},
                                 (err, hash) => {
                                     if(err) {
                                         request.reject(err)
@@ -285,4 +303,44 @@ export default class AOFS extends AORouterInterface {
             request.reject(e)
         }
     }
+
+    _handleDecryptChecksum(request: IAORouterRequest) {
+        const requestData: IAOFS_DecryptCheck_Data = request.data
+        const filePath = path.resolve(this.storageLocation, requestData.path)
+        
+        fs.stat(filePath, (err, stat) => {
+            if (!err && !stat.isFile()) err = new Error('Not a file')
+            if (err) request.reject(err)
+
+            let readStream = fs.createReadStream(filePath)
+            //below is copied pretty much from the checksum module
+            let hash = crypto.createHash(this.checksumAlgorithm)
+            hash.setEncoding(this.checksumEncoding)
+            
+            const decrypt = crypto.createDecipher(this.encryptionAlgorithm, requestData.decryptionKey)
+            readStream.pipe(decrypt).pipe(hash, {end: false})
+            readStream.on('end', () => {
+                hash.end()
+                request.respond({
+                    checksum: hash.read()
+                })
+            })
+        })
+    }
+
+    _handleReencrypt(request: IAORouterRequest) {
+        const requestData: IAOFS_Reencrypt_Data = request.data
+        const readStream = fs.createReadStream(requestData.originalPath)
+        const writeStream = fs.createWriteStream(requestData.finalPath)
+        const newKey = md5(new Date().getSeconds() + Math.random())
+        const encrypt = crypto.createCipher(this.encryptionAlgorithm, newKey)
+        const decrypt = crypto.createDecipher(this.encryptionAlgorithm, requestData.decryptionKey)
+        readStream.pipe(decrypt).pipe(encrypt).pipe(writeStream)
+        .on('finish', () => {
+            request.respond({
+                newKey: newKey
+            })
+        })
+    }
+    
 }
