@@ -14,7 +14,10 @@ import resolveVideos from './resolveVideos';
 import resolveState from './resolveState';
 import resolveUrl from './resolveUrl';
 import resolveContentRequest from './resolveContentRequest';
-import resolveContentPurchased from './resolveContentPurchased'
+import resolveContentPurchaseTransaction from './resolveContentPurchaseTransaction';
+import resolveContentPurchased from './resolveContentPurchased';
+
+
 
 export default {
     // Query resolvers
@@ -34,7 +37,10 @@ export default {
     resolveRegister,
     resolveUpdateSettings,
     resolveContentRequest,
+    resolveContentPurchaseTransaction,
     resolveContentPurchased,
+    
+
     // Field resolvers
     resolveUrl,
 }

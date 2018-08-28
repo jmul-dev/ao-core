@@ -6,9 +6,9 @@ type Mutation {
     updateSettings(inputs: SettingsInputs): Settings
     submitVideoContent(inputs: VideoContentSubmissionInputs): VideoContent
     stakeContent(inputs: StakeContentInputs): IContent
-
-    contentRequest(id: ID!): IContent
     contentPurchased(inputs: contentPurchaseInputs): IContent
+    contentPurchaseTransaction(inputs: ContentPurchaseTransactionInputs): IContent
+    contentRequest(id: ID!): IContent
 }
 
 input contentPurchaseInputs {
@@ -30,4 +30,9 @@ input RegisterInputs {
 
 input SetNetworkInputs {
     networkId: String
+}
+
+input ContentPurchaseTransactionInputs {
+    transactionHash: String!
+    contentId: String!
 }

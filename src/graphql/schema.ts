@@ -50,7 +50,9 @@ export default function () {
                 submitVideoContent: resolvers.resolveSubmitVideoContent,
                 stakeContent: resolvers.resolveStakeContent,
                 contentRequest: resolvers.resolveContentRequest,
+                contentPurchaseTransaction: resolvers.resolveContentPurchaseTransaction,
                 contentPurchased: resolvers.resolveContentPurchased,
+                
             },
         },
         resolverValidationOptions: {

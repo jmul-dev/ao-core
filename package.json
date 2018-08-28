@@ -12,6 +12,8 @@
     "build-prod": "npm run clean && webpack -p --progress",
     "clean": "rimraf dist",
     "test": "mocha -r ts-node/register src/**/*.spec.ts",
+    "test-module": "mocha -r ts-node/register src/modules/${MODULE:-**}/*.spec.ts",
+    "test-module-eth": "MODULE=eth npm run test-module",
     "list-native-deps": "node ./node_modules/node-has-native-dependencies/index.js"
   },
   "publishConfig": {
