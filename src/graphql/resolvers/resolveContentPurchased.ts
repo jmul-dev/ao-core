@@ -1,17 +1,21 @@
+import { AOContentState } from '../../models/AOContent';
+
 import { IGraphqlResolverContext } from '../../http';
 import { IAORouterMessage } from "../../router/AORouter";
 import { AODB_NetworkContentGet_Data, AODB_UserContentUpdate_Data } from '../../modules/db/db';
 import { AOP2P_Watch_Key_Data } from '../../modules/p2p/p2p'
 
 interface IContentRequest_Args {
-    contentId: string;
-    purchaseId: string;
-    hostId: string;
+    inputs: {
+        contentId: string;
+        purchaseId: string;
+        hostId: string;
+    }
 }
 
 export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverContext, info: any) => {
     return new Promise((resolve, reject) => {
-        const { contentId, purchaseId, hostId } = args
+        const { contentId, purchaseId, hostId } = args.inputs
         // 1. Get existing content from user content 
         const networkContentQuery :AODB_NetworkContentGet_Data = {
             query: { id: contentId }
@@ -27,7 +31,7 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                 id: contentId,
                 update: {
                     $set: {
-                        "state": 'PURCHASED',
+                        "state": AOContentState.PURCHASED,
                         "purchaseId": purchaseId
                     }
                 }

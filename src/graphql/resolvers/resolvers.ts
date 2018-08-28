@@ -14,9 +14,12 @@ import resolveVideos from './resolveVideos';
 import resolveState from './resolveState';
 import resolveUrl from './resolveUrl';
 import resolveContentRequest from './resolveContentRequest';
+import resolveContentDecryptionKey from './resolveContentDecryptionKey';
 import resolveContentPurchaseTransaction from './resolveContentPurchaseTransaction';
 import resolveContentPurchased from './resolveContentPurchased';
 import resolveContentHostContent from './resolveContentHostContent'
+import resolveContentUploadStakeTransaction from './resolveContentUploadStakeTransaction'
+
 
 
 
@@ -38,9 +41,11 @@ export default {
     resolveRegister,
     resolveUpdateSettings,
     resolveContentRequest,
+    resolveContentDecryptionKey,
     resolveContentPurchaseTransaction,
     resolveContentPurchased,
     resolveContentHostContent,
+    resolveContentUploadStakeTransaction,
 
     // Field resolvers
     resolveUrl,
