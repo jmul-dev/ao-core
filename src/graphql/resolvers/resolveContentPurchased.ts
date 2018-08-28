@@ -12,6 +12,8 @@ interface IContentRequest_Args {
 export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverContext, info: any) => {
     return new Promise((resolve, reject) => {
         const { contentId, purchaseId, hostId } = args
+
+        // 1. Get existing content from user content 
         const networkContentQuery :AODB_NetworkContentGet_Data = {
             query: { id: contentId }
         }
@@ -24,16 +26,22 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                 ...response.data[0],
                 state: 'PURCHASED',
             }
+
+            // 2. Update to PURCHASED
             let contentUpdateQuery: AODB_UserContentUpdate_Data = {
                 id: contentId,
                 update: {
                     $set: {
-                        "state": 'PURCHASED'
+                        "state": 'PURCHASED',
+                        "purchaseId": purchaseId
                     }
                 }
             }
-
             context.router.send('/db/user/content/update', contentUpdateQuery).then((purchasingUpdateResponse: IAORouterMessage) => {
+                // 2.5 Resolve early....
+                resolve()
+
+                // 3. Watch for change in Key for this specific encrypted video Dat
                 // Note: Note that key watch is 100% up to us, no pre-fixing, or anything on the module side.
                 // TODO: How do we get the target encrypted file's dat address?  That's currently not recorded/passed from contentRequest
                 const p2pWatchKeyRequest: AOP2P_Watch_Key_Data = {
@@ -59,7 +67,8 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                         }).catch(reject) // DB user content insert end
                     } else {
                         // TODO: We might have to loop this watch/get as sometimes someone else might be purchasing from the same node.
-                        reject( new Error('Did not find any indexData for specified key') )
+                        let error = new Error('Did not find any indexData for specified key')
+                        console.log( error ) // NO reject here since we already resolved.
                     }
 
                 }).catch(reject) // Watch Key end

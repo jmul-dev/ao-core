@@ -15,7 +15,7 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
     return new Promise((resolve, reject) => {
         // TODO: make sure the content being updated does not go `backwards` in state (ex: going from PURCHASED -> PURCHASING)
         // 1. Update the content state in user db
-        let contentUpdateQuery: AODB_UserContentUpdate_Data | any = {
+        let contentUpdateQuery: AODB_UserContentUpdate_Data = {
             id: args.inputs.contentId,
             update: {
                 $set: {
