@@ -4,7 +4,7 @@ import { IAORouterMessage } from "../../router/AORouter";
 import { AODB_UserContentUpdate_Data } from '../../modules/db/db';
 import { AOContentState } from '../../models/AOContent';
 import { IAOEth_TX_Data } from '../../modules/eth/eth';
-const debug = Debug('ao:graphql:contentPostTransaction')
+const debug = Debug('ao:graphql:contentBecomeHostTransaction')
 
 
 interface IContentRequest_Args {

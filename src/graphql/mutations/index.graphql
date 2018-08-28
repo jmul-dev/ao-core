@@ -9,10 +9,10 @@ type Mutation {
     contentPurchased(inputs: contentPurchaseInputs): IContent
     contentPurchaseTransaction(inputs: ContentPurchaseTransactionInputs): IContent
     contentRequest(id: ID!): IContent
-    contentPostTransaction(inputs: ContentPostTransactionInputs): IContent
+    contentBecomeHostTransaction(inputs: ContentHostTransactionInputs): IContent
 }
 
-input ContentPostTransactionInputs {
+input ContentHostTransactionInputs {
     contentId: String
     transactionHash: String
 }
