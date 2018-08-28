@@ -15,6 +15,9 @@ import resolveState from './resolveState';
 import resolveUrl from './resolveUrl';
 import resolveContentRequest from './resolveContentRequest';
 import resolveContentPurchaseTransaction from './resolveContentPurchaseTransaction';
+import resolveContentPurchased from './resolveContentPurchased';
+
+
 
 export default {
     // Query resolvers
@@ -35,6 +38,9 @@ export default {
     resolveUpdateSettings,
     resolveContentRequest,
     resolveContentPurchaseTransaction,
+    resolveContentPurchased,
+    
+
     // Field resolvers
     resolveUrl,
 }
