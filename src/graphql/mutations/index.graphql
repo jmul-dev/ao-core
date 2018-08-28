@@ -8,17 +8,23 @@ type Mutation {
     stakeContent(inputs: StakeContentInputs): IContent
     contentPurchased(inputs: contentPurchaseInputs): IContent
     contentPurchaseTransaction(inputs: ContentPurchaseTransactionInputs): IContent
-
-    contentHostContent(inputs: ContentHostContentInputs): IContent
+    
     contentRequest(id: ID!): IContent    
     contentUploadStakeTransaction(inputs: ContentUploadStakeTransactionInputs): IContent
     contentDecryptionKey(inputs: contentDecryptionKeyInputs): IContent
+    contentBecomeHostTransaction(inputs: ContentHostTransactionInputs): IContent
+    contentHostContent(inputs: ContentHostContentInputs): IContent
 
 }
 
 input ContentHostContentInputs {
     contentId: String
     stakeId: String
+}
+
+input ContentHostTransactionInputs {
+    contentId: String
+    transactionHash: String
 }
  
 input ContentUploadStakeTransactionInputs {
