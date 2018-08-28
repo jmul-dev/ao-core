@@ -1,7 +1,24 @@
 import { IGraphqlResolverContext } from '../../http';
+import { AODB_NetworkContentGet_Data } from '../../modules/db/db';
+import { IAORouterMessage } from '../../router/AORouter';
 
 
-export default  (obj: any, args: any, context: IGraphqlResolverContext, info: any) => {
-    const contentId = args.id
-    // 1. First we ping user db to see if current user 
+/**
+ * NOTE: this resolver pulls video/content from *user* content db
+ */
+interface IVideo_Args {
+    id: string;
+}
+
+export default  (obj: any, args: IVideo_Args, context: IGraphqlResolverContext, info: any) => {
+    return new Promise((resolve, reject) => {
+        let userDbQuery: AODB_NetworkContentGet_Data = {
+            query: { 
+                id: args.id
+            }
+        }
+        context.router.send('/db/user/content/get', userDbQuery).then((contentGetResponse: IAORouterMessage) => {
+            resolve(contentGetResponse.data)
+        }).catch(reject)
+    })
 }
