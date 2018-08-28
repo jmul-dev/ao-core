@@ -16,18 +16,16 @@ export interface IAOEth_NetworkChange_Data {
     networkId: '1' | '4'
 }
 
-export interface IAOEth_Stake_Content_Data {
-    transactionHash: string;
-}
-
 export interface IAOEth_TX_Data {
     transactionHash: string;
 }
 
+export interface IAOEth_StakeContentEvent_Data {
+    transactionHash: string;
+}
 export interface IAOEth_BuyContentEvent_Data {
     transactionHash: string;
 }
-
 export interface IAOEth_HostContentEvent_Data {
     transactionHash: string;
 }
@@ -188,7 +186,7 @@ export default class AOEth extends AORouterInterface {
     }    
 
     _getStakeContentEventForTransaction(request: IAORouterRequest) {
-        const requestData: IAOEth_Stake_Content_Data = request.data
+        const requestData: IAOEth_StakeContentEvent_Data = request.data
         this._listenForTransactionStatus(requestData.transactionHash).then(({ status, receipt }) => {
             if (status && receipt) {
                 // const storeContentEvent = receipt.logs[0];
