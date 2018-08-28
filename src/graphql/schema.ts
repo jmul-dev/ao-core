@@ -50,6 +50,7 @@ export default function () {
                 submitVideoContent: resolvers.resolveSubmitVideoContent,
                 stakeContent: resolvers.resolveStakeContent,
                 contentRequest: resolvers.resolveContentRequest,
+                contentDecryptionKey: resolvers.resolveContentDecryptionKey,
                 contentPurchaseTransaction: resolvers.resolveContentPurchaseTransaction,
                 contentPurchased: resolvers.resolveContentPurchased,
                 

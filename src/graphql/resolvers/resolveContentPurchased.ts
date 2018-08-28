@@ -1,3 +1,5 @@
+import { AOContentState } from '../../models/AOContent';
+
 import { IGraphqlResolverContext } from '../../http';
 import { IAORouterMessage } from "../../router/AORouter";
 import { AODB_NetworkContentGet_Data, AODB_UserContentUpdate_Data } from '../../modules/db/db';
@@ -29,7 +31,7 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                 id: contentId,
                 update: {
                     $set: {
-                        "state": 'PURCHASED',
+                        "state": AOContentState.PURCHASED,
                         "purchaseId": purchaseId
                     }
                 }

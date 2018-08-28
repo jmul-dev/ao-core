@@ -14,6 +14,10 @@ export interface AODat_Args {
 export interface AODat_ResumeAll_Data {
 }
 
+export interface AODat_ResumeSingle_Data {
+    key: string
+}
+
 export interface AODat_StopAll_Data {
 }
 
@@ -67,6 +71,7 @@ export default class AODat extends AORouterInterface {
         this.storageLocation = args.storageLocation
         this.datDir = path.resolve(this.storageLocation, 'content')
         this.router.on('/dat/resumeAll', this._handleResumeAll.bind(this))
+        this.router.on('/dat/resumeSingle', this._handleResumeSingle.bind(this))
         this.router.on('/dat/stopAll', this._handleDatStopAll.bind(this))
         this.router.on('/dat/create', this._handleDatCreate.bind(this))
         this.router.on('/dat/download', this._handleDatDownload.bind(this))
@@ -174,6 +179,11 @@ export default class AODat extends AORouterInterface {
     
     private _handleResumeAll(request: IAORouterRequest) {
         this._resumeAll().then(request.respond).catch(request.reject)
+    }
+
+    private _handleResumeSingle(request:IAORouterRequest) {
+        const requestData: AODat_ResumeSingle_Data = request.data
+        this._resume(this.dats[requestData.key]).then(request.respond).catch(request.reject)
     }
 
     private _handleDatStopAll(request: IAORouterRequest) {

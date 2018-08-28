@@ -9,12 +9,18 @@ type Mutation {
     contentPurchased(inputs: contentPurchaseInputs): IContent
     contentPurchaseTransaction(inputs: ContentPurchaseTransactionInputs): IContent
     contentUploadStakeTransaction(inputs: ContentUploadStakeTransactionInputs): IContent
+    contentDecryptionKey(inputs: contentDecryptionKeyInputs): IContent
     contentRequest(id: ID!): IContent
 }
  
 input ContentUploadStakeTransactionInputs {
     transactionHash: String
     contentId: String
+}
+
+input contentDecryptionKeyInputs {
+    contentId: String
+    decryptionKey: String
 }
 
 input contentPurchaseInputs {
