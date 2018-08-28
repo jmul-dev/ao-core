@@ -6,14 +6,16 @@ import { AODB_NetworkContentGet_Data, AODB_UserContentUpdate_Data } from '../../
 import { AOP2P_Watch_Key_Data } from '../../modules/p2p/p2p'
 
 interface IContentRequest_Args {
-    contentId: string;
-    purchaseId: string;
-    hostId: string;
+    inputs: {
+        contentId: string;
+        purchaseId: string;
+        hostId: string;
+    }
 }
 
 export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverContext, info: any) => {
     return new Promise((resolve, reject) => {
-        const { contentId, purchaseId, hostId } = args
+        const { contentId, purchaseId, hostId } = args.inputs
         // 1. Get existing content from user content 
         const networkContentQuery :AODB_NetworkContentGet_Data = {
             query: { id: contentId }
