@@ -1,14 +1,13 @@
-import path from 'path'
-import md5 from 'md5'
-import Debug from 'debug'
-
-import { AOContentState } from '../../models/AOContent';
-
+import Debug from 'debug';
+import md5 from 'md5';
+import path from 'path';
 import { IGraphqlResolverContext } from '../../http';
-import { IAORouterMessage } from "../../router/AORouter";
-import { AODB_NetworkContentGet_Data, AODB_UserContentUpdate_Data } from '../../modules/db/db';
-import { IAOFS_DecryptCheck_Data, IAOFS_Mkdir_Data, IAOFS_Reencrypt_Data, IAOFS_Move_Data } from '../../modules/fs/fs';
+import { AOContentState } from '../../models/AOContent';
 import { AODat_Create_Data, AODat_ResumeSingle_Data } from '../../modules/dat/dat';
+import { AODB_NetworkContentGet_Data, AODB_UserContentUpdate_Data } from '../../modules/db/db';
+import { IAOFS_DecryptCheck_Data, IAOFS_Mkdir_Data, IAOFS_Move_Data, IAOFS_Reencrypt_Data } from '../../modules/fs/fs';
+import { IAORouterMessage } from "../../router/AORouter";
+
 
 const debug = Debug('ao:resContDec');
 
@@ -31,8 +30,6 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                 state: 'DECRYPTION_KEY_DECRYPTED',
                 originalDecryptionKey: decryptionKey
             }
-            resolve(clonedContent) // Early Resolve
-
             let contentUpdateQuery: AODB_UserContentUpdate_Data = {
                 id: contentId,
                 update: {
@@ -42,22 +39,25 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                     }
                 }
             }
-            context.router.send('/db/user/content/update', contentUpdateQuery).then((contentUpdateResponse:IAORouterMessage) => {
-                if ( !contentUpdateResponse.data || contentUpdateResponse.data.length !== 1 ) {
+            context.router.send('/db/user/content/update', contentUpdateQuery).then((contentUpdateResponse: IAORouterMessage) => {
+                if (!contentUpdateResponse.data || contentUpdateResponse.data.length !== 1) {
                     reject(new Error(`No discovered content with id: ${contentId}`))
                     return;
                 }
+                // 3. Resolve the updated content
+                resolve(contentUpdateResponse.data)
+
                 // 4. Decrypt/ffprobe/Checksum the downloaded file and match against the content data.
-                const encryptedVideoPath = path.join('content', clonedContent.fileDatKey, clonedContent.fileName )
+                const encryptedVideoPath = path.join('content', clonedContent.fileDatKey, clonedContent.fileName)
                 const decryptChecksumData: IAOFS_DecryptCheck_Data = {
                     path: encryptedVideoPath,
                     decryptionKey: decryptionKey
                 }
-                context.router.send('/fs/decryptChecksum', decryptChecksumData).then((decryptChecksumResponse:IAORouterMessage) => {
+                context.router.send('/fs/decryptChecksum', decryptChecksumData).then((decryptChecksumResponse: IAORouterMessage) => {
                     let checksum = decryptChecksumResponse.data[0].checksum
 
                     // 5. Update content state
-                    if(checksum != clonedContent.fileChecksum) {
+                    if (checksum != clonedContent.fileChecksum) {
                         clonedContent.state = AOContentState.VERIFICATION_FAILED
                     } else {
                         clonedContent.state = AOContentState.VERIFIED
@@ -70,27 +70,28 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                             }
                         }
                     }
-                    context.router.send('/db/user/content/update',contentUpdateQuery).then((contentVerifiedResponse:IAORouterMessage) => {
-                        if(clonedContent.state == 'VERIFICATION_FAILED') {
+                    context.router.send('/db/user/content/update', contentUpdateQuery).then((contentVerifiedResponse: IAORouterMessage) => {
+                        if (clonedContent.state == 'VERIFICATION_FAILED') {
                             // TODO: Let the rest of the network know that there is a bad actor on the network
-                            debug( new Error('Checksums do not match.  We have a problem') )                            
+                            debug(new Error('Checksums do not match.  We have a problem'))
+                            return;
                         }
 
                         // 6. New directory for data to be re-encrypted
-                        const newDatDirData : IAOFS_Mkdir_Data = {
-                            dirPath: md5( new Date() )
+                        const newDatDirData: IAOFS_Mkdir_Data = {
+                            dirPath: md5(new Date())
                         }
-                        context.router.send('/fs/mkdir', newDatDirData ).then(() => {
-                            
+                        context.router.send('/fs/mkdir', newDatDirData).then(() => {
+
                             // 7. Reencrypt original encrypted file into the new dir
                             const fileReencrypt: IAOFS_Reencrypt_Data = {
                                 originalPath: encryptedVideoPath,
                                 decryptionKey: decryptionKey,
-                                finalPath: path.join('content',newDatDirData.dirPath, clonedContent.fileName)
+                                finalPath: path.join('content', newDatDirData.dirPath, clonedContent.fileName)
                             }
-                            context.router.send('/fs/reencrypt', fileReencrypt).then((reencryptionResponse:IAORouterMessage) => {
+                            context.router.send('/fs/reencrypt', fileReencrypt).then((reencryptionResponse: IAORouterMessage) => {
                                 let newDecrytionKey = reencryptionResponse.data.newKey
-                                if( !newDecrytionKey ) {
+                                if (!newDecrytionKey) {
                                     // TODO: write clean up code erasing the dirpath.
                                     debug(new Error('No new decryption key'))
                                 }
@@ -105,14 +106,14 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                                         }
                                     }
                                 }
-                                context.router.send('/db/user/content/update',contentUpdateQuery).then(() => {
+                                context.router.send('/db/user/content/update', contentUpdateQuery).then(() => {
 
                                     // 9. Make Dat
                                     const tempDatDir = path.join('content', newDatDirData.dirPath)
                                     const createDatData: AODat_Create_Data = {
                                         newDatDir: tempDatDir
                                     }
-                                    context.router.send('/dat/create', createDatData).then((datCreateResponse:IAORouterMessage) => {
+                                    context.router.send('/dat/create', createDatData).then((datCreateResponse: IAORouterMessage) => {
                                         let newDatKey = datCreateResponse.data.key
 
                                         // 10. Move Dat to its actual key name
@@ -120,13 +121,13 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                                             srcPath: tempDatDir,
                                             destPath: path.join('content', newDatKey)
                                         }
-                                        context.router.send('/fs/move', moveNewDatData).then(()=> {
-                                            
+                                        context.router.send('/fs/move', moveNewDatData).then(() => {
+
                                             // 11. Resume Dat
                                             const resumeDatData: AODat_ResumeSingle_Data = {
                                                 key: newDatKey
                                             }
-                                            context.router.send('/dat/resumeSingle',resumeDatData).then(() => {
+                                            context.router.send('/dat/resumeSingle', resumeDatData).then(() => {
 
                                                 // 12. Store the newDatKey
                                                 clonedContent.state = AOContentState.ENCRYPTED
@@ -140,11 +141,11 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                                                         }
                                                     }
                                                 }
-                                                context.router.send('/db/user/content/update',contentUpdateQuery)
-                                                .then(() => {
-                                                    // Done!
-                                                })
-                                                .catch(debug)
+                                                context.router.send('/db/user/content/update', contentUpdateQuery)
+                                                    .then(() => {
+                                                        // Done!
+                                                    })
+                                                    .catch(debug)
 
                                             }).catch(debug) // Start sharing the dat
 
@@ -164,7 +165,7 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                 //Don't reject up from here.
 
             }).catch(reject) // Update to Decryption key received
-            
+
         }).catch(reject) // Initial get of user content
     })
 }
