@@ -9,6 +9,7 @@
     "AO": {
         "events": [
             "/dat/resumeAll",
+            "/dat/resumeSingle",
             "/dat/stopAll",
             "/dat/create",
             "/dat/exists",
