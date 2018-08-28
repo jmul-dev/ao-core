@@ -4,8 +4,7 @@ import { IAORouterMessage } from "../../router/AORouter";
 import { AODB_UserContentUpdate_Data } from '../../modules/db/db';
 import { AOContentState } from '../../models/AOContent';
 import { IAOEth_BuyContentEvent_Data } from '../../modules/eth/eth';
-
-let debug = Debug('ao:uploadStake')
+const debug = Debug('ao:uploadStake')
 
 interface IContentRequest_Args {
     inputs: {
