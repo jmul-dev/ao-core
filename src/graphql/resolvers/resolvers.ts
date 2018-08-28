@@ -21,8 +21,6 @@ import resolveContentHostContent from './resolveContentHostContent'
 import resolveContentUploadStakeTransaction from './resolveContentUploadStakeTransaction'
 
 
-
-
 export default {
     // Query resolvers
     resolveLocalNode,    
