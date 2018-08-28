@@ -51,6 +51,7 @@ export default function () {
                 stakeContent: resolvers.resolveStakeContent,
                 contentRequest: resolvers.resolveContentRequest,
                 contentDecryptionKey: resolvers.resolveContentDecryptionKey,
+                contentPurchaseTransaction: resolvers.resolveContentPurchaseTransaction,
             },
         },
         resolverValidationOptions: {

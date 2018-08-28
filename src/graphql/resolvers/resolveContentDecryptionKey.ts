@@ -1,8 +1,10 @@
 import path from 'path'
 import md5 from 'md5'
+import { AOContentState } from '../../models/AOContent';
+
 import { IGraphqlResolverContext } from '../../http';
 import { IAORouterMessage } from "../../router/AORouter";
-import { AODB_NetworkContentGet_Data } from '../../modules/db/db';
+import { AODB_NetworkContentGet_Data, AODB_UserContentUpdate_Data } from '../../modules/db/db';
 import { IAOFS_DecryptCheck_Data, IAOFS_Mkdir_Data, IAOFS_Reencrypt_Data, IAOFS_Move_Data } from '../../modules/fs/fs';
 import { AODat_Create_Data, AODat_ResumeSingle_Data } from '../../modules/dat/dat';
 
@@ -14,7 +16,7 @@ interface IContentRequest_Args {
 
 export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverContext, info: any) => {
     return new Promise((resolve, reject) => {
-        const {contentId, decryptionKey} = args
+        const { contentId, decryptionKey } = args
         // 1. Pull the Content from user content db
         let networkContentQuery: AODB_NetworkContentGet_Data = {
             query: { id: contentId }
@@ -26,7 +28,16 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                 state: 'DECRYPTION_KEY_RECEIVED',
                 originalDecryptionKey: decryptionKey
             }
-            context.router.send('/db/user/content/update',clonedContent).then((contentUpdateResponse:IAORouterMessage) => {
+            let contentUpdateQuery: AODB_UserContentUpdate_Data = {
+                id: contentId,
+                update: {
+                    $set: {
+                        "state": AOContentState.DECRYPTION_KEY_RECEIVED,
+                        "originalDecryptionKey": decryptionKey
+                    }
+                }
+            }
+            context.router.send('/db/user/content/update', contentUpdateQuery).then((contentUpdateResponse:IAORouterMessage) => {
                 if ( !contentUpdateResponse.data || contentUpdateResponse.data.length !== 1 ) {
                     reject(new Error(`No discovered content with id: ${contentId}`))
                     return;
@@ -42,11 +53,19 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
 
                     // 5. Update content state
                     if(checksum != clonedContent.fileChecksum) {
-                        clonedContent.state = 'VERIFICATION_FAILED'
+                        clonedContent.state = AOContentState.VERIFICATION_FAILED
                     } else {
-                        clonedContent.state = 'VERIFIED'
-                    }                    
-                    context.router.send('/db/user/content/update',clonedContent).then((contentVerifiedResponse:IAORouterMessage) => {
+                        clonedContent.state = AOContentState.VERIFIED
+                    }
+                    let contentUpdateQuery: AODB_UserContentUpdate_Data = {
+                        id: contentId,
+                        update: {
+                            $set: {
+                                "state": clonedContent.state
+                            }
+                        }
+                    }
+                    context.router.send('/db/user/content/update',contentUpdateQuery).then((contentVerifiedResponse:IAORouterMessage) => {
                         if(clonedContent.state == 'VERIFICATION_FAILED') {
                             // TODO: Let the rest of the network know that there is a bad actor on the network
                             reject( new Error('Checksums do not match.  We have a problem') )                            
@@ -72,8 +91,16 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                                 }
 
                                 // 8. Update Content State to Encrypted
-                                clonedContent.state = 'ENCRYPTED'
-                                context.router.send('/db/user/content/update',clonedContent).then(() => {
+                                clonedContent.state = AOContentState.ENCRYPTED
+                                let contentUpdateQuery: AODB_UserContentUpdate_Data = {
+                                    id: contentId,
+                                    update: {
+                                        $set: {
+                                            "state": clonedContent.state
+                                        }
+                                    }
+                                }
+                                context.router.send('/db/user/content/update',contentUpdateQuery).then(() => {
 
                                     // 9. Make Dat
                                     const tempDatDir = path.join('content', newDatDirData.dirPath)
