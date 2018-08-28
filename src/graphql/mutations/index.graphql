@@ -11,6 +11,12 @@ type Mutation {
     contentUploadStakeTransaction(inputs: ContentUploadStakeTransactionInputs): IContent
     contentDecryptionKey(inputs: contentDecryptionKeyInputs): IContent
     contentRequest(id: ID!): IContent
+    contentBecomeHostTransaction(inputs: ContentHostTransactionInputs): IContent
+}
+
+input ContentHostTransactionInputs {
+    contentId: String
+    transactionHash: String
 }
  
 input ContentUploadStakeTransactionInputs {

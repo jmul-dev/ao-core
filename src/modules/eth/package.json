@@ -11,7 +11,8 @@
             "/eth/network/set",
             "/eth/tx",
             "/eth/tx/BuyContent",
-            "/eth/tx/StakeContent"
+            "/eth/tx/StakeContent",
+            "/eth/tx/HostContent"
         ],
         "activationEvents": [
         ]
