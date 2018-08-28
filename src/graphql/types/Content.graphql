@@ -42,6 +42,12 @@ type ContentTransactions {
     hostTx: String
 }
 
+type VideoMetadata {
+    duration: Float
+    resolution: String
+    encoding: String
+}
+
 # Shared interface between all content types
 interface IContent {
     id: ID!
@@ -68,6 +74,7 @@ interface IContent {
     # Network
     createdAt: String
     transactions: ContentTransactions
+    purchaseId: String
 }
 
 type VideoContent implements IContent {
@@ -85,7 +92,7 @@ type VideoContent implements IContent {
     metadataDatKey: ID!
     metadataDatStats: DatStats
     title: String
-    description: String    
+    description: String
     # Econ
     stake: Float
     fileSize: Float
@@ -95,6 +102,7 @@ type VideoContent implements IContent {
     # Network
     createdAt: String
     transactions: ContentTransactions
+    purchaseId: String
     # VideoContent
     teaserUrl: String
     featuredImageUrl: String
@@ -110,10 +118,4 @@ input VideoContentSubmissionInputs {
     description: String!
     stake: Float!
     profit: Float!
-}
-
-type VideoMetadata {
-    duration: Float
-    resolution: String
-    encoding: String
 }
