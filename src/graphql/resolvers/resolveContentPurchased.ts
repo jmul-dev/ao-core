@@ -12,7 +12,6 @@ interface IContentRequest_Args {
 export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverContext, info: any) => {
     return new Promise((resolve, reject) => {
         const { contentId, purchaseId, hostId } = args
-
         // 1. Get existing content from user content 
         const networkContentQuery :AODB_NetworkContentGet_Data = {
             query: { id: contentId }
@@ -22,11 +21,7 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                 reject(new Error(`No discovered content with id: ${contentId}`))
                 return;
             }
-            let clonedContent = {
-                ...response.data[0],
-                state: 'PURCHASED',
-            }
-
+            const content = response.data[0]
             // 2. Update to PURCHASED
             let contentUpdateQuery: AODB_UserContentUpdate_Data = {
                 id: contentId,
@@ -38,16 +33,19 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                 }
             }
             context.router.send('/db/user/content/update', contentUpdateQuery).then((purchasingUpdateResponse: IAORouterMessage) => {
-                // 2.5 Resolve early....
-                resolve()
+                // 3. Resolve with updated content
+                resolve(purchasingUpdateResponse.data)
 
-                // 3. Watch for change in Key for this specific encrypted video Dat
+                // 4. Watch for change in Key for this specific encrypted video Dat
                 // Note: Note that key watch is 100% up to us, no pre-fixing, or anything on the module side.
                 // TODO: How do we get the target encrypted file's dat address?  That's currently not recorded/passed from contentRequest
                 const p2pWatchKeyRequest: AOP2P_Watch_Key_Data = {
-                    key: '/AOSpace/VOD/' + clonedContent.metadataDatKey + '/nodes/' + clonedContent.creatorId + '/' + clonedContent.fileDatKey + '/indexData'
+                    key: '/AOSpace/VOD/' + content.metadataDatKey + '/nodes/' + content.creatorId + '/' + content.fileDatKey + '/indexData'
                 }
-                context.router.send('/p2p/watchAndGetKey', p2pWatchKeyRequest).then( (watchKeyResponse:IAORouterMessage)=> {
+                context.router.send('/p2p/watchAndGetKey', p2pWatchKeyRequest).then((watchKeyResponse:IAORouterMessage) => {
+                    /* 
+                     * The following logic will likely be moved elsewhere.
+                     * 
                     // TODO: Use indexData to find and decrypt the decryption key using your private key
                     // TODO: #2, Might want to sort through the indexData first.
                     const indexData = watchKeyResponse.data
@@ -62,16 +60,19 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                                 }
                             }
                         }
-                        context.router.send('/db/user/content/update', contentUpdateQuery)
-                        .then((purchasedUpdateResponse: IAORouterMessage) => {
+                        context.router.send('/db/user/content/update', contentUpdateQuery).then((purchasedUpdateResponse: IAORouterMessage) => {
+
                         }).catch(reject) // DB user content insert end
                     } else {
                         // TODO: We might have to loop this watch/get as sometimes someone else might be purchasing from the same node.
                         let error = new Error('Did not find any indexData for specified key')
                         console.log( error ) // NO reject here since we already resolved.
                     }
-
-                }).catch(reject) // Watch Key end
+                    */
+                }).catch(error => {
+                    console.error(error)
+                }) // Watch Key end
+                
             }).catch(reject) // update to purchasing.
         }).catch(reject) // Network content get from DB end
     })
