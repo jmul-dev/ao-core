@@ -112,6 +112,7 @@ export default class AOEth extends AORouterInterface {
      * @param request.buyer
      * @param request.transactionHash
      * @param request.contentHostId
+     * @returns {status, event} 
      */
     _getBuyContentEventForTransaction(request: IAORouterRequest) {
         const requestData: IAOEth_BuyContentEvent_Data = request.data;
