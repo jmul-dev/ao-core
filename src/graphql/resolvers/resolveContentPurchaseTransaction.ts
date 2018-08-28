@@ -2,7 +2,9 @@ import { IGraphqlResolverContext } from '../../http';
 import { IAORouterMessage } from "../../router/AORouter";
 import { AODB_UserContentUpdate_Data } from '../../modules/db/db';
 import { AOContentState } from '../../models/AOContent';
-import { IAOEth_BuyContentEvent_Data } from '../../modules/eth/eth';
+import { IAOEth_BuyContentEvent_Data, BuyContentEvent } from '../../modules/eth/eth';
+const debug = require('Debug')('ao:graphql:contentPurchaseTransaction')
+
 
 interface IContentRequest_Args {
     inputs: {
@@ -33,9 +35,41 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
             let buyContentEventArgs: IAOEth_BuyContentEvent_Data = {
                 transactionHash: args.inputs.transactionHash
             }
-            context.router.send('/eth/tx/BuyContent', buyContentEventArgs);
-            // NOTE: we are resolving without waiting for tx status and BuyContent event
+            // 3. We are resolving without waiting for tx status and BuyContent event
             resolve(response.data)
+            // 4. Still listen for event completion/failure
+            context.router.send('/eth/tx/BuyContent', buyContentEventArgs).then((response: IAORouterMessage) => {
+                const { status } = response.data
+                const event: BuyContentEvent = response.data.event
+                let contentUpdateAfterTx: AODB_UserContentUpdate_Data = {
+                    id: args.inputs.contentId,
+                    update: {}
+                }
+                if ( status && event ) {
+                    // 5a. Succesful transaction
+                    contentUpdateAfterTx.update = {
+                        $set: {
+                            "state": AOContentState.PURCHASED,
+                            "purchaseId": event.purchaseId,
+                            "nodeId": event.contentHostId,
+                        }
+                    }
+                } else {
+                    // 5b. Transaction failed :(, go back to previous state
+                    contentUpdateAfterTx.update = {
+                        $set: {
+                            "state": AOContentState.DOWNLOADED,
+                            "transactions.purchaseTx": null,
+                        }
+                    }                    
+                }
+                context.router.send('/db/user/content/update', contentUpdateAfterTx)
+            }).catch(error => {
+                debug(error)
+                // NOTE: failed to get tx status. I dont think it makes sense to roll content state
+                // back (as the tx could still be vaild). For now let's just leave in limbo, but might
+                // want to check again.
+            })
         }).catch(reject)
     })
 }

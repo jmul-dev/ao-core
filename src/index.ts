@@ -42,7 +42,6 @@ export default class Core extends EventEmitter {
         debug(this.options)
         this.coreRouter = new AORouter(this.options)
         this.coreRouter.init()
-        // TODO: setup coreRouter event listeners (eg: http shutdown/error)
         this.coreRouter.router.on('/core/log', this._handleLog.bind(this))
         this.http = new Http(this.coreRouter.router, this.options)
         process.stdin.resume();  // Hack to keep the core processes running
