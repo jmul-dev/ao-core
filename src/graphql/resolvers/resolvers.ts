@@ -16,6 +16,7 @@ import resolveUrl from './resolveUrl';
 import resolveContentRequest from './resolveContentRequest';
 import resolveContentPurchaseTransaction from './resolveContentPurchaseTransaction';
 import resolveContentPurchased from './resolveContentPurchased';
+import resolveContentPostTransaction from './resolveContentPostTransaction'
 
 
 
@@ -39,6 +40,7 @@ export default {
     resolveContentRequest,
     resolveContentPurchaseTransaction,
     resolveContentPurchased,
+    resolveContentPostTransaction,
     
 
     // Field resolvers
