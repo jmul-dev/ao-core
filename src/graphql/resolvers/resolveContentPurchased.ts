@@ -1,6 +1,6 @@
 import { IGraphqlResolverContext } from '../../http';
 import { IAORouterMessage } from "../../router/AORouter";
-import { AODB_NetworkContentGet_Data } from '../../modules/db/db';
+import { AODB_NetworkContentGet_Data, AODB_UserContentGet_Data } from '../../modules/db/db';
 import { AOP2P_Watch_Key_Data } from '../../modules/p2p/p2p'
 
 interface IContentRequest_Args {
@@ -15,17 +15,25 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
         const networkContentQuery :AODB_NetworkContentGet_Data = {
             query: { id: contentId }
         }
-        context.router.send('/db/network/content/get', networkContentQuery).then( (response:IAORouterMessage) => {
+        context.router.send('/db/user/content/get', networkContentQuery).then( (response:IAORouterMessage) => {
             if ( !response.data || response.data.length !== 1 ) {
                 reject(new Error(`No discovered content with id: ${contentId}`))
                 return;
             }
             let clonedContent = {
                 ...response.data[0],
-                nodeId: response.ethAddress,  // AORouter attaches current user address
-                state: 'PURCHASING',
+                state: 'PURCHASED',
             }
-            context.router.send('/db/user/content/update', clonedContent).then((purchasingUpdateResponse: IAORouterMessage) => {
+            let contentUpdateQuery: AODB_UserContentUpdate_Data = {
+                id: contentId,
+                update: {
+                    $set: {
+                        "state": 'PURCHASED'
+                    }
+                }
+            }
+
+            context.router.send('/db/user/content/update', contentUpdateQuery).then((purchasingUpdateResponse: IAORouterMessage) => {
                 // Note: Note that key watch is 100% up to us, no pre-fixing, or anything on the module side.
                 // TODO: How do we get the target encrypted file's dat address?  That's currently not recorded/passed from contentRequest
                 const p2pWatchKeyRequest: AOP2P_Watch_Key_Data = {
@@ -37,10 +45,17 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                     const indexData = watchKeyResponse.data
                     if( indexData ) {
                         //Set State to Purchased
-                        clonedContent.state = 'PURCHASED'
-                        clonedContent.encryptedKey = indexData 
-                        context.router.send('/db/user/content/update', clonedContent).then((purchasedUpdateResponse: IAORouterMessage) => {
-                            resolve(purchasedUpdateResponse.data)
+                        let contentUpdateQuery: AODB_UserContentUpdate_Data = {
+                            id: contentId,
+                            update: {
+                                $set: {
+                                    "state": 'DECRYPTION_KEY_RECEIVED',
+                                    "encryptedKey": indexData //Gotta figure this out later!
+                                }
+                            }
+                        }
+                        context.router.send('/db/user/content/update', contentUpdateQuery)
+                        .then((purchasedUpdateResponse: IAORouterMessage) => {
                         }).catch(reject) // DB user content insert end
                     } else {
                         // TODO: We might have to loop this watch/get as sometimes someone else might be purchasing from the same node.
