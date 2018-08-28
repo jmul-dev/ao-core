@@ -1,5 +1,7 @@
 import path from 'path'
 import md5 from 'md5'
+import Debug from 'debug'
+
 import { AOContentState } from '../../models/AOContent';
 
 import { IGraphqlResolverContext } from '../../http';
@@ -8,6 +10,7 @@ import { AODB_NetworkContentGet_Data, AODB_UserContentUpdate_Data } from '../../
 import { IAOFS_DecryptCheck_Data, IAOFS_Mkdir_Data, IAOFS_Reencrypt_Data, IAOFS_Move_Data } from '../../modules/fs/fs';
 import { AODat_Create_Data, AODat_ResumeSingle_Data } from '../../modules/dat/dat';
 
+const debug = Debug('ao:resContDec');
 
 interface IContentRequest_Args {
     contentId: string
@@ -25,14 +28,16 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
             // 2. Update the content Database and store the decryption key
             let clonedContent = {
                 ...contentGetResponse.data[0],
-                state: 'DECRYPTION_KEY_RECEIVED',
+                state: 'DECRYPTION_KEY_DECRYPTED',
                 originalDecryptionKey: decryptionKey
             }
+            resolve(clonedContent) // Early Resolve
+
             let contentUpdateQuery: AODB_UserContentUpdate_Data = {
                 id: contentId,
                 update: {
                     $set: {
-                        "state": AOContentState.DECRYPTION_KEY_RECEIVED,
+                        "state": AOContentState.DECRYPTION_KEY_DECRYPTED,
                         "originalDecryptionKey": decryptionKey
                     }
                 }
@@ -68,7 +73,7 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                     context.router.send('/db/user/content/update',contentUpdateQuery).then((contentVerifiedResponse:IAORouterMessage) => {
                         if(clonedContent.state == 'VERIFICATION_FAILED') {
                             // TODO: Let the rest of the network know that there is a bad actor on the network
-                            reject( new Error('Checksums do not match.  We have a problem') )                            
+                            debug( new Error('Checksums do not match.  We have a problem') )                            
                         }
 
                         // 6. New directory for data to be re-encrypted
@@ -87,7 +92,7 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                                 let newDecrytionKey = reencryptionResponse.data.newKey
                                 if( !newDecrytionKey ) {
                                     // TODO: write clean up code erasing the dirpath.
-                                    reject(new Error('No new decryption key'))
+                                    debug(new Error('No new decryption key'))
                                 }
 
                                 // 8. Update Content State to Encrypted
@@ -117,30 +122,46 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                                         }
                                         context.router.send('/fs/move', moveNewDatData).then(()=> {
                                             
-                                            //11. Resume Dat
+                                            // 11. Resume Dat
                                             const resumeDatData: AODat_ResumeSingle_Data = {
                                                 key: newDatKey
                                             }
                                             context.router.send('/dat/resumeSingle',resumeDatData).then(() => {
 
-                                                // TODO: Figure out the actual return.
-                                                resolve(clonedContent)
+                                                // 12. Store the newDatKey
+                                                clonedContent.state = AOContentState.ENCRYPTED
+                                                clonedContent.newFileDatKey = newDatKey
+                                                let contentUpdateQuery: AODB_UserContentUpdate_Data = {
+                                                    id: contentId,
+                                                    update: {
+                                                        $set: {
+                                                            "state": clonedContent.state,
+                                                            "newFileDatKey": clonedContent.newFileDatKey
+                                                        }
+                                                    }
+                                                }
+                                                context.router.send('/db/user/content/update',contentUpdateQuery)
+                                                .then(() => {
+                                                    // Done!
+                                                })
+                                                .catch(debug)
 
-                                            }).catch(reject) // Start sharing the dat
+                                            }).catch(debug) // Start sharing the dat
 
-                                        }).catch(reject) // Move Dat Dir
+                                        }).catch(debug) // Move Dat Dir
 
-                                    }).catch(reject) // Dat Creation
+                                    }).catch(debug) // Dat Creation
 
-                                }).catch(reject) // Content State update to Encrypted
+                                }).catch(debug) // Content State update to Encrypted
 
-                            }).catch(reject) // Reencryption/copy
+                            }).catch(debug) // Reencryption/copy
 
-                        }).catch(reject) // MakeDir for new dat
+                        }).catch(debug) // MakeDir for new dat
 
-                    }).catch(reject) // Content State updated to Verified (or not!)
+                    }).catch(debug) // Content State updated to Verified (or not!)
 
-                }).catch(reject) // Decrypt and Checksum
+                }).catch(debug) // Decrypt and Checksum
+                //Don't reject up from here.
 
             }).catch(reject) // Update to Decryption key received
             
