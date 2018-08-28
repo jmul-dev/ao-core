@@ -8,6 +8,7 @@ type Mutation {
     stakeContent(inputs: StakeContentInputs): IContent
 
     contentRequest(id: ID!): IContent
+    contentPurchaseTransaction(inputs: ContentPurchaseTransactionInputs): IContent
 }
 
 input StakeContentInputs {
@@ -23,4 +24,9 @@ input RegisterInputs {
 
 input SetNetworkInputs {
     networkId: String
+}
+
+input ContentPurchaseTransactionInputs {
+    transactionHash: String!
+    contentId: String!
 }
