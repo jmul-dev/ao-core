@@ -18,6 +18,9 @@ import resolveContentRequest from './resolveContentRequest';
 import resolveContentDecryptionKey from './resolveContentDecryptionKey';
 
 import resolveContentPurchaseTransaction from './resolveContentPurchaseTransaction';
+import resolveContentPurchased from './resolveContentPurchased';
+
+
 
 
 export default {
@@ -38,10 +41,9 @@ export default {
     resolveRegister,
     resolveUpdateSettings,
     resolveContentRequest,
-
     resolveContentDecryptionKey,
-
     resolveContentPurchaseTransaction,
+    resolveContentPurchased,
 
     // Field resolvers
     resolveUrl,

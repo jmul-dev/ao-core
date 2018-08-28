@@ -6,18 +6,21 @@ type Mutation {
     updateSettings(inputs: SettingsInputs): Settings
     submitVideoContent(inputs: VideoContentSubmissionInputs): VideoContent
     stakeContent(inputs: StakeContentInputs): IContent
-
-    contentRequest(id: ID!): IContent
+    contentPurchased(inputs: contentPurchaseInputs): IContent
     contentPurchaseTransaction(inputs: ContentPurchaseTransactionInputs): IContent
     contentDecryptionKey(inputs: contentDecryptionKeyInputs): IContent
+    contentRequest(id: ID!): IContent
 }
 
 input contentDecryptionKeyInputs {
     contentId: String
     decryptionKey: String
+}
 
-
-
+input contentPurchaseInputs {
+    contentId: String
+    purchaseId: String
+    hostId: String
 }
 
 input StakeContentInputs {
