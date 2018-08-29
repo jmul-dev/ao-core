@@ -18,8 +18,8 @@ import resolveContentDecryptionKey from './resolveContentDecryptionKey';
 import resolveContentPurchaseTransaction from './resolveContentPurchaseTransaction';
 import resolveContentPurchased from './resolveContentPurchased';
 import resolveContentBecomeHostTransaction from './resolveContentBecomeHostTransaction'
+import resolveMakeContentDiscoverable from './resolveMakeContentDiscoverable'
 import resolveContentUploadStakeTransaction from './resolveContentUploadStakeTransaction'
-
 
 
 export default {
@@ -43,8 +43,9 @@ export default {
     resolveContentDecryptionKey,
     resolveContentPurchaseTransaction,
     resolveContentPurchased,
-    resolveContentBecomeHostTransaction,
+    resolveContentBecomeHostTransaction,    
     resolveContentUploadStakeTransaction,
+    resolveMakeContentDiscoverable,
     // Field resolvers
     resolveUrl,
 }

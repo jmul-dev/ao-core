@@ -4,6 +4,7 @@ import { IAORouterMessage } from "../../router/AORouter";
 import { AODB_UserContentUpdate_Data } from '../../modules/db/db';
 import { AOContentState } from '../../models/AOContent';
 import { IAOEth_TX_Data, IAOEth_HostContentEvent_Data, HostContentEvent } from '../../modules/eth/eth';
+import makeContentDiscoverable, { IMakeContentDiscoverable_Args } from './resolveMakeContentDiscoverable';
 const debug = Debug('ao:graphql:contentBecomeHostTransaction')
 
 
@@ -39,13 +40,14 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                 transactionHash: transactionHash
             }
             context.router.send('/eth/tx/HostContent', hostContentEventParams).then((response: IAORouterMessage) => {
-                // 3. Update the Content State based on status                
+                // 3. Update the Content State based on status
                 if (response.data.status) {
                     const hostContentEvent: HostContentEvent = response.data.hostContentEvent
                     contentUpdateQuery.update = {
                         $set: {
                             "state": AOContentState.STAKED,
-                            "contentHostId": hostContentEvent.contentHostId
+                            "contentHostId": hostContentEvent.contentHostId,
+                            "stakeId": hostContentEvent.stakeId,
                         }
                     }
                 } else {
@@ -58,6 +60,18 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                 }
                 context.router.send('/db/user/content/update', contentUpdateQuery).then((response: IAORouterMessage) => {
                     debug(`Succesfully updated content state: ${response.data.state}`)
+                    if ( response.data.state === AOContentState.STAKED ) {
+                        // 4. TODO: at this point the content is Hosted (according to smart contracts) and 
+                        // should be made discoverable via p2p layer
+                        const makeDiscoverableArgs: IMakeContentDiscoverable_Args = {
+                            inputs: {
+                                contentId
+                            }
+                        }
+                        makeContentDiscoverable(obj, makeDiscoverableArgs, context, info).then((discoverableContent: any) => {
+                            debug(`Content[${discoverableContent.id}].state = ${discoverableContent.state}`)
+                        }).catch(debug)
+                    }
                 }).catch(debug)
             }).catch(debug)
             
