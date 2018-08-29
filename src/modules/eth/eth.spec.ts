@@ -11,6 +11,8 @@ describe('AO Eth module', () => {
     const mainnetKnownFailedTx = '0xa0a5e34b9b19b398c5a073513ecb461899ceb45246f51e6d470ae0cf23b39075'
     const mainnetKnownSuccessfulTx = '0xfaa19822a0d907e336146ccba8680e5a3fc6e0ac4d69aa8f5d29fe228aa6447e'
 
+    const mainnetUnknownTx = '0xaaa19822a0d907e336146ccba8680e5a3fc6e0ac4d69aa8f5d29fe228aa6447e'
+
     const rinkebySuccesfullStakeTx = '0x4087c63e470e7162f8366d5bad91dfdf6c1227352b18ac2cdab2c961375f96f6'
 
     it('should connect to rinkeby testnet', (done) => {
@@ -84,6 +86,20 @@ describe('AO Eth module', () => {
         })
     })
 
+    // // Just used for testing the periodic check of tx status
+    // it('should timeout listening for unkown tx', (done) => {
+    //     aoEth.router.emit('/eth/tx', {
+    //         data: {
+    //             transactionHash: mainnetUnknownTx,
+    //         },
+    //         respond: ({status}) => {
+    //             expect(status).to.not.be.ok
+    //             done(new Error(`This tx should not return succesfully`))
+    //         },
+    //         reject: done
+    //     })
+    // }).timeout(20000)
+
     // it('should return BuyContent event for known transaction', (done) => {
     //     aoEth.router.emit('/eth/tx/BuyContent', {
     //         data: {
@@ -96,7 +112,7 @@ describe('AO Eth module', () => {
     //         },
     //         reject: done
     //     })
-    // })
+    // })    
 
     it('should return logs for succesfull stake tx', (done) => {
         // Switch to rinkeby

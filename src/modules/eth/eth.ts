@@ -221,23 +221,55 @@ export default class AOEth extends AORouterInterface {
             // 1. Check for transaction receipt already existing
             this.web3.eth.getTransactionReceipt(transactionHash, (error, receipt) => {
                 if (receipt) {
+                    debug(`Found receipt for tx[${transactionHash}]`)
                     resolve({ status: receipt.status !== '0x0' ? 1 : 0, receipt })
                 } else {
                     // 2. Receipt does not exist, begin listening intently
-                    const filter = this.web3.eth.filter('latest')
-                    filter.watch((error, result) => {
+                    debug(`No receipt found for tx[${transactionHash}], begin listening`)
+                    /**
+                     * NOTE: infura rpc does not support watch, so we are just going to ping
+                     */
+                    const receiptChecker = () => {
                         this.web3.eth.getTransactionReceipt(transactionHash, (error, receipt) => {
                             if (error) {
+                                debug(`Error checking receipt for tx[${transactionHash}]`, error)
                                 reject(error)
                             } else if (receipt) {
-                                filter.stopWatching()
+                                debug(`Found receipt for tx[${transactionHash}]`)
                                 // The TX has been added to the chain, now determine status
                                 resolve({ status: receipt.status !== '0x0' ? 1 : 0, receipt })
                             } else {
                                 // no error and no receipt found on this block, keep listening
+                                debug(`Receipt still not found for tx[${transactionHash}]`)
+                                setTimeout(receiptChecker, 10000)
                             }
                         })
+                    }
+                    setTimeout(receiptChecker, 10000)
+                    /*
+                    const filter = this.web3.eth.filter('latest')
+                    filter.watch((error, result) => {
+                        if ( error ) {
+                            debug(`Watch filter error`, error)
+                        } else {
+                            debug(`Checking receipt for tx[${transactionHash}]`, error)
+                            this.web3.eth.getTransactionReceipt(transactionHash, (error, receipt) => {
+                                if (error) {
+                                    debug(`Error checking receipt for tx[${transactionHash}]`, error)
+                                    reject(error)
+                                } else if (receipt) {
+                                    debug(`Found receipt for tx[${transactionHash}]`)
+                                    filter.stopWatching()
+                                    // The TX has been added to the chain, now determine status
+                                    resolve({ status: receipt.status !== '0x0' ? 1 : 0, receipt })
+                                } else {
+                                    // no error and no receipt found on this block, keep listening
+                                    debug(`Receipt still not found for tx[${transactionHash}]`)
+                                }
+                            })
+                        }
                     })
+                    */
                 }
             })
         })
