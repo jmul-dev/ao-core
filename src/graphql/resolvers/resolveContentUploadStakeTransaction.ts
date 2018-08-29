@@ -41,7 +41,6 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                 transactionHash: transactionHash
             }
             context.router.send('/eth/tx/StakeContent', stakeContentEventArgs).then((stakeEventResponse: IAORouterMessage) => {
-                debug(`Content[${response.data.id}] stake response:`, stakeEventResponse.data)
                 if ( stakeEventResponse.data.status ) {
                     const stakeContentEvent: StakeContentEvent = stakeEventResponse.data.stakeContentEvent
                     const hostContentEvent: HostContentEvent = stakeEventResponse.data.hostContentEvent
