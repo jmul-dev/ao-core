@@ -149,20 +149,12 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
 
                                             }).catch(debug) // Start sharing the dat
 
-                                        }).catch((e) => {
-                                            debug(e)
-                                            let removePathData: IAOFS_Unlink_Data = {
-                                                removePath: fileReencrypt.finalPath
-                                            }
-                                            context.router.send('/fs/unlink', removePathData)
-                                            .then(() => {})
-                                            .catch(debug)
-                                        }) // Move Dat Dir
+                                        }).catch(debug) // Move Dat Dir
 
                                     }).catch((e) => {
                                         debug(e)
                                         let removePathData: IAOFS_Unlink_Data = {
-                                            removePath: fileReencrypt.finalPath
+                                            removePath: path.join(fileReencrypt.finalPath, '.dat')
                                         }
                                         context.router.send('/fs/unlink', removePathData)
                                         .then(() => {})
