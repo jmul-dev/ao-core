@@ -27,7 +27,6 @@ export default (obj: any, args: IRegister_Args, context: IGraphqlResolverContext
             Promise.all(mkdirPromises).then(() => {                                
                 context.router.send('/core/log', {message: `[AO Core] Registered as user ${args.inputs.ethAddress}`})
                 resolveSetNetwork(obj, args, context, info).then((ethNetworkConnected: boolean) => {
-                    console.log(`ethNetworkConnected: ${ethNetworkConnected}`)
                     if ( !ethNetworkConnected ) {
                         reject(new Error(`Unable to connect to ethereum network`))
                     } else {

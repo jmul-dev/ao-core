@@ -232,7 +232,7 @@ export default class AOEth extends AORouterInterface {
             // 1. Check for transaction receipt already existing
             this.web3.eth.getTransactionReceipt(transactionHash, (error, receipt) => {
                 if (receipt) {
-                    resolve({ status: receipt.status !== '0x0' })
+                    resolve({ status: receipt.status !== '0x0', receipt })
                 } else {
                     // 2. Receipt does not exist, begin listening intently
                     const filter = this.web3.eth.filter('latest')

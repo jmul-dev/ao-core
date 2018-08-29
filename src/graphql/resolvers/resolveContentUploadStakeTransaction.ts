@@ -16,7 +16,6 @@ interface IContentRequest_Args {
 
 export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverContext, info: any) => {
     return new Promise((resolve, reject) => {
-        debug(`Hit the mutation`)
         const { contentId, transactionHash } = args.inputs
         // 1. Update the content state in user db
         let contentUpdateQuery: AODB_UserContentUpdate_Data = {
@@ -42,6 +41,7 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                 transactionHash: transactionHash
             }
             context.router.send('/eth/tx/StakeContent', stakeContentEventArgs).then((response: IAORouterMessage) => {
+                debug(`Content[${response.data.id}] stake response:`, response.data)
                 if ( response.data.status ) {
                     const stakeContentEvent: StakeContentEvent = response.data.stakeContentEvent
                     const hostContentEvent: HostContentEvent = response.data.hostContentEvent
@@ -55,7 +55,6 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                     contentUpdateQuery.update = {
                         $set: {
                             "state": AOContentState.ENCRYPTED,// TODO: Verify that this is the correct state to go back to.
-                            "transactions.stakeTx": null,
                         }
                     }  
                 }                

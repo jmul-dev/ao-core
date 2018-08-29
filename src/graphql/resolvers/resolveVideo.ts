@@ -18,7 +18,7 @@ export default  (obj: any, args: IVideo_Args, context: IGraphqlResolverContext, 
             }
         }
         context.router.send('/db/user/content/get', userDbQuery).then((contentGetResponse: IAORouterMessage) => {
-            resolve(contentGetResponse.data)
+            resolve(contentGetResponse.data[0])
         }).catch(reject)
     })
 }
