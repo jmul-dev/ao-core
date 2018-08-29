@@ -4,7 +4,7 @@ import { IAORouterMessage } from "../../router/AORouter";
 import { AODB_UserContentUpdate_Data } from '../../modules/db/db';
 import { AOContentState } from '../../models/AOContent';
 import { IAOEth_BuyContentEvent_Data, StakeContentEvent, HostContentEvent } from '../../modules/eth/eth';
-const debug = Debug('ao:uploadStake')
+const debug = Debug('ao:graphql:contentUploadStakeTransaction')
 
 
 interface IContentRequest_Args {
@@ -32,6 +32,7 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                 reject(new Error(`Failed to update content state`))
                 return;
             }
+            debug(`Content[${response.data.id}].state = ${response.data.state}`)
             // NOTE: we are resolving without waiting for tx status
             resolve(response.data)
 
@@ -39,26 +40,25 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
             let stakeContentEventArgs: IAOEth_BuyContentEvent_Data = {
                 transactionHash: transactionHash
             }
-            context.router.send('/eth/tx/StakeContent', stakeContentEventArgs).then((response: IAORouterMessage) => {
-                if ( response.data.status ) {
-                    const stakeContentEvent: StakeContentEvent = response.data.stakeContentEvent
-                    const hostContentEvent: HostContentEvent = response.data.hostContentEvent
+            context.router.send('/eth/tx/StakeContent', stakeContentEventArgs).then((stakeEventResponse: IAORouterMessage) => {
+                if ( stakeEventResponse.data.status ) {
+                    const stakeContentEvent: StakeContentEvent = stakeEventResponse.data.stakeContentEvent
+                    const hostContentEvent: HostContentEvent = stakeEventResponse.data.hostContentEvent
                     contentUpdateQuery.update = {
                         $set: {
                             "state": AOContentState.STAKED,
                             "stakeId": stakeContentEvent.stakeId
                         }
-                    }
+                    }                    
                 } else {
                     contentUpdateQuery.update = {
                         $set: {
                             "state": AOContentState.ENCRYPTED,// TODO: Verify that this is the correct state to go back to.
-                            "transactions.stakeTx": null,
                         }
-                    }                    
-                }
+                    }  
+                }                
                 context.router.send('/db/user/content/update', contentUpdateQuery).then((response: IAORouterMessage) => {
-                    debug(`Succesfully updated content state: ${response.data.state}`)
+                    debug(`Content[${response.data.id}].state = ${response.data.state}`)
                 }).catch(debug)
             }).catch(debug)
 

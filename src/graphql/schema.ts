@@ -41,7 +41,7 @@ export default function () {
                 state: resolvers.resolveState,
                 settings: resolvers.resolveSettings,
                 videos: resolvers.resolveVideos,
-                video: resolvers.resolveVideo
+                video: resolvers.resolveVideo,
             },
             Mutation: {
                 setNetwork: resolvers.resolveSetNetwork,
@@ -54,6 +54,7 @@ export default function () {
                 contentPurchaseTransaction: resolvers.resolveContentPurchaseTransaction,
                 contentPurchased: resolvers.resolveContentPurchased,
                 contentBecomeHostTransaction: resolvers.resolveContentBecomeHostTransaction,
+                contentUploadStakeTransaction: resolvers.resolveContentUploadStakeTransaction,
             },
         },
         resolverValidationOptions: {

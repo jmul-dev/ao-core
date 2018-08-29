@@ -50,7 +50,8 @@ input StakeContentInputs {
 }
 
 input RegisterInputs {
-    ethAddress: String
+    ethAddress: String!
+    networkId: String!
 }
 
 input SetNetworkInputs {
