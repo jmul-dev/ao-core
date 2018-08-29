@@ -40,11 +40,11 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
             let stakeContentEventArgs: IAOEth_BuyContentEvent_Data = {
                 transactionHash: transactionHash
             }
-            context.router.send('/eth/tx/StakeContent', stakeContentEventArgs).then((response: IAORouterMessage) => {
-                debug(`Content[${response.data.id}] stake response:`, response.data)
-                if ( response.data.status ) {
-                    const stakeContentEvent: StakeContentEvent = response.data.stakeContentEvent
-                    const hostContentEvent: HostContentEvent = response.data.hostContentEvent
+            context.router.send('/eth/tx/StakeContent', stakeContentEventArgs).then((stakeEventResponse: IAORouterMessage) => {
+                debug(`Content[${response.data.id}] stake response:`, stakeEventResponse.data)
+                if ( stakeEventResponse.data.status ) {
+                    const stakeContentEvent: StakeContentEvent = stakeEventResponse.data.stakeContentEvent
+                    const hostContentEvent: HostContentEvent = stakeEventResponse.data.hostContentEvent
                     contentUpdateQuery.update = {
                         $set: {
                             "state": AOContentState.STAKED,
