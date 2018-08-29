@@ -13,7 +13,7 @@ export interface AOEth_Args {
 }
 
 export interface IAOEth_NetworkChange_Data {
-    networkId: '1' | '4'
+    networkId: 1 | 4
 }
 
 export interface IAOEth_TX_Data {
@@ -89,7 +89,7 @@ export default class AOEth extends AORouterInterface {
 
     _handleNetworkChange(request: IAORouterRequest) {
         const requestData: IAOEth_NetworkChange_Data = request.data;
-        if (['1', '4'].indexOf(requestData.networkId) < 0) {
+        if ([1, 4].indexOf(requestData.networkId) < 0) {
             debug(`Network currently not supported: ${requestData.networkId}`)
             request.reject(new Error(`Network currently not supported: ${requestData.networkId}`))
             return;
@@ -97,9 +97,9 @@ export default class AOEth extends AORouterInterface {
         if (this.web3)
             this.web3.reset()  // clears any filters etc that may have already existed
         let rpcEndpoint = this.rpcMainnet
-        if (requestData.networkId === '1')  // mainnet
+        if (requestData.networkId === 1)  // mainnet
             rpcEndpoint = this.rpcMainnet
-        else if (requestData.networkId === '4')  // rinkeby
+        else if (requestData.networkId === 4)  // rinkeby
             rpcEndpoint = this.rpcRinkeby
         this.web3 = new Web3(new Web3.providers.HttpProvider(rpcEndpoint))
         this.web3.version.getNetwork((error, networkId) => {

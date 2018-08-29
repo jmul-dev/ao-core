@@ -14,10 +14,10 @@ describe('AO Eth module', () => {
     it('should connect to rinkeby testnet', (done) => {
         aoEth.router.emit('/eth/network/set', {
             data: {
-                networkId: '4',
+                networkId: 4,
             },
             respond: ({networkId}) => {
-                expect(networkId).to.equal('4')
+                expect(networkId).to.equal(4)
                 done()
             },
             reject: (err) => {
@@ -29,10 +29,10 @@ describe('AO Eth module', () => {
     it('should connect to ethereum mainnet', (done) => {
         aoEth.router.emit('/eth/network/set', {
             data: {
-                networkId: '1',
+                networkId: 1,
             },
             respond: ({networkId}) => {
-                expect(networkId).to.equal('1')
+                expect(networkId).to.equal(1)
                 done()
             },
             reject: (err) => {
