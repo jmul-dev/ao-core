@@ -3,6 +3,9 @@ import AORouterInterface, { IAORouterRequest, AORouterArgs } from "../../router/
 import { AO_Hyper_Options } from "../../router/AOHyperDB";
 import path from 'path'
 import Debug from 'debug';
+import crypto from 'crypto'
+import { AODB_NetworkContentGet_Data } from "../db/db";
+import { IAORouterMessage } from "../../router/AORouter";
 const debug = Debug('ao:p2p');
 
 export interface AOP2P_Args {
@@ -36,6 +39,19 @@ export interface AOP2P_Add_Discovery_Data {
     indexData: Object;//TODO: Define this better
 }
 
+export interface AOP2P_Write_Decryption_Key_Data {
+    contentId: string;
+    ethAddress: string; //Buyer Eth Address
+    publicKey: string; //Buyer Public Key
+}
+
+interface AddIndexDataInterface {
+    indexData: object;
+    ethAddress: string;
+    publicKey: string;
+    decryptionKey: string;
+}
+
 //This is out here since 
 const routerArgs:AORouterArgs = {
     enableHyperDB: true
@@ -62,6 +78,10 @@ export default class AOP2P extends AORouterInterface {
         this.router.on('/p2p/watchAndGetKey', this._handleWatchAndGetKey.bind(this))
         //Add content into Discovery
         this.router.on('/p2p/addDiscovery', this._handleAddDiscovery.bind(this))
+        
+        //Sold a piece of content via discovery.  Now need to update indexData
+        this.router.on('/p2p/soldKey', this._handleSellDecryptionKey.bind(this))
+
         this.init().then(()=> {
             debug('started')
         })
@@ -224,6 +244,52 @@ export default class AOP2P extends AORouterInterface {
         .catch(e => {
             request.reject(e)
         })
+    }
+
+    private _handleSellDecryptionKey(request:IAORouterRequest) {
+        const { contentId, ethAddress, publicKey}: AOP2P_Write_Decryption_Key_Data = request.data
+        
+        // 1. Get the content for this piece being sold
+        const userContentQuery: AODB_NetworkContentGet_Data = {
+            query: { id: contentId}
+        }
+        this.router.send('/db/user/content/get', userContentQuery).then((contentGetResponse: IAORouterMessage) => {
+            const content = contentGetResponse.data
+            if(!content) {
+                return request.reject(new Error('No content returned'))
+            }
+            // 2. Let's get the current indexData for this
+            const contentPrefixRoute = this.dbPrefix + '/' + content.contentType + '/' + content.metadataDatKey + '/nodes/' 
+            const indexDataRoute =  request.ethAddress + '/' + content.fileDatKey + '/indexData';
+            this.hyperdb.query(contentPrefixRoute + indexDataRoute).then((indexData)=> {
+                let newIndexData = this.addIndexData({
+                    indexData: indexData,
+                    ethAddress: ethAddress,
+                    publicKey: publicKey,
+                    decryptionKey: content.decryptionKey
+                })
+                // 3. Let's write this thing into hyperdb
+                this.hyperdb.insert(contentPrefixRoute + indexDataRoute, newIndexData).then(() => {
+                    request.respond({success: true})
+                }).catch(request.reject)
+            }).catch(request.reject)
+        })
+    }
+
+    private addIndexData(indexDataRequest:AddIndexDataInterface) {
+        const {indexData, ethAddress, publicKey, decryptionKey} = indexDataRequest
+        let sign = crypto.createSign('RSA-SHA256');
+        sign.update(decryptionKey)
+        let signature = sign.sign(publicKey,'hex')
+        let bufDecryptKey = Buffer.from(decryptionKey, 'utf8')
+        let encryptedDecryptionKeyBuf = crypto.publicEncrypt(publicKey, bufDecryptKey);
+        let encryptedDecryptionKey = encryptedDecryptionKeyBuf.toString("base64");
+
+        indexData[ethAddress] = {
+            decryptKey: encryptedDecryptionKey, // Encrypted key with publicKey
+            signature: signature //
+        }
+        return indexData
     }
 
 
