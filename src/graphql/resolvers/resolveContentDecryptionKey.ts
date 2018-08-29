@@ -5,7 +5,7 @@ import { IGraphqlResolverContext } from '../../http';
 import { AOContentState } from '../../models/AOContent';
 import { AODat_Create_Data, AODat_ResumeSingle_Data } from '../../modules/dat/dat';
 import { AODB_NetworkContentGet_Data, AODB_UserContentUpdate_Data } from '../../modules/db/db';
-import { IAOFS_DecryptCheck_Data, IAOFS_Mkdir_Data, IAOFS_Move_Data, IAOFS_Reencrypt_Data } from '../../modules/fs/fs';
+import { IAOFS_DecryptCheck_Data, IAOFS_Mkdir_Data, IAOFS_Move_Data, IAOFS_Reencrypt_Data, IAOFS_Unlink_Data } from '../../modules/fs/fs';
 import { IAORouterMessage } from "../../router/AORouter";
 
 
@@ -149,13 +149,37 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
 
                                             }).catch(debug) // Start sharing the dat
 
-                                        }).catch(debug) // Move Dat Dir
+                                        }).catch((e) => {
+                                            debug(e)
+                                            let removePathData: IAOFS_Unlink_Data = {
+                                                removePath: fileReencrypt.finalPath
+                                            }
+                                            context.router.send('/fs/unlink', removePathData)
+                                            .then(() => {})
+                                            .catch(debug)
+                                        }) // Move Dat Dir
 
-                                    }).catch(debug) // Dat Creation
+                                    }).catch((e) => {
+                                        debug(e)
+                                        let removePathData: IAOFS_Unlink_Data = {
+                                            removePath: fileReencrypt.finalPath
+                                        }
+                                        context.router.send('/fs/unlink', removePathData)
+                                        .then(() => {})
+                                        .catch(debug)
+                                    }) // Dat Creation
 
                                 }).catch(debug) // Content State update to Encrypted
 
-                            }).catch(debug) // Reencryption/copy
+                            }).catch((e) => {
+                                debug(e)
+                                let removePathData: IAOFS_Unlink_Data = {
+                                    removePath: fileReencrypt.finalPath
+                                }
+                                context.router.send('/fs/unlink', removePathData)
+                                .then(() => {})
+                                .catch(debug)
+                            }) // Reencryption/copy
 
                         }).catch(debug) // MakeDir for new dat
 

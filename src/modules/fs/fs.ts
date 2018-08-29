@@ -285,7 +285,7 @@ export default class AOFS extends AORouterInterface {
     _handleUnlink(request: IAORouterRequest) {
         const requestData: IAOFS_Unlink_Data = request.data
         const removePath = path.resolve(this.storageLocation, requestData.removePath)
-        fs.unlink(removePath, (err) => {
+        fsExtra.remove(removePath, (err) => {
             if (err) {
                 request.reject(err)
             }
