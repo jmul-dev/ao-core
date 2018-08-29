@@ -45,6 +45,7 @@
     "graphql-tools": "^3.0.2",
     "hyperdb": "^3.5.0",
     "jsonschema": "^1.2.4",
+    "keccak": "^1.4.0",
     "md5": "^2.2.1",
     "minimist": "^1.2.0",
     "nedb": "^1.8.0",

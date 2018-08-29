@@ -1,5 +1,6 @@
 import Debug from 'debug';
 import md5 from 'md5';
+import keccak from 'keccak'
 import path from 'path';
 import { AOContentState } from '../../models/AOContent';
 import { AODat_Create_Data } from '../../modules/dat/dat';
@@ -57,6 +58,7 @@ export default (obj: any, args: any, context: IGraphqlResolverContext, info: any
                 let videoStats = {}
                 let decryptionKey: string
                 let checksum: string;
+                let encryptedChecksum: string;
                 for (let i = 0; i < results.length; i++) {
                     const result = results[i];
                     if (result.data.videoStats && result.data.key) {
@@ -64,6 +66,7 @@ export default (obj: any, args: any, context: IGraphqlResolverContext, info: any
                         fileSize = result.data.fileSize
                         decryptionKey = result.data.key
                         checksum = result.data.checksum
+                        encryptedChecksum = result.data.encryptedChecksum
                     }
                 }
 
@@ -90,6 +93,8 @@ export default (obj: any, args: any, context: IGraphqlResolverContext, info: any
                             contentDatKey = datResponseData.key
                         }
                     }
+                    //You know, for being consistent with ethereum stuff
+                    const keccak256 = keccak('keccak256')
 
                     const contentJson = {
                         id: contentDatKey,
@@ -111,10 +116,14 @@ export default (obj: any, args: any, context: IGraphqlResolverContext, info: any
                         fileName: contentFileNames[0],
                         fileSize: fileSize,
                         fileChecksum: checksum,
+
                         teaserName: `${contentFileNames[1]}`,
                         teaserUrl: `${metadataDatKey}/${contentFileNames[1]}`,
                         featuredImageName: `${contentFileNames[2]}`,
                         featuredImageUrl: `${metadataDatKey}/${contentFileNames[2]}`,
+
+                        baseChallenge: keccak256.update(checksum).digest('hex'),
+                        encChallenge: keccak256._resetState().update(encryptedChecksum).digest('hex'),
 
                         metadata: {
                             duration: videoStats['duration'],
