@@ -90,8 +90,8 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                                 finalPath: path.join('content', newDatDirData.dirPath, clonedContent.fileName)
                             }
                             context.router.send('/fs/reencrypt', fileReencrypt).then((reencryptionResponse: IAORouterMessage) => {
-                                let newDecrytionKey = reencryptionResponse.data.newKey
-                                if (!newDecrytionKey) {
+                                let newDecryptionKey = reencryptionResponse.data.newKey
+                                if (!newDecryptionKey) {
                                     // TODO: write clean up code erasing the dirpath.
                                     debug(new Error('No new decryption key'))
                                 }
@@ -102,7 +102,8 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                                     id: contentId,
                                     update: {
                                         $set: {
-                                            "state": clonedContent.state
+                                            "state": clonedContent.state,
+                                            "decryptionKey": newDecryptionKey //Used later to decrypt
                                         }
                                     }
                                 }
