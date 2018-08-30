@@ -29,16 +29,14 @@ export default (obj: any, args: IContentPurchased_Args, context: IGraphqlResolve
             }
             const content = response.data[0]
             // 2. Watch for change in Key for this specific encrypted video Dat
-            // TODO: How do we get the target encrypted file's dat address?  That's currently not recorded/passed from contentRequest
             const p2pWatchKeyRequest: AOP2P_Watch_AND_Get_IndexData_Data = {
                 key: '/AOSpace/VOD/' + content.metadataDatKey + '/nodes/' + content.creatorId + '/' + content.fileDatKey + '/indexData',
                 ethAddress: response.ethAddress
             }
             context.router.send('/p2p/watchAndGetIndexData', p2pWatchKeyRequest).then((watchIndexDataResponse:IAORouterMessage) => {
-                // TODO: Use indexData to find and decrypt the decryption key using your private key
                 const indexData = watchIndexDataResponse.data; // returned indexData is for your ethAddress
                 if( indexData ) {
-                    //Set State to Purchased
+                    // TODO: Check out the signature attached to the IndexData here.
                     let contentUpdateQuery: AODB_UserContentUpdate_Data = {
                         id: contentId,
                         update: {
