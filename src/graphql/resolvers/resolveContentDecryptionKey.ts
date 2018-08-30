@@ -5,6 +5,8 @@
  *          of content I think we are probably safe to drop the originalDecryptionKey
  *      - reencrypt/newDecrytionKey: We are not even storing the decryption key for the new file! No one shall
  *          ever see this again
+ *      - baseChallenge: see resolveSubmitVideoContent
+ *      - encChallenge: see resolveSubmitVideoContent
  */
 import Debug from 'debug';
 import md5 from 'md5';
