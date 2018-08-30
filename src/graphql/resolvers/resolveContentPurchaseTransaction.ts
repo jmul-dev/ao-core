@@ -4,8 +4,8 @@ import { IAORouterMessage } from "../../router/AORouter";
 import { AODB_UserContentUpdate_Data } from '../../modules/db/db';
 import { AOContentState } from '../../models/AOContent';
 import { IAOEth_BuyContentEvent_Data, BuyContentEvent } from '../../modules/eth/eth';
+import contentPurchased, { IContentPurchased_Args } from './resolveContentPurchased'
 const debug = Debug('ao:graphql:contentPurchaseTransaction')
-
 
 interface IContentRequest_Args {
     inputs: {
@@ -64,7 +64,21 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                         }
                     }                    
                 }
-                context.router.send('/db/user/content/update', contentUpdateAfterTx)
+                context.router.send('/db/user/content/update', contentUpdateAfterTx).then(()=> {
+
+                    // 6. Since its been set to purchased, we can now do the rest.
+                    const contentPurchasedData: IContentPurchased_Args = {
+                        inputs: {
+                            contentId: args.inputs.contentId,
+                            purchaseId: event.purchaseId,
+                            hostId: event.contentHostId
+                        }
+                    }
+                    contentPurchased(obj, contentPurchasedData,context, info).then((purchasedContentResponse: any) => {
+                        
+                    }).catch(debug)
+
+                }).catch(debug)
             }).catch(error => {
                 debug(error)
                 // NOTE: failed to get tx status. I dont think it makes sense to roll content state

@@ -5,7 +5,7 @@ import { IAORouterMessage } from "../../router/AORouter";
 import { AODB_NetworkContentGet_Data, AODB_UserContentUpdate_Data } from '../../modules/db/db';
 import { AOP2P_Watch_Key_Data } from '../../modules/p2p/p2p'
 
-interface IContentRequest_Args {
+export interface IContentPurchased_Args {
     inputs: {
         contentId: string;
         purchaseId: string;
@@ -13,7 +13,7 @@ interface IContentRequest_Args {
     }
 }
 
-export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverContext, info: any) => {
+export default (obj: any, args: IContentPurchased_Args, context: IGraphqlResolverContext, info: any) => {
     return new Promise((resolve, reject) => {
         const { contentId, purchaseId, hostId } = args.inputs
         // 1. Get existing content from user content 
