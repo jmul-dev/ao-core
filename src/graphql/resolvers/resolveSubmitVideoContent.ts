@@ -1,6 +1,6 @@
 import Debug from 'debug';
 import md5 from 'md5';
-import keccak from 'keccak'
+import createKeccakHash from 'keccak'
 import path from 'path';
 import { AOContentState } from '../../models/AOContent';
 import { AODat_Create_Data } from '../../modules/dat/dat';
@@ -93,9 +93,8 @@ export default (obj: any, args: any, context: IGraphqlResolverContext, info: any
                             contentDatKey = datResponseData.key
                         }
                     }
-                    //You know, for being consistent with ethereum stuff
-                    const keccak256 = keccak('keccak256')
-
+                    // NOTE: anything that should be omitted from the public metadata dat file should 
+                    // be added below in `userContentJson`
                     const contentJson = {
                         id: contentDatKey,
                         nodeId: ethAddress,
@@ -122,9 +121,6 @@ export default (obj: any, args: any, context: IGraphqlResolverContext, info: any
                         featuredImageName: `${contentFileNames[2]}`,
                         featuredImageUrl: `${metadataDatKey}/${contentFileNames[2]}`,
 
-                        baseChallenge: keccak256.update(checksum).digest('hex'),
-                        encChallenge: keccak256._resetState().update(encryptedChecksum).digest('hex'),
-
                         metadata: {
                             duration: videoStats['duration'],
                             resolution: videoStats['height'],//we have the width too, but dunno
@@ -141,6 +137,8 @@ export default (obj: any, args: any, context: IGraphqlResolverContext, info: any
                         ...contentJson,
                         decryptionKey: decryptionKey,
                         state: AOContentState.ENCRYPTED,
+                        baseChallenge: createKeccakHash('keccak256').update(checksum).digest('hex'), //keccak256.update(checksum).update('hex'),
+                        encChallenge: createKeccakHash('keccak256').update(encryptedChecksum).digest('hex'), //keccak256._resetState().update(encryptedChecksum).digest('hex'),
                     }
 
                     storagePromises.push(context.router.send('/fs/write', contentWriteData))
