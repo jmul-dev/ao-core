@@ -1,8 +1,8 @@
 import { IGraphqlResolverContext } from '../../http';
 import { IAORouterMessage } from "../../router/AORouter";
 import { AODB_NetworkContentGet_Data, AODB_UserContentUpdate_Data } from '../../modules/db/db';
-import { AOP2P_Watch_Key_Data, AOP2P_Watch_AND_Get_IndexData_Data } from '../../modules/p2p/p2p'
-import { request } from 'http';
+import { AOP2P_Watch_AND_Get_IndexData_Data } from '../../modules/p2p/p2p'
+
 
 export interface IContentPurchased_Args {
     inputs: {
