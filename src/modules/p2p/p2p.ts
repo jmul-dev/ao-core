@@ -154,24 +154,24 @@ export default class AOP2P extends AORouterInterface {
                                     })
                                 )
                             }
-
-                            //Record all new Preview Dats into content
-                            Promise.all(networkContentInserts)
-                                .then(() => {
-                                    debug('All new previews inserted to network Db')
-                                })
-                                .catch(e => {
-                                    debug(e)
-                                })
-                            //Download all new Preview Dats
-                            Promise.all(downloadNewPreviewDats)
-                                .then(() => {
-                                    debug('All new previews downloaded')
-                                })
-                                .catch(e => {
-                                    debug(e)
-                                })
                         }
+                        //Record all new Preview Dats into content
+                        Promise.all(networkContentInserts)
+                            .then(() => {
+                                debug('All new previews inserted to network Db')
+                            })
+                            .catch(e => {
+                                debug(e)
+                            })
+                        //Download all new Preview Dats
+                        Promise.all(downloadNewPreviewDats)
+                            .then(() => {
+                                debug('All new previews downloaded')
+                            })
+                            .catch(e => {
+                                debug(e)
+                            })
+                        
                     }
                 }).catch(e => {
                     debug(e)
