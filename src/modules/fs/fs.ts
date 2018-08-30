@@ -150,7 +150,7 @@ export default class AOFS extends AORouterInterface {
                             checksum.file(
                                 writePath,
                                 {algorith: this.checksumAlgorithm, encoding: this.checksumEncoding},
-                                (err, hash) => {
+                                (err, originalHash) => {
                                     if(err) {
                                         request.reject(err)
                                     } else {
@@ -161,30 +161,35 @@ export default class AOFS extends AORouterInterface {
                                             
                                             //remove the original file
                                             fsExtra.remove(writePath)
+                                            .then(() => {
+                                                //finally move the encrypted file to the original path
+                                                fsExtra.move(encryptedPath, writePath)
                                                 .then(() => {
-                                                    //finally move the encrypted file to the original path
-                                                    fsExtra.move(encryptedPath, writePath)
-                                                        .then(() => {
-                                                            request.respond({
-                                                                fileSize: fileStats.size,
-                                                                filePath: writePath,
-                                                                key: key,
-                                                                videoStats: videoStats ? videoStats : false,
-                                                                checksum: hash
-                                                            })
-                                                        })
-                                                        .catch(error => {
-                                                            request.reject(error)
-                                                        })
-                                                })
-                                                .catch(error => {
-                                                    request.reject(error)
-                                                })
-                                        })
+                                                    //Get the encrypted checksum
+                                                    checksum.file(
+                                                        writePath,
+                                                        {algorith: this.checksumAlgorithm, encoding: this.checksumEncoding},
+                                                        (err, encryptedhash) => {
+                                                            if(err) {
+                                                                request.reject(err)
+                                                            } else {
+                                                                request.respond({
+                                                                    fileSize: fileStats.size,
+                                                                    filePath: writePath,
+                                                                    key: key,
+                                                                    videoStats: videoStats ? videoStats : false,
+                                                                    checksum: originalHash,
+                                                                    encryptedChecksum: encryptedhash
+                                                                })
+                                                            }
+                                                    })//encrypted checksum end.
+                                                }).catch(request.reject) //Move end
+
+                                            }).catch(request.reject)  //Remove end
+                                        })//Encryption finished
                                     }
                                 }
                             )//checksum end
-                            
                         }
                     })
                     .catch(e => {
@@ -285,7 +290,7 @@ export default class AOFS extends AORouterInterface {
     _handleUnlink(request: IAORouterRequest) {
         const requestData: IAOFS_Unlink_Data = request.data
         const removePath = path.resolve(this.storageLocation, requestData.removePath)
-        fs.unlink(removePath, (err) => {
+        fsExtra.remove(removePath, (err) => {
             if (err) {
                 request.reject(err)
             }
