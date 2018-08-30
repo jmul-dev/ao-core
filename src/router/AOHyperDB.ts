@@ -139,15 +139,14 @@ export default class AOHyperDB {
                     reject(err)
                 } else {
                     if(nodes.length) {
-                        const result = []
-                        for (const node of nodes) {
-                            const nodeKey = node[0].key.substr(node[0].key.lastIndexOf("/") + 1);//Thanks Johan!
-                            result.push({
-                                key: nodeKey,
-                                value: node[0].value
-                            })
-                            resolve(result)
+                        //Result is the key paths in an array format split by / for easy perusing
+                        let result = []
+                        for (let i = 0; i < nodes.length; i++) {
+                            const node = nodes[i];
+                            let node_split = node[0].key.split("/")
+                            result.push(node_split)
                         }
+                        resolve(result)
                     } else {
                         reject()
                     }

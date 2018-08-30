@@ -4,12 +4,13 @@
  * NOTE: this resolver is actually called internally (not from frontend).
  * See resolveContentBecomeHostTransaction for example
  */
+import Debug from 'debug'
 import { IGraphqlResolverContext } from '../../http';
 import { IAORouterMessage } from "../../router/AORouter";
 import { AOContentState } from '../../models/AOContent';
 import { AODB_UserContentUpdate_Data, AODB_UserContentGet_Data } from '../../modules/db/db';
 import { AOP2P_Add_Discovery_Data } from '../../modules/p2p/p2p'
-
+const debug = Debug('ao:graphql:makeContentDiscoverable')
 
 export interface IMakeContentDiscoverable_Args {
     inputs: {
@@ -35,10 +36,11 @@ export default (obj: any, args: IMakeContentDiscoverable_Args, context: IGraphql
             // 2. Add new discovery
             const p2pAddDiscoveryData: AOP2P_Add_Discovery_Data = {
                 contentType: content.contentType,
-                datKey: content.newFileDatKey,
+                fileDatKey: content.newFileDatKey ? content.newFileDatKey : content.fileDatKey,
+                metaDatKey: content.metadataDatKey,
                 ethAddress: response.ethAddress, // My Eth Address
                 metaData: content,//We should take shit out?
-                indexData: {} // TODO: WTF do we do here?
+                indexData: {} 
             }
             context.router.send('/p2p/addDiscovery', p2pAddDiscoveryData).then((response: IAORouterMessage) => {
                 if (response.data.success) {

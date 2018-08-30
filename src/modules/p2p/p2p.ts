@@ -33,7 +33,8 @@ export interface AOP2P_Watch_AND_Get_Key_Data {
 
 export interface AOP2P_Add_Discovery_Data {
     contentType: string;
-    datKey: string;
+    fileDatKey: string;
+    metaDatKey: string;
     ethAddress: string;
     metaData: Object;
     indexData: Object;//TODO: Define this better
@@ -111,7 +112,7 @@ export default class AOP2P extends AORouterInterface {
 
     //Discovery from watching the P2P networks.
     private _discovery() {
-        const contentWatchKey = this.dbPrefix + 'VOD'; // /AOSpace/VOD/*
+        const contentWatchKey = this.dbPrefix + 'VOD/'; // /AOSpace/VOD/*
         this.hyperdb.watch(contentWatchKey)
         .then( ()=> {
             let contentCompare = []
@@ -120,11 +121,12 @@ export default class AOP2P extends AORouterInterface {
 
             Promise.all(contentCompare).then((results) => {
                 const hyperPreviewList = results[0]
-                const dbPreviewList = results[1]
+                const dbPreviewList = results[1].data
                 let hyperPreviewKeys = []
                 let hyperKeyValue = {}
+
                 for (const preview of hyperPreviewList) {
-                    hyperPreviewKeys.push(preview.key)
+                    hyperPreviewKeys.push(preview[2])
                     hyperKeyValue[preview.key] = preview.value //for later use
                 }
                 
@@ -140,17 +142,20 @@ export default class AOP2P extends AORouterInterface {
                     let networkContentInserts = []
                     let downloadNewPreviewDats = []
                     for (const newKey of newKeys) {
-                        networkContentInserts.push(
-                            this.router.send('/db/network/content/insert',{
-                                key: newKey,
-                                value: hyperKeyValue[newKey]
-                            })
-                        )
-                        downloadNewPreviewDats.push(
-                            this.router.send('/dat/download', {
-                                key: newKey
-                            })
-                        )
+                        if(newKey.length == 64) {//Just make sure that its a freaken dat key
+                            networkContentInserts.push(
+                                this.router.send('/db/network/content/insert',{
+                                    key: newKey,
+                                    value: hyperKeyValue[newKey]
+                                })
+                            )
+                        
+                            downloadNewPreviewDats.push(
+                                this.router.send('/dat/download', {
+                                    key: newKey
+                                })
+                            )
+                        }
                     }
                     //Record all new Preview Dats into content
                     Promise.all(networkContentInserts)
@@ -190,8 +195,8 @@ export default class AOP2P extends AORouterInterface {
 
         //IndexData
         const registrationData = requestData.ethAddress + '/' + requestData.datKey + '/indexData'
-        const selfRegistrationPrefix = requestData.ethAddress + '/' + this.dbPrefix + '/' + requestData.contentType + '/nodes/'
-        const appRegistrationPrefix = this.dbPrefix + '/' + requestData.contentType + '/' + requestData.datKey + '/nodes/'
+        const selfRegistrationPrefix = requestData.ethAddress + '/' + this.dbPrefix + requestData.contentType + '/nodes/'
+        const appRegistrationPrefix = this.dbPrefix + requestData.contentType + '/' + requestData.datKey + '/nodes/'
         allInserts.push( this.hyperdb.insert(selfRegistrationPrefix + registrationData, requestData.indexData) )
         allInserts.push( this.hyperdb.insert(appRegistrationPrefix + registrationData, requestData.indexData) )
 
@@ -234,10 +239,10 @@ export default class AOP2P extends AORouterInterface {
     }
 
     private _handleAddDiscovery(request:IAORouterRequest) {
-        const requestData: AOP2P_Add_Discovery_Data = request.data
-        const appRegistrationPrefix = this.dbPrefix + '/' + requestData.contentType + '/' + requestData.datKey + '/nodes/'
-        const registrationData = requestData.ethAddress  + '/' + requestData.datKey + '/indexData'
-        this.hyperdb.insert(appRegistrationPrefix + registrationData, requestData.indexData)
+        const {contentType, fileDatKey, ethAddress, metaDatKey, metaData, indexData}: AOP2P_Add_Discovery_Data = request.data
+        const appRegistrationPrefix = this.dbPrefix + contentType + '/' + metaDatKey + '/nodes/'
+        const registrationData = ethAddress  + '/' + fileDatKey + '/indexData'
+        this.hyperdb.insert(appRegistrationPrefix + registrationData, indexData)
         .then(() => {
             request.respond({success:true})
         })
@@ -259,7 +264,7 @@ export default class AOP2P extends AORouterInterface {
                 return request.reject(new Error('No content returned'))
             }
             // 2. Let's get the current indexData for this
-            const contentPrefixRoute = this.dbPrefix + '/' + content.contentType + '/' + content.metadataDatKey + '/nodes/' 
+            const contentPrefixRoute = this.dbPrefix  + content.contentType + '/' + content.metadataDatKey + '/nodes/' 
             const indexDataRoute =  request.ethAddress + '/' + content.fileDatKey + '/indexData';
             this.hyperdb.query(contentPrefixRoute + indexDataRoute).then((indexData)=> {
                 let newIndexData = this.addIndexData({
