@@ -263,7 +263,7 @@ export default class AOP2P extends AORouterInterface {
             this.hyperdb.query(contentPrefixRoute + indexDataRoute).then((indexData) => {
                 let newIndexData = this.addIndexData({
                     indexData: indexData,
-                    ethAddress: ethAddress,
+                    ethAddress: ethAddress, //Note that this is the buyer's address
                     publicKey: publicKey,
                     decryptionKey: content.decryptionKey
                 })

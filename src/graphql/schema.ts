@@ -52,7 +52,6 @@ export default function () {
                 contentRequest: resolvers.resolveContentRequest,
                 contentDecryptionKey: resolvers.resolveContentDecryptionKey,
                 contentPurchaseTransaction: resolvers.resolveContentPurchaseTransaction,
-                contentPurchased: resolvers.resolveContentPurchased,
                 contentBecomeHostTransaction: resolvers.resolveContentBecomeHostTransaction,
                 contentUploadStakeTransaction: resolvers.resolveContentUploadStakeTransaction,
             },
