@@ -137,49 +137,24 @@ export default class AOP2P extends AORouterInterface {
                     return dbPreviewKeys.indexOf( el ) < 0;
                 });
                 
-                    if(newKeys.length) {
-                        let networkContentInserts = []
-                        let downloadNewPreviewDats = []
-                        for (const newKey of newKeys) {
-                            if(newKey.length == 64) {//Just make sure that its a freaken dat key
-                                networkContentInserts.push(
-                                    this.router.send('/db/network/content/insert',{
-                                        key: newKey,
-                                        value: hyperKeyValue[newKey]
-                                    })
-                                )
-                                downloadNewPreviewDats.push(
-                                    this.router.send('/dat/download', {
-                                        key: newKey
-                                    })
-                                )
-                            }
+                if(newKeys.length) {
+                    for (const newKey of newKeys) {
+                        if(newKey.length == 64) {//Just make sure that its a freaken dat key
+                            this.router.send('/dat/download', { key: newKey }).then((downloadResponse:IAORouterMessage)=> {
+                                this.router.send('/db/network/content/insert',{
+                                    key: newKey,
+                                    value: hyperKeyValue[newKey]
+                                }).then(() => {
+                                    debug('Successfully downloaded and recorded ' + newKey)
+                                }).catch(debug)
+                            }).catch((err) => {
+                                debug(err)
+                            })
                         }
-                        //Record all new Preview Dats into content
-                        Promise.all(networkContentInserts)
-                            .then(() => {
-                                debug('All new previews inserted to network Db')
-                            })
-                            .catch(e => {
-                                debug(e)
-                            })
-                        //Download all new Preview Dats
-                        Promise.all(downloadNewPreviewDats)
-                            .then(() => {
-                                debug('All new previews downloaded')
-                            })
-                            .catch(e => {
-                                debug(e)
-                            })
-                        
                     }
-                }).catch(e => {
-                    debug(e)
-                })
-            })
-            .catch(e => {
-                debug(e)
-            })
+                }
+            }).catch(debug)
+        }).catch(debug)
     }
 
     private _handleNewContent(request: IAORouterRequest) {
