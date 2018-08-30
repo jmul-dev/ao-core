@@ -1,10 +1,8 @@
-import { AOContentState } from '../../models/AOContent';
 import { IGraphqlResolverContext } from '../../http';
 import { IAORouterMessage } from "../../router/AORouter";
 import { AODB_NetworkContentGet_Data, AODB_UserContentUpdate_Data } from '../../modules/db/db';
-import { AOP2P_Watch_Key_Data } from '../../modules/p2p/p2p'
-import Debug from 'debug'
-const debug = Debug('ao:graphql:contentPurchased');
+import { AOP2P_Watch_Key_Data, AOP2P_Watch_AND_Get_IndexData_Data } from '../../modules/p2p/p2p'
+import { request } from 'http';
 
 export interface IContentPurchased_Args {
     inputs: {
@@ -13,6 +11,9 @@ export interface IContentPurchased_Args {
         hostId: string;
     }
 }
+/**
+ * This is an internal resolver.  Its not called by graphql
+ */
 
 export default (obj: any, args: IContentPurchased_Args, context: IGraphqlResolverContext, info: any) => {
     return new Promise((resolve, reject) => {
@@ -29,16 +30,13 @@ export default (obj: any, args: IContentPurchased_Args, context: IGraphqlResolve
             const content = response.data[0]
             // 2. Watch for change in Key for this specific encrypted video Dat
             // TODO: How do we get the target encrypted file's dat address?  That's currently not recorded/passed from contentRequest
-            const p2pWatchKeyRequest: AOP2P_Watch_Key_Data = {
-                key: '/AOSpace/VOD/' + content.metadataDatKey + '/nodes/' + content.creatorId + '/' + content.fileDatKey + '/indexData'
+            const p2pWatchKeyRequest: AOP2P_Watch_AND_Get_IndexData_Data = {
+                key: '/AOSpace/VOD/' + content.metadataDatKey + '/nodes/' + content.creatorId + '/' + content.fileDatKey + '/indexData',
+                ethAddress: response.ethAddress
             }
-            context.router.send('/p2p/watchAndGetKey', p2pWatchKeyRequest).then((watchKeyResponse:IAORouterMessage) => {
-                /* 
-                * The following logic will likely be moved elsewhere.
-                */ 
+            context.router.send('/p2p/watchAndGetIndexData', p2pWatchKeyRequest).then((watchIndexDataResponse:IAORouterMessage) => {
                 // TODO: Use indexData to find and decrypt the decryption key using your private key
-                // TODO: #2, Might want to sort through the indexData first.
-                const indexData = watchKeyResponse.data
+                const indexData = watchIndexDataResponse.data; // returned indexData is for your ethAddress
                 if( indexData ) {
                     //Set State to Purchased
                     let contentUpdateQuery: AODB_UserContentUpdate_Data = {
@@ -46,17 +44,16 @@ export default (obj: any, args: IContentPurchased_Args, context: IGraphqlResolve
                         update: {
                             $set: {
                                 "state": 'DECRYPTION_KEY_RECEIVED',
-                                "encryptedKey": indexData[response.ethAddress] //indexData is coded against the buyer's ethaddress
+                                "encryptedKey": indexData.decryptKey //indexData is put against the buyer's ethaddress
                             }
                         }
                     }
                     context.router.send('/db/user/content/update', contentUpdateQuery).then((purchasedUpdateResponse: IAORouterMessage) => {
-
+                        resolve(purchasedUpdateResponse.data)
                     }).catch(reject) // DB user content insert end
                 } else {
-                    // TODO: We might have to loop this watch/get as sometimes someone else might be purchasing from the same node.
-                    debug( new Error('Did not find any indexData for specified key') ) // NO reject here since we already resolved.
-                }                    
+                    reject(new Error('Did not find any indexData for specified key'))
+                }
             }).catch(reject) // Watch Key end
 
         }).catch(reject) // Network content get from DB end
