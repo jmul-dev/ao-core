@@ -10,6 +10,7 @@ import { IAORouterMessage } from "../../router/AORouter";
 import { AOContentState } from '../../models/AOContent';
 import { AODB_UserContentUpdate_Data, AODB_UserContentGet_Data } from '../../modules/db/db';
 import { AOP2P_Add_Discovery_Data } from '../../modules/p2p/p2p'
+import { AODat_ResumeSingle_Data } from '../../modules/dat/dat';
 const debug = Debug('ao:graphql:makeContentDiscoverable')
 
 export interface IMakeContentDiscoverable_Args {
@@ -44,21 +45,34 @@ export default (obj: any, args: IMakeContentDiscoverable_Args, context: IGraphql
             }
             context.router.send('/p2p/addDiscovery', p2pAddDiscoveryData).then((response: IAORouterMessage) => {
                 if (response.data.success) {
-                    // 3. Update the content state (mark as Discoverable)
-                    const contentUpdateQuery: AODB_UserContentUpdate_Data = {
-                        id: content.id,
-                        update: {
-                            $set: {
-                                "state": AOContentState.DISCOVERABLE
+
+                    // 3. The Dats have to be alive too!
+                    const fileResumeDatData:AODat_ResumeSingle_Data = {
+                        key: p2pAddDiscoveryData.fileDatKey
+                    }
+                    const metaResumeDatData:AODat_ResumeSingle_Data = {
+                        key: p2pAddDiscoveryData.metaDatKey
+                    }
+                    let resumeDats = []
+                    resumeDats.push( context.router.send('/dat/resumeSingle', fileResumeDatData) )
+                    resumeDats.push( context.router.send('/dat/resumeSingle', metaResumeDatData) )
+                    Promise.all(resumeDats).then(() => {
+                        // 4. Update the content state (mark as Discoverable)
+                        const contentUpdateQuery: AODB_UserContentUpdate_Data = {
+                            id: content.id,
+                            update: {
+                                $set: {
+                                    "state": AOContentState.DISCOVERABLE
+                                }
                             }
                         }
-                    }
-                    context.router.send('/db/user/content/update', contentUpdateQuery).then((response: IAORouterMessage) => {
-                        if (!response.data) {
-                            reject(new Error('Failed to update content state'))
-                        } else {
-                            resolve(response.data)
-                        }
+                        context.router.send('/db/user/content/update', contentUpdateQuery).then((response: IAORouterMessage) => {
+                            if (!response.data) {
+                                reject(new Error('Failed to update content state'))
+                            } else {
+                                resolve(response.data)
+                            }
+                        }).catch(reject)
                     }).catch(reject)
                 } else {
                     reject(new Error('Failed to add reencryped Dat to discovery'))

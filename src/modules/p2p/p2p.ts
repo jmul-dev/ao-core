@@ -84,10 +84,7 @@ export default class AOP2P extends AORouterInterface {
 
         this.init().then(() => {
             debug('started')
-        })
-            .catch(e => {
-                debug(e)
-            })
+        }).catch(debug)
 
     }
 
