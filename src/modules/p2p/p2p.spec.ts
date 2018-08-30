@@ -77,7 +77,8 @@ describe('AO P2P module', () => {
         const addDiscoveryData: AOP2P_Add_Discovery_Data = {
             contentType: 'VOD',
             //TODO: Assign more believable values?
-            datKey: 'bogusKey',
+            metaDatKey: 'bogusMetaKey',
+            fileDatKey: 'bogusKey',
             ethAddress: "bogusEth",
             metaData: {},
             indexData: {}

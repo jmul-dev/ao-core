@@ -4,6 +4,7 @@ import { IAORouterMessage } from "../../router/AORouter";
 import { AODB_UserContentUpdate_Data } from '../../modules/db/db';
 import { AOContentState } from '../../models/AOContent';
 import { IAOEth_BuyContentEvent_Data, StakeContentEvent, HostContentEvent } from '../../modules/eth/eth';
+import makeContentDiscoverable, { IMakeContentDiscoverable_Args } from './resolveMakeContentDiscoverable';
 const debug = Debug('ao:graphql:contentUploadStakeTransaction')
 
 
@@ -59,6 +60,16 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                 }                
                 context.router.send('/db/user/content/update', contentUpdateQuery).then((response: IAORouterMessage) => {
                     debug(`Content[${response.data.id}].state = ${response.data.state}`)
+                    if(response.data.state == AOContentState.STAKED) {
+                        const makeDiscoverableArgs: IMakeContentDiscoverable_Args = {
+                            inputs: {
+                                contentId
+                            }
+                        }
+                        makeContentDiscoverable(obj, makeDiscoverableArgs, context, info).then((discoverableContent: any) => {
+                            debug(`Content[${discoverableContent.id}].state = ${discoverableContent.state}`)
+                        }).catch(debug)
+                    }
                 }).catch(debug)
             }).catch(debug)
 
