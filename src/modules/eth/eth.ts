@@ -169,10 +169,9 @@ export default class AOEth extends AORouterInterface {
                     filter: {
                         contentHostId,
                     },
-                    fromBlock: AOContent.networks[this.networkId].address
+                    fromBlock: 0
                 }).on('data', event => {
                     const buyContentEvent: BuyContentEvent = event.returnValues
-                    debug(buyContentEvent)
                     this.router.emit('/core/content/incomingPurchase', buyContentEvent)
                 }).on('error', (error) => {
                     debug(error)
