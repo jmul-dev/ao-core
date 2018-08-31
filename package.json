@@ -49,7 +49,8 @@
     "md5": "^2.2.1",
     "minimist": "^1.2.0",
     "nedb": "^1.8.0",
-    "web3": "^1.0.0-beta.33"
+    "web3": "^1.0.0-beta.33",
+    "web3-legacy": "git://github.com/nharlow89/web3.js#legacy"
   },
   "devDependencies": {
     "@types/chai": "^4.1.4",

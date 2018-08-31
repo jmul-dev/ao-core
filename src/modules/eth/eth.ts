@@ -1,7 +1,6 @@
 import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
 import Web3 from 'web3';
-// import SolidityEvent from 'web3/lib/web3/event.js';
-// import SolidityEvent from './web3.js-0.20.6/lib/web3/event.js'
+import SolidityEvent from 'web3-legacy/lib/web3/event.js';
 import Debug from 'debug';
 const AOContent = require('ao-contracts/build/contracts/AOContent.json');
 const AOToken = require('ao-contracts/build/contracts/AOToken.json');
@@ -153,7 +152,7 @@ export default class AOEth extends AORouterInterface {
         const requestData: IAOEth_BuyContentEvent_Data = request.data;
         this._listenForTransactionStatus(requestData.transactionHash).then(({ status, receipt }) => {
             if (status && receipt) {
-                const logs = this.receiptLogParser(receipt.logs, this.contracts.aoContent.abi)
+                const logs = this.receiptLogParser(receipt.logs, AOContent.abi)
                 const buyContentEvent: BuyContentEvent = logs.find(log => log.event === 'BuyContent').args;
                 request.respond({ status, buyContentEvent })
             } else {
@@ -174,7 +173,7 @@ export default class AOEth extends AORouterInterface {
         const requestData: IAOEth_HostContentEvent_Data = request.data;
         this._listenForTransactionStatus(requestData.transactionHash).then(({ status, receipt }) => {
             if (status && receipt) {
-                const logs = this.receiptLogParser(receipt.logs, this.contracts.aoContent.abi)
+                const logs = this.receiptLogParser(receipt.logs, AOContent.abi)
                 const hostContentEvent: HostContentEvent = logs.find(log => log.event === 'HostContent').args;
                 request.respond({
                     status,
@@ -198,7 +197,7 @@ export default class AOEth extends AORouterInterface {
         const requestData: IAOEth_StakeContentEvent_Data = request.data
         this._listenForTransactionStatus(requestData.transactionHash).then(({ status, receipt }) => {
             if (status && receipt) {
-                const logs = this.receiptLogParser(receipt.logs, this.contracts.aoContent.abi)
+                const logs = this.receiptLogParser(receipt.logs, AOContent.abi)
                 const stakeContentEvent: StakeContentEvent = logs.find(log => log.event === 'StakeContent').args;
                 const hostContentEvent: HostContentEvent = logs.find(log => log.event === 'HostContent').args;
                 request.respond({
@@ -237,12 +236,14 @@ export default class AOEth extends AORouterInterface {
      * @returns {status, receipt} 
      */
     private _listenForTransactionStatus(transactionHash: string): Promise<any> {
+        const statusFromReciept = receipt => receipt.status === '0x0' || receipt.status === false ? 0 : 1
         return new Promise((resolve, reject) => {
             // 1. Check for transaction receipt already existing
             this.web3.eth.getTransactionReceipt(transactionHash, (error, receipt) => {
                 if (receipt) {
-                    debug(`Found receipt for tx[${transactionHash}]`)
-                    resolve({ status: receipt.status !== '0x0' ? 1 : 0, receipt })
+                    const status = statusFromReciept(receipt)
+                    debug(`Found receipt for tx[${transactionHash}] status[${status}]`)
+                    resolve({ status, receipt })
                 } else {
                     // 2. Receipt does not exist, begin listening intently
                     debug(`No receipt found for tx[${transactionHash}], begin listening`)
@@ -255,9 +256,10 @@ export default class AOEth extends AORouterInterface {
                                 debug(`Error checking receipt for tx[${transactionHash}]`, error)
                                 reject(error)
                             } else if (receipt) {
-                                debug(`Found receipt for tx[${transactionHash}]`)
+                                const status = statusFromReciept(receipt)
+                                debug(`Found receipt for tx[${transactionHash}] status[${status}]`)
                                 // The TX has been added to the chain, now determine status
-                                resolve({ status: receipt.status !== '0x0' ? 1 : 0, receipt })
+                                resolve({ status, receipt })
                             } else {
                                 // no error and no receipt found on this block, keep listening
                                 debug(`Receipt still not found for tx[${transactionHash}]`)
@@ -297,74 +299,22 @@ export default class AOEth extends AORouterInterface {
 
     // https://github.com/barkthins/ether-pudding/blob/master/index.js#L23
     private receiptLogParser(logs: Array<any>, abi: any): Array<any> {
-        var decodedLogs = []
-        for (let i = 0; i < logs.length; i++) {
-            const log = logs[i];
-            // this.contracts.aoContent.inputs = AOCon
-            // const decodedLog = this.contracts.aoContent._decodeEventABI(log)
-            debug(this.contracts.aoContent)
-            const inputs = [
-				{
-					"name": "_networkIntegerAmount",
-					"type": "uint256"
-				},
-				{
-					"name": "_networkFractionAmount",
-					"type": "uint256"
-				},
-				{
-					"name": "_denomination",
-					"type": "bytes8"
-				},
-				{
-					"name": "_primordialAmount",
-					"type": "uint256"
-				},
-				{
-					"name": "_baseChallenge",
-					"type": "string"
-				},
-				{
-					"name": "_encChallenge",
-					"type": "string"
-				},
-				{
-					"name": "_contentDatKey",
-					"type": "string"
-				},
-				{
-					"name": "_metadataDatKey",
-					"type": "string"
-				},
-				{
-					"name": "_fileSize",
-					"type": "uint256"
-				},
-				{
-					"name": "_profitPercentage",
-					"type": "uint256"
-				}
-			]
-            const decodedLog = this.web3.eth.abi.decodeLog(inputs, log.data, log.topics)
-            debug(decodedLog)
-        }
-        return logs;
-        // var decoders = abi.filter(function (json) {
-        //     return json.type === 'event';
-        // }).map(function (json) {
-        //     // note first and third params only required only by enocde and execute;
-        //     // so don't call those!
-        //     return new SolidityEvent(null, json, null);
-        // });   
-        // return logs.map(function (log) {
-        //     var decoder = decoders.find(function (decoder) {
-        //         return (decoder.signature() == log.topics[0].replace("0x", ""));
-        //     })
-        //     if (decoder) {
-        //         return decoder.decode(log);
-        //     } else {
-        //         return log;
-        //     }
-        // })
+        var decoders = abi.filter(function (json) {
+            return json.type === 'event';
+        }).map(function (json) {
+            // note first and third params only required only by enocde and execute;
+            // so don't call those!
+            return new SolidityEvent(null, json, null);
+        });   
+        return logs.map(function (log) {
+            var decoder = decoders.find(function (decoder) {
+                return (decoder.signature() == log.topics[0].replace("0x", ""));
+            })
+            if (decoder) {
+                return decoder.decode(log);
+            } else {
+                return log;
+            }
+        })
     }
 }
