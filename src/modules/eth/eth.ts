@@ -1,6 +1,7 @@
 import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
 import Web3 from 'web3';
-import SolidityEvent from 'web3/lib/web3/event.js';
+// import SolidityEvent from 'web3/lib/web3/event.js';
+// import SolidityEvent from './web3.js-0.20.6/lib/web3/event.js'
 import Debug from 'debug';
 const AOContent = require('ao-contracts/build/contracts/AOContent.json');
 const AOToken = require('ao-contracts/build/contracts/AOToken.json');
@@ -66,7 +67,7 @@ export interface HostContentEvent {
 export default class AOEth extends AORouterInterface {
     private web3: Web3;
 
-    private networkId: number;
+    private networkId: string;
     private rpcMainnet: string;
     private rpcRinkeby: string;
 
@@ -84,6 +85,7 @@ export default class AOEth extends AORouterInterface {
         this.router.on('/eth/tx/BuyContent', this._getBuyContentEventForTransaction.bind(this))
         this.router.on('/eth/tx/HostContent', this._getHostContentEventForTransaction.bind(this))
         this.router.on('/eth/tx/StakeContent', this._getStakeContentEventForTransaction.bind(this))
+        this.router.on('/eth/events/BuyContent', this._listenForBuyContentEvents.bind(this))
         debug(`started`)
     }
 
@@ -94,47 +96,58 @@ export default class AOEth extends AORouterInterface {
             request.reject(new Error(`Network currently not supported: ${requestData.networkId}`))
             return;
         }
-        if (this.web3)
-            this.web3.reset()  // clears any filters etc that may have already existed
         let rpcEndpoint = this.rpcMainnet
         if (requestData.networkId === '1')  // mainnet
             rpcEndpoint = this.rpcMainnet
         else if (requestData.networkId === '4')  // rinkeby
             rpcEndpoint = this.rpcRinkeby
-        this.web3 = new Web3(new Web3.providers.HttpProvider(rpcEndpoint))
-        this.web3.version.getNetwork((error, networkId) => {
-            if (error) {
-                debug('Error getting network:', error)
-                request.reject(error)
-            } else {
-                debug(`Connected to network with id [${networkId}]`)
-                this.networkId = networkId
-                // Setup contracts
-                try {
-                    this.contracts = {
-                        aoContent: this.web3.eth.contract(AOContent.abi).at(AOContent.networks[this.networkId].address),
-                        aoToken: this.web3.eth.contract(AOToken.abi).at(AOToken.networks[this.networkId].address)
-                    }
-                    request.respond({ networkId })
-                } catch (error) {
-                    request.reject(new Error(`Error initializing contracts for network: ${networkId}. ${error.message}`))
-                }
+        const provider = new Web3.providers.HttpProvider(rpcEndpoint)
+        if ( this.web3 )
+            this.web3.setProvider(provider)
+        else
+            this.web3 = new Web3(provider)
+        this.web3.eth.net.getId().then(networkId => {
+            debug(`Connected to network with id [${networkId}]`)
+            this.networkId = `${networkId}`
+            // Setup contracts
+            try {
+                this.contracts = {
+                    aoContent: new this.web3.eth.Contract(AOContent.abi), //.at(AOContent.networks[this.networkId].address),
+                    aoToken: new this.web3.eth.Contract(AOToken.abi), //.at(AOToken.networks[this.networkId].address)
+                }                
+                request.respond({ networkId: this.networkId })
+            } catch (error) {
+                request.reject(new Error(`Error initializing contracts for network: ${networkId}. ${error.message}`))
             }
+        }).catch(error => {
+            debug('Error getting network:', error)
+            request.reject(error)
         })
     }
 
     /**
-     * This method will query and/or listen for a BuyContent event on the AOContent
-     * contract. Will return status = 0 if the tx failed, or status = 1 and the 
-     * corresponding event upon success.
+     * This method will listen for BuyContent events targeted at the current
+     * user (ie: someone purchased content from this user).
      * 
      * route: /eth/events/BuyContent
      * 
+     * @param request.ethAddress
+     */
+    _listenForBuyContentEvents(request: IAORouterRequest) {
+        
+    }
+
+    /**
+     * Get the BuyContent event associated with a specific transaction. Will return 
+     * status = 0 if the tx failed, or status = 1 and the corresponding event upon success.
      * 
-     * @param request.buyer
-     * @param request.transactionHash
-     * @param request.contentHostId
-     * @returns {status, event} 
+     * route: /eth/tx/BuyContent
+     * 
+     * 
+     * @param request.data.buyer
+     * @param request.data.transactionHash
+     * @param request.data.contentHostId
+     * @returns {status, buyContentEvent} 
      */
     _getBuyContentEventForTransaction(request: IAORouterRequest) {
         const requestData: IAOEth_BuyContentEvent_Data = request.data;
@@ -151,7 +164,7 @@ export default class AOEth extends AORouterInterface {
     }
 
     /**
-     * route: /eth/events/HostContent
+     * route: /eth/tx/HostContent
      * 
      * 
      * @param request.transactionHash
@@ -174,6 +187,13 @@ export default class AOEth extends AORouterInterface {
         }).catch(request.reject)
     }
 
+    /**
+     * route: /eth/tx/StakeContent
+     * 
+     * 
+     * @param request.transactionHash
+     * @returns {status, hostContentEvent, stakeContentEvent} 
+     */
     _getStakeContentEventForTransaction(request: IAORouterRequest) {
         const requestData: IAOEth_StakeContentEvent_Data = request.data
         this._listenForTransactionStatus(requestData.transactionHash).then(({ status, receipt }) => {
@@ -277,22 +297,74 @@ export default class AOEth extends AORouterInterface {
 
     // https://github.com/barkthins/ether-pudding/blob/master/index.js#L23
     private receiptLogParser(logs: Array<any>, abi: any): Array<any> {
-        var decoders = abi.filter(function (json) {
-            return json.type === 'event';
-        }).map(function (json) {
-            // note first and third params only required only by enocde and execute;
-            // so don't call those!
-            return new SolidityEvent(null, json, null);
-        });   
-        return logs.map(function (log) {
-            var decoder = decoders.find(function (decoder) {
-                return (decoder.signature() == log.topics[0].replace("0x", ""));
-            })
-            if (decoder) {
-                return decoder.decode(log);
-            } else {
-                return log;
-            }
-        })
+        var decodedLogs = []
+        for (let i = 0; i < logs.length; i++) {
+            const log = logs[i];
+            // this.contracts.aoContent.inputs = AOCon
+            // const decodedLog = this.contracts.aoContent._decodeEventABI(log)
+            debug(this.contracts.aoContent)
+            const inputs = [
+				{
+					"name": "_networkIntegerAmount",
+					"type": "uint256"
+				},
+				{
+					"name": "_networkFractionAmount",
+					"type": "uint256"
+				},
+				{
+					"name": "_denomination",
+					"type": "bytes8"
+				},
+				{
+					"name": "_primordialAmount",
+					"type": "uint256"
+				},
+				{
+					"name": "_baseChallenge",
+					"type": "string"
+				},
+				{
+					"name": "_encChallenge",
+					"type": "string"
+				},
+				{
+					"name": "_contentDatKey",
+					"type": "string"
+				},
+				{
+					"name": "_metadataDatKey",
+					"type": "string"
+				},
+				{
+					"name": "_fileSize",
+					"type": "uint256"
+				},
+				{
+					"name": "_profitPercentage",
+					"type": "uint256"
+				}
+			]
+            const decodedLog = this.web3.eth.abi.decodeLog(inputs, log.data, log.topics)
+            debug(decodedLog)
+        }
+        return logs;
+        // var decoders = abi.filter(function (json) {
+        //     return json.type === 'event';
+        // }).map(function (json) {
+        //     // note first and third params only required only by enocde and execute;
+        //     // so don't call those!
+        //     return new SolidityEvent(null, json, null);
+        // });   
+        // return logs.map(function (log) {
+        //     var decoder = decoders.find(function (decoder) {
+        //         return (decoder.signature() == log.topics[0].replace("0x", ""));
+        //     })
+        //     if (decoder) {
+        //         return decoder.decode(log);
+        //     } else {
+        //         return log;
+        //     }
+        // })
     }
 }
