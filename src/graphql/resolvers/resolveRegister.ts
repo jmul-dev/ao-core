@@ -24,12 +24,15 @@ export default (obj: any, args: IRegister_Args, context: IGraphqlResolverContext
                 const fsMakeEthDirData: IAOFS_Mkdir_Data = {
                     dirPath: path.join('users', args.inputs.ethAddress)
                 }
-                const mkdirPromises: Array<Promise<any>> = [
+                let mkdirPromises: Array<Promise<any>> = [
                     context.router.send('/fs/mkdir', fsMakeContentDirData),
                     context.router.send('/fs/mkdir', fsMakeEthDirData)
                 ]
+
+
                 Promise.all(mkdirPromises).then(() => {                                
                     context.router.send('/core/log', {message: `[AO Core] Registered as user ${args.inputs.ethAddress}`})
+
                     resolveSetNetwork(obj, args, context, info).then((ethNetworkConnected: boolean) => {
                         if ( !ethNetworkConnected ) {
                             reject(new Error(`Unable to connect to ethereum network`))
@@ -39,7 +42,13 @@ export default (obj: any, args: IRegister_Args, context: IGraphqlResolverContext
                                 ethAddress: args.inputs.ethAddress,
                             })
                         }
-                    }).catch(reject)                  
+                    }).catch(reject)
+                    
+                    //User folder did not exist at the start so make the private/public key combo here.
+                    if( !existsData.data.exists ) {
+                        
+                    }
+
                 }).catch(reject) //End of Promise.all
             }).catch(reject)//End if db init
         }).catch(reject)//First time checker
