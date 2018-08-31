@@ -41,6 +41,7 @@
     "ffprobe": "^1.1.0",
     "ffprobe-static": "^2.0.0",
     "fs-extra": "^6.0.1",
+    "got": "git:git@github.com:ryuheiyokokawa/got.git#ao",
     "graphql": "^0.13.2",
     "graphql-import-loader": "^0.2.1",
     "graphql-tag": "^2.9.2",
@@ -50,8 +51,9 @@
     "md5": "^2.2.1",
     "minimist": "^1.2.0",
     "nedb": "^1.8.0",
+    "scrypt": "git:git@github.com:ryuheiyokokawa/node-scrypt.git#ao",
     "web3": "^1.0.0-beta.33",
-    "web3-legacy": "git://github.com/nharlow89/web3.js#legacy"
+    "web3-legacy": "git://github.com/nharlow89/web3.js.git#legacy"
   },
   "devDependencies": {
     "@types/chai": "^4.1.4",
@@ -75,6 +77,7 @@
     "gitlab-ci-releaser": "^1.5.0",
     "mocha": "^5.2.0",
     "node-has-native-dependencies": "^1.0.2",
+    "node-loader": "^0.6.0",
     "rimraf": "^2.6.2",
     "shebang-loader": "0.0.1",
     "ts-node": "^7.0.0",
