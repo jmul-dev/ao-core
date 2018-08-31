@@ -5,8 +5,8 @@ import 'mocha';
 
 describe('AO Eth module', () => {
     const aoEth = new AOEth({
-        rpcMainnet: 'https://mainnet.infura.io/',
-        rpcRinkeby: 'https://rinkeby.infura.io/',
+        rpcMainnet: 'wss://mainnet.infura.io/ws', // 'https://mainnet.infura.io/',
+        rpcRinkeby: 'wss://rinkeby.infura.io/ws', // 'https://rinkeby.infura.io/' 
     })
     const mainnetKnownFailedTx = '0xa0a5e34b9b19b398c5a073513ecb461899ceb45246f51e6d470ae0cf23b39075'
     const mainnetKnownSuccessfulTx = '0xfaa19822a0d907e336146ccba8680e5a3fc6e0ac4d69aa8f5d29fe228aa6447e'
@@ -142,6 +142,27 @@ describe('AO Eth module', () => {
             }
         })        
     })
+
+    it('should be able to subscribe and unsubscribe from BuyContent events', (done) => {
+        // Check stake tx
+        aoEth.router.emit('/eth/events/BuyContent/subscribe', {
+            data: {
+                contentHostId: '0x1bb20435d2422bc6307162ca0f5bdb50b04dbb7322d30af44c65ee62cefe3d43'
+            },
+            respond: ({subscribed}) => {
+                expect(subscribed).to.be.true
+                aoEth.router.emit('/eth/events/BuyContent/unsubscribeAll', {
+                    respond: ({success, subscriptionsCancelled}) => {
+                        expect(success).to.be.true
+                        expect(subscriptionsCancelled).to.equal(1)
+                        done()
+                    },
+                    reject: done
+                })
+            },
+            reject: done
+        })
+    })    
 })
 
 
