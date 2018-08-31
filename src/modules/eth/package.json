@@ -5,16 +5,17 @@
     "displayName": "AO Eth",
     "description": "AO - Eth package",
     "main": "eth/eth.js",
-    "bin":  "eth.bin.js",
+    "bin": "eth.bin.js",
     "AO": {
         "events": [
             "/eth/network/set",
             "/eth/tx",
             "/eth/tx/BuyContent",
             "/eth/tx/StakeContent",
-            "/eth/tx/HostContent"
+            "/eth/tx/HostContent",
+            "/eth/events/BuyContent/subscribe",
+            "/eth/events/BuyContent/unsubscribeAll"
         ],
-        "activationEvents": [
-        ]
+        "activationEvents": []
     }
-  }
+}
