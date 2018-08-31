@@ -3,6 +3,7 @@ import Datastore from 'nedb';
 import path from 'path';
 import Debug from 'debug';
 import { error } from "util";
+import { responsePathAsArray } from "graphql";
 const debug = Debug('ao:db');
 
 
@@ -223,20 +224,24 @@ export default class AODB extends AORouterInterface {
     }
 
     private _getUserIdentity(request: IAORouterRequest): void {
-        debug(request)
-        const query = {
-            id: 'identity'
-        }
-        this.userDbs[request.ethAddress].user.find(query).exec( (error, results) => {
-            if(error) {
-                request.reject(error)
-            } else {
-                debug(results)
-                request.respond({ 
-                    ethAddress: request.ethAddress
-                })
+        if(request.ethAddress) {
+            const query = {
+                id: 'identity'
             }
-        })
+            this.userDbs[request.ethAddress].user.find(query).exec( (error, results) => {
+                if(error) {
+                    request.reject(error)
+                } else {
+                    request.respond({ 
+                        ethAddress: request.ethAddress,
+                        address: results[0]['data']['address'],
+                        publicKey: results[0]['data']['publicKey'],
+                    })
+                }
+            })
+        } else {
+            request.respond({ethAddress: request.ethAddress})
+        }
     }
 
     private _userGet(request: IAORouterRequest) {
