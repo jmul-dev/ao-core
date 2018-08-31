@@ -50,7 +50,7 @@ export interface AODB_UserGet_Data {
     query?: object
 }
 export interface AODB_UserInsert_Data {
-    object: object
+    object: any
 }
 export interface AODB_UserUpdate_Data {
     id: string;
@@ -113,7 +113,7 @@ export default class AODB extends AORouterInterface {
 
         this.router.on('/db/user/init', this._setupUserDbs.bind(this)) //both content and user dbs
 
-        this.router.on('/db/user/getEthAddress', this._getUserEthAddress.bind(this))
+        this.router.on('/db/user/getIdentity', this._getUserIdentity.bind(this))
         this.router.on('/db/user/get', this._userGet.bind(this) )
         this.router.on('/db/user/insert', this._userInsert.bind(this) )
         this.router.on('/db/user/update', this._userUpdate.bind(this) )
@@ -217,13 +217,26 @@ export default class AODB extends AORouterInterface {
         // })
     }
 
-    private _getUserEthAddress(request: IAORouterRequest): void {
-        request.respond({ ethAddress: request.ethAddress })
-    }
-
     private _handleCoreDbLoadError(error: Error): void {
         debug('Error loading db: ', error)
         this.router.send('/core/log', { message: error.message })
+    }
+
+    private _getUserIdentity(request: IAORouterRequest): void {
+        debug(request)
+        const query = {
+            id: 'identity'
+        }
+        this.userDbs[request.ethAddress].user.find(query).exec( (error, results) => {
+            if(error) {
+                request.reject(error)
+            } else {
+                debug(results)
+                request.respond({ 
+                    ethAddress: request.ethAddress
+                })
+            }
+        })
     }
 
     private _userGet(request: IAORouterRequest) {

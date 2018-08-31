@@ -13,7 +13,7 @@
             "/db/settings/get",
             "/db/settings/update",            
             "/db/user/init",
-            "/db/user/getEthAddress",
+            "/db/user/getIdentity",
             "/db/user/get",
             "/db/user/insert",
             "/db/user/content/get",
