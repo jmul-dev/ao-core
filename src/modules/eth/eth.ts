@@ -29,6 +29,9 @@ export interface IAOEth_BuyContentEvent_Data {
 export interface IAOEth_HostContentEvent_Data {
     transactionHash: string;
 }
+export interface IAOEth_Events_BuyContent_Data {
+    contentHostId: string;
+}
 
 export interface BuyContentEvent {
     buyer: string;
@@ -57,6 +60,10 @@ export interface HostContentEvent {
     metadataDatKey: string;
 }
 
+interface Subscription {
+    unsubscribe(callBack?: (Error, boolean) => void): void | boolean
+}
+
 /**
  * AOEth
  * 
@@ -75,16 +82,30 @@ export default class AOEth extends AORouterInterface {
         aoContent: any;
     };
 
+    private events: {
+        BuyContent: {
+            subscriptions: {
+                [key: string]: Subscription
+            }
+        }
+    }
+
     constructor(args: AOEth_Args) {
         super()
         this.rpcMainnet = args.rpcMainnet
         this.rpcRinkeby = args.rpcRinkeby
+        this.events = {
+            BuyContent: {
+                subscriptions: {}
+            }
+        }
         this.router.on('/eth/network/set', this._handleNetworkChange.bind(this))
         this.router.on('/eth/tx', this._handleTx.bind(this))
         this.router.on('/eth/tx/BuyContent', this._getBuyContentEventForTransaction.bind(this))
         this.router.on('/eth/tx/HostContent', this._getHostContentEventForTransaction.bind(this))
         this.router.on('/eth/tx/StakeContent', this._getStakeContentEventForTransaction.bind(this))
-        this.router.on('/eth/events/BuyContent', this._listenForBuyContentEvents.bind(this))
+        this.router.on('/eth/events/BuyContent/subscribe', this._listenForBuyContentEvents.bind(this))
+        this.router.on('/eth/events/BuyContent/unsubscribeAll', this._unsubscribeBuyContentEvents.bind(this))
         debug(`started`)
     }
 
@@ -100,7 +121,12 @@ export default class AOEth extends AORouterInterface {
             rpcEndpoint = this.rpcMainnet
         else if (requestData.networkId === '4')  // rinkeby
             rpcEndpoint = this.rpcRinkeby
-        const provider = new Web3.providers.HttpProvider(rpcEndpoint)
+        if ( rpcEndpoint.indexOf('wss://') !== 0 ) {
+            debug(`Eth module currently requires web socket rpc endpoint in order to support filters`)
+            request.reject(new Error(`Invalid eth network rpc, requires websocket connection.`))
+            return;
+        }
+        const provider = new Web3.providers.WebsocketProvider(rpcEndpoint)
         if ( this.web3 )
             this.web3.setProvider(provider)
         else
@@ -111,8 +137,8 @@ export default class AOEth extends AORouterInterface {
             // Setup contracts
             try {
                 this.contracts = {
-                    aoContent: new this.web3.eth.Contract(AOContent.abi), //.at(AOContent.networks[this.networkId].address),
-                    aoToken: new this.web3.eth.Contract(AOToken.abi), //.at(AOToken.networks[this.networkId].address)
+                    aoContent: new this.web3.eth.Contract(AOContent.abi, AOContent.networks[this.networkId].address), //.at(AOContent.networks[this.networkId].address),
+                    aoToken: new this.web3.eth.Contract(AOToken.abi, AOToken.networks[this.networkId].address), //.at(AOToken.networks[this.networkId].address)
                 }                
                 request.respond({ networkId: this.networkId })
             } catch (error) {
@@ -125,15 +151,58 @@ export default class AOEth extends AORouterInterface {
     }
 
     /**
-     * This method will listen for BuyContent events targeted at the current
-     * user (ie: someone purchased content from this user).
+     * This method will begin listening for BuyContent events for 
+     * a specific piece of content (contentHostId)
      * 
      * route: /eth/events/BuyContent
-     * 
-     * @param request.ethAddress
      */
     _listenForBuyContentEvents(request: IAORouterRequest) {
-        
+        const requestData: IAOEth_Events_BuyContent_Data = request.data;
+        const { contentHostId } = requestData
+        if ( this.events.BuyContent.subscriptions[contentHostId] ) {
+            debug(`Warning, already subscribed to BuyContent events for contentHostId[${contentHostId}]`)
+            request.respond({subscribed: true})
+        } else {
+            let responded = false
+            try {
+                let subscription = this.contracts.aoContent.events.BuyContent({
+                    filter: {
+                        contentHostId,
+                    },
+                    fromBlock: AOContent.networks[this.networkId].address
+                }).on('data', event => {
+                    const buyContentEvent: BuyContentEvent = event.returnValues
+                    debug(buyContentEvent)
+                    this.router.emit('/core/content/incomingPurchase', buyContentEvent)
+                }).on('error', (error) => {
+                    debug(error)
+                    if ( !responded ) {
+                        request.reject(error)
+                        responded = true
+                    }
+                })
+                this.events.BuyContent.subscriptions[contentHostId] = subscription
+                request.respond({subscribed: true})
+                responded = true
+            } catch (error) {
+                debug(error)
+                request.reject(error)
+                responded = true
+            } 
+        }       
+    }
+
+    _unsubscribeBuyContentEvents(request: IAORouterRequest) {
+        let subscriptionsCancelled = 0
+        Object.keys(this.events.BuyContent.subscriptions).forEach(contentHostId => {
+            const subscription: Subscription = this.events.BuyContent.subscriptions[contentHostId]
+            if ( subscription && subscription.unsubscribe ) {
+                subscription.unsubscribe()
+                delete this.events.BuyContent.subscriptions[contentHostId];
+                subscriptionsCancelled++;
+            }
+        })
+        request.respond({success: true, subscriptionsCancelled})
     }
 
     /**

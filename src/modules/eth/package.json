@@ -13,7 +13,8 @@
             "/eth/tx/BuyContent",
             "/eth/tx/StakeContent",
             "/eth/tx/HostContent",
-            "/eth/events/BuyContent"
+            "/eth/events/BuyContent/subscribe",
+            "/eth/events/BuyContent/unsubscribeAll"
         ],
         "activationEvents": []
     }
