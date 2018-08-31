@@ -1,6 +1,6 @@
 import Debug from 'debug';
 import md5 from 'md5';
-import createKeccakHash from 'keccak'
+import EthCrypto from 'eth-crypto'
 import path from 'path';
 import { AOContentState } from '../../models/AOContent';
 import { AODat_Create_Data } from '../../modules/dat/dat';
@@ -132,13 +132,13 @@ export default (obj: any, args: any, context: IGraphqlResolverContext, info: any
                         writePath: `content/${newPreviewId}/content.json`,
                         data: JSON.stringify(contentJson)
                     }
-
+                    
                     const userContentJson = {
                         ...contentJson,
                         decryptionKey: decryptionKey,
                         state: AOContentState.ENCRYPTED,
-                        baseChallenge: createKeccakHash('keccak256').update(checksum).digest('hex'), //keccak256.update(checksum).update('hex'),
-                        encChallenge: createKeccakHash('keccak256').update(encryptedChecksum).digest('hex'), //keccak256._resetState().update(encryptedChecksum).digest('hex'),
+                        baseChallenge: EthCrypto.hash.keccak256(checksum),
+                        encChallenge: EthCrypto.hash.keccak256(encryptedChecksum),
                     }
 
                     storagePromises.push(context.router.send('/fs/write', contentWriteData))
