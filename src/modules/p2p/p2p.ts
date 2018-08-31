@@ -30,6 +30,11 @@ export interface AOP2P_Watch_AND_Get_Key_Data {
     key: string;
 }
 
+export interface AOP2P_Watch_AND_Get_IndexData_Data {
+    key: string;
+    ethAddress: string;
+}
+
 export interface AOP2P_Add_Discovery_Data {
     contentType: string;
     fileDatKey: string;
@@ -76,6 +81,8 @@ export default class AOP2P extends AORouterInterface {
         this.router.on('/p2p/watchKey', this._handleWatchKey.bind(this))
         //Watch and Get
         this.router.on('/p2p/watchAndGetKey', this._handleWatchAndGetKey.bind(this))
+        //Watch and Get IndexData
+        this.router.on('/p2p/watchAndGetIndexData', this._handleWatchAndGetIndexData.bind(this))
         //Add content into Discovery
         this.router.on('/p2p/addDiscovery', this._handleAddDiscovery.bind(this))
 
@@ -210,6 +217,21 @@ export default class AOP2P extends AORouterInterface {
     }
 
 
+    private _handleWatchAndGetIndexData(request: IAORouterRequest) {
+        const {key, ethAddress}: AOP2P_Watch_AND_Get_IndexData_Data = request.data
+        this.hyperdb.watch(key).then(() => {
+            this.hyperdb.query(key).then((indexData) => {
+                    if(!indexData[ethAddress]) {
+                        //Self call if there isn't a record for our own indexData
+                        this._handleWatchAndGetIndexData(request)
+                    } else {
+                        // TODO: Do we want to do the indexData signature check here or outside?
+                        request.respond({indexData: indexData[ethAddress]})
+                    }
+            }).catch(request.reject)
+        }).catch( request.reject )
+    }
+
     private _handleAddDiscovery(request:IAORouterRequest) {
         const {contentType, fileDatKey, ethAddress, metaDatKey, metaData, indexData}: AOP2P_Add_Discovery_Data = request.data
         const appRegistrationPrefix = this.dbPrefix + contentType + '/' + metaDatKey + '/nodes/'
@@ -241,7 +263,7 @@ export default class AOP2P extends AORouterInterface {
             this.hyperdb.query(contentPrefixRoute + indexDataRoute).then((indexData)=> {
                 let newIndexData = this.addIndexData({
                     indexData: indexData,
-                    ethAddress: ethAddress,
+                    ethAddress: ethAddress, //Note that this is the buyer's address
                     publicKey: publicKey,
                     decryptionKey: content.decryptionKey
                 })

@@ -1,19 +1,21 @@
-import { AOContentState } from '../../models/AOContent';
-
 import { IGraphqlResolverContext } from '../../http';
 import { IAORouterMessage } from "../../router/AORouter";
 import { AODB_NetworkContentGet_Data, AODB_UserContentUpdate_Data } from '../../modules/db/db';
-import { AOP2P_Watch_Key_Data } from '../../modules/p2p/p2p'
+import { AOP2P_Watch_AND_Get_IndexData_Data } from '../../modules/p2p/p2p'
 
-interface IContentRequest_Args {
+
+export interface IContentPurchased_Args {
     inputs: {
         contentId: string;
         purchaseId: string;
         hostId: string;
     }
 }
+/**
+ * This is an internal resolver.  Its not called by graphql
+ */
 
-export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverContext, info: any) => {
+export default (obj: any, args: IContentPurchased_Args, context: IGraphqlResolverContext, info: any) => {
     return new Promise((resolve, reject) => {
         const { contentId, purchaseId, hostId } = args.inputs
         // 1. Get existing content from user content 
@@ -26,58 +28,32 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                 return;
             }
             const content = response.data[0]
-            // 2. Update to PURCHASED
-            let contentUpdateQuery: AODB_UserContentUpdate_Data = {
-                id: contentId,
-                update: {
-                    $set: {
-                        "state": AOContentState.PURCHASED,
-                        "purchaseId": purchaseId
-                    }
-                }
+            // 2. Watch for change in Key for this specific encrypted video Dat
+            const p2pWatchKeyRequest: AOP2P_Watch_AND_Get_IndexData_Data = {
+                key: '/AOSpace/VOD/' + content.metadataDatKey + '/nodes/' + content.creatorId + '/' + content.fileDatKey + '/indexData',
+                ethAddress: response.ethAddress
             }
-            context.router.send('/db/user/content/update', contentUpdateQuery).then((purchasingUpdateResponse: IAORouterMessage) => {
-                // 3. Resolve with updated content
-                resolve(purchasingUpdateResponse.data)
-
-                // 4. Watch for change in Key for this specific encrypted video Dat
-                // Note: Note that key watch is 100% up to us, no pre-fixing, or anything on the module side.
-                // TODO: How do we get the target encrypted file's dat address?  That's currently not recorded/passed from contentRequest
-                const p2pWatchKeyRequest: AOP2P_Watch_Key_Data = {
-                    key: '/AOSpace/VOD/' + content.metadataDatKey + '/nodes/' + content.creatorId + '/' + content.fileDatKey + '/indexData'
-                }
-                context.router.send('/p2p/watchAndGetKey', p2pWatchKeyRequest).then((watchKeyResponse:IAORouterMessage) => {
-                    /* 
-                     * The following logic will likely be moved elsewhere.
-                     * 
-                    // TODO: Use indexData to find and decrypt the decryption key using your private key
-                    // TODO: #2, Might want to sort through the indexData first.
-                    const indexData = watchKeyResponse.data
-                    if( indexData ) {
-                        //Set State to Purchased
-                        let contentUpdateQuery: AODB_UserContentUpdate_Data = {
-                            id: contentId,
-                            update: {
-                                $set: {
-                                    "state": 'DECRYPTION_KEY_RECEIVED',
-                                    "encryptedKey": indexData //Gotta figure this out later!
-                                }
+            context.router.send('/p2p/watchAndGetIndexData', p2pWatchKeyRequest).then((watchIndexDataResponse:IAORouterMessage) => {
+                const indexData = watchIndexDataResponse.data; // returned indexData is for your ethAddress
+                if( indexData ) {
+                    // TODO: Check out the signature attached to the IndexData here.
+                    let contentUpdateQuery: AODB_UserContentUpdate_Data = {
+                        id: contentId,
+                        update: {
+                            $set: {
+                                "state": 'DECRYPTION_KEY_RECEIVED',
+                                "encryptedKey": indexData.decryptKey //indexData is put against the buyer's ethaddress
                             }
                         }
-                        context.router.send('/db/user/content/update', contentUpdateQuery).then((purchasedUpdateResponse: IAORouterMessage) => {
-
-                        }).catch(reject) // DB user content insert end
-                    } else {
-                        // TODO: We might have to loop this watch/get as sometimes someone else might be purchasing from the same node.
-                        let error = new Error('Did not find any indexData for specified key')
-                        console.log( error ) // NO reject here since we already resolved.
                     }
-                    */
-                }).catch(error => {
-                    console.error(error)
-                }) // Watch Key end
-                
-            }).catch(reject) // update to purchasing.
+                    context.router.send('/db/user/content/update', contentUpdateQuery).then((purchasedUpdateResponse: IAORouterMessage) => {
+                        resolve(purchasedUpdateResponse.data)
+                    }).catch(reject) // DB user content insert end
+                } else {
+                    reject(new Error('Did not find any indexData for specified key'))
+                }
+            }).catch(reject) // Watch Key end
+
         }).catch(reject) // Network content get from DB end
     })
 }
