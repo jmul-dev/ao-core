@@ -48,7 +48,8 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                     contentUpdateQuery.update = {
                         $set: {
                             "state": AOContentState.STAKED,
-                            "stakeId": stakeContentEvent.stakeId
+                            "stakeId": stakeContentEvent.stakeId,
+                            "contentHostId": hostContentEvent.contentHostId,
                         }
                     }                    
                 } else {

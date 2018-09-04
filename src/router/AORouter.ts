@@ -25,7 +25,8 @@ const corePackageJson = {
     AO: {
         runUnderCore: true,
         events: [
-            '/core/log'
+            '/core/log',
+            '/core/content/incomingPurchase'
         ],
     },
 }
@@ -151,6 +152,9 @@ export default class AORouter extends AORouterCoreProcessInterface {
      */
     private async relay(incomingMessage: IAORouterMessage, from: IRegistryEntry, fromProcess: Process): Promise<any> {
         const messageId = incomingMessage.routerMessageId || ++this.messageCount;
+        if ( this.messageCount >= Number.MAX_SAFE_INTEGER ) {
+            this.messageCount = 1
+        }
         const event = incomingMessage.event
         return new Promise((resolve, reject) => {
             // 0. For context, router passes along user id (ethAddress)

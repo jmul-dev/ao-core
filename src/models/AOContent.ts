@@ -18,6 +18,23 @@ export const AOContentState = Object.freeze({
     DISCOVERABLE: 'DISCOVERABLE',
 })
 
+const AOContentStateOrdered = [
+    AOContentState.DISCOVERED,
+    AOContentState.DOWNLOADING,
+    AOContentState.DOWNLOADED,
+    AOContentState.PURCHASING,
+    AOContentState.PURCHASED,        
+    AOContentState.DECRYPTION_KEY_RECEIVED,
+    AOContentState.DECRYPTION_KEY_DECRYPTED,
+    AOContentState.VERIFIED,
+    AOContentState.VERIFICATION_FAILED,
+    AOContentState.ENCRYPTED,
+    AOContentState.DAT_INITIALIZED,
+    AOContentState.STAKING,
+    AOContentState.STAKED,
+    AOContentState.DISCOVERABLE,
+]
+
 /**
  * For a content to be considered in a completed state if must
  * have been made discoverable.
@@ -55,66 +72,75 @@ export function getListOfContentIncompleteStates() {
 // - graphql resolvers can resolve these class instances directly
 // - should probably wrap object types in the AORouter (for cross-process communication)
 //
-// export default abstract class AOContent {
-//     public id: string
-//     protected _state: string  // derived
-//     public stakeId: string
-//     public nodeId: string
-//     public creatorId: string
-//     public contentType: AOContentType;
-//     public isFolder: boolean
-//     public isMutable: boolean
-//     public fileName: string
-//     public fileDatKey: string
-//     public fileUrl: string
-//     public metadataDatKey: string    
-//     public title: string
-//     public description: string    
-//     public stake: number
-//     public fileSize: number
-//     public premium: number
-//     public split: number
-//     public adSupport: boolean
-//     public createdAt: string
+export default abstract class AOContent {
+    public id: string
+    public contentHostId: string
+    public state: string  // derived
+    public stakeId: string
+    public nodeId: string
+    public creatorId: string
+    public contentType: AOContentType;
+    public isFolder: boolean
+    public isMutable: boolean
+    public fileName: string
+    public fileDatKey: string
+    public fileUrl: string
+    public fileChecksum: string
+    public baseChallenge: string
+    public encChallenge: string
+    public metadataDatKey: string    
+    public title: string
+    public description: string    
+    public stake: number
+    public fileSize: number
+    public premium: number
+    public split: number
+    public adSupport: boolean
+    public createdAt: string    
 
-//     static fromObject( contentObject ) {
-//         let instance;
-//         switch (contentObject.contentType) {
-//             case 'VOD':
-//                 instance = new AOVideoContent()
-//             default:
-//                 break;
-//         }
-//         // assigning all value to the instance properties
-//         if ( contentObject.state ) {
-//             contentObject._state = contentObject.state
-//             delete contentObject.state
-//         }
-//         Object.assign(instance, contentObject)
-//     }
+    static fromObject( contentObject ) {
+        let instance;
+        switch (contentObject.contentType) {
+            case 'VOD':
+                instance = new AOVideoContent()
+            default:
+                break;
+        }
+        // assigning all value to the instance properties
+        Object.assign(instance, contentObject)
+        return instance;
+    }
 
-//     /**
-//      * Returns a json structure that can be safely saved to 
-//      * a metadata file (exludes any sensitive information)
-//      */
-//     public toMetadataJson() {
-//         let json = Object.assign({}, this)
-//         return json
-//     }
+    public isDiscoverable(): boolean {
+        return this.state === AOContentState.DISCOVERABLE
+    }
 
-//     public get state() {
-//         // TODO: determine content state
-//         return this._state;
-//     }
-// }
+    public isPurchased(): boolean {
+        return AOContentStateOrdered.indexOf(this.state) >= AOContentStateOrdered.indexOf( AOContentState.PURCHASED )
+    }
 
-// export class AOVideoContent extends AOContent {
-//     public contentType: AOContentType = 'VOD';
-//     public teaserUrl: string
-//     public featuredImageUrl: string
-//     public metadata: {
-//         duration: number
-//         resolution: string
-//         encoding: string
-//     }
-// }
+    /**
+     * Returns a json structure that can be safely saved to 
+     * a metadata file (exludes any sensitive information)
+     */
+    public toMetadataJson() {
+        let json = Object.assign({}, this)
+        return json
+    }
+
+    public get metadataDatStats() {
+        // TODO: see resolveDatStats
+        return undefined
+    }
+}
+
+export class AOVideoContent extends AOContent {
+    public contentType: AOContentType = 'VOD'
+    public teaserUrl: string
+    public featuredImageUrl: string
+    public metadata: {
+        duration: number
+        resolution: string
+        encoding: string
+    }
+}

@@ -187,35 +187,36 @@ export default class AODB extends AORouterInterface {
             request.respond({ loaded: true })
             return;
         }
-        const dbLoadHandler = (error: Error) => {
-            if (error) {
-                this._handleCoreDbLoadError(error)
-            }
-        }
+        const dbLoadHandler = () => (error: Error) => new Promise((resolve, reject) => {
+            if ( error )
+                reject(error)
+            else
+                resolve()
+        })
         this.userDbs[request.ethAddress] = {
             content: new Datastore({
                 filename: path.resolve(this.storageLocation, 'users', request.ethAddress, 'content.db.json'),
-                autoload: true,
-                onload: dbLoadHandler,
+                autoload: false,
             }),
             user: new Datastore({
                 filename: path.resolve(this.storageLocation, 'users', request.ethAddress, 'user.db.json'),
-                autoload: true,
-                onload: dbLoadHandler,
+                autoload: false,
             })
         }
-        this.router.send('/core/log', { message: `[AO DB] User database initialized for ${request.ethAddress}` })
-        request.respond({ loaded: true })
-        // TODO: should probably use Promise.all to ensure each user db is loaded before responding!        
-        // this.userDbs[request.ethAddress].loadDatabase((error: Error) => {
-        //     this.router.send('/core/log', {message: `[AO DB] User database initialized for ${request.ethAddress}`})
-        //     if ( error ) {
-        //         request.reject(error)
-        //         this.userDbs[request.ethAddress] = undefined
-        //     } else {
-        //         request.respond({loaded: true})
-        //     }
-        // })
+        let dbLoadPromises = [
+            dbLoadHandler(),
+            dbLoadHandler()
+        ]
+        this.userDbs[request.ethAddress].content.loadDatabase(dbLoadPromises[0])
+        this.userDbs[request.ethAddress].user.loadDatabase(dbLoadPromises[0])
+
+        Promise.all(dbLoadPromises).then(() => {
+            this.router.send('/core/log', { message: `[AO DB] User database initialized for ${request.ethAddress}` })
+            request.respond({ loaded: true })
+        }).catch(error => {
+            this._handleCoreDbLoadError(error)
+            request.reject(error)
+        })
     }
 
     private _handleCoreDbLoadError(error: Error): void {
@@ -232,11 +233,7 @@ export default class AODB extends AORouterInterface {
                 if(error) {
                     request.reject(error)
                 } else {
-                    request.respond({ 
-                        ethAddress: request.ethAddress,
-                        address: results[0]['data']['address'],
-                        publicKey: results[0]['data']['publicKey'],
-                    })
+                    request.respond({identity: results[0]})
                 }
             })
         } else {

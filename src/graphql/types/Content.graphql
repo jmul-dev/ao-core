@@ -49,8 +49,10 @@ type VideoMetadata {
 }
 
 # Shared interface between all content types
+# Keep AOContent.ts up to date with this
 interface IContent {
     id: ID!
+    contentHostId: ID
     state: ContentState!
     stakeId: ID
     nodeId: ID!
@@ -82,6 +84,7 @@ interface IContent {
 
 type VideoContent implements IContent {
     id: ID!
+    contentHostId: ID
     state: ContentState!
     stakeId: ID
     nodeId: ID!
