@@ -3,6 +3,8 @@ const path = require('path');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const PermissionsOutputPlugin = require('webpack-permissions-plugin');
 
+console.log(__dirname + '/nodebin')
+
 module.exports = {
     mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
     target: "node",
@@ -30,7 +32,7 @@ module.exports = {
     },
     resolve: {
         // Add `.ts` and `.tsx` as a resolvable extension.
-        extensions: [".ts", ".tsx", ".mjs", ".js", ".graphql", ".json"]
+        extensions: [".ts", ".tsx", ".mjs", ".js", ".graphql", ".json", ".node"]
     },
     module: {
         rules: [
@@ -52,7 +54,17 @@ module.exports = {
                 exclude: /node_modules/,
                 test: /\.graphql$/,
                 use: [{ loader: 'graphql-import-loader' }]
-            },            
+            },
+            {
+                test: /\.node$/,
+                use: {
+                    loader: 'node-addon-loader',
+                    options: {
+                        // basePath: './dist/',
+                        rewritePath: './dist/',
+                    }
+                }
+            } 
         ]
     },
     plugins: [

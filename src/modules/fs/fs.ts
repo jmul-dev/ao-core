@@ -41,6 +41,10 @@ export interface IAOFS_ReadStream_Data {
     key?: string;   //decrypt key
 }
 
+export interface IAOFS_PathExists_Data {
+    path: string;
+}
+
 export interface IAOFS_Mkdir_Data {
     dirPath: string;
 }
@@ -91,6 +95,7 @@ export default class AOFS extends AORouterInterface {
         this.router.on('/fs/writeStream', this._handleWriteStream.bind(this))
         this.router.on('/fs/read', this._handleRead.bind(this))
         this.router.on('/fs/readStream', this._handleReadStream.bind(this))
+        this.router.on('/fs/exists', this._handlePathExists.bind(this))
         this.router.on('/fs/mkdir', this._handleMkdir.bind(this))
         this.router.on('/fs/move', this._handleMove.bind(this))
         this.router.on('/fs/unlink', this._handleUnlink.bind(this))
@@ -263,6 +268,18 @@ export default class AOFS extends AORouterInterface {
             }
             //TODO: What message do we send??
             request.respond({})
+        })
+    }
+
+    _handlePathExists(request:IAORouterRequest) {
+        const requestData:IAOFS_PathExists_Data = request.data
+        const checkPath = path.resolve(this.storageLocation, requestData.path)
+        fsExtra.pathExists(checkPath, (err, exists) => {
+            if(err) {
+                request.reject(err)
+            } else {
+                request.respond({exists: exists})
+            }
         })
     }
 
