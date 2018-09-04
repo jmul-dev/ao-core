@@ -62,7 +62,8 @@ export default class AOUserSession {
                                 }
                             }
                             this.router.send('/db/user/insert', storeIdentityData).then((response: IAORouterMessage) => {
-                                // 5. Listeners that make this app work                                
+                                // 5. Listeners that make this app work    
+                                debug(`User identity generated, public key: ${identity.publicKey}`)
                                 resolve({ethAddress})
                                 this._processExistingUserContent()
                                 this._beginListeningForIncomingPurchases()
