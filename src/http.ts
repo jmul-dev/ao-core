@@ -11,6 +11,7 @@ import { AOCoreProcessRouter } from "./router/AORouterInterface";
 import { AODat_Check_Data } from './modules/dat/dat';
 import { IAOFS_ReadStream_Data, IAOFS_FileStat_data } from './modules/fs/fs';
 import { AODB_UserContentGet_Data } from './modules/db/db';
+import AOUserSession from './router/AOUserSession';
 const debug = Debug('ao:http');
 
 export interface Http_Args {
@@ -20,8 +21,9 @@ export interface Http_Args {
 }
 
 export interface IGraphqlResolverContext {
-    router: AOCoreProcessRouter
-    options: Http_Args
+    router: AOCoreProcessRouter;
+    options: Http_Args;
+    userSession: AOUserSession;
 }
 
 export default class Http {
@@ -31,7 +33,7 @@ export default class Http {
     private server: Server;
     private router: AOCoreProcessRouter;
 
-    constructor(router: AOCoreProcessRouter, options: Http_Args) {
+    constructor(router: AOCoreProcessRouter, options: Http_Args, userSession: AOUserSession) {
         this.router = router;
         this.express = express();
         const graphqlSchema = schema();
@@ -46,6 +48,7 @@ export default class Http {
                 context: {
                     router,
                     options,
+                    userSession,
                 }
             })
         );

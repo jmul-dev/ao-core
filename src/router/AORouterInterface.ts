@@ -23,7 +23,7 @@ export interface IAORouterRequest {
 /**
  * Any class interfacing with the AORouter should handle these
  */
-abstract class AORouterInterface {
+export abstract class AORouterInterface {
     abstract send(event: string, data?: any): Promise<any>;
     abstract on(event: string, listener: (message: IAORouterRequest) => void): void;
 }

@@ -154,7 +154,7 @@ export default class AOEth extends AORouterInterface {
      * This method will begin listening for BuyContent events for 
      * a specific piece of content (contentHostId)
      * 
-     * route: /eth/events/BuyContent
+     * route: /eth/events/BuyContent/subscribe
      */
     _listenForBuyContentEvents(request: IAORouterRequest) {
         const requestData: IAOEth_Events_BuyContent_Data = request.data;
@@ -187,10 +187,13 @@ export default class AOEth extends AORouterInterface {
                 debug(error)
                 request.reject(error)
                 responded = true
-            } 
-        }       
+            }
+        }
     }
 
+    /**
+     * route: /eth/events/BuyContent/unsubscribeAll
+     */
     _unsubscribeBuyContentEvents(request: IAORouterRequest) {
         let subscriptionsCancelled = 0
         Object.keys(this.events.BuyContent.subscriptions).forEach(contentHostId => {
@@ -214,7 +217,7 @@ export default class AOEth extends AORouterInterface {
      * @param request.data.buyer
      * @param request.data.transactionHash
      * @param request.data.contentHostId
-     * @returns {status, buyContentEvent} 
+     * @returns {status, buyContentEvent}
      */
     _getBuyContentEventForTransaction(request: IAORouterRequest) {
         const requestData: IAOEth_BuyContentEvent_Data = request.data;
