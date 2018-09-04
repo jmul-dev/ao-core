@@ -4,18 +4,25 @@ import path from 'path';
 import { IAORouterMessage } from "./AORouter";
 import AOContent, { AOContentState } from "../models/AOContent";
 import { BuyContentEvent } from "../modules/eth/eth";
-import { AODB_UserContentGet_Data, AODB_UserContentUpdate_Data } from "../modules/db/db";
+import { AODB_UserContentGet_Data, AODB_UserContentUpdate_Data, AODB_UserInsert_Data } from "../modules/db/db";
+import EthCrypto from 'eth-crypto';
 import Debug from 'Debug';
 import { AOP2P_Write_Decryption_Key_Data, AOP2P_Watch_AND_Get_IndexData_Data } from "../modules/p2p/p2p";
 const debug = Debug('ao:userSession');
 
+
+export interface Identity {
+    privateKey: string;
+    publicKey: string;
+    address: string;
+}
 
 export default class AOUserSession {
     private router: AORouterInterface;
 
     public ethAddress: string;
     private isListeningForIncomingContent: boolean = false;
-    private identity: any;
+    private identity: Identity;
 
     constructor(router: AORouterInterface) {
         this.router = router;
@@ -41,11 +48,34 @@ export default class AOUserSession {
                     this.router.send('/fs/mkdir', fsMakeEthDirData)
                 ]
                 Promise.all(mkdirPromises).then(() => {
-                    this.router.send('/core/log', {message: `[AO Core] Registered as user ${ethAddress}`})                    
-                    resolve({ethAddress})
-                    // 3. Listeners that make this app work
-                    this._processExistingUserContent()
-                    this._beginListeningForIncomingPurchases()
+                    this.router.send('/core/log', {message: `[AO Core] Registered as user ${ethAddress}`})
+                    // 3. Pull user identity
+                    this.router.send('/db/user/getIdentity').then((response: IAORouterMessage) => {
+                        if ( !response.data || !response.data.identity ) {
+                            // 4A. Create user identity
+                            const identity: Identity = EthCrypto.createIdentity()
+                            this.identity = identity
+                            const storeIdentityData: AODB_UserInsert_Data = {
+                                object: {
+                                    id: 'identity',
+                                    ...identity
+                                }
+                            }
+                            this.router.send('/db/user/insert', storeIdentityData).then((response: IAORouterMessage) => {
+                                // 5. Listeners that make this app work                                
+                                resolve({ethAddress})
+                                this._processExistingUserContent()
+                                this._beginListeningForIncomingPurchases()
+                            }).catch(reject)
+                        } else {
+                            // 4B: User identity already exists     
+                            this.identity = response.data.identity                       
+                            // 5. Listeners that make this app work
+                            resolve({ethAddress})
+                            this._processExistingUserContent()
+                            this._beginListeningForIncomingPurchases()
+                        }
+                    }).catch(reject)
                 }).catch(reject)
             }).catch(reject)
         })

@@ -1,5 +1,7 @@
+import Debug from 'debug';
 import { IGraphqlResolverContext } from '../../http';
 import resolveSetNetwork from './resolveSetNetwork';
+const debug = Debug('ao:graphql:register')
 
 
 interface IRegister_Args {
@@ -22,6 +24,6 @@ export default (obj: any, args: IRegister_Args, context: IGraphqlResolverContext
                     })
                 }
             }).catch(reject)  
-        }).catch(reject)
+        }).catch(reject)        
     })
 }

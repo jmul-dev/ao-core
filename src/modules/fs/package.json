@@ -10,6 +10,7 @@
         "events": [
             "/fs/read",
             "/fs/readStream",
+            "/fs/exists",
             "/fs/write",
             "/fs/writeStream",
             "/fs/mkdir",

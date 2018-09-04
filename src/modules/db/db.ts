@@ -2,6 +2,8 @@ import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterf
 import Datastore from 'nedb';
 import path from 'path';
 import Debug from 'debug';
+import { error } from "util";
+import { responsePathAsArray } from "graphql";
 const debug = Debug('ao:db');
 
 
@@ -45,6 +47,20 @@ export interface AODB_Setting {
 export interface AODB_UserInit_Data {
     ethAddress: string;
 }
+export interface AODB_UserGet_Data {
+    query?: object
+}
+export interface AODB_UserInsert_Data {
+    object: any
+}
+export interface AODB_UserUpdate_Data {
+    id: string;
+    update: any;
+}
+
+/**
+ * User Content
+ */
 export interface AODB_UserContentGet_Data {
     userId?: string;
     query?: Object;
@@ -84,6 +100,7 @@ export default class AODB extends AORouterInterface {
     private userDbs: {
         [key: string]: {
             content: Datastore,
+            user: Datastore
         }
     } = {};
 
@@ -94,8 +111,15 @@ export default class AODB extends AORouterInterface {
         this.router.on('/db/logs/insert', this._logsInsert.bind(this))
         this.router.on('/db/settings/get', this._settingsGet.bind(this))
         this.router.on('/db/settings/update', this._settingsUpdate.bind(this))
-        this.router.on('/db/user/init', this._setupUserDbs.bind(this))
-        this.router.on('/db/user/get', this._getUser.bind(this))
+
+        this.router.on('/db/user/init', this._setupUserDbs.bind(this)) //both content and user dbs
+
+        this.router.on('/db/user/getIdentity', this._getUserIdentity.bind(this))
+        this.router.on('/db/user/get', this._userGet.bind(this) )
+        this.router.on('/db/user/insert', this._userInsert.bind(this) )
+        this.router.on('/db/user/update', this._userUpdate.bind(this) )
+        
+
         this.router.on('/db/user/content/get', this._userContentGet.bind(this))
         this.router.on('/db/user/content/insert', this._userContentInsert.bind(this))
         this.router.on('/db/user/content/update', this._userContentUpdate.bind(this))
@@ -163,39 +187,93 @@ export default class AODB extends AORouterInterface {
             request.respond({ loaded: true })
             return;
         }
-        const dbLoadHandler = (error: Error) => {
-            if (error) {
-                this._handleCoreDbLoadError(error)
-            }
-        }
+        const dbLoadHandler = () => (error: Error) => new Promise((resolve, reject) => {
+            if ( error )
+                reject(error)
+            else
+                resolve()
+        })
         this.userDbs[request.ethAddress] = {
             content: new Datastore({
                 filename: path.resolve(this.storageLocation, 'users', request.ethAddress, 'content.db.json'),
-                autoload: true,
-                onload: dbLoadHandler,
+                autoload: false,
+            }),
+            user: new Datastore({
+                filename: path.resolve(this.storageLocation, 'users', request.ethAddress, 'user.db.json'),
+                autoload: false,
             })
         }
-        this.router.send('/core/log', { message: `[AO DB] User database initialized for ${request.ethAddress}` })
-        request.respond({ loaded: true })
-        // TODO: should probably use Promise.all to ensure each user db is loaded before responding!        
-        // this.userDbs[request.ethAddress].loadDatabase((error: Error) => {
-        //     this.router.send('/core/log', {message: `[AO DB] User database initialized for ${request.ethAddress}`})
-        //     if ( error ) {
-        //         request.reject(error)
-        //         this.userDbs[request.ethAddress] = undefined
-        //     } else {
-        //         request.respond({loaded: true})
-        //     }
-        // })
-    }
+        let dbLoadPromises = [
+            dbLoadHandler(),
+            dbLoadHandler()
+        ]
+        this.userDbs[request.ethAddress].content.loadDatabase(dbLoadPromises[0])
+        this.userDbs[request.ethAddress].user.loadDatabase(dbLoadPromises[0])
 
-    private _getUser(request: IAORouterRequest): void {
-        request.respond({ ethAddress: request.ethAddress })
+        Promise.all(dbLoadPromises).then(() => {
+            this.router.send('/core/log', { message: `[AO DB] User database initialized for ${request.ethAddress}` })
+            request.respond({ loaded: true })
+        }).catch(error => {
+            this._handleCoreDbLoadError(error)
+            request.reject(error)
+        })
     }
 
     private _handleCoreDbLoadError(error: Error): void {
         debug('Error loading db: ', error)
         this.router.send('/core/log', { message: error.message })
+    }
+
+    private _getUserIdentity(request: IAORouterRequest): void {
+        if(request.ethAddress) {
+            const query = {
+                id: 'identity'
+            }
+            this.userDbs[request.ethAddress].user.find(query).exec( (error, results) => {
+                if(error) {
+                    request.reject(error)
+                } else {
+                    request.respond({identity: results[0]})
+                }
+            })
+        } else {
+            request.respond({ethAddress: request.ethAddress})
+        }
+    }
+
+    private _userGet(request: IAORouterRequest) {
+        const requestData : AODB_UserGet_Data = request.data
+        let query = requestData.query || {}
+        this.userDbs[request.ethAddress].user.find(query).exec( (error, results) => {
+            if(error) {
+                request.reject(error)
+            } else {
+                request.respond(results)
+            }
+        })
+    }
+
+    private _userInsert(request: IAORouterRequest) {
+        const {object} : AODB_UserInsert_Data = request.data
+        this.userDbs[request.ethAddress].user.insert(object, (err:Error, doc) => {
+            if(err) {
+                request.reject(err)
+            } else {
+                request.respond(doc)
+            }
+        })
+    }
+
+    private _userUpdate(request: IAORouterRequest) {
+        const {id, update} : AODB_UserUpdate_Data = request.data
+        const userDB = this.userDbs[request.ethAddress].user
+        userDB.update({id: id}, update, { returnUpdatedDocs: true, multi: false }, (error, numAffected, updatedDoc, upsert ) => {
+            if(error) {
+                request.reject(error)
+            } else {
+                request.respond(updatedDoc)
+            }
+        })
     }
 
     /**
