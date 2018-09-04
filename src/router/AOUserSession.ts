@@ -6,7 +6,7 @@ import AOContent, { AOContentState } from "../models/AOContent";
 import { BuyContentEvent } from "../modules/eth/eth";
 import { AODB_UserContentGet_Data, AODB_UserContentUpdate_Data, AODB_UserInsert_Data } from "../modules/db/db";
 import EthCrypto from 'eth-crypto';
-import Debug from 'Debug';
+import Debug from 'debug';
 import { AOP2P_Write_Decryption_Key_Data, AOP2P_Watch_AND_Get_IndexData_Data } from "../modules/p2p/p2p";
 const debug = Debug('ao:userSession');
 
