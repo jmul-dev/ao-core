@@ -38,6 +38,7 @@ export interface BuyContentEvent {
     purchaseId: string;
     contentHostId: string;
     paidNetworkAmount: number;
+    publicKey: string;
     createdOnTimestamp: number;
 }
 

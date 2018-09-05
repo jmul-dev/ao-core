@@ -20,12 +20,12 @@ import { IAORouterMessage } from "../../router/AORouter";
 const debug = Debug('ao:graphql:resolveContentDecryptionKey');
 
 
-interface IContentRequest_Args {
+export interface IContentDecryptionKey_Args {
     contentId: string
     decryptionKey: string
 }
 
-export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverContext, info: any) => {
+export default (obj: any, args: IContentDecryptionKey_Args, context: IGraphqlResolverContext, info: any) => {
     return new Promise((resolve, reject) => {
         const { contentId, decryptionKey } = args
         // 1. Update the content state to reflect that we have decrypted the encrypted decryption key

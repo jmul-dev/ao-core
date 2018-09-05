@@ -1,3 +1,5 @@
+import { indexDataRow } from "../modules/p2p/p2p";
+
 export type AOContentType = "VOD" | 'STREAM' | 'FILE' | 'APP'
 
 // NOTE: match graphql/types/content.graphql -> ContentState enum
@@ -96,7 +98,9 @@ export default abstract class AOContent {
     public premium: number
     public split: number
     public adSupport: boolean
-    public createdAt: string    
+    public createdAt: string
+    public receivedIndexData: indexDataRow
+    
 
     static fromObject( contentObject ) {
         let instance;
