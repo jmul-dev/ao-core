@@ -111,15 +111,18 @@ export default class AOUserSession {
     public processContent(content: AOContent) {
         switch (content.state) {
             case AOContentState.PURCHASING:
-                this.listenForContentPurchaseReceipt(content)
+                this._listenForContentPurchaseReceipt(content)
                 break;
             case AOContentState.PURCHASED:
                 // Content has been purchased, but have yet to receive the Decryption key
-                this.listenForContentDecryptionKey(content)
+                this._listenForContentDecryptionKey(content)
+                break;
+            case AOContentState.DECRYPTION_KEY_RECEIVED:
+                this._handleContentDecryptionKeyReceived(content)
                 break;
             case AOContentState.DISCOVERABLE:
                 // Content has been hosted and is discoverable, listen for purchases
-                this.listenForBuyContentEventsOnDiscoverableContent(content)
+                this._listenForBuyContentEventsOnDiscoverableContent(content)
             default:
                 break;
         }
@@ -131,7 +134,7 @@ export default class AOUserSession {
      * 
      * @param {AOContent} content
      */
-    public listenForBuyContentEventsOnDiscoverableContent(content: AOContent) {
+    private _listenForBuyContentEventsOnDiscoverableContent(content: AOContent) {
         this.router.send('/eth/content/BuyContent/subscribe', { contentHostId: content.contentHostId })
     }
 
@@ -180,9 +183,9 @@ export default class AOUserSession {
      * 
      * @param {AOContent} content
      */
-    public listenForContentDecryptionKey(content: AOContent) {
+    private _listenForContentDecryptionKey(content: AOContent) {
         if (content.state !== AOContentState.PURCHASED) {
-            debug(`Warning: listenForContentDecryptionKey called with content state = ${content.state}, expected PURCHASED`)
+            debug(`Warning: _listenForContentDecryptionKey called with content state = ${content.state}, expected PURCHASED`)
             return null
         }
         const p2pWatchKeyRequest: AOP2P_Watch_AND_Get_IndexData_Data = {
@@ -195,13 +198,15 @@ export default class AOUserSession {
                     id: content.id,
                     update: {
                         $set: {
-                            "state": 'DECRYPTION_KEY_RECEIVED',
+                            "state": AOContentState.DECRYPTION_KEY_RECEIVED,
                             "encryptedKey": response.data.decryptKey //indexData is put against the buyer's ethaddress
                         }
                     }
                 }
-                this.router.send('/db/user/content/update', contentUpdateQuery).then((purchasedUpdateResponse: IAORouterMessage) => {
+                this.router.send('/db/user/content/update', contentUpdateQuery).then((contentUpdateResponse: IAORouterMessage) => {
                     debug(`Succesfully received decryption key for purchased content with id[${content.id}]`)
+                    const updatedContent: AOContent = AOContent.fromObject( contentUpdateResponse.data )
+                    this.processContent( updatedContent )                    
                 }).catch(debug)
             } else {
                 debug(`Error listening for decryption key, no index data returned`)
@@ -215,9 +220,9 @@ export default class AOUserSession {
      * 
      * @param {AOContent} content
      */
-    public listenForContentPurchaseReceipt(content: AOContent) {
+    private _listenForContentPurchaseReceipt(content: AOContent) {
         if (!content.transactions || !content.transactions.purchaseTx) {
-            debug(`Warning: calling listenForContentPurchaseReceipt without a purchaseTx`)
+            debug(`Warning: calling _listenForContentPurchaseReceipt without a purchaseTx`)
             return null
         }
         let buyContentEventArgs: IAOEth_BuyContentEvent_Data = {
@@ -261,5 +266,19 @@ export default class AOUserSession {
             // back (as the tx could still be vaild). For now let's just leave in limbo, but might
             // want to check again.
         })
+    }
+
+    /**
+     * We have received an _encrypted_ decryption key from the p2p layer. This step in the process
+     * involves decrypting the key and then verifying the contents of the file.
+     * 
+     * @param {AOContent} content
+     */
+    private _handleContentDecryptionKeyReceived(content: AOContent) {
+        if (!content.encryptedKey) {
+            debug(`Warning: calling _handleContentDecryptionKeyReceived without an encryptedKey`)
+            return null
+        }
+
     }
 }

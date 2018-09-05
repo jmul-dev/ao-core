@@ -102,6 +102,9 @@ export default abstract class AOContent {
         stakeTx: string
         hostTx: string
     }
+    // variables not exposed to graphql
+    public encryptedKey: string
+    
 
     static fromObject( contentObject ) {
         let instance;
