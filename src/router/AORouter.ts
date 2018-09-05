@@ -26,7 +26,8 @@ const corePackageJson = {
         runUnderCore: true,
         events: [
             '/core/log',
-            '/core/content/incomingPurchase'
+            '/core/content/incomingPurchase',
+            '/core/keys/sign'
         ],
     },
 }

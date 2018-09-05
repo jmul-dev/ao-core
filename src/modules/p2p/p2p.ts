@@ -5,6 +5,7 @@ import { IAORouterMessage } from "../../router/AORouter";
 import AORouterInterface, { AORouterArgs, IAORouterRequest } from "../../router/AORouterInterface";
 import { AODB_UserContentGet_Data } from "../db/db";
 import EthCrypto from 'eth-crypto'
+import { IAOUser_Signature_Data } from '../../router/AOUserSession';
 const debug = Debug('ao:p2p');
 
 export interface AOP2P_Args {
@@ -48,7 +49,6 @@ export interface AOP2P_Write_Decryption_Key_Data {
     contentId: string;
     ethAddress: string; //Buyer Eth Address
     publicKey: string; //Buyer Public Key
-    privateKey: string; //Seller Private Key
 }
 
 //Single indexData
@@ -60,7 +60,6 @@ export interface AOP2P_IndexDataRow {
 interface AddIndexDataInterface {
     indexData: object;
     ethAddress: string;
-    privateKey: string;
     publicKey: string;
     decryptionKey: string;
 }
@@ -258,7 +257,7 @@ export default class AOP2P extends AORouterInterface {
     }
 
     private _handleSellDecryptionKey(request: IAORouterRequest) {
-        const { contentId, ethAddress, privateKey, publicKey }: AOP2P_Write_Decryption_Key_Data = request.data
+        const { contentId, ethAddress, publicKey }: AOP2P_Write_Decryption_Key_Data = request.data
 
         // 1. Get the content for this piece being sold
         const userContentQuery: AODB_UserContentGet_Data = {
@@ -277,7 +276,6 @@ export default class AOP2P extends AORouterInterface {
                     indexData: indexData,
                     ethAddress: ethAddress, //buyer's address
                     publicKey: publicKey,   //buyer's public key 
-                    privateKey: privateKey, //your privatekey as the seller
                     decryptionKey: content.decryptionKey
                 }).then((newIndexData) => {
                     // 3. Let's write this thing into hyperdb
@@ -290,28 +288,34 @@ export default class AOP2P extends AORouterInterface {
     }
 
     private addIndexData(indexDataRequest: AddIndexDataInterface) {
-        return new Promise( async (resolve, reject) => {
-            const { indexData, ethAddress, privateKey, publicKey, decryptionKey } = indexDataRequest
+        return new Promise( (resolve, reject) => {
+            const { indexData, ethAddress, publicKey, decryptionKey } = indexDataRequest
 
             // 1. Sign the hash of the decryption key using this node's private key
-            const messageHash = EthCrypto.hash.keccak256(decryptionKey)
-            const signature = EthCrypto.sign(privateKey, messageHash)
-            
-            // 2. Encrypt the decryption key using their public key
-            let encryptedObject: object = {}
-            try {
-                encryptedObject = await EthCrypto.encryptWithPublicKey(publicKey, decryptionKey)
-            } catch(e) {
-                return reject(e)
+            const signData: IAOUser_Signature_Data = {
+                message: decryptionKey
             }
-            const encryptedDecryptionKey:string = EthCrypto.cipher.stringify(encryptedObject)
+            this.router.send('/core/keys/sign', signData).then( async (response: IAORouterMessage) => {
+                const signature = response.data.signature
+                if(!signature) {
+                    return reject(new Error('No signature returned'))
+                }
+                // 2. Encrypt the decryption key using their public key
+                let encryptedObject: object = {}
+                try {
+                    encryptedObject = await EthCrypto.encryptWithPublicKey(publicKey, decryptionKey)
+                } catch(e) {
+                    return reject(e)
+                }
+                const encryptedDecryptionKey:string = EthCrypto.cipher.stringify(encryptedObject)
 
-            // 3. Add/overwrite the record for specific ethaddress and resolve the result
-            indexData[ethAddress] = {
-                decryptKey: encryptedDecryptionKey, // Encrypted key with publicKey
-                signature: signature //
-            }
-            resolve(indexData)
+                // 3. Add/overwrite the record for specific ethaddress and resolve the result
+                indexData[ethAddress] = {
+                    decryptKey: encryptedDecryptionKey, // Encrypted key with publicKey
+                    signature: signature //
+                }
+                resolve(indexData)
+            }).catch(reject)
         })
     }
 

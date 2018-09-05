@@ -18,6 +18,11 @@ export interface Identity {
     address: string;
 }
 
+export interface IAOUser_Signature_Data {
+    message: string;
+    privateKey?: string;
+}
+
 export default class AOUserSession {
     private router: AORouterInterface;
 
@@ -27,6 +32,7 @@ export default class AOUserSession {
 
     constructor(router: AORouterInterface) {
         this.router = router;
+        this.router.on('/core/keys/sign', this._handleSignature.bind(this))
     }
 
     public register(ethAddress: string): Promise<{ ethAddress: string }> {
@@ -182,8 +188,7 @@ export default class AOUserSession {
             const sendDecryptionKeyMessage: AOP2P_Write_Decryption_Key_Data = {
                 contentId: userContent.id,
                 ethAddress: buyContentEvent.buyer,
-                publicKey: buyContentEvent.publicKey,
-                privateKey: this.identity.privateKey
+                publicKey: buyContentEvent.publicKey
             }
             this.router.send('/p2p/soldKey', sendDecryptionKeyMessage).then((response: IAORouterMessage) => {
                 if (response.data && response.data.success) {
@@ -505,6 +510,27 @@ export default class AOUserSession {
             let stringifiedEncrypted = EthCrypto.cipher.stringify(encrypted)
             return resolve(stringifiedEncrypted)
         })
+    }
+
+    /**
+     * Sign a message with the private key
+     * @param messageToSign
+     * @param privateKey // optional
+     */
+    public signMessage(messageToSign:string, privateKey?:string) {
+        let privateKeyUsed = privateKey ? privateKey : this.identity.privateKey
+        const messageHash = EthCrypto.hash.keccak256(messageToSign)
+        const signature = EthCrypto.sign(privateKeyUsed, messageHash)
+        return signature
+    }
+
+    /**
+     * This is the on request version.
+     */
+    private _handleSignature(request: IAORouterRequest) {
+        const {message, privateKey}: IAOUser_Signature_Data = request.data
+        const signature = this.signMessage(message, privateKey)
+        request.respond({signature: signature})
     }
 
 }
