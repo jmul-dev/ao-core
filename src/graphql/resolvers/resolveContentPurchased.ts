@@ -1,7 +1,7 @@
 import { IGraphqlResolverContext } from '../../http';
 import { IAORouterMessage } from "../../router/AORouter";
 import { AODB_NetworkContentGet_Data, AODB_UserContentUpdate_Data } from '../../modules/db/db';
-import { AOP2P_Watch_AND_Get_IndexData_Data, indexDataRow } from '../../modules/p2p/p2p'
+import { AOP2P_Watch_AND_Get_IndexData_Data, AOP2P_IndexDataRow } from '../../modules/p2p/p2p'
 import AOContent, { AOContentState }  from '../../models/AOContent';
 import contentDecryptionKey, { IContentDecryptionKey_Args } from './resolveContentDecryptionKey'
 
@@ -37,7 +37,7 @@ export default (obj: any, args: IContentPurchased_Args, context: IGraphqlResolve
             context.router.send('/p2p/watchAndGetIndexData', p2pWatchKeyRequest).then((watchIndexDataResponse:IAORouterMessage) => {
 
                 // 3. Update the database with the appropriate indexData.
-                const indexDataRow: indexDataRow = watchIndexDataResponse.data; // returned indexData is for your ethAddress
+                const indexDataRow: AOP2P_IndexDataRow = watchIndexDataResponse.data; // returned indexData is for your ethAddress
                 if( indexDataRow ) {
                     let contentUpdateQuery: AODB_UserContentUpdate_Data = {
                         id: contentId,
