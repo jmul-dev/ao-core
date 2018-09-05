@@ -279,6 +279,6 @@ export default class AOUserSession {
             debug(`Warning: calling _handleContentDecryptionKeyReceived without an encryptedKey`)
             return null
         }
-
+        // TODO: waiting on #57, should basically copy resolveContentDecryptionKey mutation
     }
 }
