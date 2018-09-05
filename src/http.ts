@@ -12,6 +12,7 @@ import { AODat_Check_Data } from './modules/dat/dat';
 import { IAOFS_ReadStream_Data, IAOFS_FileStat_data } from './modules/fs/fs';
 import { AODB_UserContentGet_Data } from './modules/db/db';
 import AOUserSession from './router/AOUserSession';
+import AOContent from './models/AOContent'
 const debug = Debug('ao:http');
 
 export interface Http_Args {
@@ -146,7 +147,7 @@ export default class Http {
                     this.router.send('/db/user/content/get', userContentData)
                         .then((doc) => {
                             if (doc.data.length) {
-                                let docData = doc.data[0]
+                                let docData: AOContent = doc.data[0]
                                 let total = docData.fileSize;
                                 let streamOptions: Object = {}
                                 let head200 = {

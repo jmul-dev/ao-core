@@ -5,6 +5,7 @@ import { IAORouterMessage } from "../../router/AORouter";
 import AORouterInterface, { AORouterArgs, IAORouterRequest } from "../../router/AORouterInterface";
 import { AODB_UserContentGet_Data } from "../db/db";
 import EthCrypto from 'eth-crypto'
+import AOContent from '../../models/AOContent';
 const debug = Debug('ao:p2p');
 
 export interface AOP2P_Args {
@@ -265,7 +266,7 @@ export default class AOP2P extends AORouterInterface {
             query: { id: contentId }
         }
         this.router.send('/db/user/content/get', userContentQuery).then((contentGetResponse: IAORouterMessage) => {
-            const content = contentGetResponse.data ? contentGetResponse.data[0] : undefined
+            const content:AOContent = contentGetResponse.data ? contentGetResponse.data[0] : undefined
             if (!content) {
                 return request.reject(new Error('No content returned'))
             }

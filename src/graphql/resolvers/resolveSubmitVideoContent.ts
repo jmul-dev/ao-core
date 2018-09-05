@@ -2,7 +2,7 @@ import Debug from 'debug';
 import md5 from 'md5';
 import EthCrypto from 'eth-crypto'
 import path from 'path';
-import { AOContentState } from '../../models/AOContent';
+import AOContent, { AOContentState, AOVideoContent } from '../../models/AOContent';
 import { AODat_Create_Data } from '../../modules/dat/dat';
 import { IAOFS_Mkdir_Data, IAOFS_Move_Data, IAOFS_WriteStream_Data, IAOFS_Write_Data } from '../../modules/fs/fs';
 import { IGraphqlResolverContext } from '../../http';
@@ -95,7 +95,7 @@ export default (obj: any, args: any, context: IGraphqlResolverContext, info: any
                     }
                     // NOTE: anything that should be omitted from the public metadata dat file should 
                     // be added below in `userContentJson`
-                    const contentJson = {
+                    const contentJsonObject = {
                         id: contentDatKey,
                         nodeId: ethAddress,
 
@@ -108,7 +108,7 @@ export default (obj: any, args: any, context: IGraphqlResolverContext, info: any
                         description: args.inputs.description,
                         stake: args.inputs.stake,
                         profit: args.inputs.profit,
-                        createdAt: Date.now(),
+                        createdAt: Date.now().toString(),
 
                         fileUrl: `${contentDatKey}/${contentFileNames[0]}`,
                         fileDatKey: contentDatKey,
@@ -125,24 +125,23 @@ export default (obj: any, args: any, context: IGraphqlResolverContext, info: any
                             duration: videoStats['duration'],
                             resolution: videoStats['height'],//we have the width too, but dunno
                             encoding: videoStats['codec'],
-                        }
-                    }
-                    const storagePromises: Array<Promise<any>> = []
-                    const contentWriteData: IAOFS_Write_Data = {
-                        writePath: `content/${newPreviewId}/content.json`,
-                        data: JSON.stringify(contentJson)
-                    }
-                    
-                    const userContentJson = {
-                        ...contentJson,
+                        },
                         decryptionKey: decryptionKey,
                         state: AOContentState.ENCRYPTED,
                         baseChallenge: EthCrypto.hash.keccak256(checksum),
                         encChallenge: EthCrypto.hash.keccak256(encryptedChecksum),
                     }
+                    let contentJson = AOContent.fromObject(contentJsonObject)
+                    contentJson.toMetadataJson()
+
+                    const storagePromises: Array<Promise<any>> = []
+                    const contentWriteData: IAOFS_Write_Data = {
+                        writePath: `content/${newPreviewId}/content.json`,
+                        data: JSON.stringify(contentJson.toMetadataJson())
+                    }
 
                     storagePromises.push(context.router.send('/fs/write', contentWriteData))
-                    storagePromises.push(context.router.send('/db/user/content/insert', userContentJson))
+                    storagePromises.push(context.router.send('/db/user/content/insert', contentJson.toRawJson()))
 
                     Promise.all(storagePromises).then((results: Array<IAORouterMessage>) => {
                         const movePreviewDatData: IAOFS_Move_Data = {

@@ -1,6 +1,7 @@
 import { IGraphqlResolverContext } from '../../http';
 import { IAORouterMessage } from "../../router/AORouter";
 import { AODB_NetworkContentGet_Data } from '../../modules/db/db';
+import AOContent, { AOContentState } from '../../models/AOContent';
 
 interface IContentRequest_Args {
     id: string
@@ -19,10 +20,10 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                 return;
             }
             // 2. Modify the content to account for it entering user database
-            let clonedContent = {
+            let clonedContent:AOContent = {
                 ...response.data[0],
-                nodeId: response.ethAddress,  // AORouter attaches current user address
-                state: 'DOWNLOADING',
+                nodeId: context.userSession.ethAddress,  // AORouter attaches current user address
+                state: AOContentState.DOWNLOADING,
             }
             // 3. Trigger dat download (before inserting content into user db in case dat is not reachable)
             // TODO: Notice that below fileDatKey represents only the original fileDatKey supplied at the time of content creation.  This may not represent the file actually being passed.

@@ -7,7 +7,7 @@
 import Debug from 'debug'
 import { IGraphqlResolverContext } from '../../http';
 import { IAORouterMessage } from "../../router/AORouter";
-import { AOContentState } from '../../models/AOContent';
+import AOContent, { AOContentState } from '../../models/AOContent';
 import { AODB_UserContentUpdate_Data, AODB_UserContentGet_Data } from '../../modules/db/db';
 import { AOP2P_Add_Discovery_Data } from '../../modules/p2p/p2p'
 import { AODat_ResumeSingle_Data } from '../../modules/dat/dat';
@@ -33,11 +33,11 @@ export default (obj: any, args: IMakeContentDiscoverable_Args, context: IGraphql
                 reject(new Error(`Failed to update content stakeId`))
                 return;
             }
-            const content = response.data[0]
+            const content:AOContent = response.data[0]
             // 2. Add new discovery
             const p2pAddDiscoveryData: AOP2P_Add_Discovery_Data = {
                 contentType: content.contentType,
-                fileDatKey: content.newFileDatKey ? content.newFileDatKey : content.fileDatKey,
+                fileDatKey: content.fileDatKey, //TODO: We used to use newFileDatKey as a way to see if this is a re-encrypted thing
                 metaDatKey: content.metadataDatKey,
                 ethAddress: response.ethAddress, // My Eth Address
                 metaData: content,//We should take shit out?
