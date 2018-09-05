@@ -4,7 +4,7 @@ import path from 'path';
 import AOContent, { AOContentState } from "../models/AOContent";
 import { AODat_Create_Data, AODat_ResumeSingle_Data } from '../modules/dat/dat';
 import { AODB_UserContentGet_Data, AODB_UserContentUpdate_Data, AODB_UserInsert_Data } from "../modules/db/db";
-import { BuyContentEvent, IAOEth_BuyContentEvent_Data } from "../modules/eth/eth";
+import { BuyContentEvent, IAOEth_BuyContentEvent_Data, HostContentEvent } from "../modules/eth/eth";
 import { IAOFS_DecryptCheck_Data, IAOFS_Mkdir_Data, IAOFS_Move_Data, IAOFS_Reencrypt_Data, IAOFS_Unlink_Data } from "../modules/fs/fs";
 import { AOP2P_IndexDataRow, AOP2P_Watch_AND_Get_IndexData_Data, AOP2P_Write_Decryption_Key_Data } from "../modules/p2p/p2p";
 import { IAORouterMessage } from "./AORouter";
@@ -134,7 +134,7 @@ export default class AOUserSession {
                 // This state is pending user stake/becomeHost
                 break;
             case AOContentState.STAKING:
-                // TODO
+                this._listenForContentStakingReceipt(content)
                 break;
             case AOContentState.STAKED:
                 // TODO
@@ -348,7 +348,7 @@ export default class AOUserSession {
      * 
      * @param {AOContent} content
      */
-    private _handleContentVerified(content: AOContent) {        
+    private _handleContentVerified(content: AOContent) {
         // 1. Get the decryption key again
         this.decryptString(content.receivedIndexData.decryptionKey).then((decryptionKey: string) => {
             // 2. New directory for data to be re-encrypted (tmp path)
@@ -376,7 +376,7 @@ export default class AOUserSession {
                         cleanupTmpContent()
                         return null;
                     }
-                    if ( !content.baseChallenge ) {
+                    if (!content.baseChallenge) {
                         // Sanity check
                         debug(`Attempting to sign the baseChallenge for content, baseChallenge does not exist!`)
                         cleanupTmpContent()
@@ -458,6 +458,60 @@ export default class AOUserSession {
             }
             this.router.send('/fs/unlink', removePathData).catch(debug)
         }) // Dat Creation
+    }
+
+    /**
+     * Listen for the staking receipt. We need to differentiate between stakeContent (user upload)
+     * and becomeHost (user purchase).
+     * 
+     * content.state ==== STAKING
+     * 
+     * @param {AOContent} content
+     */
+    private _listenForContentStakingReceipt(content: AOContent) {
+        if (!content.transactions || (!content.transactions.stakeTx && !content.transactions.hostTx)) {
+            debug(`Warning: calling _listenForContentStakingReceipt without a stakeTx or hostTx`)
+            return null
+        }
+        let transactionHash = content.transactions.stakeTx || content.transactions.hostTx
+        const isStake = transactionHash === content.transactions.stakeTx
+        let txEventRoute = isStake ? '/eth/tx/StakeContent' : '/eth/tx/HostContent'
+        // 1. Listen for tx status
+        this.router.send(txEventRoute, { transactionHash }).then((response: IAORouterMessage) => {
+            let contentUpdateQuery: AODB_UserContentUpdate_Data = {
+                id: content.id,
+                update: {}
+            }
+            // 2. Update the Content State based on status
+            if (response.data.status) {
+                // 2a. Stake succesfull
+                const hostContentEvent: HostContentEvent = response.data.hostContentEvent
+                contentUpdateQuery.update = {
+                    $set: {
+                        "state": AOContentState.STAKED,
+                        "contentHostId": hostContentEvent.contentHostId,
+                        "stakeId": hostContentEvent.stakeId,
+                    }
+                }
+            } else {
+                // 2b. Failed to stake! Roll back to previous state
+                contentUpdateQuery.update = {
+                    $set: {
+                        "state": AOContentState.DAT_INITIALIZED,
+                    }
+                }
+            }
+            this.router.send('/db/user/content/update', contentUpdateQuery).then((contentUpdateResponse: IAORouterMessage) => {
+                const updatedContent: AOContent = AOContent.fromObject(contentUpdateResponse.data)
+                // Handoff to next state handler
+                this.processContent(updatedContent)
+            }).catch(debug)
+        }).catch(error => {
+            debug(error)
+            // NOTE: failed to get tx status. I dont think it makes sense to roll content state
+            // back (as the tx could still be vaild). For now let's just leave in limbo, but might
+            // want to check again.
+        })
     }
 
     /**
