@@ -24,7 +24,8 @@ export default function () {
                     return info.schema.getType(data.__typename || 'VideoContent'); // TODO: resolve type based off of data.contentType
                 },
                 metadataDatStats: resolvers.resolveDatStats,
-                fileUrl: resolvers.resolveUrl,                
+                fileUrl: resolvers.resolveUrl,
+                baseChallengeSignature: resolvers.resolveSignatureVrs,
             },
             VideoContent: {
                 teaserUrl: resolvers.resolveUrl,
@@ -50,7 +51,6 @@ export default function () {
                 submitVideoContent: resolvers.resolveSubmitVideoContent,
                 stakeContent: resolvers.resolveStakeContent,
                 contentRequest: resolvers.resolveContentRequest,
-                contentDecryptionKey: resolvers.resolveContentDecryptionKey,
                 contentPurchaseTransaction: resolvers.resolveContentPurchaseTransaction,
                 contentBecomeHostTransaction: resolvers.resolveContentBecomeHostTransaction,
                 contentUploadStakeTransaction: resolvers.resolveContentUploadStakeTransaction,

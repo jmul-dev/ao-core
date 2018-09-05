@@ -1,4 +1,6 @@
+import path from 'path';
 import { AOP2P_IndexDataRow } from "../modules/p2p/p2p";
+
 
 export type AOContentType = "VOD" | 'STREAM' | 'FILE' | 'APP'
 
@@ -10,7 +12,6 @@ export const AOContentState = Object.freeze({
     PURCHASING: 'PURCHASING',
     PURCHASED: 'PURCHASED',
     DECRYPTION_KEY_RECEIVED: 'DECRYPTION_KEY_RECEIVED',
-    DECRYPTION_KEY_DECRYPTED: 'DECRYPTION_KEY_DECRYPTED',
     VERIFIED: 'VERIFIED',
     VERIFICATION_FAILED: 'VERIFICATION_FAILED',
     ENCRYPTED: 'ENCRYPTED',
@@ -27,7 +28,6 @@ const AOContentStateOrdered = [
     AOContentState.PURCHASING,
     AOContentState.PURCHASED,        
     AOContentState.DECRYPTION_KEY_RECEIVED,
-    AOContentState.DECRYPTION_KEY_DECRYPTED,
     AOContentState.VERIFIED,
     AOContentState.VERIFICATION_FAILED,
     AOContentState.ENCRYPTED,
@@ -59,7 +59,6 @@ export function getListOfContentIncompleteStates() {
         AOContentState.PURCHASING,
         AOContentState.PURCHASED,        
         AOContentState.DECRYPTION_KEY_RECEIVED,
-        AOContentState.DECRYPTION_KEY_DECRYPTED,
         AOContentState.VERIFIED,
         AOContentState.VERIFICATION_FAILED,
         AOContentState.ENCRYPTED,
@@ -89,6 +88,7 @@ export default abstract class AOContent {
     public fileUrl: string
     public fileChecksum: string
     public baseChallenge: string
+    public baseChallengeSignature: string
     public encChallenge: string
     public metadataDatKey: string    
     public title: string
@@ -100,6 +100,12 @@ export default abstract class AOContent {
     public split: number
     public adSupport: boolean
     public createdAt: string
+    public transactions?: {
+        purchaseTx: string
+        stakeTx: string
+        hostTx: string
+    }
+    // variables not exposed to graphql
     public receivedIndexData: AOP2P_IndexDataRow
     public decryptionKey: string
 
@@ -122,6 +128,22 @@ export default abstract class AOContent {
 
     public isPurchased(): boolean {
         return AOContentStateOrdered.indexOf(this.state) >= AOContentStateOrdered.indexOf( AOContentState.PURCHASED )
+    }
+
+    public getFilePath(): string {
+        return path.join('content', this.fileDatKey, this.fileName)
+    }
+
+    public getFileFolderPath(): string {
+        return path.join('content', this.fileDatKey)
+    }
+
+    public getMetadataFolderPath(): string {
+        return path.join('content', this.metadataDatKey)
+    }
+
+    public getTempFolderPath(): string {
+        return path.join('tmp', this.id)
     }
 
     /**
