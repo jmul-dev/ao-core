@@ -18,7 +18,7 @@ import resolveContentPurchaseTransaction from './resolveContentPurchaseTransacti
 import resolveContentBecomeHostTransaction from './resolveContentBecomeHostTransaction'
 import resolveMakeContentDiscoverable from './resolveMakeContentDiscoverable'
 import resolveContentUploadStakeTransaction from './resolveContentUploadStakeTransaction'
-import resolveSignatureVrs from './resolveSignatureVRS'
+import resolveSignatureVrs from './resolveSignatureVrs'
 
 
 export default {
