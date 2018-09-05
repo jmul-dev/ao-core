@@ -1,16 +1,7 @@
-/**
- * TODO: this mutation in particular will need thourough testing.
- *      - newFileDatKey: I am guessing this should probably overwrite the `fileDatKey` field
- *      - originalDecryptionKey vs decryptionKey: Since this is basically treated as a `new` piece 
- *          of content I think we are probably safe to drop the originalDecryptionKey
- *      - reencrypt/newDecrytionKey: We are not even storing the decryption key for the new file! No one shall
- *          ever see this again
- *      - baseChallenge: see resolveSubmitVideoContent
- *      - encChallenge: see resolveSubmitVideoContent
- */
 import Debug from 'debug';
 import md5 from 'md5';
 import path from 'path';
+import EthCrypto from 'eth-crypto'
 import { IGraphqlResolverContext } from '../../http';
 import { AOContentState } from '../../models/AOContent';
 import { AODat_Create_Data, AODat_ResumeSingle_Data } from '../../modules/dat/dat';
@@ -33,8 +24,7 @@ export default (obj: any, args: IContentDecryptionKey_Args, context: IGraphqlRes
             id: contentId,
             update: {
                 $set: {
-                    "state": "DECRYPTION_KEY_DECRYPTED", // TODO: remove, no longer a state
-                    "originalDecryptionKey": decryptionKey
+                    "state": "DECRYPTION_KEY_DECRYPTED"
                 }
             }
         }
@@ -90,10 +80,21 @@ export default (obj: any, args: IContentDecryptionKey_Args, context: IGraphqlRes
                             finalPath: path.join('content', newDatDirData.dirPath, content.fileName)
                         }
                         context.router.send('/fs/reencrypt', fileReencrypt).then((reencryptionResponse: IAORouterMessage) => {
-                            let newDecrytionKey = reencryptionResponse.data.newKey
-                            if (!newDecrytionKey) {
-                                // TODO: write clean up code erasing the dirpath.
-                                debug(new Error('No new decryption key'))
+                            let newDecryptionKey = reencryptionResponse.data.newKey
+                            //Below is used later for encChallenge
+                            let newEncryptedChecksum = reencryptionResponse.data.encryptedChecksum
+                            if (!newDecryptionKey) {
+                                const error = new Error('No new decryption key')
+                                debug(error)
+                                const dirCleanupData: IAOFS_Unlink_Data = {
+                                    removePath: newDatDirData.dirPath
+                                }
+                                context.router.send('/fs/unlink', dirCleanupData).then(() => {
+                                    debug('Reencryption folder cleaned up.')
+                                }).catch(e => {
+                                    debug('Reencryption folder could not be cleaned up.')
+                                })
+                                return reject(error)
                             }
 
                             // 8. Update Content State to Encrypted
@@ -102,7 +103,8 @@ export default (obj: any, args: IContentDecryptionKey_Args, context: IGraphqlRes
                                 id: contentId,
                                 update: {
                                     $set: {
-                                        "state": content.state
+                                        "state": content.state,
+                                        "decryptionKey": newDecryptionKey
                                     }
                                 }
                             }
@@ -131,13 +133,15 @@ export default (obj: any, args: IContentDecryptionKey_Args, context: IGraphqlRes
 
                                             // 12. Store the newDatKey
                                             content.state = AOContentState.ENCRYPTED
-                                            content.newFileDatKey = newDatKey
+                                            content.fileDatKey = newDatKey
                                             let contentUpdateQuery: AODB_UserContentUpdate_Data = {
                                                 id: contentId,
                                                 update: {
                                                     $set: {
                                                         "state": content.state,
-                                                        "newFileDatKey": content.newFileDatKey
+                                                        "fileDatKey": content.fileDatKey,
+                                                        // Note, baseChallenge is not updated since that's just the file checksum which is verified earlier.  If that fails, we have a bad actor on the network/corrupted file
+                                                        "encChallenge": EthCrypto.hash.keccak256(newEncryptedChecksum)
                                                     }
                                                 }
                                             }

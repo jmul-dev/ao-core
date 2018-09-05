@@ -371,6 +371,7 @@ export default class AOUserSession {
                 }
                 this.router.send('/fs/reencrypt', fileReencrypt).then((reencryptionResponse: IAORouterMessage) => {
                     let newDecrytionKey = reencryptionResponse.data.newKey
+                    let newEncryptedChecksum = reencryptionResponse.data.encryptedChecksum
                     if (!newDecrytionKey) {
                         debug('Error re-encrypting file: No new decryption key')
                         cleanupTmpContent()
@@ -381,7 +382,10 @@ export default class AOUserSession {
                         id: content.id,
                         update: {
                             $set: {
-                                "state": AOContentState.ENCRYPTED
+                                "state": AOContentState.ENCRYPTED,
+                                "decryptionKey": newDecrytionKey,
+                                // NOTE: baseChallenge should have already been defined and will not change
+                                "encChallenge": EthCrypto.hash.keccak256(newEncryptedChecksum)
                             }
                         }
                     }

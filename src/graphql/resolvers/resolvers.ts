@@ -14,7 +14,6 @@ import resolveVideos from './resolveVideos';
 import resolveState from './resolveState';
 import resolveUrl from './resolveUrl';
 import resolveContentRequest from './resolveContentRequest';
-import resolveContentDecryptionKey from './resolveContentDecryptionKey';
 import resolveContentPurchaseTransaction from './resolveContentPurchaseTransaction';
 import resolveContentBecomeHostTransaction from './resolveContentBecomeHostTransaction'
 import resolveMakeContentDiscoverable from './resolveMakeContentDiscoverable'
@@ -39,7 +38,6 @@ export default {
     resolveRegister,
     resolveUpdateSettings,
     resolveContentRequest,
-    resolveContentDecryptionKey,
     resolveContentPurchaseTransaction,
     resolveContentBecomeHostTransaction,    
     resolveContentUploadStakeTransaction,
