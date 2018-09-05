@@ -15,10 +15,10 @@ import resolveState from './resolveState';
 import resolveUrl from './resolveUrl';
 import resolveContentRequest from './resolveContentRequest';
 import resolveContentPurchaseTransaction from './resolveContentPurchaseTransaction';
-import resolveContentPurchased from './resolveContentPurchased';
 import resolveContentBecomeHostTransaction from './resolveContentBecomeHostTransaction'
 import resolveMakeContentDiscoverable from './resolveMakeContentDiscoverable'
 import resolveContentUploadStakeTransaction from './resolveContentUploadStakeTransaction'
+import resolveSignatureVrs from './resolveSignatureVrs'
 
 
 export default {
@@ -40,10 +40,10 @@ export default {
     resolveUpdateSettings,
     resolveContentRequest,
     resolveContentPurchaseTransaction,
-    resolveContentPurchased,
     resolveContentBecomeHostTransaction,    
     resolveContentUploadStakeTransaction,
     resolveMakeContentDiscoverable,
     // Field resolvers
     resolveUrl,
+    resolveSignatureVrs,
 }

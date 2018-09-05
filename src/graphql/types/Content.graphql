@@ -13,7 +13,6 @@ enum ContentState {
     PURCHASING
     PURCHASED
     DECRYPTION_KEY_RECEIVED
-    DECRYPTION_KEY_DECRYPTED
     VERIFIED
     VERIFICATION_FAILED
     ENCRYPTED
@@ -48,6 +47,12 @@ type VideoMetadata {
     encoding: String
 }
 
+type Signature {
+    v: String!
+    r: String!
+    s: String!
+}
+
 # Shared interface between all content types
 # Keep AOContent.ts up to date with this
 interface IContent {
@@ -65,6 +70,7 @@ interface IContent {
     fileUrl: String
     fileChecksum: String
     baseChallenge: String
+    baseChallengeSignature: Signature
     encChallenge: String
     metadataDatKey: ID!
     metadataDatStats: DatStats
@@ -97,6 +103,7 @@ type VideoContent implements IContent {
     fileUrl: String
     fileChecksum: String
     baseChallenge: String
+    baseChallengeSignature: Signature
     encChallenge: String
     metadataDatKey: ID!
     metadataDatStats: DatStats
