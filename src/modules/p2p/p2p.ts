@@ -52,7 +52,7 @@ export interface AOP2P_Write_Decryption_Key_Data {
 }
 
 //Single indexData
-export interface indexDataRow {
+export interface AOP2P_IndexDataRow {
     signature: string;
     decryptionKey: string;
 }
@@ -237,7 +237,7 @@ export default class AOP2P extends AORouterInterface {
                             this._handleWatchAndGetIndexData(request)
                         }, 1000);
                     } else {
-                        let indexDataRow: indexDataRow = indexData[ethAddress]
+                        let indexDataRow: AOP2P_IndexDataRow = indexData[ethAddress]
                         request.respond({indexDataRow: indexDataRow})
                     }
             }).catch(request.reject)
