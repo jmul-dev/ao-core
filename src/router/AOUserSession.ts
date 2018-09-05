@@ -148,9 +148,10 @@ export default class AOUserSession {
 
             // 3. TODO: generate the encryption key according to spec
             const sendDecryptionKeyMessage: AOP2P_Write_Decryption_Key_Data = {
-                ethAddress: this.ethAddress,
                 contentId: userContent.id,
-                publicKey: this.identity.publicKey,
+                ethAddress: buyContentEvent.buyer,
+                publicKey: buyContentEvent.publicKey,
+                privateKey: this.identity.privateKey
             }
             this.router.send('/p2p/soldKey', sendDecryptionKeyMessage).then((response: IAORouterMessage) => {
                 if ( response.data && response.data.success ) {
@@ -193,6 +194,43 @@ export default class AOUserSession {
                 debug(`Error listening for decryption key, no index data returned`)
             }
         }).catch(debug)
+    }
+
+
+    /**
+     * Decrypt a string with the private key
+     * @param stringToDecrypt
+     */
+    public async decryptString(stringToDecrypt:String) {
+        return new Promise( async (resolve,reject) => {
+            const cipherObject = EthCrypto.cipher.parse(stringToDecrypt)
+            let message: String
+            try {
+                message = await EthCrypto.decryptWithPrivateKey(this.identity.privateKey,cipherObject)
+            } catch(e) {
+                return reject(new Error(e))
+            }
+            return resolve(message)
+        })
+    }
+
+    /**
+     * Encrypt a string with the public key
+     * @param stringToEncrypt
+     * @param publicKey // Optional.  if using another person's key, you can use this.
+     */
+    public async encryptString(stringToEncrypt:String, publicKey?:String) {
+        return new Promise( async (resolve,reject) => {
+            let encrypted: String
+            let publicKeyUsed = publicKey.length ? publicKey: this.identity.publicKey
+            try {
+                encrypted = EthCrypto.encryptWithPublicKey(publicKeyUsed, stringToEncrypt)
+            } catch(e) {
+                return reject(new Error(e))
+            }
+            let stringifiedEncrypted = EthCrypto.cipher.stringify(encrypted)
+            return resolve(stringifiedEncrypted)
+        })
     }
 
 }

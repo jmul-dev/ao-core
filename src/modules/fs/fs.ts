@@ -125,6 +125,13 @@ export default class AOFS extends AORouterInterface {
             })
     }
 
+    /**
+     * TODO: Figure out how we want to make these encryption keys.
+     */
+    newEncryptionKey() {
+        return md5(new Date().getSeconds() + Math.random())
+    }
+
     _handleWriteStream(request: IAORouterRequest) {
         const requestData: IAOFS_WriteStream_Data = request.data;
         // TODO: verify inputs
@@ -145,7 +152,7 @@ export default class AOFS extends AORouterInterface {
                                 videoStats: videoStats ? videoStats : false
                             })
                         } else {
-                            const key = md5(new Date().getSeconds() + Math.random())
+                            const key = this.newEncryptionKey()
                             const encrypt = crypto.createCipher(this.encryptionAlgorithm, key)
                             const readFrom = fs.createReadStream(writePath)
                             const encryptedPath = writePath + '.encrypted'
@@ -354,7 +361,7 @@ export default class AOFS extends AORouterInterface {
         const requestData: IAOFS_Reencrypt_Data = request.data
         const readStream = fs.createReadStream(requestData.originalPath)
         const writeStream = fs.createWriteStream(requestData.finalPath)
-        const newKey = md5(new Date().getSeconds() + Math.random())
+        const newKey = this.newEncryptionKey()
         const encrypt = crypto.createCipher(this.encryptionAlgorithm, newKey)
         const decrypt = crypto.createDecipher(this.encryptionAlgorithm, requestData.decryptionKey)
         readStream.pipe(decrypt).pipe(encrypt).pipe(writeStream)
