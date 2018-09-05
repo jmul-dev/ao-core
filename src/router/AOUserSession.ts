@@ -3,7 +3,7 @@ import { IAOFS_Mkdir_Data } from "../modules/fs/fs";
 import path from 'path';
 import { IAORouterMessage } from "./AORouter";
 import AOContent, { AOContentState } from "../models/AOContent";
-import { BuyContentEvent } from "../modules/eth/eth";
+import { BuyContentEvent, IAOEth_BuyContentEvent_Data } from "../modules/eth/eth";
 import { AODB_UserContentGet_Data, AODB_UserContentUpdate_Data, AODB_UserInsert_Data } from "../modules/db/db";
 import EthCrypto from 'eth-crypto';
 import Debug from 'debug';
@@ -28,14 +28,14 @@ export default class AOUserSession {
         this.router = router;
     }
 
-    public register(ethAddress: string): Promise<{ethAddress: string}> {
+    public register(ethAddress: string): Promise<{ ethAddress: string }> {
         return new Promise((resolve, reject) => {
-            if ( this.ethAddress === ethAddress ) {
-                return resolve({ethAddress})
+            if (this.ethAddress === ethAddress) {
+                return resolve({ ethAddress })
             }
             this.ethAddress = ethAddress;
             // 1. Make sure user db has been setup for this user
-            this.router.send('/db/user/init', {ethAddress}).then(() => {
+            this.router.send('/db/user/init', { ethAddress }).then(() => {
                 // 2. Make sure directories exist
                 const fsMakeContentDirData: IAOFS_Mkdir_Data = {
                     dirPath: 'content'
@@ -48,10 +48,10 @@ export default class AOUserSession {
                     this.router.send('/fs/mkdir', fsMakeEthDirData)
                 ]
                 Promise.all(mkdirPromises).then(() => {
-                    this.router.send('/core/log', {message: `[AO Core] Registered as user ${ethAddress}`})
+                    this.router.send('/core/log', { message: `[AO Core] Registered as user ${ethAddress}` })
                     // 3. Pull user identity
                     this.router.send('/db/user/getIdentity').then((response: IAORouterMessage) => {
-                        if ( !response.data || !response.data.identity ) {
+                        if (!response.data || !response.data.identity) {
                             // 4A. Create user identity
                             const identity: Identity = EthCrypto.createIdentity()
                             this.identity = identity
@@ -64,15 +64,15 @@ export default class AOUserSession {
                             this.router.send('/db/user/insert', storeIdentityData).then((response: IAORouterMessage) => {
                                 // 5. Listeners that make this app work    
                                 debug(`User identity generated, public key: ${identity.publicKey}`)
-                                resolve({ethAddress})
+                                resolve({ ethAddress })
                                 this._processExistingUserContent()
                                 this._beginListeningForIncomingPurchases()
                             }).catch(reject)
                         } else {
                             // 4B: User identity already exists     
-                            this.identity = response.data.identity                       
+                            this.identity = response.data.identity
                             // 5. Listeners that make this app work
-                            resolve({ethAddress})
+                            resolve({ ethAddress })
                             this._processExistingUserContent()
                             this._beginListeningForIncomingPurchases()
                         }
@@ -94,12 +94,12 @@ export default class AOUserSession {
             const userContent = response.data
             userContent.forEach(contentJson => {
                 const content: AOContent = AOContent.fromObject(contentJson)
-                if ( content.state === AOContentState.PURCHASED ) {
+                if (content.state === AOContentState.PURCHASED) {
                     // A. Content has been purchased, but have yet to receive the Decryption key
-                    this._listenForContentDecryptionKey( content )
-                } else if ( content.isDiscoverable() ) {
+                    this.listenForContentDecryptionKey(content)
+                } else if (content.isDiscoverable()) {
                     // B. Content has been hosted and is discoverable, listen for purchases
-                    this.listenForBuyContentEventsOnDiscoverableContent( content )
+                    this.listenForBuyContentEventsOnDiscoverableContent(content)
                 }
             });
         })
@@ -112,16 +112,16 @@ export default class AOUserSession {
      * @param {AOContent} content
      */
     public listenForBuyContentEventsOnDiscoverableContent(content: AOContent) {
-        this.router.send('/eth/content/BuyContent/subscribe', {contentHostId: content.contentHostId})
+        this.router.send('/eth/content/BuyContent/subscribe', { contentHostId: content.contentHostId })
     }
 
     private _beginListeningForIncomingPurchases() {
-        if ( this.isListeningForIncomingContent )
-        return debug(`Already listening for incoming content purchases`)
+        if (this.isListeningForIncomingContent)
+            return debug(`Already listening for incoming content purchases`)
         this.isListeningForIncomingContent = true
         this.router.on('/core/content/incomingPurchase', (message: IAORouterRequest) => {
             const buyContentEvent: BuyContentEvent = message.data
-            this._handleIncomingContentPurchase( buyContentEvent )
+            this._handleIncomingContentPurchase(buyContentEvent)
         })
     }
 
@@ -132,13 +132,13 @@ export default class AOUserSession {
      * 
      * @param {BuyContentEvent} buyContentEvent
      */
-    private _handleIncomingContentPurchase( buyContentEvent: BuyContentEvent ) {
+    private _handleIncomingContentPurchase(buyContentEvent: BuyContentEvent) {
         // 1. Get the corresponding content entry in user db
         const contentQuery: AODB_UserContentGet_Data = {
             query: { contentHostId: buyContentEvent.contentHostId }
         }
         this.router.send('/db/user/content/get', contentQuery).then((response: IAORouterMessage) => {
-            if ( !response.data || response.data.length !== 1 ) {
+            if (!response.data || response.data.length !== 1) {
                 debug(`Attempt to handle incoming purchase but did not find matching content in user db:`, buyContentEvent)
                 return;
             }
@@ -153,7 +153,7 @@ export default class AOUserSession {
                 publicKey: this.identity.publicKey,
             }
             this.router.send('/p2p/soldKey', sendDecryptionKeyMessage).then((response: IAORouterMessage) => {
-                if ( response.data && response.data.success ) {
+                if (response.data && response.data.success) {
                     debug(`Succesfully handled content purchase with: contentHostId[${buyContentEvent.contentHostId}], purchaseId[${buyContentEvent.purchaseId}]`)
                 } else {
                     debug(`Failed to handle content purhcase, writing to discovery resolved without success`)
@@ -170,13 +170,13 @@ export default class AOUserSession {
      * 
      * @param {AOContent} content
      */
-    private _listenForContentDecryptionKey(content: AOContent) {
+    public listenForContentDecryptionKey(content: AOContent) {
         const p2pWatchKeyRequest: AOP2P_Watch_AND_Get_IndexData_Data = {
             key: '/AOSpace/VOD/' + content.metadataDatKey + '/nodes/' + content.creatorId + '/' + content.fileDatKey + '/indexData',
             ethAddress: this.ethAddress
         }
         this.router.send('/p2p/watchAndGetIndexData', p2pWatchKeyRequest).then((response: IAORouterMessage) => {
-            if ( response.data ) {
+            if (response.data) {
                 let contentUpdateQuery: AODB_UserContentUpdate_Data = {
                     id: content.id,
                     update: {
@@ -195,4 +195,51 @@ export default class AOUserSession {
         }).catch(debug)
     }
 
+    public listenForContentPurchaseReceipt(content: AOContent) {
+        if (!content.transactions || !content.transactions.purchaseTx) {
+            debug(`Warning: calling listenForContentPurchaseReceipt without a purchaseTx`)
+            return null
+        }
+        let buyContentEventArgs: IAOEth_BuyContentEvent_Data = {
+            transactionHash: content.transactions.purchaseTx
+        }
+        this.router.send('/eth/tx/BuyContent', buyContentEventArgs).then((response: IAORouterMessage) => {
+            const { status } = response.data
+            const event: BuyContentEvent = response.data.event
+            let contentUpdateAfterTx: AODB_UserContentUpdate_Data = {
+                id: content.id,
+                update: {}
+            }
+            if (status && event) {
+                // Succesful transaction
+                contentUpdateAfterTx.update = {
+                    $set: {
+                        "state": AOContentState.PURCHASED,
+                        "purchaseId": event.purchaseId,
+                        "nodeId": event.contentHostId,
+                    }
+                }
+            } else {
+                // Transaction failed :(, go back to previous state
+                contentUpdateAfterTx.update = {
+                    $set: {
+                        "state": AOContentState.DOWNLOADED,
+                        "transactions.purchaseTx": null,
+                    }
+                }
+            }
+            this.router.send('/db/user/content/update', contentUpdateAfterTx).then((response: IAORouterMessage) => {
+                let updatedContent: AOContent = AOContent.fromObject(response.data)
+                if (updatedContent.state === AOContentState.PURCHASED) {
+                    // Content succesfully purchased, begin next step in process (listen for decryption key)
+                    this.listenForContentDecryptionKey( updatedContent )
+                }
+            }).catch(debug)
+        }).catch(error => {
+            debug(error)
+            // NOTE: failed to get tx status. I dont think it makes sense to roll content state
+            // back (as the tx could still be vaild). For now let's just leave in limbo, but might
+            // want to check again.
+        })
+    }
 }

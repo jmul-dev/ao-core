@@ -96,7 +96,12 @@ export default abstract class AOContent {
     public premium: number
     public split: number
     public adSupport: boolean
-    public createdAt: string    
+    public createdAt: string
+    public transactions?: {
+        purchaseTx: string
+        stakeTx: string
+        hostTx: string
+    }
 
     static fromObject( contentObject ) {
         let instance;
