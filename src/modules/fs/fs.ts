@@ -366,9 +366,19 @@ export default class AOFS extends AORouterInterface {
         const decrypt = crypto.createDecipher(this.encryptionAlgorithm, requestData.decryptionKey)
         readStream.pipe(decrypt).pipe(encrypt).pipe(writeStream)
         .on('finish', () => {
-            request.respond({
-                newKey: newKey
-            })
+            checksum.file(
+                requestData.finalPath,
+                {algorith: this.checksumAlgorithm, encoding: this.checksumEncoding},
+                (err, encryptedHash) => {
+                    if(err) {
+                        request.reject(err)
+                    } else {
+                        request.respond({
+                            newKey: newKey,
+                            encryptedChecksum: encryptedHash
+                        })
+                    }
+                })
         })
     }
     
