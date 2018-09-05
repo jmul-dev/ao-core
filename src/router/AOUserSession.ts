@@ -6,7 +6,7 @@ import { AODat_Create_Data, AODat_ResumeSingle_Data } from '../modules/dat/dat';
 import { AODB_UserContentGet_Data, AODB_UserContentUpdate_Data, AODB_UserInsert_Data } from "../modules/db/db";
 import { BuyContentEvent, IAOEth_BuyContentEvent_Data, HostContentEvent } from "../modules/eth/eth";
 import { IAOFS_DecryptCheck_Data, IAOFS_Mkdir_Data, IAOFS_Move_Data, IAOFS_Reencrypt_Data, IAOFS_Unlink_Data } from "../modules/fs/fs";
-import { AOP2P_IndexDataRow, AOP2P_Watch_AND_Get_IndexData_Data, AOP2P_Write_Decryption_Key_Data } from "../modules/p2p/p2p";
+import { AOP2P_IndexDataRow, AOP2P_Watch_AND_Get_IndexData_Data, AOP2P_Write_Decryption_Key_Data, AOP2P_Add_Discovery_Data } from "../modules/p2p/p2p";
 import { IAORouterMessage } from "./AORouter";
 import { AORouterInterface, IAORouterRequest } from "./AORouterInterface";
 const debug = Debug('ao:userSession');
@@ -137,7 +137,7 @@ export default class AOUserSession {
                 this._listenForContentStakingReceipt(content)
                 break;
             case AOContentState.STAKED:
-                // TODO
+                this._handleContentStaked(content)
                 break;
             case AOContentState.DISCOVERABLE:
                 // Content has been hosted and is discoverable, listen for purchases
@@ -522,7 +522,47 @@ export default class AOUserSession {
      * @param {AOContent} content 
      */
     private _handleContentStaked(content: AOContent) {
-        // TODO
+        // 1. Add new discovery
+        const p2pAddDiscoveryData: AOP2P_Add_Discovery_Data = {
+            contentType: content.contentType,
+            fileDatKey: content.fileDatKey,
+            metaDatKey: content.metadataDatKey,
+            ethAddress: this.ethAddress, // Current user's ethAddress
+            metaData: content, // TODO: We should take shit out?
+            indexData: {} 
+        }
+        this.router.send('/p2p/addDiscovery', p2pAddDiscoveryData).then((response: IAORouterMessage) => {
+            if (response.data.success) {
+                // 2. Ensure the dats are resumed (they may already be, but need to make sure)
+                const fileResumeDatData:AODat_ResumeSingle_Data = {
+                    key: p2pAddDiscoveryData.fileDatKey
+                }
+                const metaResumeDatData:AODat_ResumeSingle_Data = {
+                    key: p2pAddDiscoveryData.metaDatKey
+                }
+                let resumeDats = []
+                resumeDats.push( this.router.send('/dat/resumeSingle', fileResumeDatData) )
+                resumeDats.push( this.router.send('/dat/resumeSingle', metaResumeDatData) )
+                Promise.all(resumeDats).then(() => {
+                    // 4. Update the content state (mark as Discoverable)
+                    const contentUpdateQuery: AODB_UserContentUpdate_Data = {
+                        id: content.id,
+                        update: {
+                            $set: {
+                                "state": AOContentState.DISCOVERABLE
+                            }
+                        }
+                    }
+                    this.router.send('/db/user/content/update', contentUpdateQuery).then((contentUpdateResponse: IAORouterMessage) => {
+                        const updatedContent: AOContent = AOContent.fromObject(contentUpdateResponse.data)
+                        // Handoff to next state handler
+                        this.processContent(updatedContent)
+                    }).catch(debug)
+                }).catch(debug)
+            } else {
+                debug(`Error, failed to add content to discovery`)
+            }
+        }).catch(debug)
     }
 
     /**

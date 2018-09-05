@@ -121,6 +121,11 @@ export default class AODat extends AORouterInterface {
 
     private _resume(datEntry: DatEntry): Promise<any> {
         return new Promise((resolve, reject) => {
+            if ( this.dats[datEntry.key] ) {
+                debug(`Dat ${datEntry.key} already resumed`)
+                resolve()
+                return;
+            }
             const datDir = path.join(this.datDir, datEntry.key)
             debug(`Resuming dat: ${datDir}`)
             Dat(datDir, (err: Error, dat: Dat) => {
