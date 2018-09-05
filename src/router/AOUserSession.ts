@@ -1,15 +1,14 @@
 import Debug from 'debug';
 import EthCrypto from 'eth-crypto';
 import path from 'path';
-import md5 from 'md5';
 import AOContent, { AOContentState } from "../models/AOContent";
+import { AODat_Create_Data, AODat_ResumeSingle_Data } from '../modules/dat/dat';
 import { AODB_UserContentGet_Data, AODB_UserContentUpdate_Data, AODB_UserInsert_Data } from "../modules/db/db";
 import { BuyContentEvent, IAOEth_BuyContentEvent_Data } from "../modules/eth/eth";
-import { IAOFS_Mkdir_Data, IAOFS_DecryptCheck_Data, IAOFS_Reencrypt_Data, IAOFS_Move_Data, IAOFS_Unlink_Data } from "../modules/fs/fs";
-import { AOP2P_Watch_AND_Get_IndexData_Data, AOP2P_Write_Decryption_Key_Data, AOP2P_IndexDataRow } from "../modules/p2p/p2p";
+import { IAOFS_DecryptCheck_Data, IAOFS_Mkdir_Data, IAOFS_Move_Data, IAOFS_Reencrypt_Data, IAOFS_Unlink_Data } from "../modules/fs/fs";
+import { AOP2P_IndexDataRow, AOP2P_Watch_AND_Get_IndexData_Data, AOP2P_Write_Decryption_Key_Data } from "../modules/p2p/p2p";
 import { IAORouterMessage } from "./AORouter";
 import { AORouterInterface, IAORouterRequest } from "./AORouterInterface";
-import { AODat_Create_Data, AODat_ResumeSingle_Data } from '../modules/dat/dat';
 const debug = Debug('ao:userSession');
 
 
@@ -349,7 +348,7 @@ export default class AOUserSession {
      * 
      * @param {AOContent} content
      */
-    private _handleContentVerified(content: AOContent) {
+    private _handleContentVerified(content: AOContent) {        
         // 1. Get the decryption key again
         this.decryptString(content.receivedIndexData.decryptionKey).then((decryptionKey: string) => {
             // 2. New directory for data to be re-encrypted (tmp path)
@@ -377,15 +376,23 @@ export default class AOUserSession {
                         cleanupTmpContent()
                         return null;
                     }
-                    // 4. Update Content State to Encrypted
+                    if ( !content.baseChallenge ) {
+                        // Sanity check
+                        debug(`Attempting to sign the baseChallenge for content, baseChallenge does not exist!`)
+                        cleanupTmpContent()
+                        return null;
+                    }
+                    // 4. Generate the baseChallengeSignature
+                    const baseChallangeSignature = EthCrypto.sign(this.identity.privateKey, content.baseChallenge)
+                    // 5. Update Content State to Encrypted
                     let contentUpdateQuery: AODB_UserContentUpdate_Data = {
                         id: content.id,
                         update: {
                             $set: {
                                 "state": AOContentState.ENCRYPTED,
                                 "decryptionKey": newDecrytionKey,
-                                // NOTE: baseChallenge should have already been defined and will not change
-                                "encChallenge": EthCrypto.hash.keccak256(newEncryptedChecksum)
+                                "encChallenge": EthCrypto.hash.keccak256(newEncryptedChecksum),
+                                "baseChallengeSignature": baseChallangeSignature,
                             }
                         }
                     }

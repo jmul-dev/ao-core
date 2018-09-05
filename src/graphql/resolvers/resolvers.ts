@@ -18,6 +18,7 @@ import resolveContentPurchaseTransaction from './resolveContentPurchaseTransacti
 import resolveContentBecomeHostTransaction from './resolveContentBecomeHostTransaction'
 import resolveMakeContentDiscoverable from './resolveMakeContentDiscoverable'
 import resolveContentUploadStakeTransaction from './resolveContentUploadStakeTransaction'
+import resolveSignatureVrs from './resolveSignatureVRS'
 
 
 export default {
@@ -44,4 +45,5 @@ export default {
     resolveMakeContentDiscoverable,
     // Field resolvers
     resolveUrl,
+    resolveSignatureVrs,
 }

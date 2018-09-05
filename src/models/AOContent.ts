@@ -88,6 +88,7 @@ export default abstract class AOContent {
     public fileUrl: string
     public fileChecksum: string
     public baseChallenge: string
+    public baseChallengeSignature: string
     public encChallenge: string
     public metadataDatKey: string    
     public title: string
