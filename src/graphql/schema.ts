@@ -17,7 +17,7 @@ export default function () {
         },
         typeDefs: [graphqlSchema],
         resolvers: {
-            Upload: GraphQLUpload,            
+            Upload: GraphQLUpload,
             IContent: {
                 __resolveType(data, ctx, info) {
                     // NOTE: data.__typename is specifically used by mocks
