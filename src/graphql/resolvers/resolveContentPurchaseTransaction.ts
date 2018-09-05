@@ -30,7 +30,7 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
             }
             // 2. State is now in PURCHASING, begin listening for tx result
             const content: AOContent = AOContent.fromObject(response.data)
-            context.userSession.listenForContentPurchaseReceipt( content )
+            context.userSession.processContent( content )
             resolve( content )
         }).catch(reject)
     })

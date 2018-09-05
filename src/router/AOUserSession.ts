@@ -1,13 +1,13 @@
-import { AORouterInterface, IAORouterRequest } from "./AORouterInterface";
-import { IAOFS_Mkdir_Data } from "../modules/fs/fs";
-import path from 'path';
-import { IAORouterMessage } from "./AORouter";
-import AOContent, { AOContentState } from "../models/AOContent";
-import { BuyContentEvent, IAOEth_BuyContentEvent_Data } from "../modules/eth/eth";
-import { AODB_UserContentGet_Data, AODB_UserContentUpdate_Data, AODB_UserInsert_Data } from "../modules/db/db";
-import EthCrypto from 'eth-crypto';
 import Debug from 'debug';
-import { AOP2P_Write_Decryption_Key_Data, AOP2P_Watch_AND_Get_IndexData_Data } from "../modules/p2p/p2p";
+import EthCrypto from 'eth-crypto';
+import path from 'path';
+import AOContent, { AOContentState } from "../models/AOContent";
+import { AODB_UserContentGet_Data, AODB_UserContentUpdate_Data, AODB_UserInsert_Data } from "../modules/db/db";
+import { BuyContentEvent, IAOEth_BuyContentEvent_Data } from "../modules/eth/eth";
+import { IAOFS_Mkdir_Data } from "../modules/fs/fs";
+import { AOP2P_Watch_AND_Get_IndexData_Data, AOP2P_Write_Decryption_Key_Data } from "../modules/p2p/p2p";
+import { IAORouterMessage } from "./AORouter";
+import { AORouterInterface, IAORouterRequest } from "./AORouterInterface";
 const debug = Debug('ao:userSession');
 
 
@@ -65,16 +65,14 @@ export default class AOUserSession {
                                 // 5. Listeners that make this app work    
                                 debug(`User identity generated, public key: ${identity.publicKey}`)
                                 resolve({ ethAddress })
-                                this._processExistingUserContent()
-                                this._beginListeningForIncomingPurchases()
+                                this._resume()
                             }).catch(reject)
                         } else {
                             // 4B: User identity already exists     
                             this.identity = response.data.identity
                             // 5. Listeners that make this app work
                             resolve({ ethAddress })
-                            this._processExistingUserContent()
-                            this._beginListeningForIncomingPurchases()
+                            this._resume()
                         }
                     }).catch(reject)
                 }).catch(reject)
@@ -83,39 +81,18 @@ export default class AOUserSession {
     }
 
     /**
-     * Pull all existing user content, and setup one of the following:
-     *  A. If content is purchased and we are waiting decryption key, begin
-     *      listening for decryption key on discovery.
-     *  B. If content is succesfully hosted (uploaded/re-hosted) start listener
-     *      for BuyContent events on ethereum network.
+     * Resume, picks up where the user left off. Handles content in any state.
      */
-    private _processExistingUserContent() {
+    private _resume() {
+        // Content resume
         this.router.send('/db/user/content/get').then((response: IAORouterMessage) => {
             const userContent = response.data
             userContent.forEach(contentJson => {
                 const content: AOContent = AOContent.fromObject(contentJson)
-                if (content.state === AOContentState.PURCHASED) {
-                    // A. Content has been purchased, but have yet to receive the Decryption key
-                    this.listenForContentDecryptionKey(content)
-                } else if (content.isDiscoverable()) {
-                    // B. Content has been hosted and is discoverable, listen for purchases
-                    this.listenForBuyContentEventsOnDiscoverableContent(content)
-                }
+                this.processContent(content)
             });
         })
-    }
-
-    /**
-     * Starts listening for BuyContent events on the ethereum network. Not 100% clear, 
-     * but these events come in on `/core/content/incomingPurchase` in _beginListeningForIncomingPurchases.
-     * 
-     * @param {AOContent} content
-     */
-    public listenForBuyContentEventsOnDiscoverableContent(content: AOContent) {
-        this.router.send('/eth/content/BuyContent/subscribe', { contentHostId: content.contentHostId })
-    }
-
-    private _beginListeningForIncomingPurchases() {
+        // Incoming content resume
         if (this.isListeningForIncomingContent)
             return debug(`Already listening for incoming content purchases`)
         this.isListeningForIncomingContent = true
@@ -123,6 +100,39 @@ export default class AOUserSession {
             const buyContentEvent: BuyContentEvent = message.data
             this._handleIncomingContentPurchase(buyContentEvent)
         })
+    }
+
+    /**
+     * This method acts as a state machine and attempts to move a piece of content
+     * along throughout the purchase & staking process.
+     * 
+     * @param {AOContent} content 
+     */
+    public processContent(content: AOContent) {
+        switch (content.state) {
+            case AOContentState.PURCHASING:
+                this.listenForContentPurchaseReceipt(content)
+                break;
+            case AOContentState.PURCHASED:
+                // Content has been purchased, but have yet to receive the Decryption key
+                this.listenForContentDecryptionKey(content)
+                break;
+            case AOContentState.DISCOVERABLE:
+                // Content has been hosted and is discoverable, listen for purchases
+                this.listenForBuyContentEventsOnDiscoverableContent(content)
+            default:
+                break;
+        }
+    }
+
+    /**
+     * Starts listening for BuyContent events on the ethereum network. Not 100% clear, 
+     * but these events come in on `/core/content/incomingPurchase` in _resume.
+     * 
+     * @param {AOContent} content
+     */
+    public listenForBuyContentEventsOnDiscoverableContent(content: AOContent) {
+        this.router.send('/eth/content/BuyContent/subscribe', { contentHostId: content.contentHostId })
     }
 
     /**
@@ -171,6 +181,10 @@ export default class AOUserSession {
      * @param {AOContent} content
      */
     public listenForContentDecryptionKey(content: AOContent) {
+        if (content.state !== AOContentState.PURCHASED) {
+            debug(`Warning: listenForContentDecryptionKey called with content state = ${content.state}, expected PURCHASED`)
+            return null
+        }
         const p2pWatchKeyRequest: AOP2P_Watch_AND_Get_IndexData_Data = {
             key: '/AOSpace/VOD/' + content.metadataDatKey + '/nodes/' + content.creatorId + '/' + content.fileDatKey + '/indexData',
             ethAddress: this.ethAddress
@@ -195,6 +209,12 @@ export default class AOUserSession {
         }).catch(debug)
     }
 
+    /**
+     * User has submitted a purchase transaction but we do not yet know if that
+     * tx has been accepted by the network. This method listens for that result.
+     * 
+     * @param {AOContent} content
+     */
     public listenForContentPurchaseReceipt(content: AOContent) {
         if (!content.transactions || !content.transactions.purchaseTx) {
             debug(`Warning: calling listenForContentPurchaseReceipt without a purchaseTx`)
@@ -232,7 +252,7 @@ export default class AOUserSession {
                 let updatedContent: AOContent = AOContent.fromObject(response.data)
                 if (updatedContent.state === AOContentState.PURCHASED) {
                     // Content succesfully purchased, begin next step in process (listen for decryption key)
-                    this.listenForContentDecryptionKey( updatedContent )
+                    this.processContent(updatedContent)
                 }
             }).catch(debug)
         }).catch(error => {
