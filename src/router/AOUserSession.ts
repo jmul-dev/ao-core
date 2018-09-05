@@ -1,13 +1,15 @@
 import Debug from 'debug';
 import EthCrypto from 'eth-crypto';
 import path from 'path';
+import md5 from 'md5';
 import AOContent, { AOContentState } from "../models/AOContent";
 import { AODB_UserContentGet_Data, AODB_UserContentUpdate_Data, AODB_UserInsert_Data } from "../modules/db/db";
 import { BuyContentEvent, IAOEth_BuyContentEvent_Data } from "../modules/eth/eth";
-import { IAOFS_Mkdir_Data } from "../modules/fs/fs";
-import { AOP2P_Watch_AND_Get_IndexData_Data, AOP2P_Write_Decryption_Key_Data } from "../modules/p2p/p2p";
+import { IAOFS_Mkdir_Data, IAOFS_DecryptCheck_Data, IAOFS_Reencrypt_Data, IAOFS_Move_Data, IAOFS_Unlink_Data } from "../modules/fs/fs";
+import { AOP2P_Watch_AND_Get_IndexData_Data, AOP2P_Write_Decryption_Key_Data, AOP2P_IndexDataRow } from "../modules/p2p/p2p";
 import { IAORouterMessage } from "./AORouter";
 import { AORouterInterface, IAORouterRequest } from "./AORouterInterface";
+import { AODat_Create_Data, AODat_ResumeSingle_Data } from '../modules/dat/dat';
 const debug = Debug('ao:userSession');
 
 
@@ -120,6 +122,24 @@ export default class AOUserSession {
             case AOContentState.DECRYPTION_KEY_RECEIVED:
                 this._handleContentDecryptionKeyReceived(content)
                 break;
+            case AOContentState.VERIFIED:
+                this._handleContentVerified(content)
+                break;
+            case AOContentState.VERIFICATION_FAILED:
+                // TODO: cleanup? stay quite?
+                break;
+            case AOContentState.ENCRYPTED:
+                this._handleContentEncrypted(content)
+                break;
+            case AOContentState.DAT_INITIALIZED:
+                // This state is pending user stake/becomeHost
+                break;
+            case AOContentState.STAKING:
+                // TODO
+                break;
+            case AOContentState.STAKED:
+                // TODO
+                break;
             case AOContentState.DISCOVERABLE:
                 // Content has been hosted and is discoverable, listen for purchases
                 this._listenForBuyContentEventsOnDiscoverableContent(content)
@@ -161,9 +181,10 @@ export default class AOUserSession {
 
             // 3. TODO: generate the encryption key according to spec
             const sendDecryptionKeyMessage: AOP2P_Write_Decryption_Key_Data = {
-                ethAddress: this.ethAddress,
                 contentId: userContent.id,
-                publicKey: this.identity.publicKey,
+                ethAddress: buyContentEvent.buyer,
+                publicKey: buyContentEvent.publicKey,
+                privateKey: this.identity.privateKey
             }
             this.router.send('/p2p/soldKey', sendDecryptionKeyMessage).then((response: IAORouterMessage) => {
                 if (response.data && response.data.success) {
@@ -178,45 +199,10 @@ export default class AOUserSession {
     }
 
     /**
-     * User has purchased this piece of content, begin listening for the decryption
-     * key to come in through p2p module.
-     * 
-     * @param {AOContent} content
-     */
-    private _listenForContentDecryptionKey(content: AOContent) {
-        if (content.state !== AOContentState.PURCHASED) {
-            debug(`Warning: _listenForContentDecryptionKey called with content state = ${content.state}, expected PURCHASED`)
-            return null
-        }
-        const p2pWatchKeyRequest: AOP2P_Watch_AND_Get_IndexData_Data = {
-            key: '/AOSpace/VOD/' + content.metadataDatKey + '/nodes/' + content.creatorId + '/' + content.fileDatKey + '/indexData',
-            ethAddress: this.ethAddress
-        }
-        this.router.send('/p2p/watchAndGetIndexData', p2pWatchKeyRequest).then((response: IAORouterMessage) => {
-            if (response.data) {
-                let contentUpdateQuery: AODB_UserContentUpdate_Data = {
-                    id: content.id,
-                    update: {
-                        $set: {
-                            "state": AOContentState.DECRYPTION_KEY_RECEIVED,
-                            "encryptedKey": response.data.decryptKey //indexData is put against the buyer's ethaddress
-                        }
-                    }
-                }
-                this.router.send('/db/user/content/update', contentUpdateQuery).then((contentUpdateResponse: IAORouterMessage) => {
-                    debug(`Succesfully received decryption key for purchased content with id[${content.id}]`)
-                    const updatedContent: AOContent = AOContent.fromObject( contentUpdateResponse.data )
-                    this.processContent( updatedContent )                    
-                }).catch(debug)
-            } else {
-                debug(`Error listening for decryption key, no index data returned`)
-            }
-        }).catch(debug)
-    }
-
-    /**
      * User has submitted a purchase transaction but we do not yet know if that
      * tx has been accepted by the network. This method listens for that result.
+     * 
+     * content.state ==== PURCHASING
      * 
      * @param {AOContent} content
      */
@@ -269,16 +255,245 @@ export default class AOUserSession {
     }
 
     /**
+     * User has purchased this piece of content, begin listening for the decryption
+     * key to come in through p2p module.
+     * 
+     * content.state === PURCHASED
+     * 
+     * @param {AOContent} content
+     */
+    private _listenForContentDecryptionKey(content: AOContent) {
+        if (content.state !== AOContentState.PURCHASED) {
+            debug(`Warning: _listenForContentDecryptionKey called with content state = ${content.state}, expected PURCHASED`)
+            return null
+        }
+        const p2pWatchKeyRequest: AOP2P_Watch_AND_Get_IndexData_Data = {
+            key: '/AOSpace/VOD/' + content.metadataDatKey + '/nodes/' + content.creatorId + '/' + content.fileDatKey + '/indexData',
+            ethAddress: this.ethAddress
+        }
+        this.router.send('/p2p/watchAndGetIndexData', p2pWatchKeyRequest).then((response: IAORouterMessage) => {
+            const indexData: AOP2P_IndexDataRow = response.data
+            if (indexData) {
+                let contentUpdateQuery: AODB_UserContentUpdate_Data = {
+                    id: content.id,
+                    update: {
+                        $set: {
+                            "state": AOContentState.DECRYPTION_KEY_RECEIVED,
+                            "receivedIndexData": indexData
+                        }
+                    }
+                }
+                this.router.send('/db/user/content/update', contentUpdateQuery).then((contentUpdateResponse: IAORouterMessage) => {
+                    debug(`Succesfully received decryption key for purchased content with id[${content.id}]`)
+                    const updatedContent: AOContent = AOContent.fromObject(contentUpdateResponse.data)
+                    this.processContent(updatedContent)
+                }).catch(debug)
+            } else {
+                debug(`Error listening for decryption key, no index data returned`)
+            }
+        }).catch(debug)
+    }
+
+    /**
      * We have received an _encrypted_ decryption key from the p2p layer. This step in the process
      * involves decrypting the key and then verifying the contents of the file.
+     * 
+     * content.state === DECRYPTION_KEY_RECEIVED
      * 
      * @param {AOContent} content
      */
     private _handleContentDecryptionKeyReceived(content: AOContent) {
-        if (!content.encryptedKey) {
-            debug(`Warning: calling _handleContentDecryptionKeyReceived without an encryptedKey`)
+        if (!content.receivedIndexData) {
+            debug(`Warning: calling _handleContentDecryptionKeyReceived without receivedIndexData from p2p/hyperdb`)
             return null
         }
-        // TODO: waiting on #57, should basically copy resolveContentDecryptionKey mutation
+        // 1. Decrypt the decryption key that we received from seller
+        this.decryptString(content.receivedIndexData.decryptionKey).then((decryptionKey: string) => {
+            // 2. Decrypt/ffprobe/Checksum the downloaded file and match against the content data.
+            const decryptChecksumData: IAOFS_DecryptCheck_Data = {
+                path: content.getFilePath(),
+                decryptionKey: decryptionKey
+            }
+            this.router.send('/fs/decryptChecksum', decryptChecksumData).then((decryptChecksumResponse: IAORouterMessage) => {
+                // 3. Check that the decrypted file's checksum actually matches the original content checksum                
+                let checksum = decryptChecksumResponse.data[0].checksum
+                let nextContentState = AOContentState.VERIFIED
+                if (checksum != content.fileChecksum) {
+                    nextContentState = AOContentState.VERIFICATION_FAILED
+                    debug(`Checksum of decrypted file does not match the purchased content's checksum`)
+                }
+                // 4. Update the content with verification state
+                let contentUpdateQuery: AODB_UserContentUpdate_Data = {
+                    id: content.id,
+                    update: {
+                        $set: {
+                            "state": nextContentState
+                        }
+                    }
+                }
+                this.router.send('/db/user/content/update', contentUpdateQuery).then((contentVerifiedResponse: IAORouterMessage) => {
+                    let updatedContent: AOContent = AOContent.fromObject(contentVerifiedResponse.data)
+                    // Handoff to next handler
+                    this.processContent(updatedContent)
+                }).catch(debug)
+            }).catch(debug)
+        }).catch(error => {
+            debug(`Error attempting to decrypt content encryption key: ${error.message}`)
+        })
     }
+
+    /**
+     * Content has been verified, now it is time to re-host that content.
+     * 
+     * content.state === VERIFIED
+     * 
+     * @param {AOContent} content
+     */
+    private _handleContentVerified(content: AOContent) {
+        // 1. Get the decryption key again
+        this.decryptString(content.receivedIndexData.decryptionKey).then((decryptionKey: string) => {
+            // 2. New directory for data to be re-encrypted (tmp path)
+            const tmpContentPath: IAOFS_Mkdir_Data = {
+                dirPath: content.getTempFolderPath()
+            }
+            this.router.send('/fs/mkdir', tmpContentPath).then(() => {
+                const cleanupTmpContent = () => {
+                    let removePathData: IAOFS_Unlink_Data = {
+                        removePath: tmpContentPath.dirPath
+                    }
+                    this.router.send('/fs/unlink', removePathData)
+                }
+                // 3. Reencrypt original encrypted file into the new dir
+                const fileReencrypt: IAOFS_Reencrypt_Data = {
+                    originalPath: content.getFilePath(),
+                    decryptionKey: decryptionKey,
+                    finalPath: path.join(content.getTempFolderPath(), content.fileName)
+                }
+                this.router.send('/fs/reencrypt', fileReencrypt).then((reencryptionResponse: IAORouterMessage) => {
+                    let newDecrytionKey = reencryptionResponse.data.newKey
+                    if (!newDecrytionKey) {
+                        debug('Error re-encrypting file: No new decryption key')
+                        cleanupTmpContent()
+                        return null;
+                    }
+                    // 4. Update Content State to Encrypted
+                    let contentUpdateQuery: AODB_UserContentUpdate_Data = {
+                        id: content.id,
+                        update: {
+                            $set: {
+                                "state": AOContentState.ENCRYPTED
+                            }
+                        }
+                    }
+                    this.router.send('/db/user/content/update', contentUpdateQuery).then((contentUpdateResponse: IAORouterMessage) => {
+                        const updatedContent: AOContent = AOContent.fromObject(contentUpdateResponse.data)
+                        // Handoff to next state handler
+                        this.processContent(updatedContent)
+                    }).catch(debug) // Content State update to Encrypted
+                }).catch((error: Error) => {
+                    debug(`Error re-encrypting file: ${error.message}`)
+                    cleanupTmpContent()
+                }) // Reencryption/copy
+            }).catch(debug) // MakeDir for new dat
+        }).catch(debug)  // Decrypt-decryptionKey
+    }
+
+    /**
+     * Content has been re-encrypted and is ready to be re-hosted. This mostly involves
+     * creating a new Dat instance for the newly encrypted content.
+     * 
+     * content.state === ENCRYPTED
+     * 
+     * @param {AOContent} content 
+     */
+    private _handleContentEncrypted(content: AOContent) {
+        // 1. Initialize the new Dat within our temp folder created during encryption process
+        const createDatData: AODat_Create_Data = {
+            newDatDir: content.getTempFolderPath()
+        }
+        this.router.send('/dat/create', createDatData).then((datCreateResponse: IAORouterMessage) => {
+            let newDatKey = datCreateResponse.data.key
+            // 2. Move Dat to its final location within content directory
+            const moveNewDatData: IAOFS_Move_Data = {
+                srcPath: content.getTempFolderPath(),
+                destPath: path.join('content', newDatKey)
+            }
+            this.router.send('/fs/move', moveNewDatData).then(() => {
+                // 3. Resume the Dat (start hosting)
+                const resumeDatData: AODat_ResumeSingle_Data = {
+                    key: newDatKey
+                }
+                this.router.send('/dat/resumeSingle', resumeDatData)
+                // 4. Store the newDatKey
+                let contentUpdateQuery: AODB_UserContentUpdate_Data = {
+                    id: content.id,
+                    update: {
+                        $set: {
+                            "state": AOContentState.DAT_INITIALIZED,
+                            "fileDatKey": newDatKey
+                        }
+                    }
+                }
+                this.router.send('/db/user/content/update', contentUpdateQuery).then((contentUpdateResponse: IAORouterMessage) => {
+                    const updatedContent: AOContent = AOContent.fromObject(contentUpdateResponse.data)
+                    // Handoff to next state handler
+                    this.processContent(updatedContent)
+                }).catch(debug)
+            }).catch(debug) // Move Dat Dir
+        }).catch((error: Error) => {
+            debug(`Error creating Dat: ${error.message}`)
+            let removePathData: IAOFS_Unlink_Data = {
+                removePath: path.join(content.getTempFolderPath(), '.dat')
+            }
+            this.router.send('/fs/unlink', removePathData).catch(debug)
+        }) // Dat Creation
+    }
+
+    /**
+     * Content is ready to be broadcasted to discovery
+     * 
+     * content.state === STAKED
+     * 
+     * @param {AOContent} content 
+     */
+    private _handleContentStaked(content: AOContent) {
+        // TODO
+    }
+
+    /**
+     * Decrypt a string with the private key
+     * @param stringToDecrypt
+     */
+    public async decryptString(stringToDecrypt: String) {
+        return new Promise(async (resolve, reject) => {
+            const cipherObject = EthCrypto.cipher.parse(stringToDecrypt)
+            let message: String
+            try {
+                message = await EthCrypto.decryptWithPrivateKey(this.identity.privateKey, cipherObject)
+            } catch (e) {
+                return reject(e)
+            }
+            return resolve(message)
+        })
+    }
+
+    /**
+     * Encrypt a string with the public key
+     * @param stringToEncrypt
+     * @param publicKey // Optional.  if using another person's key, you can use this.
+     */
+    public async encryptString(stringToEncrypt: String, publicKey?: String) {
+        return new Promise(async (resolve, reject) => {
+            let encrypted: String
+            let publicKeyUsed = publicKey.length ? publicKey : this.identity.publicKey
+            try {
+                encrypted = EthCrypto.encryptWithPublicKey(publicKeyUsed, stringToEncrypt)
+            } catch (e) {
+                return reject(e)
+            }
+            let stringifiedEncrypted = EthCrypto.cipher.stringify(encrypted)
+            return resolve(stringifiedEncrypted)
+        })
+    }
+
 }

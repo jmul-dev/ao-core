@@ -1,10 +1,10 @@
-import crypto from 'crypto';
 import Debug from 'debug';
 import path from 'path';
 import { AO_Hyper_Options } from "../../router/AOHyperDB";
 import { IAORouterMessage } from "../../router/AORouter";
 import AORouterInterface, { AORouterArgs, IAORouterRequest } from "../../router/AORouterInterface";
 import { AODB_UserContentGet_Data } from "../db/db";
+import EthCrypto from 'eth-crypto'
 const debug = Debug('ao:p2p');
 
 export interface AOP2P_Args {
@@ -48,14 +48,24 @@ export interface AOP2P_Write_Decryption_Key_Data {
     contentId: string;
     ethAddress: string; //Buyer Eth Address
     publicKey: string; //Buyer Public Key
+    privateKey: string; //Seller Private Key
+}
+
+//Single indexData
+export interface AOP2P_IndexDataRow {
+    signature: string;
+    decryptionKey: string;
 }
 
 interface AddIndexDataInterface {
     indexData: object;
     ethAddress: string;
+    privateKey: string;
     publicKey: string;
     decryptionKey: string;
 }
+
+
 
 //This is out here since 
 const routerArgs: AORouterArgs = {
@@ -223,10 +233,12 @@ export default class AOP2P extends AORouterInterface {
             this.hyperdb.query(key).then((indexData) => {
                     if(!indexData[ethAddress]) {
                         //Self call if there isn't a record for our own indexData
-                        this._handleWatchAndGetIndexData(request)
+                        setTimeout(() => {
+                            this._handleWatchAndGetIndexData(request)
+                        }, 1000);
                     } else {
-                        // TODO: Do we want to do the indexData signature check here or outside?
-                        request.respond({indexData: indexData[ethAddress]})
+                        let indexDataRow: AOP2P_IndexDataRow = indexData[ethAddress]
+                        request.respond({indexDataRow: indexDataRow})
                     }
             }).catch(request.reject)
         }).catch( request.reject )
@@ -246,7 +258,7 @@ export default class AOP2P extends AORouterInterface {
     }
 
     private _handleSellDecryptionKey(request: IAORouterRequest) {
-        const { contentId, ethAddress, publicKey }: AOP2P_Write_Decryption_Key_Data = request.data
+        const { contentId, ethAddress, privateKey, publicKey }: AOP2P_Write_Decryption_Key_Data = request.data
 
         // 1. Get the content for this piece being sold
         const userContentQuery: AODB_UserContentGet_Data = {
@@ -261,34 +273,46 @@ export default class AOP2P extends AORouterInterface {
             const contentPrefixRoute = this.dbPrefix  + content.contentType + '/' + content.metadataDatKey + '/nodes/' 
             const indexDataRoute =  request.ethAddress + '/' + content.fileDatKey + '/indexData';
             this.hyperdb.query(contentPrefixRoute + indexDataRoute).then((indexData)=> {
-                let newIndexData = this.addIndexData({
+                this.addIndexData({
                     indexData: indexData,
-                    ethAddress: ethAddress, //Note that this is the buyer's address
-                    publicKey: publicKey,
+                    ethAddress: ethAddress, //buyer's address
+                    publicKey: publicKey,   //buyer's public key 
+                    privateKey: privateKey, //your privatekey as the seller
                     decryptionKey: content.decryptionKey
-                })
-                // 3. Let's write this thing into hyperdb
-                this.hyperdb.insert(contentPrefixRoute + indexDataRoute, newIndexData).then(() => {
-                    request.respond({ success: true })
+                }).then((newIndexData) => {
+                    // 3. Let's write this thing into hyperdb
+                    this.hyperdb.insert(contentPrefixRoute + indexDataRoute, newIndexData).then(() => {
+                        request.respond({ success: true })
+                    }).catch(request.reject)
                 }).catch(request.reject)
             }).catch(request.reject)
         })
     }
 
     private addIndexData(indexDataRequest: AddIndexDataInterface) {
-        const { indexData, ethAddress, publicKey, decryptionKey } = indexDataRequest
-        let sign = crypto.createSign('RSA-SHA256');
-        sign.update(decryptionKey)
-        let signature = sign.sign(publicKey, 'hex')
-        let bufDecryptKey = Buffer.from(decryptionKey, 'utf8')
-        let encryptedDecryptionKeyBuf = crypto.publicEncrypt(publicKey, bufDecryptKey);
-        let encryptedDecryptionKey = encryptedDecryptionKeyBuf.toString("base64");
+        return new Promise( async (resolve, reject) => {
+            const { indexData, ethAddress, privateKey, publicKey, decryptionKey } = indexDataRequest
 
-        indexData[ethAddress] = {
-            decryptKey: encryptedDecryptionKey, // Encrypted key with publicKey
-            signature: signature //
-        }
-        return indexData
+            // 1. Sign the hash of the decryption key using this node's private key
+            const messageHash = EthCrypto.hash.keccak256(decryptionKey)
+            const signature = EthCrypto.sign(privateKey, messageHash)
+            
+            // 2. Encrypt the decryption key using their public key
+            let encryptedObject: object = {}
+            try {
+                encryptedObject = await EthCrypto.encryptWithPublicKey(publicKey, decryptionKey)
+            } catch(e) {
+                return reject(e)
+            }
+            const encryptedDecryptionKey:string = EthCrypto.cipher.stringify(encryptedObject)
+
+            // 3. Add/overwrite the record for specific ethaddress and resolve the result
+            indexData[ethAddress] = {
+                decryptKey: encryptedDecryptionKey, // Encrypted key with publicKey
+                signature: signature //
+            }
+            resolve(indexData)
+        })
     }
 
 

@@ -8,6 +8,7 @@ interface IContentRequest_Args {
     inputs: {
         transactionHash: string;
         contentId: string;
+        contentHostId: string;
     }
 }
 

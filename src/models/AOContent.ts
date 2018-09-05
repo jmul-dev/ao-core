@@ -1,3 +1,7 @@
+import path from 'path';
+import { AOP2P_IndexDataRow } from "../modules/p2p/p2p";
+
+
 export type AOContentType = "VOD" | 'STREAM' | 'FILE' | 'APP'
 
 // NOTE: match graphql/types/content.graphql -> ContentState enum
@@ -8,7 +12,6 @@ export const AOContentState = Object.freeze({
     PURCHASING: 'PURCHASING',
     PURCHASED: 'PURCHASED',
     DECRYPTION_KEY_RECEIVED: 'DECRYPTION_KEY_RECEIVED',
-    DECRYPTION_KEY_DECRYPTED: 'DECRYPTION_KEY_DECRYPTED',
     VERIFIED: 'VERIFIED',
     VERIFICATION_FAILED: 'VERIFICATION_FAILED',
     ENCRYPTED: 'ENCRYPTED',
@@ -25,7 +28,6 @@ const AOContentStateOrdered = [
     AOContentState.PURCHASING,
     AOContentState.PURCHASED,        
     AOContentState.DECRYPTION_KEY_RECEIVED,
-    AOContentState.DECRYPTION_KEY_DECRYPTED,
     AOContentState.VERIFIED,
     AOContentState.VERIFICATION_FAILED,
     AOContentState.ENCRYPTED,
@@ -57,7 +59,6 @@ export function getListOfContentIncompleteStates() {
         AOContentState.PURCHASING,
         AOContentState.PURCHASED,        
         AOContentState.DECRYPTION_KEY_RECEIVED,
-        AOContentState.DECRYPTION_KEY_DECRYPTED,
         AOContentState.VERIFIED,
         AOContentState.VERIFICATION_FAILED,
         AOContentState.ENCRYPTED,
@@ -103,7 +104,7 @@ export default abstract class AOContent {
         hostTx: string
     }
     // variables not exposed to graphql
-    public encryptedKey: string
+    public receivedIndexData: AOP2P_IndexDataRow
     
 
     static fromObject( contentObject ) {
@@ -125,6 +126,22 @@ export default abstract class AOContent {
 
     public isPurchased(): boolean {
         return AOContentStateOrdered.indexOf(this.state) >= AOContentStateOrdered.indexOf( AOContentState.PURCHASED )
+    }
+
+    public getFilePath(): string {
+        return path.join('content', this.fileDatKey, this.fileName)
+    }
+
+    public getFileFolderPath(): string {
+        return path.join('content', this.fileDatKey)
+    }
+
+    public getMetadataFolderPath(): string {
+        return path.join('content', this.metadataDatKey)
+    }
+
+    public getTempFolderPath(): string {
+        return path.join('tmp', this.id)
     }
 
     /**

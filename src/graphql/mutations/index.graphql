@@ -61,4 +61,5 @@ input SetNetworkInputs {
 input ContentPurchaseTransactionInputs {
     transactionHash: String!
     contentId: String!
+    contentHostId: String!
 }
