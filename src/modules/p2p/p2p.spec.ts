@@ -120,7 +120,6 @@ describe('AO P2P module', () => {
                     } catch (error) {
                         reject(error)
                     }
-                    console.log(parsed)
                     if(parsed == personADecryptionKey) {
                         resolve()
                     } else {
