@@ -115,10 +115,10 @@ export default class AODB extends AORouterInterface {
         this.router.on('/db/user/init', this._setupUserDbs.bind(this)) //both content and user dbs
 
         this.router.on('/db/user/getIdentity', this._getUserIdentity.bind(this))
-        this.router.on('/db/user/get', this._userGet.bind(this) )
-        this.router.on('/db/user/insert', this._userInsert.bind(this) )
-        this.router.on('/db/user/update', this._userUpdate.bind(this) )
-        
+        this.router.on('/db/user/get', this._userGet.bind(this))
+        this.router.on('/db/user/insert', this._userInsert.bind(this))
+        this.router.on('/db/user/update', this._userUpdate.bind(this))
+
 
         this.router.on('/db/user/content/get', this._userContentGet.bind(this))
         this.router.on('/db/user/content/insert', this._userContentInsert.bind(this))
@@ -188,7 +188,7 @@ export default class AODB extends AORouterInterface {
             return;
         }
         const dbLoadHandler = () => (error: Error) => new Promise((resolve, reject) => {
-            if ( error )
+            if (error)
                 reject(error)
             else
                 resolve()
@@ -225,27 +225,27 @@ export default class AODB extends AORouterInterface {
     }
 
     private _getUserIdentity(request: IAORouterRequest): void {
-        if(request.ethAddress) {
-            const query = {
-                id: 'identity'
-            }
-            this.userDbs[request.ethAddress].user.find(query).exec( (error, results) => {
-                if(error) {
-                    request.reject(error)
-                } else {
-                    request.respond({identity: results[0]})
-                }
-            })
-        } else {
-            request.respond({ethAddress: request.ethAddress})
+        if (!request.ethAddress) {
+            request.respond({ identity: null })
+            return null;
         }
+        const query = {
+            id: 'identity'
+        }
+        this.userDbs[request.ethAddress].user.find(query).exec((error, results) => {
+            if (error) {
+                request.reject(error)
+            } else {
+                request.respond({ identity: results[0] })
+            }
+        })
     }
 
     private _userGet(request: IAORouterRequest) {
-        const requestData : AODB_UserGet_Data = request.data
+        const requestData: AODB_UserGet_Data = request.data
         let query = requestData.query || {}
-        this.userDbs[request.ethAddress].user.find(query).exec( (error, results) => {
-            if(error) {
+        this.userDbs[request.ethAddress].user.find(query).exec((error, results) => {
+            if (error) {
                 request.reject(error)
             } else {
                 request.respond(results)
@@ -254,9 +254,9 @@ export default class AODB extends AORouterInterface {
     }
 
     private _userInsert(request: IAORouterRequest) {
-        const {object} : AODB_UserInsert_Data = request.data
-        this.userDbs[request.ethAddress].user.insert(object, (err:Error, doc) => {
-            if(err) {
+        const { object }: AODB_UserInsert_Data = request.data
+        this.userDbs[request.ethAddress].user.insert(object, (err: Error, doc) => {
+            if (err) {
                 request.reject(err)
             } else {
                 request.respond(doc)
@@ -265,10 +265,10 @@ export default class AODB extends AORouterInterface {
     }
 
     private _userUpdate(request: IAORouterRequest) {
-        const {id, update} : AODB_UserUpdate_Data = request.data
+        const { id, update }: AODB_UserUpdate_Data = request.data
         const userDB = this.userDbs[request.ethAddress].user
-        userDB.update({id: id}, update, { returnUpdatedDocs: true, multi: false }, (error, numAffected, updatedDoc, upsert ) => {
-            if(error) {
+        userDB.update({ id: id }, update, { returnUpdatedDocs: true, multi: false }, (error, numAffected, updatedDoc, upsert) => {
+            if (error) {
                 request.reject(error)
             } else {
                 request.respond(updatedDoc)
