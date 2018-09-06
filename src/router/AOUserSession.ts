@@ -528,8 +528,7 @@ export default class AOUserSession {
             fileDatKey: content.fileDatKey,
             metaDatKey: content.metadataDatKey,
             ethAddress: this.ethAddress, // Current user's ethAddress
-            metaData: content, // TODO: We should take shit out?
-            indexData: {} 
+            indexData: {} // Empty for initial creation.
         }
         this.router.send('/p2p/addDiscovery', p2pAddDiscoveryData).then((response: IAORouterMessage) => {
             if (response.data.success) {
