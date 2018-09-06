@@ -123,7 +123,7 @@ describe('AO P2P module', () => {
                     if(parsed == personADecryptionKey) {
                         resolve()
                     } else {
-                        reject()
+                        reject(new Error('Decryption key did not decrypt correctly and do not match'))
                     }
                 },
                 reject: (message)=> {
