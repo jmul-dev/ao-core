@@ -27,7 +27,6 @@ const corePackageJson = {
         events: [
             '/core/log',
             '/core/content/incomingPurchase',
-            '/core/keys/sign'
         ],
     },
 }
