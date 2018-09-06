@@ -2,10 +2,9 @@
 
 type NodeIdentity {
     # Universal
-    id: ID
-    ethAddress: ID
-    address: String
+    id: ID    
     publicKey: String
+    ethAddress: ID
     datProfile: ID
     datStorage: ID
     # Local node specific

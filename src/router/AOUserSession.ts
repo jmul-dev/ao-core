@@ -27,11 +27,20 @@ export default class AOUserSession {
     private router: AORouterInterface;
 
     public ethAddress: string;
+
     private isListeningForIncomingContent: boolean = false;
     private identity: Identity;
 
     constructor(router: AORouterInterface) {
         this.router = router;
+    }
+
+    public get id() {
+        return this.identity ? this.identity.address : null
+    }
+
+    public get publicKey() {
+        return this.identity ? this.identity.publicKey : null
     }
 
     public register(ethAddress: string): Promise<{ ethAddress: string }> {
