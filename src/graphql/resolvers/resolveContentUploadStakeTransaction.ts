@@ -1,11 +1,7 @@
-import Debug from 'debug'
 import { IGraphqlResolverContext } from '../../http';
-import { IAORouterMessage } from "../../router/AORouter";
+import AOContent, { AOContentState } from '../../models/AOContent';
 import { AODB_UserContentUpdate_Data } from '../../modules/db/db';
-import { AOContentState } from '../../models/AOContent';
-import { IAOEth_BuyContentEvent_Data, StakeContentEvent, HostContentEvent } from '../../modules/eth/eth';
-import makeContentDiscoverable, { IMakeContentDiscoverable_Args } from './resolveMakeContentDiscoverable';
-const debug = Debug('ao:graphql:contentUploadStakeTransaction')
+import { IAORouterMessage } from "../../router/AORouter";
 
 
 interface IContentRequest_Args {
@@ -33,47 +29,9 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                 reject(new Error(`Failed to update content state`))
                 return;
             }
-            debug(`Content[${response.data.id}].state = ${response.data.state}`)
-            // NOTE: we are resolving without waiting for tx status
-            resolve(response.data)
-
-            // 2. Begin listening for Staking tx status
-            let stakeContentEventArgs: IAOEth_BuyContentEvent_Data = {
-                transactionHash: transactionHash
-            }
-            context.router.send('/eth/tx/StakeContent', stakeContentEventArgs).then((stakeEventResponse: IAORouterMessage) => {
-                if ( stakeEventResponse.data.status ) {
-                    const stakeContentEvent: StakeContentEvent = stakeEventResponse.data.stakeContentEvent
-                    const hostContentEvent: HostContentEvent = stakeEventResponse.data.hostContentEvent
-                    contentUpdateQuery.update = {
-                        $set: {
-                            "state": AOContentState.STAKED,
-                            "stakeId": stakeContentEvent.stakeId,
-                            "contentHostId": hostContentEvent.contentHostId,
-                        }
-                    }                    
-                } else {
-                    contentUpdateQuery.update = {
-                        $set: {
-                            "state": AOContentState.ENCRYPTED,// TODO: Verify that this is the correct state to go back to.
-                        }
-                    }  
-                }                
-                context.router.send('/db/user/content/update', contentUpdateQuery).then((response: IAORouterMessage) => {
-                    debug(`Content[${response.data.id}].state = ${response.data.state}`)
-                    if(response.data.state == AOContentState.STAKED) {
-                        const makeDiscoverableArgs: IMakeContentDiscoverable_Args = {
-                            inputs: {
-                                contentId
-                            }
-                        }
-                        makeContentDiscoverable(obj, makeDiscoverableArgs, context, info).then((discoverableContent: any) => {
-                            debug(`Content[${discoverableContent.id}].state = ${discoverableContent.state}`)
-                        }).catch(debug)
-                    }
-                }).catch(debug)
-            }).catch(debug)
-
+            const content: AOContent = AOContent.fromObject(response.data)
+            resolve(content)
+            context.userSession.processContent(content)
         }).catch(reject)
     })
 }

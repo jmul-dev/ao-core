@@ -6,19 +6,10 @@ type Mutation {
     updateSettings(inputs: SettingsInputs): Settings
     submitVideoContent(inputs: VideoContentSubmissionInputs): VideoContent
     stakeContent(inputs: StakeContentInputs): IContent
-    contentPurchased(inputs: contentPurchaseInputs): IContent
-    contentPurchaseTransaction(inputs: ContentPurchaseTransactionInputs): IContent
-    contentRequest(id: ID!): IContent    
+    contentRequest(id: ID!): IContent
+    contentPurchaseTransaction(inputs: ContentPurchaseTransactionInputs): IContent        
     contentUploadStakeTransaction(inputs: ContentUploadStakeTransactionInputs): IContent
-    contentDecryptionKey(inputs: contentDecryptionKeyInputs): IContent
     contentBecomeHostTransaction(inputs: ContentHostTransactionInputs): IContent
-    contentHosted(inputs: ContentHostedInputs): IContent
-
-}
-
-input ContentHostedInputs {
-    contentId: String
-    stakeId: String
 }
 
 input ContentHostTransactionInputs {
@@ -29,17 +20,6 @@ input ContentHostTransactionInputs {
 input ContentUploadStakeTransactionInputs {
     transactionHash: String
     contentId: String
-}
-
-input contentDecryptionKeyInputs {
-    contentId: String
-    decryptionKey: String
-}
-
-input contentPurchaseInputs {
-    contentId: String
-    purchaseId: String
-    hostId: String
 }
 
 input StakeContentInputs {

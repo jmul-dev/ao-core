@@ -7,9 +7,9 @@ import AOContent from '../../models/AOContent';
 export default (obj: any, args: any, context: IGraphqlResolverContext, info: any) => {
     return new Promise((resolve, reject) => {
         const contentQueryParams: AODB_UserContentGet_Data = {
-            userId: obj.id,
+            userId: obj.ethAddress,
             query: {
-                creatorId: obj.id
+                creatorId: obj.ethAddress
             }
         }
         context.router.send('/db/user/content/get', contentQueryParams).then((response: IAORouterMessage) => {

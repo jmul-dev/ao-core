@@ -11,10 +11,10 @@ interface ILocalNode_Hosted_Content_Args {
 export default (obj: any, args: ILocalNode_Hosted_Content_Args, context: IGraphqlResolverContext, info: any) => {
     return new Promise((resolve, reject) => {
         let contentQueryParams: AODB_UserContentGet_Data = {
-            userId: obj.id,
+            userId: obj.ethAddress,
             query: {
                 creatorId: {
-                    $ne: obj.id
+                    $ne: obj.ethAddress
                 },
                 state: args.incomplete ? {
                     $in: getListOfContentIncompleteStates()

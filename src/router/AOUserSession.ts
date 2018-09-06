@@ -4,9 +4,9 @@ import path from 'path';
 import AOContent, { AOContentState } from "../models/AOContent";
 import { AODat_Create_Data, AODat_ResumeSingle_Data } from '../modules/dat/dat';
 import { AODB_UserContentGet_Data, AODB_UserContentUpdate_Data, AODB_UserInsert_Data } from "../modules/db/db";
-import { BuyContentEvent, IAOEth_BuyContentEvent_Data } from "../modules/eth/eth";
+import { BuyContentEvent, IAOEth_BuyContentEvent_Data, HostContentEvent } from "../modules/eth/eth";
 import { IAOFS_DecryptCheck_Data, IAOFS_Mkdir_Data, IAOFS_Move_Data, IAOFS_Reencrypt_Data, IAOFS_Unlink_Data } from "../modules/fs/fs";
-import { AOP2P_IndexDataRow, AOP2P_Watch_AND_Get_IndexData_Data, AOP2P_Write_Decryption_Key_Data } from "../modules/p2p/p2p";
+import { AOP2P_IndexDataRow, AOP2P_Watch_AND_Get_IndexData_Data, AOP2P_Write_Decryption_Key_Data, AOP2P_Add_Discovery_Data } from "../modules/p2p/p2p";
 import { IAORouterMessage } from "./AORouter";
 import { AORouterInterface, IAORouterRequest } from "./AORouterInterface";
 const debug = Debug('ao:userSession');
@@ -18,15 +18,29 @@ export interface Identity {
     address: string;
 }
 
+export interface IAOUser_Signature_Data {
+    message: string;
+    privateKey?: string;
+}
+
 export default class AOUserSession {
     private router: AORouterInterface;
 
     public ethAddress: string;
+
     private isListeningForIncomingContent: boolean = false;
     private identity: Identity;
 
     constructor(router: AORouterInterface) {
         this.router = router;
+    }
+
+    public get id() {
+        return this.identity ? this.identity.address : null
+    }
+
+    public get publicKey() {
+        return this.identity ? this.identity.publicKey : null
     }
 
     public register(ethAddress: string): Promise<{ ethAddress: string }> {
@@ -134,10 +148,10 @@ export default class AOUserSession {
                 // This state is pending user stake/becomeHost
                 break;
             case AOContentState.STAKING:
-                // TODO
+                this._listenForContentStakingReceipt(content)
                 break;
             case AOContentState.STAKED:
-                // TODO
+                this._handleContentStaked(content)
                 break;
             case AOContentState.DISCOVERABLE:
                 // Content has been hosted and is discoverable, listen for purchases
@@ -169,7 +183,7 @@ export default class AOUserSession {
         const contentQuery: AODB_UserContentGet_Data = {
             query: { contentHostId: buyContentEvent.contentHostId }
         }
-        this.router.send('/db/user/content/get', contentQuery).then((response: IAORouterMessage) => {
+        this.router.send('/db/user/content/get', contentQuery).then(async (response: IAORouterMessage) => {
             if (!response.data || response.data.length !== 1) {
                 debug(`Attempt to handle incoming purchase but did not find matching content in user db:`, buyContentEvent)
                 return;
@@ -179,11 +193,15 @@ export default class AOUserSession {
             // (ie: wrote decryption key to discovery already)
 
             // 3. TODO: generate the encryption key according to spec
+            const encryptedKey = await EthCrypto.encryptWithPublicKey(this.identity.publicKey, userContent.decryptionKey)
+            const encryptedDecryptionKey = EthCrypto.cipher.stringify(encryptedKey)
+            const encryptedKeySignature = this.signMessage(encryptedDecryptionKey)
+            // 4. Handoff to discovery
             const sendDecryptionKeyMessage: AOP2P_Write_Decryption_Key_Data = {
                 contentId: userContent.id,
-                ethAddress: buyContentEvent.buyer,
-                publicKey: buyContentEvent.publicKey,
-                privateKey: this.identity.privateKey
+                buyerEthAddress: buyContentEvent.buyer,
+                encryptedDecryptionKey,
+                encryptedKeySignature
             }
             this.router.send('/p2p/soldKey', sendDecryptionKeyMessage).then((response: IAORouterMessage) => {
                 if (response.data && response.data.success) {
@@ -348,7 +366,7 @@ export default class AOUserSession {
      * 
      * @param {AOContent} content
      */
-    private _handleContentVerified(content: AOContent) {        
+    private _handleContentVerified(content: AOContent) {
         // 1. Get the decryption key again
         this.decryptString(content.receivedIndexData.decryptionKey).then((decryptionKey: string) => {
             // 2. New directory for data to be re-encrypted (tmp path)
@@ -376,7 +394,7 @@ export default class AOUserSession {
                         cleanupTmpContent()
                         return null;
                     }
-                    if ( !content.baseChallenge ) {
+                    if (!content.baseChallenge) {
                         // Sanity check
                         debug(`Attempting to sign the baseChallenge for content, baseChallenge does not exist!`)
                         cleanupTmpContent()
@@ -461,6 +479,60 @@ export default class AOUserSession {
     }
 
     /**
+     * Listen for the staking receipt. We need to differentiate between stakeContent (user upload)
+     * and becomeHost (user purchase).
+     * 
+     * content.state ==== STAKING
+     * 
+     * @param {AOContent} content
+     */
+    private _listenForContentStakingReceipt(content: AOContent) {
+        if (!content.transactions || (!content.transactions.stakeTx && !content.transactions.hostTx)) {
+            debug(`Warning: calling _listenForContentStakingReceipt without a stakeTx or hostTx`)
+            return null
+        }
+        let transactionHash = content.transactions.stakeTx || content.transactions.hostTx
+        const isStake = transactionHash === content.transactions.stakeTx
+        let txEventRoute = isStake ? '/eth/tx/StakeContent' : '/eth/tx/HostContent'
+        // 1. Listen for tx status
+        this.router.send(txEventRoute, { transactionHash }).then((response: IAORouterMessage) => {
+            let contentUpdateQuery: AODB_UserContentUpdate_Data = {
+                id: content.id,
+                update: {}
+            }
+            // 2. Update the Content State based on status
+            if (response.data.status) {
+                // 2a. Stake succesfull
+                const hostContentEvent: HostContentEvent = response.data.hostContentEvent
+                contentUpdateQuery.update = {
+                    $set: {
+                        "state": AOContentState.STAKED,
+                        "contentHostId": hostContentEvent.contentHostId,
+                        "stakeId": hostContentEvent.stakeId,
+                    }
+                }
+            } else {
+                // 2b. Failed to stake! Roll back to previous state
+                contentUpdateQuery.update = {
+                    $set: {
+                        "state": AOContentState.DAT_INITIALIZED,
+                    }
+                }
+            }
+            this.router.send('/db/user/content/update', contentUpdateQuery).then((contentUpdateResponse: IAORouterMessage) => {
+                const updatedContent: AOContent = AOContent.fromObject(contentUpdateResponse.data)
+                // Handoff to next state handler
+                this.processContent(updatedContent)
+            }).catch(debug)
+        }).catch(error => {
+            debug(error)
+            // NOTE: failed to get tx status. I dont think it makes sense to roll content state
+            // back (as the tx could still be vaild). For now let's just leave in limbo, but might
+            // want to check again.
+        })
+    }
+
+    /**
      * Content is ready to be broadcasted to discovery
      * 
      * content.state === STAKED
@@ -468,7 +540,47 @@ export default class AOUserSession {
      * @param {AOContent} content 
      */
     private _handleContentStaked(content: AOContent) {
-        // TODO
+        // 1. Add new discovery
+        const p2pAddDiscoveryData: AOP2P_Add_Discovery_Data = {
+            contentType: content.contentType,
+            fileDatKey: content.fileDatKey,
+            metaDatKey: content.metadataDatKey,
+            ethAddress: this.ethAddress, // Current user's ethAddress
+            metaData: content, // TODO: We should take shit out?
+            indexData: {} 
+        }
+        this.router.send('/p2p/addDiscovery', p2pAddDiscoveryData).then((response: IAORouterMessage) => {
+            if (response.data.success) {
+                // 2. Ensure the dats are resumed (they may already be, but need to make sure)
+                const fileResumeDatData:AODat_ResumeSingle_Data = {
+                    key: p2pAddDiscoveryData.fileDatKey
+                }
+                const metaResumeDatData:AODat_ResumeSingle_Data = {
+                    key: p2pAddDiscoveryData.metaDatKey
+                }
+                let resumeDats = []
+                resumeDats.push( this.router.send('/dat/resumeSingle', fileResumeDatData) )
+                resumeDats.push( this.router.send('/dat/resumeSingle', metaResumeDatData) )
+                Promise.all(resumeDats).then(() => {
+                    // 4. Update the content state (mark as Discoverable)
+                    const contentUpdateQuery: AODB_UserContentUpdate_Data = {
+                        id: content.id,
+                        update: {
+                            $set: {
+                                "state": AOContentState.DISCOVERABLE
+                            }
+                        }
+                    }
+                    this.router.send('/db/user/content/update', contentUpdateQuery).then((contentUpdateResponse: IAORouterMessage) => {
+                        const updatedContent: AOContent = AOContent.fromObject(contentUpdateResponse.data)
+                        // Handoff to next state handler
+                        this.processContent(updatedContent)
+                    }).catch(debug)
+                }).catch(debug)
+            } else {
+                debug(`Error, failed to add content to discovery`)
+            }
+        }).catch(debug)
     }
 
     /**
@@ -507,4 +619,16 @@ export default class AOUserSession {
         })
     }
 
+    /**
+     * Sign a message with the private key
+     * 
+     * @param messageToSign
+     * @param privateKey?
+     */
+    public signMessage(messageToSign: string, privateKey?: string) {
+        let privateKeyUsed = privateKey ? privateKey : this.identity.privateKey
+        const messageHash = EthCrypto.hash.keccak256(messageToSign)
+        const signature = EthCrypto.sign(privateKeyUsed, messageHash)
+        return signature
+    }
 }
