@@ -5,19 +5,19 @@ import { IAORouterMessage } from "../../router/AORouter";
 import AORouterInterface, { AORouterArgs, IAORouterRequest } from "../../router/AORouterInterface";
 import { AODB_UserContentGet_Data } from "../db/db";
 import EthCrypto from 'eth-crypto'
+import AOContent from '../../models/AOContent';
 const debug = Debug('ao:p2p');
 
 export interface AOP2P_Args {
     storageLocation: string;
 }
 
-
 export interface AOP2P_New_Content_Data {
     contentType: string;
     datKey: string;
     ethAddress: string;
     metaData: Object;
-    indexData: Object;//TODO: Define this better
+    indexData: Object;
     signature: string;
 }
 
@@ -43,7 +43,7 @@ export interface AOP2P_Add_Discovery_Data {
 }
 
 export interface AOP2P_Write_Decryption_Key_Data {
-    contentId: string;
+    content: AOContent;
     ethAddress: string; //Buyer Eth Address
     publicKey: string; //Buyer Public Key
     privateKey: string; //Seller Private Key
@@ -185,7 +185,6 @@ export default class AOP2P extends AORouterInterface {
         allInserts.push( this.hyperdb.insert(selfRegistrationPrefix + registrationData, requestData.indexData) )
         allInserts.push( this.hyperdb.insert(appRegistrationPrefix + registrationData, requestData.indexData) )
 
-
         //On/Off/Signatures
         allInserts.push(this.hyperdb.insert(selfRegistrationPrefix + registrationData + '/on/signature', requestData.signature))
         allInserts.push(this.hyperdb.insert(appRegistrationPrefix + registrationData + '/on/signature', requestData.signature))
@@ -256,35 +255,28 @@ export default class AOP2P extends AORouterInterface {
     }
 
     private _handleSellDecryptionKey(request: IAORouterRequest) {
-        const { contentId, ethAddress, privateKey, publicKey }: AOP2P_Write_Decryption_Key_Data = request.data
-
-        // 1. Get the content for this piece being sold
-        const userContentQuery: AODB_UserContentGet_Data = {
-            query: { id: contentId }
+        const { content, ethAddress, privateKey, publicKey }: AOP2P_Write_Decryption_Key_Data = request.data
+        if (!content) {
+            return request.reject(new Error('No content returned'))
         }
-        this.router.send('/db/user/content/get', userContentQuery).then((contentGetResponse: IAORouterMessage) => {
-            const content = contentGetResponse.data ? contentGetResponse.data[0] : undefined
-            if (!content) {
-                return request.reject(new Error('No content returned'))
-            }
-            // 2. Let's get the current indexData for this
-            const contentPrefixRoute = this.dbPrefix  + content.contentType + '/' + content.metadataDatKey + '/nodes/' 
-            const indexDataRoute =  request.ethAddress + '/' + content.fileDatKey + '/indexData';
-            this.hyperdb.query(contentPrefixRoute + indexDataRoute).then((indexData)=> {
-                this.addIndexData({
-                    indexData: indexData,
-                    ethAddress: ethAddress, //buyer's address
-                    publicKey: publicKey,   //buyer's public key 
-                    privateKey: privateKey, //your privatekey as the seller
-                    decryptionKey: content.decryptionKey
-                }).then((newIndexData) => {
-                    // 3. Let's write this thing into hyperdb
-                    this.hyperdb.insert(contentPrefixRoute + indexDataRoute, newIndexData).then(() => {
-                        request.respond({ success: true })
-                    }).catch(request.reject)
+        // 1. Let's get the current indexData for this
+        const contentPrefixRoute = this.dbPrefix  + content.contentType + '/' + content.metadataDatKey + '/nodes/' 
+        const indexDataRoute =  request.ethAddress + '/' + content.fileDatKey + '/indexData';
+        this.hyperdb.query(contentPrefixRoute + indexDataRoute).then((indexData)=> {
+            this.addIndexData({
+                indexData: indexData,
+                ethAddress: ethAddress, //buyer's address
+                publicKey: publicKey,   //buyer's public key 
+                privateKey: privateKey, //your privatekey as the seller
+                decryptionKey: content.decryptionKey
+            }).then((newIndexData) => {
+                // 2. Let's write this thing into hyperdb
+                this.hyperdb.insert(contentPrefixRoute + indexDataRoute, newIndexData).then(() => {
+                    request.respond({ success: true })
                 }).catch(request.reject)
             }).catch(request.reject)
-        })
+        }).catch(request.reject)
+        
     }
 
     private addIndexData(indexDataRequest: AddIndexDataInterface) {

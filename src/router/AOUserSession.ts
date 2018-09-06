@@ -180,7 +180,7 @@ export default class AOUserSession {
 
             // 3. TODO: generate the encryption key according to spec
             const sendDecryptionKeyMessage: AOP2P_Write_Decryption_Key_Data = {
-                contentId: userContent.id,
+                content: userContent,
                 ethAddress: buyContentEvent.buyer,
                 publicKey: buyContentEvent.publicKey,
                 privateKey: this.identity.privateKey
