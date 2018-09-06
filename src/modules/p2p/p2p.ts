@@ -263,7 +263,8 @@ export default class AOP2P extends AORouterInterface {
             query: { id: contentId }
         }
         this.router.send('/db/user/content/get', userContentQuery).then((contentGetResponse: IAORouterMessage) => {
-            const content:AOContent = contentGetResponse.data ? contentGetResponse.data[0] : undefined
+            const contentObject = contentGetResponse.data ? contentGetResponse.data[0] : undefined
+            let content:AOContent = AOContent.fromObject(contentObject)
             if (!content) {
                 return request.reject(new Error('No content returned'))
             }

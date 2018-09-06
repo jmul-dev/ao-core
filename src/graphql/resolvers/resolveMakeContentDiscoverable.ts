@@ -33,14 +33,14 @@ export default (obj: any, args: IMakeContentDiscoverable_Args, context: IGraphql
                 reject(new Error(`Failed to update content stakeId`))
                 return;
             }
-            const content:AOContent = response.data[0]
+            const content:AOContent = AOContent.fromObject(response.data[0])
             // 2. Add new discovery
             const p2pAddDiscoveryData: AOP2P_Add_Discovery_Data = {
                 contentType: content.contentType,
                 fileDatKey: content.fileDatKey, //TODO: We used to use newFileDatKey as a way to see if this is a re-encrypted thing
                 metaDatKey: content.metadataDatKey,
                 ethAddress: response.ethAddress, // My Eth Address
-                metaData: content,//We should take shit out?
+                metaData: content.toMetadataJson(),
                 indexData: {} 
             }
             context.router.send('/p2p/addDiscovery', p2pAddDiscoveryData).then((response: IAORouterMessage) => {

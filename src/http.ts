@@ -147,7 +147,7 @@ export default class Http {
                     this.router.send('/db/user/content/get', userContentData)
                         .then((doc) => {
                             if (doc.data.length) {
-                                let docData: AOContent = doc.data[0]
+                                let docData: AOContent = AOContent.fromObject(doc.data[0])
                                 let total = docData.fileSize;
                                 let streamOptions: Object = {}
                                 let head200 = {

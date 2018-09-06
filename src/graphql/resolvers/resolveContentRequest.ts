@@ -20,11 +20,11 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                 return;
             }
             // 2. Modify the content to account for it entering user database
-            let clonedContent:AOContent = {
+            let clonedContent:AOContent = AOContent.fromObject({
                 ...response.data[0],
                 nodeId: context.userSession.ethAddress,  // AORouter attaches current user address
                 state: AOContentState.DOWNLOADING,
-            }
+            })
             // 3. Trigger dat download (before inserting content into user db in case dat is not reachable)
             // TODO: Notice that below fileDatKey represents only the original fileDatKey supplied at the time of content creation.  This may not represent the file actually being passed.
             context.router.send('/dat/download', {key: clonedContent.fileDatKey}).then((downloadResponse: IAORouterMessage) => {                
@@ -32,7 +32,7 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                     clonedContent.state = 'DOWNLOADED'
                 }
                 // 4. Insert the content into user's content DB
-                context.router.send('/db/user/content/insert', clonedContent).then((insertResponse: IAORouterMessage) => {
+                context.router.send('/db/user/content/insert', clonedContent.toRawJson() ).then((insertResponse: IAORouterMessage) => {
                     resolve(insertResponse.data)
                 }).catch(reject)
             }).catch(error => {
