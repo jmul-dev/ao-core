@@ -40,7 +40,6 @@ export interface AOP2P_Add_Discovery_Data {
     fileDatKey: string;
     metaDatKey: string;
     ethAddress: string;
-    indexData: Object;
 }
 
 export interface AOP2P_Write_Decryption_Key_Data {
@@ -244,10 +243,10 @@ export default class AOP2P extends AORouterInterface {
     }
 
     private _handleAddDiscovery(request:IAORouterRequest) {
-        const {contentType, fileDatKey, ethAddress, metaDatKey, indexData}: AOP2P_Add_Discovery_Data = request.data
+        const {contentType, fileDatKey, ethAddress, metaDatKey}: AOP2P_Add_Discovery_Data = request.data
         const appRegistrationPrefix = this.dbPrefix + contentType + '/' + metaDatKey + '/nodes/'
         const registrationData = ethAddress  + '/' + fileDatKey + '/indexData'
-        this.hyperdb.insert(appRegistrationPrefix + registrationData, indexData)
+        this.hyperdb.insert(appRegistrationPrefix + registrationData, {} )
         .then(() => {
             request.respond({success:true})
         })
