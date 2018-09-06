@@ -18,6 +18,11 @@ export interface Identity {
     address: string;
 }
 
+export interface IAOUser_Signature_Data {
+    message: string;
+    privateKey?: string;
+}
+
 export default class AOUserSession {
     private router: AORouterInterface;
 
@@ -169,7 +174,7 @@ export default class AOUserSession {
         const contentQuery: AODB_UserContentGet_Data = {
             query: { contentHostId: buyContentEvent.contentHostId }
         }
-        this.router.send('/db/user/content/get', contentQuery).then((response: IAORouterMessage) => {
+        this.router.send('/db/user/content/get', contentQuery).then(async (response: IAORouterMessage) => {
             if (!response.data || response.data.length !== 1) {
                 debug(`Attempt to handle incoming purchase but did not find matching content in user db:`, buyContentEvent)
                 return;
@@ -179,11 +184,15 @@ export default class AOUserSession {
             // (ie: wrote decryption key to discovery already)
 
             // 3. TODO: generate the encryption key according to spec
+            const encryptedKey = await EthCrypto.encryptWithPublicKey(this.identity.publicKey, userContent.decryptionKey)
+            const encryptedDecryptionKey = EthCrypto.cipher.stringify(encryptedKey)
+            const encryptedKeySignature = this.signMessage(encryptedDecryptionKey)
+            // 4. Handoff to discovery
             const sendDecryptionKeyMessage: AOP2P_Write_Decryption_Key_Data = {
                 content: userContent,
-                ethAddress: buyContentEvent.buyer,
-                publicKey: buyContentEvent.publicKey,
-                privateKey: this.identity.privateKey
+                buyerEthAddress: buyContentEvent.buyer,
+                encryptedDecryptionKey,
+                encryptedKeySignature
             }
             this.router.send('/p2p/soldKey', sendDecryptionKeyMessage).then((response: IAORouterMessage) => {
                 if (response.data && response.data.success) {
@@ -599,4 +608,16 @@ export default class AOUserSession {
         })
     }
 
+    /**
+     * Sign a message with the private key
+     * 
+     * @param messageToSign
+     * @param privateKey?
+     */
+    public signMessage(messageToSign: string, privateKey?: string) {
+        let privateKeyUsed = privateKey ? privateKey : this.identity.privateKey
+        const messageHash = EthCrypto.hash.keccak256(messageToSign)
+        const signature = EthCrypto.sign(privateKeyUsed, messageHash)
+        return signature
+    }
 }

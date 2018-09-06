@@ -106,6 +106,7 @@ export default abstract class AOContent {
     }
     // variables not exposed to graphql
     public receivedIndexData: AOP2P_IndexDataRow
+    public decryptionKey: string
     
 
     static fromObject( contentObject ) {

@@ -4,8 +4,8 @@ import { AO_Hyper_Options } from "../../router/AOHyperDB";
 import { IAORouterMessage } from "../../router/AORouter";
 import AORouterInterface, { AORouterArgs, IAORouterRequest } from "../../router/AORouterInterface";
 import { AODB_UserContentGet_Data } from "../db/db";
-import EthCrypto from 'eth-crypto'
 import AOContent from '../../models/AOContent';
+import { IAOUser_Signature_Data } from '../../router/AOUserSession';
 const debug = Debug('ao:p2p');
 
 export interface AOP2P_Args {
@@ -14,7 +14,8 @@ export interface AOP2P_Args {
 
 export interface AOP2P_New_Content_Data {
     contentType: string;
-    datKey: string;
+    metaDatKey: string;
+    fileDatKey: string;
     ethAddress: string;
     metaData: Object;
     indexData: Object;
@@ -44,9 +45,10 @@ export interface AOP2P_Add_Discovery_Data {
 
 export interface AOP2P_Write_Decryption_Key_Data {
     content: AOContent;
-    ethAddress: string; //Buyer Eth Address
-    publicKey: string; //Buyer Public Key
-    privateKey: string; //Seller Private Key
+    buyerEthAddress: string;
+    sellerEthAddress?: string; //mostly for testing.
+    encryptedDecryptionKey: string;
+    encryptedKeySignature: string;
 }
 
 //Single indexData
@@ -58,9 +60,8 @@ export interface AOP2P_IndexDataRow {
 interface AddIndexDataInterface {
     indexData: object;
     ethAddress: string;
-    privateKey: string;
     publicKey: string;
-    decryptionKey: string;
+    encryptedDecryptionKey: string;
 }
 
 
@@ -170,24 +171,24 @@ export default class AOP2P extends AORouterInterface {
     }
 
     private _handleNewContent(request: IAORouterRequest) {
-        const requestData: AOP2P_New_Content_Data = request.data
+        const {contentType, metaDatKey, fileDatKey, ethAddress, metaData, indexData, signature}: AOP2P_New_Content_Data = request.data
         let allInserts = []
 
         //Content Signature/Meta Data
-        const contentRegistrationKey = this.dbPrefix + requestData.contentType + '/' + requestData.ethAddress + '/' + requestData.datKey
-        allInserts.push(this.hyperdb.insert(contentRegistrationKey + '/signature', requestData.signature))
-        allInserts.push(this.hyperdb.insert(contentRegistrationKey + '/metaData', requestData.metaData))
+        const contentRegistrationKey = this.dbPrefix + contentType + '/' + ethAddress + '/' + metaDatKey
+        allInserts.push( this.hyperdb.insert(contentRegistrationKey + '/signature', signature) )
+        allInserts.push( this.hyperdb.insert(contentRegistrationKey + '/metaData', metaData) )
 
         //IndexData
-        const registrationData = requestData.ethAddress + '/' + requestData.datKey + '/indexData'
-        const selfRegistrationPrefix = requestData.ethAddress + '/' + this.dbPrefix + requestData.contentType + '/nodes/'
-        const appRegistrationPrefix = this.dbPrefix + requestData.contentType + '/' + requestData.datKey + '/nodes/'
-        allInserts.push( this.hyperdb.insert(selfRegistrationPrefix + registrationData, requestData.indexData) )
-        allInserts.push( this.hyperdb.insert(appRegistrationPrefix + registrationData, requestData.indexData) )
+        const registrationData = ethAddress + '/' + fileDatKey + '/indexData'
+        const selfRegistrationPrefix = ethAddress + '/' + this.dbPrefix + contentType + '/nodes/'
+        const appRegistrationPrefix = this.dbPrefix + contentType + '/' + metaDatKey + '/nodes/'
+        allInserts.push( this.hyperdb.insert(selfRegistrationPrefix + registrationData, indexData) )
+        allInserts.push( this.hyperdb.insert(appRegistrationPrefix + registrationData, indexData) )
 
         //On/Off/Signatures
-        allInserts.push(this.hyperdb.insert(selfRegistrationPrefix + registrationData + '/on/signature', requestData.signature))
-        allInserts.push(this.hyperdb.insert(appRegistrationPrefix + registrationData + '/on/signature', requestData.signature))
+        allInserts.push( this.hyperdb.insert(selfRegistrationPrefix + registrationData + '/on/signature', signature) )
+        allInserts.push( this.hyperdb.insert(appRegistrationPrefix + registrationData + '/on/signature', signature) )
 
         Promise.all(allInserts).then(() => {
             request.respond({ success: true })
@@ -226,18 +227,28 @@ export default class AOP2P extends AORouterInterface {
 
     private _handleWatchAndGetIndexData(request: IAORouterRequest) {
         const {key, ethAddress}: AOP2P_Watch_AND_Get_IndexData_Data = request.data
-        this.hyperdb.watch(key).then(() => {
-            this.hyperdb.query(key).then((indexData) => {
-                    if(!indexData[ethAddress]) {
-                        //Self call if there isn't a record for our own indexData
-                        setTimeout(() => {
-                            this._handleWatchAndGetIndexData(request)
-                        }, 1000);
-                    } else {
-                        let indexDataRow: AOP2P_IndexDataRow = indexData[ethAddress]
-                        request.respond({indexDataRow: indexDataRow})
-                    }
-            }).catch(request.reject)
+        this.hyperdb.query(key).then((indexDataString: string) => {
+            let indexData = JSON.parse(indexDataString)
+            if(!indexData[ethAddress]) {
+                this.hyperdb.watch(key).then(() => {
+                    this.hyperdb.query(key).then((indexDataString: string) => {
+                        let indexData = JSON.parse(indexDataString)
+                        if(!indexData[ethAddress]) {
+                            //Self call if there isn't a record for our own indexData
+                            setTimeout(() => {
+                                this._handleWatchAndGetIndexData(request)
+                            }, 500);
+                        } else {
+                            let indexDataRow: AOP2P_IndexDataRow = indexData[ethAddress]
+                            request.respond({indexDataRow: indexDataRow})
+                        }
+                    }).catch(request.reject)
+                }).catch( request.reject )
+            } else {
+                let indexDataRow: AOP2P_IndexDataRow = indexData[ethAddress]
+                request.respond({indexDataRow: indexDataRow})
+            }
+
         }).catch( request.reject )
     }
 
@@ -255,55 +266,32 @@ export default class AOP2P extends AORouterInterface {
     }
 
     private _handleSellDecryptionKey(request: IAORouterRequest) {
-        const { content, ethAddress, privateKey, publicKey }: AOP2P_Write_Decryption_Key_Data = request.data
+        let { content, buyerEthAddress, sellerEthAddress, encryptedDecryptionKey, encryptedKeySignature }: AOP2P_Write_Decryption_Key_Data = request.data
         if (!content) {
-            return request.reject(new Error('No content returned'))
+            return request.reject(new Error('No content'))
+        }
+        if(request.ethAddress) {
+            sellerEthAddress = request.ethAddress
         }
         // 1. Let's get the current indexData for this
         const contentPrefixRoute = this.dbPrefix  + content.contentType + '/' + content.metadataDatKey + '/nodes/' 
-        const indexDataRoute =  request.ethAddress + '/' + content.fileDatKey + '/indexData';
-        this.hyperdb.query(contentPrefixRoute + indexDataRoute).then((indexData)=> {
-            this.addIndexData({
-                indexData: indexData,
-                ethAddress: ethAddress, //buyer's address
-                publicKey: publicKey,   //buyer's public key 
-                privateKey: privateKey, //your privatekey as the seller
-                decryptionKey: content.decryptionKey
-            }).then((newIndexData) => {
-                // 2. Let's write this thing into hyperdb
-                this.hyperdb.insert(contentPrefixRoute + indexDataRoute, newIndexData).then(() => {
-                    request.respond({ success: true })
-                }).catch(request.reject)
-            }).catch(request.reject)
-        }).catch(request.reject)
+        const indexDataRoute =  sellerEthAddress + '/' + content.fileDatKey + '/indexData';
         
-    }
-
-    private addIndexData(indexDataRequest: AddIndexDataInterface) {
-        return new Promise( async (resolve, reject) => {
-            const { indexData, ethAddress, privateKey, publicKey, decryptionKey } = indexDataRequest
-
-            // 1. Sign the hash of the decryption key using this node's private key
-            const messageHash = EthCrypto.hash.keccak256(decryptionKey)
-            const signature = EthCrypto.sign(privateKey, messageHash)
-            
-            // 2. Encrypt the decryption key using their public key
-            let encryptedObject: object = {}
-            try {
-                encryptedObject = await EthCrypto.encryptWithPublicKey(publicKey, decryptionKey)
-            } catch(e) {
-                return reject(e)
+        this.hyperdb.query(contentPrefixRoute + indexDataRoute).then((indexDataString: string)=> {
+            let indexData = JSON.parse(indexDataString)
+            // 2. Add row to indexData
+            indexData[buyerEthAddress] = {
+                decryptionKey: encryptedDecryptionKey, // Encrypted key with publicKey
+                signature: encryptedKeySignature //
             }
-            const encryptedDecryptionKey:string = EthCrypto.cipher.stringify(encryptedObject)
-
-            // 3. Add/overwrite the record for specific ethaddress and resolve the result
-            indexData[ethAddress] = {
-                decryptKey: encryptedDecryptionKey, // Encrypted key with publicKey
-                signature: signature //
-            }
-            resolve(indexData)
+            // 3. Let's write this thing into hyperdb
+            this.hyperdb.insert(contentPrefixRoute + indexDataRoute, indexData).then(() => {
+                request.respond({ success: true })
+            }).catch(e => {
+                request.reject(e)
+            })
+        }).catch(e => {
+            request.reject(e)
         })
     }
-
-
 } 
