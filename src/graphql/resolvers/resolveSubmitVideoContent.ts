@@ -95,7 +95,7 @@ export default (obj: any, args: any, context: IGraphqlResolverContext, info: any
                     }
                     // NOTE: anything that should be omitted from the public metadata dat file should 
                     // be added below in `userContentJson`
-                    const contentJsonObject = {
+                    let contentJson: AOContent = AOContent.fromObject({
                         id: contentDatKey,
                         nodeId: ethAddress,
 
@@ -130,9 +130,7 @@ export default (obj: any, args: any, context: IGraphqlResolverContext, info: any
                         state: AOContentState.ENCRYPTED,
                         baseChallenge: EthCrypto.hash.keccak256(checksum),
                         encChallenge: EthCrypto.hash.keccak256(encryptedChecksum),
-                    }
-                    let contentJson = AOContent.fromObject(contentJsonObject)
-                    contentJson.toMetadataJson()
+                    })
 
                     const storagePromises: Array<Promise<any>> = []
                     const contentWriteData: IAOFS_Write_Data = {

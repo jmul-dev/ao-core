@@ -13,7 +13,11 @@ export default (obj: any, args: any, context: IGraphqlResolverContext, info: any
             }
         }
         context.router.send('/db/user/content/get', contentQueryParams).then((response: IAORouterMessage) => {
-            let userContent:Array<AOContent> = [].concat(response.data);  // ensures array in case response is single item            
+            let userContent: Array<AOContent> = new Array();
+            // ensures array in case response is single item
+            [].concat(response.data).forEach(content => {
+                userContent.push(AOContent.fromObject(content))
+            });
             resolve(userContent)
         }).catch(error => {
             reject(error)
