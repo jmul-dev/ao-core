@@ -71,6 +71,8 @@ export default class AOP2P extends AORouterInterface {
 
     private storageLocation: string
 
+    private contentWatchKey: string
+
     constructor(args: AOP2P_Args) {
         super(routerArgs)
         this.storageLocation = args.storageLocation
@@ -117,82 +119,90 @@ export default class AOP2P extends AORouterInterface {
 
     //Discovery from watching the P2P networks.
     private _discovery() {
-        const contentWatchKey = this.dbPrefix + 'VOD/'; // /AOSpace/VOD/*
-        this.hyperdb.watch(contentWatchKey)
-            .then(() => {
-                let contentCompare = []
-                contentCompare.push(this.hyperdb.list(contentWatchKey))
-                contentCompare.push(this.router.send('/db/network/content/get', { query: {} }))
+        this.contentWatchKey = this.dbPrefix + 'VOD/'; // /AOSpace/VOD/*
+        this._initialDiscovery()
+        .then(() => {
+            this.hyperdb.watch(this.contentWatchKey)
+            .then( this._initialDiscovery.bind(this) )
+            .catch(debug)
+        }).catch(debug)
+    }
 
-                Promise.all(contentCompare).then((results) => {
-                    const hyperPreviewList = results[0]
-                    const dbPreviewList = results[1].data
-                    let hyperPreviewKeys = []
-                    let hyperKeyValue = {}
+    private _initialDiscovery() {
+        return new Promise((resolve, reject) => {
+            let contentCompare = []
+            contentCompare.push(this.hyperdb.list(this.contentWatchKey))
+            contentCompare.push(this.router.send('/db/network/content/get', { query: {} }))
 
-                    for (const preview of hyperPreviewList) {
-                        hyperPreviewKeys.push(preview[2])
-                        hyperKeyValue[preview.key] = preview.value //for later use
+            Promise.all(contentCompare).then((results) => {
+                const hyperPreviewList = results[0]
+                const dbPreviewList = results[1].data
+
+                //Find appropriate hyperDB datkeys
+                let hyperPreviewKeys:Array<string> = []
+                for (const preview of hyperPreviewList) {
+                    const newKey = preview[2]
+                    if(newKey.length == 64) {
+                        hyperPreviewKeys.indexOf(newKey) === -1 ? hyperPreviewKeys.push(newKey) : null
                     }
+                }
 
-                    let dbPreviewKeys = []
-                    for (const preview of dbPreviewList) {
-                        dbPreviewKeys.push(preview.key)
+                //Find appropriate existing datkeys
+                let dbPreviewKeys:Array<string> = []
+                for (const preview of dbPreviewList) {
+                    const newKey = preview.key
+                    if(newKey.length == 64) {
+                        dbPreviewKeys.indexOf(newKey) === -1 ? dbPreviewKeys.push(newKey) : null
                     }
-                    let newKeys = hyperPreviewKeys.filter(function (el) {
-                        return dbPreviewKeys.indexOf(el) < 0;
-                    });
+                }
 
-                    if (newKeys.length) {
-                        for (const newKey of newKeys) {
-                            if (newKey.length == 64) {//Just make sure that its a freaken dat key
-                                const networkContentGet: AODB_NetworkContentGet_Data = {
-                                    query: {
-                                        key: newKey
-                                    }
-                                }
-                                this.router.send('/db/network/content/get', networkContentGet).then((contentGetResponse:IAORouterMessage) => {
-                                    if(contentGetResponse.data.length == 0) {
-                                        this.router.send('/dat/download', { key: newKey }).then((downloadResponse: IAORouterMessage) => {
-                                            const readContentJson:IAOFS_Read_Data = {
-                                                readPath: path.join('content', newKey,'content.json')
-                                            }
-                                            this.router.send('/fs/read',readContentJson).then((readResponse: IAORouterMessage)=> {
-                                                const contentJson = JSON.parse(readResponse.data)
-                                                if(contentJson)  {
-                                                    const content:AOContent = AOContent.fromObject(contentJson)
-                                                    this.router.send('/db/network/content/insert', {
-                                                        key: newKey,
-                                                        content: content.toMetadataJson()
-                                                    }).then(() => {
-                                                        debug('Successfully downloaded and recorded ' + newKey)
-                                                    }).catch(debug)//Insert into network DB
-                                                } else {
-                                                    debug('Preview Dat Offline')
-                                                    this.router.send('/db/network/content/insert', {
-                                                        key: newKey
-                                                    }).then(() => {
-                                                        debug('Empty preview dat.  Key inserted for record only')
-                                                    }).catch(debug)//Insert into network DB
-                                                }
-                                            }).catch(e => {
-                                                debug('Preview Dat Offline')
-                                                this.router.send('/db/network/content/insert', {
-                                                    key: newKey
-                                                }).then(() => {
-                                                    debug('No preview dat.  Key inserted for record only')
-                                                }).catch(debug)//Insert into network DB
-                                            })//Read Content File
-                                        }).catch(debug)//Dat Download
-                                    } else {
-                                        debug('Discovered pre-existing content')
-                                    }
-                                }).catch(debug)//See if the data exists already or not.
+                //Run a comparater
+                const newKeys = hyperPreviewKeys.filter((el) => {
+                    return dbPreviewKeys.indexOf(el) < 0;
+                });
+
+                if (newKeys.length) {
+                    for (const newKey of newKeys) {
+                        this.router.send('/dat/download', { key: newKey }).then((downloadResponse: IAORouterMessage) => {
+                            const readContentJson:IAOFS_Read_Data = {
+                                readPath: path.join('content', newKey,'content.json')
                             }
-                        }
+                            this.router.send('/fs/read',readContentJson).then((readResponse: IAORouterMessage)=> {
+                                const contentJson = JSON.parse(readResponse.data)
+                                if(contentJson)  {
+                                    const content:AOContent = AOContent.fromObject(contentJson)
+                                    this._newKeyDiscoveryInsert(newKey, content).then(resolve).catch(reject)
+                                } else {
+                                    this._newKeyDiscoveryInsert(newKey).then(resolve).catch(reject)
+                                }
+                            }).catch(e => {
+                                this._newKeyDiscoveryInsert(newKey).then(resolve).catch(reject)
+                            })//Read Content File
+                        }).catch(debug)
                     }
-                }).catch(debug)
+                }
             }).catch(debug)
+        })
+    }
+
+    private _newKeyDiscoveryInsert(newKey:string, content?:AOContent) {
+        return new Promise((resolve,reject ) => {
+            let contentInsert = null
+            if( content ) {
+                contentInsert = content.toMetadataJson()
+            }
+            this.router.send('/db/network/content/insert', {
+                key: newKey,
+                content: contentInsert
+            }).then(() => {
+                if(contentInsert) {
+                    debug('Successfully downloaded and recorded ' + newKey)
+                } else {
+                    debug('Empty preview dat.  Key inserted for record only ' + newKey)
+                }
+                resolve()
+            }).catch(reject)//Insert into network DB
+        })
     }
 
     private _handleNewContent(request: IAORouterRequest) {
