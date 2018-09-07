@@ -348,8 +348,8 @@ export default class AORouter extends AORouterCoreProcessInterface {
             debug(`[${entry.name}] process: error`, err.message)
             // TODO: handle err, log or something
         })
-        entryProcess.on('close', (code?: number) => {
-            debug(`[${entry.name}] process: close`)
+        entryProcess.on('exit', (code?: number) => {
+            debug(`[${entry.name}] process: exit`)
             this.removeProcessInstanceFromEntry(entry.name, entryProcess)
             // TODO: cleanup references to this instance, notify anyone if necessary
         })
