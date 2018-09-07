@@ -1,12 +1,11 @@
 import Debug from 'debug';
 import path from 'path';
+import AOContent from '../../models/AOContent';
 import { AO_Hyper_Options } from "../../router/AOHyperDB";
 import { IAORouterMessage } from "../../router/AORouter";
 import AORouterInterface, { AORouterArgs, IAORouterRequest } from "../../router/AORouterInterface";
-import { AODB_UserContentGet_Data } from "../db/db";
-import AOContent from '../../models/AOContent';
-import { IAOUser_Signature_Data } from '../../router/AOUserSession';
 const debug = Debug('ao:p2p');
+
 
 export interface AOP2P_Args {
     storageLocation: string;
@@ -21,7 +20,6 @@ export interface AOP2P_New_Content_Data {
     indexData: Object;
     signature: string;
 }
-
 
 export interface AOP2P_Watch_Key_Data {
     key: string;
@@ -55,13 +53,6 @@ export interface AOP2P_Write_Decryption_Key_Data {
 export interface AOP2P_IndexDataRow {
     signature: string;
     decryptionKey: string;
-}
-
-interface AddIndexDataInterface {
-    indexData: object;
-    ethAddress: string;
-    publicKey: string;
-    encryptedDecryptionKey: string;
 }
 
 
@@ -126,69 +117,69 @@ export default class AOP2P extends AORouterInterface {
     private _discovery() {
         const contentWatchKey = this.dbPrefix + 'VOD/'; // /AOSpace/VOD/*
         this.hyperdb.watch(contentWatchKey)
-        .then( ()=> {
-            let contentCompare = []
-            contentCompare.push( this.hyperdb.list( contentWatchKey ) )
-            contentCompare.push( this.router.send( '/db/network/content/get',{ query: {} } ) )
+            .then(() => {
+                let contentCompare = []
+                contentCompare.push(this.hyperdb.list(contentWatchKey))
+                contentCompare.push(this.router.send('/db/network/content/get', { query: {} }))
 
-            Promise.all(contentCompare).then((results) => {
-                const hyperPreviewList = results[0]
-                const dbPreviewList = results[1].data
-                let hyperPreviewKeys = []
-                let hyperKeyValue = {}
+                Promise.all(contentCompare).then((results) => {
+                    const hyperPreviewList = results[0]
+                    const dbPreviewList = results[1].data
+                    let hyperPreviewKeys = []
+                    let hyperKeyValue = {}
 
-                for (const preview of hyperPreviewList) {
-                    hyperPreviewKeys.push(preview[2])
-                    hyperKeyValue[preview.key] = preview.value //for later use
-                }
-                
-                let dbPreviewKeys = []
-                for (const preview of dbPreviewList) {
-                    dbPreviewKeys.push(preview.key)
-                }
-                let newKeys = hyperPreviewKeys.filter( function( el ) {
-                    return dbPreviewKeys.indexOf( el ) < 0;
-                });
-                
-                if(newKeys.length) {
-                    for (const newKey of newKeys) {
-                        if(newKey.length == 64) {//Just make sure that its a freaken dat key
-                            this.router.send('/dat/download', { key: newKey }).then((downloadResponse:IAORouterMessage)=> {
-                                this.router.send('/db/network/content/insert',{
-                                    key: newKey,
-                                    value: hyperKeyValue[newKey]
-                                }).then(() => {
-                                    debug('Successfully downloaded and recorded ' + newKey)
-                                }).catch(debug)
-                            }).catch((err) => {
-                                debug(err)
-                            })
+                    for (const preview of hyperPreviewList) {
+                        hyperPreviewKeys.push(preview[2])
+                        hyperKeyValue[preview.key] = preview.value //for later use
+                    }
+
+                    let dbPreviewKeys = []
+                    for (const preview of dbPreviewList) {
+                        dbPreviewKeys.push(preview.key)
+                    }
+                    let newKeys = hyperPreviewKeys.filter(function (el) {
+                        return dbPreviewKeys.indexOf(el) < 0;
+                    });
+
+                    if (newKeys.length) {
+                        for (const newKey of newKeys) {
+                            if (newKey.length == 64) {//Just make sure that its a freaken dat key
+                                this.router.send('/dat/download', { key: newKey }).then((downloadResponse: IAORouterMessage) => {
+                                    this.router.send('/db/network/content/insert', {
+                                        key: newKey,
+                                        value: hyperKeyValue[newKey]
+                                    }).then(() => {
+                                        debug('Successfully downloaded and recorded ' + newKey)
+                                    }).catch(debug)
+                                }).catch((err) => {
+                                    debug(err)
+                                })
+                            }
                         }
                     }
-                }
+                }).catch(debug)
             }).catch(debug)
-        }).catch(debug)
     }
 
     private _handleNewContent(request: IAORouterRequest) {
-        const {contentType, metaDatKey, fileDatKey, ethAddress, metaData, indexData, signature}: AOP2P_New_Content_Data = request.data
+        const { contentType, metaDatKey, fileDatKey, ethAddress, metaData, indexData, signature }: AOP2P_New_Content_Data = request.data
         let allInserts = []
 
         //Content Signature/Meta Data
         const contentRegistrationKey = this.dbPrefix + contentType + '/' + ethAddress + '/' + metaDatKey
-        allInserts.push( this.hyperdb.insert(contentRegistrationKey + '/signature', signature) )
-        allInserts.push( this.hyperdb.insert(contentRegistrationKey + '/metaData', metaData) )
+        allInserts.push(this.hyperdb.insert(contentRegistrationKey + '/signature', signature))
+        allInserts.push(this.hyperdb.insert(contentRegistrationKey + '/metaData', metaData))
 
         //IndexData
         const registrationData = ethAddress + '/' + fileDatKey + '/indexData'
         const selfRegistrationPrefix = ethAddress + '/' + this.dbPrefix + contentType + '/nodes/'
         const appRegistrationPrefix = this.dbPrefix + contentType + '/' + metaDatKey + '/nodes/'
-        allInserts.push( this.hyperdb.insert(selfRegistrationPrefix + registrationData, indexData) )
-        allInserts.push( this.hyperdb.insert(appRegistrationPrefix + registrationData, indexData) )
+        allInserts.push(this.hyperdb.insert(selfRegistrationPrefix + registrationData, indexData))
+        allInserts.push(this.hyperdb.insert(appRegistrationPrefix + registrationData, indexData))
 
         //On/Off/Signatures
-        allInserts.push( this.hyperdb.insert(selfRegistrationPrefix + registrationData + '/on/signature', signature) )
-        allInserts.push( this.hyperdb.insert(appRegistrationPrefix + registrationData + '/on/signature', signature) )
+        allInserts.push(this.hyperdb.insert(selfRegistrationPrefix + registrationData + '/on/signature', signature))
+        allInserts.push(this.hyperdb.insert(appRegistrationPrefix + registrationData + '/on/signature', signature))
 
         Promise.all(allInserts).then(() => {
             request.respond({ success: true })
@@ -226,43 +217,43 @@ export default class AOP2P extends AORouterInterface {
 
 
     private _handleWatchAndGetIndexData(request: IAORouterRequest) {
-        const {key, ethAddress}: AOP2P_Watch_AND_Get_IndexData_Data = request.data
+        const { key, ethAddress }: AOP2P_Watch_AND_Get_IndexData_Data = request.data
         this.hyperdb.query(key).then((indexDataString: string) => {
             let indexData = JSON.parse(indexDataString)
-            if(!indexData[ethAddress]) {
+            if (!indexData[ethAddress]) {
                 this.hyperdb.watch(key).then(() => {
                     this.hyperdb.query(key).then((indexDataString: string) => {
                         let indexData = JSON.parse(indexDataString)
-                        if(!indexData[ethAddress]) {
+                        if (!indexData[ethAddress]) {
                             //Self call if there isn't a record for our own indexData
                             setTimeout(() => {
                                 this._handleWatchAndGetIndexData(request)
                             }, 500);
                         } else {
                             let indexDataRow: AOP2P_IndexDataRow = indexData[ethAddress]
-                            request.respond({indexDataRow: indexDataRow})
+                            request.respond({ indexDataRow: indexDataRow })
                         }
                     }).catch(request.reject)
-                }).catch( request.reject )
+                }).catch(request.reject)
             } else {
                 let indexDataRow: AOP2P_IndexDataRow = indexData[ethAddress]
-                request.respond({indexDataRow: indexDataRow})
+                request.respond({ indexDataRow: indexDataRow })
             }
 
-        }).catch( request.reject )
+        }).catch(request.reject)
     }
 
-    private _handleAddDiscovery(request:IAORouterRequest) {
-        const {contentType, fileDatKey, ethAddress, metaDatKey}: AOP2P_Add_Discovery_Data = request.data
+    private _handleAddDiscovery(request: IAORouterRequest) {
+        const { contentType, fileDatKey, ethAddress, metaDatKey }: AOP2P_Add_Discovery_Data = request.data
         const appRegistrationPrefix = this.dbPrefix + contentType + '/' + metaDatKey + '/nodes/'
-        const registrationData = ethAddress  + '/' + fileDatKey + '/indexData'
-        this.hyperdb.insert(appRegistrationPrefix + registrationData, {} )
-        .then(() => {
-            request.respond({success:true})
-        })
-        .catch(e => {
-            request.reject(e)
-        })
+        const registrationData = ethAddress + '/' + fileDatKey + '/indexData'
+        this.hyperdb.insert(appRegistrationPrefix + registrationData, {})
+            .then(() => {
+                request.respond({ success: true })
+            })
+            .catch(e => {
+                request.reject(e)
+            })
     }
 
     private _handleSellDecryptionKey(request: IAORouterRequest) {
@@ -270,14 +261,14 @@ export default class AOP2P extends AORouterInterface {
         if (!content) {
             return request.reject(new Error('No content'))
         }
-        if(request.ethAddress) {
+        if (request.ethAddress) {
             sellerEthAddress = request.ethAddress
         }
         // 1. Let's get the current indexData for this
-        const contentPrefixRoute = this.dbPrefix  + content.contentType + '/' + content.metadataDatKey + '/nodes/' 
-        const indexDataRoute =  sellerEthAddress + '/' + content.fileDatKey + '/indexData';
-        
-        this.hyperdb.query(contentPrefixRoute + indexDataRoute).then((indexDataString: string)=> {
+        const contentPrefixRoute = this.dbPrefix + content.contentType + '/' + content.metadataDatKey + '/nodes/'
+        const indexDataRoute = sellerEthAddress + '/' + content.fileDatKey + '/indexData';
+
+        this.hyperdb.query(contentPrefixRoute + indexDataRoute).then((indexDataString: string) => {
             let indexData = JSON.parse(indexDataString)
             // 2. Add row to indexData
             indexData[buyerEthAddress] = {
