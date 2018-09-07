@@ -75,7 +75,7 @@ export function getListOfContentIncompleteStates() {
 //
 export default abstract class AOContent {
     public id: string
-    public contentHostId: string
+    public contentHostId?: string
     public state: string  // derived
     public stakeId: string
     public nodeId: string
@@ -96,6 +96,7 @@ export default abstract class AOContent {
     public stake: number
     public fileSize: number
     public premium: number
+    public profit: number
     public split: number
     public adSupport: boolean
     public createdAt: string
@@ -107,7 +108,6 @@ export default abstract class AOContent {
     // variables not exposed to graphql
     public receivedIndexData: AOP2P_IndexDataRow
     public decryptionKey: string
-    
 
     static fromObject( contentObject ) {
         let instance;
@@ -152,6 +152,22 @@ export default abstract class AOContent {
      */
     public toMetadataJson() {
         let json = Object.assign({}, this)
+        delete json.decryptionKey
+        delete json.nodeId
+        delete json.stakeId
+        delete json.state
+        delete json.baseChallenge
+        delete json.encChallenge
+        delete json.receivedIndexData
+        
+        return json
+    }
+    
+    /**
+     * Unlike above, returns a raw dangerous json!
+     */
+    public toRawJson() {
+        let json = Object.assign({}, this)
         return json
     }
 
@@ -164,7 +180,9 @@ export default abstract class AOContent {
 export class AOVideoContent extends AOContent {
     public contentType: AOContentType = 'VOD'
     public teaserUrl: string
+    public teaserName: string
     public featuredImageUrl: string
+    public featuredImageName: string
     public metadata: {
         duration: number
         resolution: string
