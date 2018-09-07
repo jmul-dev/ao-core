@@ -198,7 +198,7 @@ export default class AOUserSession {
             const encryptedKeySignature = this.signMessage(encryptedDecryptionKey)
             // 4. Handoff to discovery
             const sendDecryptionKeyMessage: AOP2P_Write_Decryption_Key_Data = {
-                contentId: userContent.id,
+                content: userContent,
                 buyerEthAddress: buyContentEvent.buyer,
                 encryptedDecryptionKey,
                 encryptedKeySignature
@@ -546,8 +546,6 @@ export default class AOUserSession {
             fileDatKey: content.fileDatKey,
             metaDatKey: content.metadataDatKey,
             ethAddress: this.ethAddress, // Current user's ethAddress
-            metaData: content, // TODO: We should take shit out?
-            indexData: {} 
         }
         this.router.send('/p2p/addDiscovery', p2pAddDiscoveryData).then((response: IAORouterMessage) => {
             if (response.data.success) {
