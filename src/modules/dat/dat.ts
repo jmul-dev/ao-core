@@ -133,16 +133,6 @@ export default class AODat extends AORouterInterface {
                     debug('Error resuming dat ' + datEntry.key)
                     reject(err)
                 }
-                try {
-                    dat.importFiles({}, () => {
-                        this._updateDatEntry({
-                            ...datEntry,
-                            complete: true,
-                        })
-                    })
-                } catch(e) {
-                    debug(e)
-                }
                 dat.joinNetwork()
                 debug(`Joined network: dat://${dat.key.toString('hex')}`)
                 this.dats[datEntry.key] = dat
@@ -250,47 +240,52 @@ export default class AODat extends AORouterInterface {
                     request.reject(err)
                     return;
                 }
-                dat.joinNetwork((err) => {
-                    if ( err ) {
-                        debug('failed to join network for dat download', err)
-                        request.reject(err)
-                        return;
-                    } else if ( !dat.network.connected || !dat.network.connecting ) {
-                        debug('no one is hosting dat://' + requestData.key)
-                        request.reject(new Error('No users are hosting the requested content'))
-                        return;
-                    } else {
-                        debug('succesfully joined network for dat://' + requestData.key)
-                        const datKey = dat.key.toString('hex');
-                        this.dats[datKey] = dat;
-                        const newDatEntry: DatEntry = {
-                            key: datKey,
-                            complete: downloadComplete,
-                            updatedAt: new Date(),
-                            createdAt: new Date(),
-                        }
-                        this._updateDatEntry(newDatEntry)            
-                        request.respond({
-                            ...newDatEntry,
-                        })
-                    }
-                })
-                dat.archive.metadata.update(() => {
-                    var progress = mirror({fs: dat.archive, name: '/'}, newDatPath, (err) => {
+                try {
+                    dat.joinNetwork((err) => {
                         if ( err ) {
-                            debug('Error downloading dat file:', err)
+                            debug('failed to join network for dat download', err)
+                            request.reject(err)
+                            return;
+                        } else if ( !dat.network.connected || !dat.network.connecting ) {
+                            debug('no one is hosting dat://' + requestData.key)
+                            request.reject(new Error('No users are hosting the requested content'))
+                            return;
                         } else {
-                            debug('fully downloaded the goods!')
-                            downloadComplete = true
-                            const updatedDatEntry: DatEntry = {
-                                key: requestData.key,
-                                complete: true,
+                            debug('succesfully joined network for dat://' + requestData.key)
+                            const datKey = dat.key.toString('hex');
+                            this.dats[datKey] = dat;
+                            const newDatEntry: DatEntry = {
+                                key: datKey,
+                                complete: downloadComplete,
                                 updatedAt: new Date(),
+                                createdAt: new Date(),
                             }
-                            this._updateDatEntry(updatedDatEntry)
-                        }                        
+                            this._updateDatEntry(newDatEntry)            
+                            request.respond({
+                                ...newDatEntry,
+                            })
+                        }
                     })
-                })
+                    dat.archive.metadata.update(() => {
+                        var progress = mirror({fs: dat.archive, name: '/'}, newDatPath, (err) => {
+                            if ( err ) {
+                                debug('Error downloading dat file:', err)
+                            } else {
+                                debug('fully downloaded the goods!')
+                                downloadComplete = true
+                                const updatedDatEntry: DatEntry = {
+                                    key: requestData.key,
+                                    complete: true,
+                                    updatedAt: new Date(),
+                                }
+                                this._updateDatEntry(updatedDatEntry)
+                            }                        
+                        })
+                    })
+                } catch (error) {
+                    debug(`Dat error while attempting to download...`, error)
+                    request.reject(error)
+                }
             })
         }
     }
