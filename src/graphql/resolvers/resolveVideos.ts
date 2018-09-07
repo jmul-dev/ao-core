@@ -11,7 +11,7 @@ export default (obj: any, args: any, context: IGraphqlResolverContext, info: any
         const networkQueryData:AODB_NetworkContentGet_Data = {
             query: {
                 content: {
-                    $exists:true
+                    $ne:null
                 }
             }
         }
