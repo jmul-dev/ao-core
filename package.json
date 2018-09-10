@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "DEBUG=ao:* node dist/bin.js",
-    "build": "webpack",
+    "build": "npm run clean && webpack",
     "build-prod": "npm run clean && webpack -p --progress",
     "clean": "rimraf dist",
     "test": "mocha -r ts-node/register src/**/*.spec.ts",

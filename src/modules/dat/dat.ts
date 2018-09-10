@@ -88,7 +88,7 @@ export default class AODat extends AORouterInterface {
                 this._resumeAll().then(() => {
                     debug(`Resumed all dats`)
                 }).catch((error: Error) => {
-                    debug(`Error resuming all dats`, error)
+                    debug(`Error resuming all dats: ${error.message}`)
                 })
             }
         })
@@ -129,9 +129,14 @@ export default class AODat extends AORouterInterface {
             const datDir = path.join(this.datDir, datEntry.key)
             debug(`Resuming dat: ${datDir}`)
             Dat(datDir, (err: Error, dat: Dat) => {
-                if (err) {
+                if (err || !dat) {
                     debug('Error resuming dat ' + datEntry.key)
                     reject(err)
+                    if ( err.name === 'IncompatibleError' ) {
+                        // TODO: Dat folder is kinda fucked, recommended route it to `rm -fr .dat`
+                        // Going to ingore for now, but might want to address this at some point.
+                    }
+                    return null;
                 }
                 dat.joinNetwork((err) => {
                     if(err) {
@@ -241,7 +246,7 @@ export default class AODat extends AORouterInterface {
             const newDatPath = path.join(this.datDir, requestData.key);
             let downloadComplete = false
             Dat(newDatPath, {key: requestData.key}, (err, dat) => {
-                if ( err ) {
+                if ( err || !dat ) {
                     debug('failed to download dat', err)
                     request.reject(err)
                     return;

@@ -1,5 +1,5 @@
 import AOContent from "../../models/AOContent";
-import { IQueue, IQueueOptions, IQueueEventCallback, IQueueWorker } from 'queue';
+import queue, { IQueue, IQueueOptions, IQueueEventCallback, IQueueWorker } from 'queue';
 import { AORouterInterface } from "../../router/AORouterInterface";
 import { IAORouterMessage } from "../../router/AORouter";
 import { IAOFS_Read_Data } from "../fs/fs";
@@ -22,14 +22,15 @@ const debug = Debug('ao:p2p:contentIngestion')
 export default class AOContentIngestion {
     private router: AORouterInterface;
     private processingQueue: IQueue;
-    private datKeysInQueue: Array<string>;
+    private datKeysInQueue: Array<string> = [];
 
     constructor(router: AORouterInterface) {
         this.router = router
-        this.processingQueue = require('queue');
-        this.processingQueue.concurrency = 2;
         // @ts-ignore Types not up to date
-        this.processingQueue.autostart = true;
+        this.processingQueue = queue({
+            concurrency: 2,
+            autostart: true,
+        });
     }
 
     public addDiscoveredMetadataDatKeyToQueue(metadataDatKey: string) {
@@ -68,20 +69,20 @@ export default class AOContentIngestion {
                                 debug(`Unable to add network content ${metadataDatKey}, failed to parse metadata file.`)
                             } finally {
                                 // 4. Insert into network content db, marked as failed or imported
-                                this.router.send('/db/network/content/insert', networkContent).then(resolve).catch(reject)
+                                this.router.send('/db/network/content/insert', networkContent).then(resolve).catch(resolve)
                             }
                         }).catch(error => {
-                            debug(`Unable to add network content ${metadataDatKey}, failed to read metadata file.`)
-                            reject(error)
+                            debug(`Unable to add network content ${metadataDatKey}, failed to read metadata file. ${error.emssage}`)
+                            resolve()
                         })
                     }).catch(error => {
-                        debug(`Unable to add network content ${metadataDatKey}, failed to download metadata dat file.`)
-                        reject(error)
+                        debug(`Unable to add network content ${metadataDatKey}, failed to download metadata dat file. ${error.emssage}`)
+                        resolve()
                     })
                 }
             }).catch(error => {
-                debug(`Unable to add network content ${metadataDatKey}, failed to download metadata dat file.`)
-                reject(error)
+                debug(`Unable to add network content ${metadataDatKey}, failed to download metadata dat file. ${error.emssage}`)
+                resolve()
             })
         })
     }
