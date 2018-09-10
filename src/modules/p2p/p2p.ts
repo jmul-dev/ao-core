@@ -57,6 +57,28 @@ export interface AOP2P_IndexDataRow {
     decryptionKey: string;
 }
 
+export interface AOP2P_ContentRegistrationRoute {
+    nameSpace: string;
+    contentType: string;
+    ethAddress: string;
+    metaDatKey: string;
+}
+
+export interface AOP2P_SelfRegistrationRoute {
+    nameSpace: string;
+    ethAddress: string;
+    contentType: string;
+    fileDatKey: string;
+}
+
+export interface AOP2P_NodeRegistrationRoute {
+    nameSpace: string;
+    contentType: string;
+    metaDatKey: string;
+    ethAddress: string;
+    fileDatKey: string;
+}
+
 
 
 //This is out here since 
@@ -339,7 +361,7 @@ export default class AOP2P extends AORouterInterface {
      * Creator Dat registration.  Only used for initial upload
      * App ID / Content Type / Creator EthAddress / Meta Dat Key 
      */
-    public static routeContentRegistrtionPrefix({nameSpace, contentType, ethAddress, metaDatKey}) {
+    public static routeContentRegistrtionPrefix({nameSpace, contentType, ethAddress, metaDatKey}:AOP2P_ContentRegistrationRoute) {
         return nameSpace + contentType + '/' + ethAddress + '/' + metaDatKey
     }
 
@@ -367,14 +389,14 @@ export default class AOP2P extends AORouterInterface {
     /**
      * Entire route for self registration
      */
-    public static routeSelfRegistration({nameSpace, ethAddress, contentType, fileDatKey}) {
+    public static routeSelfRegistration({nameSpace, ethAddress, contentType, fileDatKey}:AOP2P_SelfRegistrationRoute ) {
         return AOP2P.routeSelfRegistrationPrefix({nameSpace, ethAddress,contentType}) + AOP2P.routeRegistrationData({ethAddress,fileDatKey})
     }
 
     /**
      * Entire route for node registration
      */
-    public static routeNodeRegistration({nameSpace, contentType,metaDatKey,ethAddress,fileDatKey}) {
+    public static routeNodeRegistration({nameSpace, contentType,metaDatKey,ethAddress,fileDatKey}:AOP2P_NodeRegistrationRoute) {
         return AOP2P.routeBaseRegistrationPrefix({nameSpace,contentType,metaDatKey}) + AOP2P.routeRegistrationData({ethAddress,fileDatKey})
     }
 
