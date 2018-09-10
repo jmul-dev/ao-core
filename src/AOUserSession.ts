@@ -1,14 +1,14 @@
 import Debug from 'debug';
 import EthCrypto from 'eth-crypto';
 import path from 'path';
-import AOContent, { AOContentState } from "../models/AOContent";
-import { AODat_Create_Data, AODat_ResumeSingle_Data } from '../modules/dat/dat';
-import { AODB_UserContentGet_Data, AODB_UserContentUpdate_Data, AODB_UserInsert_Data } from "../modules/db/db";
-import { BuyContentEvent, IAOEth_BuyContentEvent_Data, HostContentEvent } from "../modules/eth/eth";
-import { IAOFS_DecryptCheck_Data, IAOFS_Mkdir_Data, IAOFS_Move_Data, IAOFS_Reencrypt_Data, IAOFS_Unlink_Data } from "../modules/fs/fs";
-import { AOP2P_IndexDataRow, AOP2P_Watch_AND_Get_IndexData_Data, AOP2P_Write_Decryption_Key_Data, AOP2P_Add_Discovery_Data } from "../modules/p2p/p2p";
-import { IAORouterMessage } from "./AORouter";
-import { AORouterInterface, IAORouterRequest } from "./AORouterInterface";
+import AOContent, { AOContentState } from "./models/AOContent";
+import { AODat_Create_Data, AODat_ResumeSingle_Data } from './modules/dat/dat';
+import { AODB_UserContentGet_Data, AODB_UserContentUpdate_Data, AODB_UserInsert_Data } from "./modules/db/db";
+import { BuyContentEvent, HostContentEvent, IAOEth_BuyContentEvent_Data } from "./modules/eth/eth";
+import { IAOFS_DecryptCheck_Data, IAOFS_Mkdir_Data, IAOFS_Move_Data, IAOFS_Reencrypt_Data, IAOFS_Unlink_Data } from "./modules/fs/fs";
+import { AOP2P_Add_Discovery_Data, AOP2P_IndexDataRow, AOP2P_Watch_AND_Get_IndexData_Data, AOP2P_Write_Decryption_Key_Data } from "./modules/p2p/p2p";
+import { IAORouterMessage } from "./router/AORouter";
+import { AORouterInterface, IAORouterRequest } from "./router/AORouterInterface";
 const debug = Debug('ao:userSession');
 
 

@@ -11,7 +11,7 @@ import { AOCoreProcessRouter } from "./router/AORouterInterface";
 import { AODat_Check_Data } from './modules/dat/dat';
 import { IAOFS_ReadStream_Data, IAOFS_FileStat_data } from './modules/fs/fs';
 import { AODB_UserContentGet_Data } from './modules/db/db';
-import AOUserSession from './router/AOUserSession';
+import AOUserSession from './AOUserSession';
 import AOContent from './models/AOContent'
 const debug = Debug('ao:http');
 
