@@ -133,7 +133,13 @@ export default class AODat extends AORouterInterface {
                     debug('Error resuming dat ' + datEntry.key)
                     reject(err)
                 }
-                dat.joinNetwork()
+                dat.joinNetwork((err) => {
+                    if(err) {
+                        debug(err)
+                    } else {
+                        this._updateDatEntry(datEntry)
+                    }
+                })
                 debug(`Joined network: dat://${dat.key.toString('hex')}`)
                 this.dats[datEntry.key] = dat
                 resolve()

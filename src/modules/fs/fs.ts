@@ -247,7 +247,7 @@ export default class AOFS extends AORouterInterface {
     _handleRead(request: IAORouterRequest) {
         const requestData: IAOFS_Read_Data = request.data;
         const readPath = path.resolve(this.storageLocation, requestData.readPath)
-        fs.readFile(readPath, (err, data) => {
+        fsExtra.readFile(readPath, 'utf8',(err, data) => {
             if (err) {
                 request.reject(err)
             }
