@@ -231,38 +231,6 @@ export default class AOP2P extends AORouterInterface {
         })
     }
 
-    /**
-     * Creator Dat registration.  Only used for initial upload
-     * App ID / Content Type / Creator EthAddress / Meta Dat Key 
-     * @param param0 
-     */
-    public routeContentRegistrtionPrefix({contentType, ethAddress, metaDatKey}) {
-        return this.dbPrefix + contentType + '/' + ethAddress + '/' + metaDatKey
-    }
-
-    public routeSelfRegistrationPrefix({ethAddress, contentType}) {
-        return ethAddress + '/' + this.dbPrefix + contentType + '/nodes/'
-    }
-    public routeBaseRegistrationPrefix({contentType, metaDatKey}) {
-        return this.dbPrefix + contentType + '/' + metaDatKey + '/nodes/'
-    }
-
-    public routeRegistrationData({ethAddress, fileDatKey}) {
-        return ethAddress + '/' + fileDatKey + '/indexData'
-    }
-
-    public routeSelfRegistration({ethAddress, contentType, fileDatKey}) {
-        return this.routeSelfRegistrationPrefix({ethAddress,contentType}) + this.routeRegistrationData({ethAddress,fileDatKey})
-    }
-
-    public routeNodeRegistration({contentType,metaDatKey,ethAddress,fileDatKey}) {
-        return this.routeBaseRegistrationPrefix({contentType,metaDatKey}) + this.routeRegistrationData({ethAddress,fileDatKey})
-    }
-
-    public routeAddSignature(route) {
-        return route + '/status/signature'
-    }
-
     private _handleWatchKey(request: IAORouterRequest) {
         const requestData: AOP2P_Watch_Key_Data = request.data
         //TODO: We might consider helping construct the specific key here.  Dunno what exactly we're looking for yet 100%
@@ -320,9 +288,8 @@ export default class AOP2P extends AORouterInterface {
 
     private _handleAddDiscovery(request: IAORouterRequest) {
         const { contentType, fileDatKey, ethAddress, metaDatKey }: AOP2P_Add_Discovery_Data = request.data
-        const appRegistrationPrefix = this.routeBaseRegistrationPrefix({contentType, metaDatKey})
-        const registrationData = this.routeRegistrationData({ethAddress, fileDatKey})
-        this.hyperdb.insert(appRegistrationPrefix + registrationData, {})
+        const nodeRoute = this.routeNodeRegistration({contentType,metaDatKey,ethAddress,fileDatKey})
+        this.hyperdb.insert(nodeRoute, {})
             .then(() => {
                 request.respond({ success: true })
             })
@@ -364,5 +331,56 @@ export default class AOP2P extends AORouterInterface {
         }).catch(e => {
             request.reject(e)
         })
+    }
+
+
+    /**
+     * Creator Dat registration.  Only used for initial upload
+     * App ID / Content Type / Creator EthAddress / Meta Dat Key 
+     */
+    public routeContentRegistrtionPrefix({contentType, ethAddress, metaDatKey}) {
+        return this.dbPrefix + contentType + '/' + ethAddress + '/' + metaDatKey
+    }
+
+    /**
+     * Prefix Route for your own ethAddress
+     */
+    public routeSelfRegistrationPrefix({ethAddress, contentType}) {
+        return ethAddress + '/' + this.dbPrefix + contentType + '/nodes/'
+    }
+
+    /**
+     * Prefix Route for the App's namespace
+     */
+    public routeBaseRegistrationPrefix({contentType, metaDatKey}) {
+        return this.dbPrefix + contentType + '/' + metaDatKey + '/nodes/'
+    }
+
+    /**
+     * Registration Data route to IndexData
+     */
+    public routeRegistrationData({ethAddress, fileDatKey}) {
+        return ethAddress + '/' + fileDatKey + '/indexData'
+    }
+
+    /**
+     * Entire route for self registration
+     */
+    public routeSelfRegistration({ethAddress, contentType, fileDatKey}) {
+        return this.routeSelfRegistrationPrefix({ethAddress,contentType}) + this.routeRegistrationData({ethAddress,fileDatKey})
+    }
+
+    /**
+     * Entire route for node registration
+     */
+    public routeNodeRegistration({contentType,metaDatKey,ethAddress,fileDatKey}) {
+        return this.routeBaseRegistrationPrefix({contentType,metaDatKey}) + this.routeRegistrationData({ethAddress,fileDatKey})
+    }
+
+    /**
+     * Simply adds signatures to the end of the route for node routes.
+     */
+    public routeAddSignature(route) {
+        return route + '/status/signature'
     }
 }
