@@ -210,26 +210,57 @@ export default class AOP2P extends AORouterInterface {
         let allInserts = []
 
         //Content Signature/Meta Data
-        const contentRegistrationKey = this.dbPrefix + contentType + '/' + ethAddress + '/' + metaDatKey
+        const contentRegistrationKey = this.routeContentRegistrtionPrefix({contentType, ethAddress, metaDatKey})
         allInserts.push(this.hyperdb.insert(contentRegistrationKey + '/signature', signature))
         allInserts.push(this.hyperdb.insert(contentRegistrationKey + '/metaData', metaData))
 
         //IndexData
-        const registrationData = ethAddress + '/' + fileDatKey + '/indexData'
-        const selfRegistrationPrefix = ethAddress + '/' + this.dbPrefix + contentType + '/nodes/'
-        const appRegistrationPrefix = this.dbPrefix + contentType + '/' + metaDatKey + '/nodes/'
-        allInserts.push(this.hyperdb.insert(selfRegistrationPrefix + registrationData, indexData))
-        allInserts.push(this.hyperdb.insert(appRegistrationPrefix + registrationData, indexData))
+        const selfRegistration = this.routeSelfRegistration({ethAddress,contentType, fileDatKey})
+        const nodeRegistration = this.routeNodeRegistration({contentType,metaDatKey,ethAddress,fileDatKey})
+        allInserts.push(this.hyperdb.insert(selfRegistration, indexData))
+        allInserts.push(this.hyperdb.insert(nodeRegistration, indexData))
 
         //On/Off/Signatures
-        allInserts.push(this.hyperdb.insert(selfRegistrationPrefix + registrationData + '/on/signature', signature))
-        allInserts.push(this.hyperdb.insert(appRegistrationPrefix + registrationData + '/on/signature', signature))
+        allInserts.push(this.hyperdb.insert(this.routeAddSignature(selfRegistration), signature))
+        allInserts.push(this.hyperdb.insert(this.routeAddSignature(nodeRegistration), signature))
 
         Promise.all(allInserts).then(() => {
             request.respond({ success: true })
         }).catch((e) => {
             request.reject(e)
         })
+    }
+
+    /**
+     * Creator Dat registration.  Only used for initial upload
+     * App ID / Content Type / Creator EthAddress / Meta Dat Key 
+     * @param param0 
+     */
+    public routeContentRegistrtionPrefix({contentType, ethAddress, metaDatKey}) {
+        return this.dbPrefix + contentType + '/' + ethAddress + '/' + metaDatKey
+    }
+
+    public routeSelfRegistrationPrefix({ethAddress, contentType}) {
+        return ethAddress + '/' + this.dbPrefix + contentType + '/nodes/'
+    }
+    public routeBaseRegistrationPrefix({contentType, metaDatKey}) {
+        return this.dbPrefix + contentType + '/' + metaDatKey + '/nodes/'
+    }
+
+    public routeRegistrationData({ethAddress, fileDatKey}) {
+        return ethAddress + '/' + fileDatKey + '/indexData'
+    }
+
+    public routeSelfRegistration({ethAddress, contentType, fileDatKey}) {
+        return this.routeSelfRegistrationPrefix({ethAddress,contentType}) + this.routeRegistrationData({ethAddress,fileDatKey})
+    }
+
+    public routeNodeRegistration({contentType,metaDatKey,ethAddress,fileDatKey}) {
+        return this.routeBaseRegistrationPrefix({contentType,metaDatKey}) + this.routeRegistrationData({ethAddress,fileDatKey})
+    }
+
+    public routeAddSignature(route) {
+        return route + '/status/signature'
     }
 
     private _handleWatchKey(request: IAORouterRequest) {
@@ -289,8 +320,8 @@ export default class AOP2P extends AORouterInterface {
 
     private _handleAddDiscovery(request: IAORouterRequest) {
         const { contentType, fileDatKey, ethAddress, metaDatKey }: AOP2P_Add_Discovery_Data = request.data
-        const appRegistrationPrefix = this.dbPrefix + contentType + '/' + metaDatKey + '/nodes/'
-        const registrationData = ethAddress + '/' + fileDatKey + '/indexData'
+        const appRegistrationPrefix = this.routeBaseRegistrationPrefix({contentType, metaDatKey})
+        const registrationData = this.routeRegistrationData({ethAddress, fileDatKey})
         this.hyperdb.insert(appRegistrationPrefix + registrationData, {})
             .then(() => {
                 request.respond({ success: true })
@@ -309,10 +340,15 @@ export default class AOP2P extends AORouterInterface {
             sellerEthAddress = request.ethAddress
         }
         // 1. Let's get the current indexData for this
-        const contentPrefixRoute = this.dbPrefix + content.contentType + '/' + content.metadataDatKey + '/nodes/'
-        const indexDataRoute = sellerEthAddress + '/' + content.fileDatKey + '/indexData';
+        const nodeRouteArgs = {
+            contentType: content.contentType,
+            metaDatKey: content.metadataDatKey,
+            ethAddress: sellerEthAddress,
+            fileDatKey: content.fileDatKey
+        }
+        const nodeRoute = this.routeNodeRegistration(nodeRouteArgs)
 
-        this.hyperdb.query(contentPrefixRoute + indexDataRoute).then((indexDataString: string) => {
+        this.hyperdb.query(nodeRoute).then((indexDataString: string) => {
             let indexData = JSON.parse(indexDataString)
             // 2. Add row to indexData
             indexData[buyerEthAddress] = {
@@ -320,7 +356,7 @@ export default class AOP2P extends AORouterInterface {
                 signature: encryptedKeySignature //
             }
             // 3. Let's write this thing into hyperdb
-            this.hyperdb.insert(contentPrefixRoute + indexDataRoute, indexData).then(() => {
+            this.hyperdb.insert(nodeRoute, indexData).then(() => {
                 request.respond({ success: true })
             }).catch(e => {
                 request.reject(e)
@@ -329,4 +365,4 @@ export default class AOP2P extends AORouterInterface {
             request.reject(e)
         })
     }
-} 
+}
