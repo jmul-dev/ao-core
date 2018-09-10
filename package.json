@@ -52,6 +52,7 @@
     "md5": "^2.2.1",
     "minimist": "^1.2.0",
     "nedb": "^1.8.0",
+    "queue": "^4.5.0",
     "scrypt": "git:git@github.com:ryuheiyokokawa/node-scrypt.git#ao",
     "web3": "^1.0.0-beta.33",
     "web3-legacy": "git://github.com/nharlow89/web3.js.git#legacy"

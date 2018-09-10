@@ -74,6 +74,7 @@ export interface AODB_UserContentUpdate_Data {
  */
 export interface AODB_NetworkContentGet_Data {
     query?: Object;
+    projection?: Object;
 }
 export interface AODB_NetworkContentInsert_Data {
     key: string;
@@ -423,7 +424,11 @@ export default class AODB extends AORouterInterface {
     private _getNetworkContent(request: IAORouterRequest) {
         const requestData: AODB_NetworkContentGet_Data = request.data
         let query = requestData.query || {}
-        this.db.networkContent.find(query).exec((error, results) => {
+        let cursor = this.db.networkContent.find(query)
+        if ( requestData.projection ) {
+            cursor = cursor.projection(requestData.projection)
+        }
+        cursor.exec((error, results) => {
             if (error) {
                 request.reject(error)
             } else {
