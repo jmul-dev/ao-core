@@ -37,8 +37,9 @@ export default class AOContentIngestion {
             this.processingQueue.push(this._queueHandler.bind(this, metadataDatKey))
     }
 
-    private _queueHandler(metadataDatKey: string) {
+    private _queueHandler(metadataDatKey: string) {        
         return new Promise((resolve, reject) => {
+            debug(`Processing discovered network content: ${metadataDatKey}`)
             // 1. Ping the network content db to see if we have already seen this
             this.router.send('/db/network/content/get', {_id: metadataDatKey}).then((contentResponse: IAORouterMessage) => {
                 if ( contentResponse.data && contentResponse.data[0] ) {
