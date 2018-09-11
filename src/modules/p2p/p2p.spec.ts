@@ -15,7 +15,8 @@ let content = AOContent.fromObject(contentJson)
 describe('AO P2P module', () => {
     const storageLocation = path.resolve(__dirname, '../../../data/p2ptest')
     const args:AOP2P_Args =  {
-        storageLocation: storageLocation
+        storageLocation: storageLocation,
+        dbNameSpace: "/AOTest/"
     }
     let aoP2P; //scoped outside
     before((done) => {
