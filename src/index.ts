@@ -6,7 +6,7 @@ import Http from './http'
 import Debug from 'debug';
 import { EventEmitter } from 'events';
 import path from 'path';
-import AOUserSession from './router/AOUserSession';
+import AOUserSession from './AOUserSession';
 const debug = Debug('ao:core');
 const error = Debug('ao:core:error');
 

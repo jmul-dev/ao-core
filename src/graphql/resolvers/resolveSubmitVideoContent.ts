@@ -1,11 +1,11 @@
 import Debug from 'debug';
 import md5 from 'md5';
-import EthCrypto from 'eth-crypto'
 import path from 'path';
-import AOContent, { AOContentState, AOVideoContent } from '../../models/AOContent';
+import * as AOCrypto from '../../AOCrypto';
+import { IGraphqlResolverContext } from '../../http';
+import AOContent, { AOContentState } from '../../models/AOContent';
 import { AODat_Create_Data } from '../../modules/dat/dat';
 import { IAOFS_Mkdir_Data, IAOFS_Move_Data, IAOFS_WriteStream_Data, IAOFS_Write_Data } from '../../modules/fs/fs';
-import { IGraphqlResolverContext } from '../../http';
 import { IAORouterMessage } from "../../router/AORouter";
 const debug = Debug('ao:graphql:submitVideoContent');
 
@@ -101,7 +101,7 @@ export default (obj: any, args: any, context: IGraphqlResolverContext, info: any
 
                         creatorId: ethAddress,
                         metadataDatKey: metadataDatKey,
-                        contentType: 'VOD',                            
+                        contentType: 'VOD',
                         isFolder: false, // TODO: determine if args.inputs.video is a folder
                         isMutable: false,
                         title: args.inputs.title,
@@ -128,8 +128,8 @@ export default (obj: any, args: any, context: IGraphqlResolverContext, info: any
                         },
                         decryptionKey: decryptionKey,
                         state: AOContentState.ENCRYPTED,
-                        baseChallenge: EthCrypto.hash.keccak256(checksum),
-                        encChallenge: EthCrypto.hash.keccak256(encryptedChecksum),
+                        baseChallenge: AOCrypto.generateContentBaseChallenge({ fileChecksum: checksum }),
+                        encChallenge: AOCrypto.generateContentEncChallenge({ encryptedFileChecksum: encryptedChecksum }),
                     })
 
                     const storagePromises: Array<Promise<any>> = []
