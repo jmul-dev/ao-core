@@ -11,6 +11,7 @@ const debug = Debug('ao:p2p');
 
 export interface AOP2P_Args {
     storageLocation: string;
+    dbNameSpace: string;
 }
 
 export interface AOP2P_New_Content_Data {
@@ -99,7 +100,7 @@ export default class AOP2P extends AORouterInterface {
         super(routerArgs)
         this.storageLocation = args.storageLocation
         this.dbPath = path.join(this.storageLocation, 'p2p')
-        this.dbPrefix = '/AOSpace/' //Also known as App ID
+        this.dbPrefix = args.dbNameSpace ? args.dbNameSpace :'/AOSpace/' //Also known as App ID
 
         //New Content upload
         this.router.on('/p2p/newContent', this._handleNewContent.bind(this))
@@ -329,7 +330,7 @@ export default class AOP2P extends AORouterInterface {
             sellerEthAddress = request.ethAddress
         }
         // 1. Let's get the current indexData for this
-        const nodeRouteArgs = {
+        const nodeRouteArgs:AOP2P_NodeRegistrationRoute = {
             nameSpace: this.dbPrefix,
             contentType: content.contentType,
             metaDatKey: content.metadataDatKey,
