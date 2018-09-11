@@ -22,7 +22,7 @@ export function createUserIdentity(): Identity {
  * @param {string} contentRequesterPublicKey
  * @param {string} contentOwnersPrivateKey
  */
-export async function generateContentEncrytionKeyForUser({contentDecryptionKey, contentRequesterPublicKey, contentOwnersPrivateKey}) {
+export async function generateContentEncryptionKeyForUser({contentDecryptionKey, contentRequesterPublicKey, contentOwnersPrivateKey}) {
     const encryptedKey = await EthCrypto.encryptWithPublicKey(contentRequesterPublicKey, contentDecryptionKey)
     const encryptedDecryptionKey = EthCrypto.cipher.stringify(encryptedKey)
     const encryptedDecryptionKeyHash = EthCrypto.hash.keccak256(encryptedDecryptionKey)
