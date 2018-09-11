@@ -230,11 +230,14 @@ export default class AOFS extends AORouterInterface {
                     for (let i = 0; i < info.streams.length; i++) {
                         const stream = info.streams[i];
                         if (stream.codec_type == 'video') {
-                            fileData['fileType'] = 'video'
-                            fileData['codec'] = stream.codec_name
+                            fileData['encoding'] = stream.codec_name
+                            fileData['duration'] = parseFloat(stream.duration)
                             fileData['width'] = stream.width
                             fileData['height'] = stream.height
-                            fileData['duration'] = stream.duration
+                            fileData['aspectRatio'] = stream.width / stream.height
+                            fileData['aspectRatioDisplay'] = stream.display_aspect_ratio
+                            fileData['bitRate'] = parseInt(stream.bit_rate)
+                            fileData['frameRate'] = eval(stream.avg_frame_rate)  // ex avg_frame_rate: "25/1"
                             resolve(fileData)
                             break;
                         }
