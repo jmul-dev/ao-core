@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "DEBUG=ao:* node dist/bin.js",
-    "build": "webpack",
+    "build": "npm run clean && webpack",
     "build-prod": "npm run clean && webpack -p --progress",
     "clean": "rimraf dist",
     "test": "mocha -r ts-node/register src/**/*.spec.ts",
@@ -52,6 +52,7 @@
     "md5": "^2.2.1",
     "minimist": "^1.2.0",
     "nedb": "^1.8.0",
+    "queue": "^4.5.0",
     "scrypt": "git:git@github.com:ryuheiyokokawa/node-scrypt.git#ao",
     "web3": "^1.0.0-beta.33",
     "web3-legacy": "git://github.com/nharlow89/web3.js.git#legacy"

@@ -1,11 +1,10 @@
 import Debug from 'debug';
 import path from 'path';
 import AOContent from '../../models/AOContent';
+import AONetworkContent from '../../models/AONetworkContent';
 import { AO_Hyper_Options } from "../../router/AOHyperDB";
-import { IAORouterMessage } from "../../router/AORouter";
 import AORouterInterface, { AORouterArgs, IAORouterRequest } from "../../router/AORouterInterface";
-import { AODB_NetworkContentGet_Data } from '../db/db';
-import { IAOFS_Read_Data } from '../fs/fs';
+import AOContentIngestion from './AOContentIngestion';
 const debug = Debug('ao:p2p');
 
 
@@ -88,13 +87,12 @@ const routerArgs: AORouterArgs = {
 }
 
 export default class AOP2P extends AORouterInterface {
-    private dbPath: string
-    private dbKey: string = '006c3ce5918f7a577156adc74668a8bfad80b2420d1f11d4b5d66cbbe36e49d2'//TODO: Set the production static dbKey
-    private dbPrefix: string
-
-    private storageLocation: string
-
-    private contentWatchKey: string
+    private dbPath: string;
+    private dbKey: string = '006c3ce5918f7a577156adc74668a8bfad80b2420d1f11d4b5d66cbbe36e49d2'; //TODO: Set the production static dbKey
+    private dbPrefix: string;
+    private storageLocation: string;
+    private contentWatchKey: string;
+    private contentIngestion: AOContentIngestion;
 
     constructor(args: AOP2P_Args) {
         super(routerArgs)
@@ -103,23 +101,17 @@ export default class AOP2P extends AORouterInterface {
         this.dbPrefix = args.dbNameSpace ? args.dbNameSpace :'/AOSpace/' //Also known as App ID
 
         //New Content upload
+        this.contentIngestion = new AOContentIngestion(this.router)
+
         this.router.on('/p2p/newContent', this._handleNewContent.bind(this))
-        //Watch for New Key
         this.router.on('/p2p/watchKey', this._handleWatchKey.bind(this))
-        //Watch and Get
         this.router.on('/p2p/watchAndGetKey', this._handleWatchAndGetKey.bind(this))
-        //Watch and Get IndexData
         this.router.on('/p2p/watchAndGetIndexData', this._handleWatchAndGetIndexData.bind(this))
-        //Add content into Discovery
         this.router.on('/p2p/addDiscovery', this._handleAddDiscovery.bind(this))
-
-        //Sold a piece of content via discovery.  Now need to update indexData
         this.router.on('/p2p/soldKey', this._handleSellDecryptionKey.bind(this))
-
         this.init().then(() => {
             debug('started')
         }).catch(debug)
-
     }
 
     private init() {
@@ -130,101 +122,64 @@ export default class AOP2P extends AORouterInterface {
                 dbPath: this.dbPath,
                 autoAuth: true
             }
-            this.hyperdb.init(hyperDBOptions).then(() => {
-                //Initialize discovery
-                this._discovery()
+            this.hyperdb.init(hyperDBOptions).then(() => {                
                 resolve({ success: true })
+                this._beginDiscovery()
             }).catch(e => {
                 reject(e)
             })
         })
     }
 
-    //Discovery from watching the P2P networks.
-    private _discovery() {
+    /**
+     * Runs the content discovery once, then again each time the 
+     * hyperdb instance changes under the content watch key.
+     */
+    private _beginDiscovery() {
         this.contentWatchKey = this.dbPrefix + 'VOD/'; // /AOSpace/VOD/*
-        this._initialDiscovery()
-        .then(() => {
-            this.hyperdb.watch(this.contentWatchKey)
-            .then( this._initialDiscovery.bind(this) )
-            .catch(debug)
+        this._runDiscovery().then(() => {
+            this.hyperdb.watch(this.contentWatchKey).then(this._runDiscovery.bind(this)).catch(debug)
         }).catch(debug)
     }
-
-    private _initialDiscovery() {
+    private _runDiscovery() {
         return new Promise((resolve, reject) => {
             let contentCompare = []
             contentCompare.push(this.hyperdb.list(this.contentWatchKey))
-            contentCompare.push(this.router.send('/db/network/content/get', { query: {} }))
-
+            contentCompare.push(this.router.send('/db/network/content/get', {projection: {_id: 1}}))  // Only return _ids = metadataDatKey
             Promise.all(contentCompare).then((results) => {
-                const hyperPreviewList = results[0]
-                const dbPreviewList = results[1].data
-
+                const contentInNetworkDb = results[0]
+                const contentInLocalNetworkDb: Array<AONetworkContent> = results[1].data
                 //Find appropriate hyperDB datkeys
-                let hyperPreviewKeys:Array<string> = []
-                for (const preview of hyperPreviewList) {
-                    const newKey = preview[2]
-                    if(newKey.length == 64) {
-                        hyperPreviewKeys.indexOf(newKey) === -1 ? hyperPreviewKeys.push(newKey) : null
+                let metadataDatKeysInNetworkDb: Array<string> = []
+                for (const content of contentInNetworkDb) {
+                    const newKey = content[2]
+                    if (newKey.length == 64) {
+                        metadataDatKeysInNetworkDb.indexOf(newKey) === -1 ? metadataDatKeysInNetworkDb.push(newKey) : null
                     }
                 }
-
                 //Find appropriate existing datkeys
-                let dbPreviewKeys:Array<string> = []
-                for (const preview of dbPreviewList) {
-                    const newKey = preview.key
-                    if(newKey.length == 64) {
-                        dbPreviewKeys.indexOf(newKey) === -1 ? dbPreviewKeys.push(newKey) : null
+                let metadataDatKeysInLocalNetworkDb: Array<string> = []
+                for (const content of contentInLocalNetworkDb) {
+                    const newKey = content._id
+                    if (newKey.length == 64) {
+                        metadataDatKeysInLocalNetworkDb.indexOf(newKey) === -1 ? metadataDatKeysInLocalNetworkDb.push(newKey) : null
                     }
                 }
-
                 //Run a comparater
-                const newKeys = hyperPreviewKeys.filter((el) => {
-                    return dbPreviewKeys.indexOf(el) < 0;
+                const newMetadataDatKeys = metadataDatKeysInNetworkDb.filter((el) => {
+                    return metadataDatKeysInLocalNetworkDb.indexOf(el) < 0;
                 });
-
-                if (newKeys.length) {
-                    for (const newKey of newKeys) {
-                        this.router.send('/dat/download', { key: newKey }).then((downloadResponse: IAORouterMessage) => {
-                            const readContentJson:IAOFS_Read_Data = {
-                                readPath: path.join('content', newKey,'content.json')
-                            }
-                            this.router.send('/fs/read',readContentJson).then((readResponse: IAORouterMessage)=> {
-                                const contentJson = JSON.parse(readResponse.data)
-                                if(contentJson)  {
-                                    const content:AOContent = AOContent.fromObject(contentJson)
-                                    this._newKeyDiscoveryInsert(newKey, content).then(resolve).catch(reject)
-                                } else {
-                                    this._newKeyDiscoveryInsert(newKey).then(resolve).catch(reject)
-                                }
-                            }).catch(e => {
-                                this._newKeyDiscoveryInsert(newKey).then(resolve).catch(reject)
-                            })//Read Content File
-                        }).catch(debug)
+                //Add to content ingestion helper
+                if (newMetadataDatKeys.length) {
+                    for (const metadataDatKey in newMetadataDatKeys) {
+                        if (newMetadataDatKeys.hasOwnProperty(metadataDatKey)) {
+                            const datKey = newMetadataDatKeys[metadataDatKey];
+                            this.contentIngestion.addDiscoveredMetadataDatKeyToQueue(datKey)
+                        }
                     }
-                }
-            }).catch(debug)
-        })
-    }
-
-    private _newKeyDiscoveryInsert(newKey:string, content?:AOContent) {
-        return new Promise((resolve,reject ) => {
-            let contentInsert = null
-            if( content ) {
-                contentInsert = content.toMetadataJson()
-            }
-            this.router.send('/db/network/content/insert', {
-                key: newKey,
-                content: contentInsert
-            }).then(() => {
-                if(contentInsert) {
-                    debug('Successfully downloaded and recorded ' + newKey)
-                } else {
-                    debug('Empty preview dat.  Key inserted for record only ' + newKey)
                 }
                 resolve()
-            }).catch(reject)//Insert into network DB
+            }).catch(reject)
         })
     }
 
