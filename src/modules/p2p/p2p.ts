@@ -280,12 +280,10 @@ export default class AOP2P extends AORouterInterface {
         const nodeRoute = AOP2P.routeNodeRegistration({nameSpace: this.dbPrefix, contentType,metaDatKey,ethAddress,fileDatKey})
         this.hyperdb.insert(nodeRoute, {})
             .then(() => {
-                this.nodeTimestampUpdate({ nameSpace: this.dbPrefix, contentType, ethAddress, metaDatKey})
-                request.respond({ success: true })
-            })
-            .catch(e => {
-                request.reject(e)
-            })
+                this.nodeTimestampUpdate({ nameSpace: this.dbPrefix, contentType, ethAddress, metaDatKey}).then(() => {
+                    request.respond({ success: true })
+                }).catch(request.reject)
+            }).catch(request.reject)
     }
 
     private _handleSellDecryptionKey(request: IAORouterRequest) {
