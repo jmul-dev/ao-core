@@ -51,6 +51,10 @@ export interface AOP2P_Write_Decryption_Key_Data {
     encryptedKeySignature: string;
 }
 
+export interface AOP2P_Update_Node_Timestamp_Data {
+    content: AOContent;
+}
+
 //Single indexData
 export interface AOP2P_IndexDataRow {
     signature: string;
@@ -79,6 +83,12 @@ export interface AOP2P_NodeRegistrationRoute {
     fileDatKey: string;
 }
 
+export interface AOP2P_NodeUpdateRoute {
+    nameSpace: string;
+    contentType: string;
+    metaDatKey: string;
+    ethAddress: string;
+}
 
 
 //This is out here since 
@@ -109,6 +119,7 @@ export default class AOP2P extends AORouterInterface {
         this.router.on('/p2p/watchAndGetIndexData', this._handleWatchAndGetIndexData.bind(this))
         this.router.on('/p2p/addDiscovery', this._handleAddDiscovery.bind(this))
         this.router.on('/p2p/soldKey', this._handleSellDecryptionKey.bind(this))
+        this.router.on('/p2p/updateNode', this._handleNodeUpdate.bind(this))
         this.init().then(() => {
             debug('started')
         }).catch(debug)
@@ -269,6 +280,7 @@ export default class AOP2P extends AORouterInterface {
         const nodeRoute = AOP2P.routeNodeRegistration({nameSpace: this.dbPrefix, contentType,metaDatKey,ethAddress,fileDatKey})
         this.hyperdb.insert(nodeRoute, {})
             .then(() => {
+                this.nodeTimestampUpdate({ nameSpace: this.dbPrefix, contentType, ethAddress, metaDatKey})
                 request.respond({ success: true })
             })
             .catch(e => {
@@ -312,6 +324,31 @@ export default class AOP2P extends AORouterInterface {
         })
     }
 
+    private _handleNodeUpdate(request: IAORouterRequest) {
+        const { content }:AOP2P_Update_Node_Timestamp_Data = request.data
+        this.nodeTimestampUpdate({
+            nameSpace: this.dbPrefix,
+            contentType: content.contentType,
+            metaDatKey: content.metadataDatKey,
+            ethAddress: request.ethAddress
+        }).then(() => {
+            request.respond({})
+        }).catch(request.reject)
+    }
+
+    private nodeTimestampUpdate({nameSpace, contentType, metaDatKey, ethAddress}) {
+        return new Promise((resolve,reject) => {
+            const nodeUpdateKey:string = AOP2P.routeNodeRegistrationUpdate({
+                nameSpace,
+                contentType,
+                metaDatKey,
+                ethAddress
+            })
+            this.hyperdb.insert( nodeUpdateKey, Date.now() ).then(() => {
+                resolve()
+            }).catch(reject)
+        })
+    }
 
     /**
      * Creator Dat registration.  Only used for initial upload
@@ -352,14 +389,21 @@ export default class AOP2P extends AORouterInterface {
     /**
      * Entire route for node registration
      */
-    public static routeNodeRegistration({nameSpace, contentType,metaDatKey,ethAddress,fileDatKey}:AOP2P_NodeRegistrationRoute) {
-        return AOP2P.routeBaseRegistrationPrefix({nameSpace,contentType,metaDatKey}) + AOP2P.routeRegistrationData({ethAddress,fileDatKey})
+    public static routeNodeRegistration({nameSpace, contentType, metaDatKey, ethAddress, fileDatKey}:AOP2P_NodeRegistrationRoute) {
+        return AOP2P.routeBaseRegistrationPrefix({nameSpace, contentType, metaDatKey}) + AOP2P.routeRegistrationData({ethAddress, fileDatKey})
+    }
+
+    /**
+     * Entire route for updating your node registration timestamp
+     */
+    public static routeNodeRegistrationUpdate({nameSpace, contentType, metaDatKey, ethAddress}:AOP2P_NodeUpdateRoute) {
+        return AOP2P.routeBaseRegistrationPrefix({nameSpace, contentType, metaDatKey}) + ethAddress
     }
 
     /**
      * Simply adds signatures to the end of the route for node routes.
      */
     public static routeAddSignature(route) {
-        return route + '/status/signature'
+        return route + '/signature'
     }
 }
