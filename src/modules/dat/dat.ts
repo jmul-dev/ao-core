@@ -38,7 +38,7 @@ export interface AODat_GetDatStats_Data {
 }
 
 export interface AODat_Encrypted_Download_Data {
-    nodes: object;
+    nodes: {[key:string]: string;}; //nodes[datkey] = contentHostId
 }
 
 export interface DatEntry {
@@ -273,7 +273,10 @@ export default class AODat extends AORouterInterface {
                 contentHostId
             })
             
-        }).catch(request.reject)
+        }).catch(e => {
+            debug('This is bad ay! No encrypted file dat is available for download')
+            request.reject(e)
+        })
     }
 
     /**

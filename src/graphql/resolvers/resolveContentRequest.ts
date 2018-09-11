@@ -16,7 +16,6 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
         let networkContentQuery: AODB_NetworkContentGet_Data = {
             query: { id: args.id }
         }
-        // TODO: We need to add a new p2p/db network that handles encrypted content discovery.  This should be separate from preview content dats
         context.router.send('/db/network/content/get', networkContentQuery).then((response: IAORouterMessage) => {
             if (!response.data || response.data.length !== 1) {
                 reject(new Error(`No discovered content with id: ${args.id}`))
@@ -29,7 +28,7 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                 state: AOContentState.DOWNLOADING,
             })
 
-            // 3. Grab the key nodes/ethaddress
+            // 3. Grab the key nodes/contentHostId
             const findEncryptedNodeData:AOP2P_Get_File_Node_Data = {content: clonedContent.toMetadataJson()}
             context.router.send('/p2p/findEncryptedNode',findEncryptedNodeData).then((fileNodesResponse:IAORouterMessage) => {
                 const resultNodes = fileNodesResponse.data
@@ -44,7 +43,7 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                 context.router.send('/dat/encryptedFileDownload', encryptedDownloadData ).then((downloadResponse: IAORouterMessage) => {
                     if (downloadResponse.data.datEntry.complete) {
                         clonedContent.state = 'DOWNLOADED'
-                        clonedContent.contentHostId = downloadResponse.data.contentHostId
+                        clonedContent.contentHostId = downloadResponse.data.contentHostId //This is important!
                     }
                     // 5. Insert the content into user's content DB
                     context.router.send('/db/user/content/insert', clonedContent.toRawJson()).then((insertResponse: IAORouterMessage) => {
