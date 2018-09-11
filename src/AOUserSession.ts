@@ -1,5 +1,4 @@
 import Debug from 'debug';
-import EthCrypto from 'eth-crypto';
 import path from 'path';
 import AOContent, { AOContentState } from "./models/AOContent";
 import { AODat_Create_Data, AODat_ResumeSingle_Data } from './modules/dat/dat';
@@ -9,14 +8,9 @@ import { IAOFS_DecryptCheck_Data, IAOFS_Mkdir_Data, IAOFS_Move_Data, IAOFS_Reenc
 import { AOP2P_Add_Discovery_Data, AOP2P_IndexDataRow, AOP2P_Watch_AND_Get_IndexData_Data, AOP2P_Write_Decryption_Key_Data } from "./modules/p2p/p2p";
 import { IAORouterMessage } from "./router/AORouter";
 import { AORouterInterface, IAORouterRequest } from "./router/AORouterInterface";
+import * as AOCrypto from './AOCrypto'
 const debug = Debug('ao:userSession');
 
-
-export interface Identity {
-    privateKey: string;
-    publicKey: string;
-    address: string;
-}
 
 export interface IAOUser_Signature_Data {
     message: string;
@@ -29,7 +23,7 @@ export default class AOUserSession {
     public ethAddress: string;
 
     private isListeningForIncomingContent: boolean = false;
-    private identity: Identity;
+    private identity: AOCrypto.Identity;
 
     constructor(router: AORouterInterface) {
         this.router = router;
@@ -68,7 +62,7 @@ export default class AOUserSession {
                     this.router.send('/db/user/getIdentity').then((response: IAORouterMessage) => {
                         if (!response.data || !response.data.identity) {
                             // 4A. Create user identity
-                            const identity: Identity = EthCrypto.createIdentity()
+                            const identity: AOCrypto.Identity = AOCrypto.createUserIdentity()
                             this.identity = identity
                             const storeIdentityData: AODB_UserInsert_Data = {
                                 object: {
@@ -192,16 +186,20 @@ export default class AOUserSession {
             // 2. TODO: check to see if we have already handled this purchase transaction 
             // (ie: wrote decryption key to discovery already)
 
-            // 3. TODO: generate the encryption key according to spec
-            const encryptedKey = await EthCrypto.encryptWithPublicKey(this.identity.publicKey, userContent.decryptionKey)
-            const encryptedDecryptionKey = EthCrypto.cipher.stringify(encryptedKey)
-            const encryptedKeySignature = this.signMessage(encryptedDecryptionKey)
+            // 3. Generate the encryption key according to spec
+            const contentDecryptParams = {
+                contentDecryptionKey: userContent.decryptionKey,
+                contentRequesterPublicKey: buyContentEvent.publicKey,
+                contentOwnersPrivateKey: this.identity.privateKey,
+            }
+            const { encryptedDecryptionKey, encryptedDecryptionKeySignature } = await AOCrypto.generateContentEncrytionKeyForUser(contentDecryptParams)
+
             // 4. Handoff to discovery
             const sendDecryptionKeyMessage: AOP2P_Write_Decryption_Key_Data = {
                 content: userContent,
                 buyerEthAddress: buyContentEvent.buyer,
                 encryptedDecryptionKey,
-                encryptedKeySignature
+                encryptedKeySignature: encryptedDecryptionKeySignature
             }
             this.router.send('/p2p/soldKey', sendDecryptionKeyMessage).then((response: IAORouterMessage) => {
                 if (response.data && response.data.success) {
@@ -325,7 +323,7 @@ export default class AOUserSession {
             return null
         }
         // 1. Decrypt the decryption key that we received from seller
-        this.decryptString(content.receivedIndexData.decryptionKey).then((decryptionKey: string) => {
+        AOCrypto.decryptMessage({message: content.receivedIndexData.decryptionKey, privateKey: this.identity.privateKey}).then((decryptionKey: string) => {
             // 2. Decrypt/ffprobe/Checksum the downloaded file and match against the content data.
             const decryptChecksumData: IAOFS_DecryptCheck_Data = {
                 path: content.getFilePath(),
@@ -368,7 +366,7 @@ export default class AOUserSession {
      */
     private _handleContentVerified(content: AOContent) {
         // 1. Get the decryption key again
-        this.decryptString(content.receivedIndexData.decryptionKey).then((decryptionKey: string) => {
+        AOCrypto.decryptMessage({message: content.receivedIndexData.decryptionKey, privateKey: this.identity.privateKey}).then((decryptionKey: string) => {
             // 2. New directory for data to be re-encrypted (tmp path)
             const tmpContentPath: IAOFS_Mkdir_Data = {
                 dirPath: content.getTempFolderPath()
@@ -400,8 +398,7 @@ export default class AOUserSession {
                         cleanupTmpContent()
                         return null;
                     }
-                    // 4. Generate the baseChallengeSignature
-                    const baseChallangeSignature = EthCrypto.sign(this.identity.privateKey, content.baseChallenge)
+                    // 4. Generate the baseChallengeSignature & new encChallenge
                     // 5. Update Content State to Encrypted
                     let contentUpdateQuery: AODB_UserContentUpdate_Data = {
                         id: content.id,
@@ -409,8 +406,8 @@ export default class AOUserSession {
                             $set: {
                                 "state": AOContentState.ENCRYPTED,
                                 "decryptionKey": newDecrytionKey,
-                                "encChallenge": EthCrypto.hash.keccak256(newEncryptedChecksum),
-                                "baseChallengeSignature": baseChallangeSignature,
+                                "encChallenge": AOCrypto.generateContentEncChallenge({encryptedFileChecksum: newEncryptedChecksum}),
+                                "baseChallengeSignature": AOCrypto.generateBaseChallengeSignature({baseChallenge: content.baseChallenge, privateKey: this.identity.privateKey}),
                             }
                         }
                     }
@@ -579,54 +576,5 @@ export default class AOUserSession {
                 debug(`Error, failed to add content to discovery`)
             }
         }).catch(debug)
-    }
-
-    /**
-     * Decrypt a string with the private key
-     * @param stringToDecrypt
-     */
-    public async decryptString(stringToDecrypt: String) {
-        return new Promise(async (resolve, reject) => {
-            const cipherObject = EthCrypto.cipher.parse(stringToDecrypt)
-            let message: String
-            try {
-                message = await EthCrypto.decryptWithPrivateKey(this.identity.privateKey, cipherObject)
-            } catch (e) {
-                return reject(e)
-            }
-            return resolve(message)
-        })
-    }
-
-    /**
-     * Encrypt a string with the public key
-     * @param stringToEncrypt
-     * @param publicKey // Optional.  if using another person's key, you can use this.
-     */
-    public async encryptString(stringToEncrypt: String, publicKey?: String) {
-        return new Promise(async (resolve, reject) => {
-            let encrypted: String
-            let publicKeyUsed = publicKey.length ? publicKey : this.identity.publicKey
-            try {
-                encrypted = EthCrypto.encryptWithPublicKey(publicKeyUsed, stringToEncrypt)
-            } catch (e) {
-                return reject(e)
-            }
-            let stringifiedEncrypted = EthCrypto.cipher.stringify(encrypted)
-            return resolve(stringifiedEncrypted)
-        })
-    }
-
-    /**
-     * Sign a message with the private key
-     * 
-     * @param messageToSign
-     * @param privateKey?
-     */
-    public signMessage(messageToSign: string, privateKey?: string) {
-        let privateKeyUsed = privateKey ? privateKey : this.identity.privateKey
-        const messageHash = EthCrypto.hash.keccak256(messageToSign)
-        const signature = EthCrypto.sign(privateKeyUsed, messageHash)
-        return signature
     }
 }

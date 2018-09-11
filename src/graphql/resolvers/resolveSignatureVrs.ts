@@ -1,10 +1,10 @@
 import { IGraphqlResolverContext } from '../../http';
-import EthCrypto from 'eth-crypto';
+import * as AOCrypto from '../../AOCrypto';
 
 
 /**
  * Converting a signature into { v, r, s } object
  */
 export default (obj: string, args: any, context: IGraphqlResolverContext, info: any) => {
-    return EthCrypto.vrs.fromString( obj )
+    return AOCrypto.vrsFromSignature( obj )
 }
