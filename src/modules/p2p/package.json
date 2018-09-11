@@ -14,7 +14,9 @@
             "/p2p/watchAndGetKey",
             "/p2p/watchAndGetIndexData",
             "/p2p/addDiscovery",
-            "/p2p/soldKey"
+            "/p2p/soldKey",
+            "/p2p/updateNode",
+            "/p2p/findEncryptedNode"
         ],
         "activationEvents": [
             

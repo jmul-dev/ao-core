@@ -2,7 +2,7 @@ import Debug from 'debug';
 import path from 'path';
 import AOContent from '../../models/AOContent';
 import AONetworkContent from '../../models/AONetworkContent';
-import { AO_Hyper_Options } from "../../router/AOHyperDB";
+import { AO_Hyper_Options, HDB_ListValueRow } from "../../router/AOHyperDB";
 import AORouterInterface, { AORouterArgs, IAORouterRequest } from "../../router/AORouterInterface";
 import AOContentIngestion from './AOContentIngestion';
 const debug = Debug('ao:p2p');
@@ -41,6 +41,7 @@ export interface AOP2P_Add_Discovery_Data {
     fileDatKey: string;
     metaDatKey: string;
     ethAddress: string;
+    contentHostId: string;
 }
 
 export interface AOP2P_Write_Decryption_Key_Data {
@@ -52,6 +53,10 @@ export interface AOP2P_Write_Decryption_Key_Data {
 }
 
 export interface AOP2P_Update_Node_Timestamp_Data {
+    content: AOContent;
+}
+
+export interface AOP2P_Get_File_Node_Data {
     content: AOContent;
 }
 
@@ -120,6 +125,8 @@ export default class AOP2P extends AORouterInterface {
         this.router.on('/p2p/addDiscovery', this._handleAddDiscovery.bind(this))
         this.router.on('/p2p/soldKey', this._handleSellDecryptionKey.bind(this))
         this.router.on('/p2p/updateNode', this._handleNodeUpdate.bind(this))
+        this.router.on('/p2p/findEncryptedNode', this._handleGetFileNodes.bind(this))
+
         this.init().then(() => {
             debug('started')
         }).catch(debug)
@@ -276,14 +283,42 @@ export default class AOP2P extends AORouterInterface {
     }
 
     private _handleAddDiscovery(request: IAORouterRequest) {
-        const { contentType, fileDatKey, ethAddress, metaDatKey }: AOP2P_Add_Discovery_Data = request.data
-        const nodeRoute = AOP2P.routeNodeRegistration({nameSpace: this.dbPrefix, contentType,metaDatKey,ethAddress,fileDatKey})
+        const { contentType, fileDatKey, ethAddress, metaDatKey, contentHostId }: AOP2P_Add_Discovery_Data = request.data
+        const nodeRoute = AOP2P.routeNodeRegistration({nameSpace: this.dbPrefix, contentType, metaDatKey, ethAddress, fileDatKey})
         this.hyperdb.insert(nodeRoute, {})
             .then(() => {
-                this.nodeTimestampUpdate({ nameSpace: this.dbPrefix, contentType, ethAddress, metaDatKey}).then(() => {
+                this.nodeTimestampUpdate({ nameSpace: this.dbPrefix, contentType, ethAddress, metaDatKey, contentHostId}).then(() => {
                     request.respond({ success: true })
                 }).catch(request.reject)
             }).catch(request.reject)
+    }
+
+    /**
+     * Gets time sorted keys for a specific content nodes
+     * @param request 
+     * @returns sortedKeys
+     */
+    private _handleGetFileNodes(request: IAORouterRequest) {
+        const { content }:AOP2P_Get_File_Node_Data = request.data
+        const fineNodeRoute = AOP2P.routeBaseRegistrationPrefix({
+            nameSpace: this.dbPrefix, 
+            contentType: content.contentType,
+            metaDatKey: content.metadataDatKey
+        })
+        this.hyperdb.listValue(fineNodeRoute).then((results:Array<HDB_ListValueRow>) => {
+            //Store the JSON object as value instead of just a stringified JSON.
+            let jsonResults = results.map (a => {
+                a.value = JSON.parse(a.value)
+                return a
+            })
+            //Sort by timestamp data
+            jsonResults.sort( (a,b) => {
+                const timestampA = a.value.timestamp
+                const timestampB = b.value.timestamp
+                return timestampA>timestampB ? -1 : timestampA<timestampB ? 1 : 0;
+            })
+            request.respond(jsonResults)
+        }).catch(request.reject)
     }
 
     private _handleSellDecryptionKey(request: IAORouterRequest) {
@@ -328,13 +363,14 @@ export default class AOP2P extends AORouterInterface {
             nameSpace: this.dbPrefix,
             contentType: content.contentType,
             metaDatKey: content.metadataDatKey,
-            ethAddress: request.ethAddress
+            ethAddress: request.ethAddress,
+            contentHostId: content.contentHostId
         }).then(() => {
             request.respond({})
         }).catch(request.reject)
     }
 
-    private nodeTimestampUpdate({nameSpace, contentType, metaDatKey, ethAddress}) {
+    private nodeTimestampUpdate({nameSpace, contentType, metaDatKey, ethAddress, contentHostId}) {
         return new Promise((resolve,reject) => {
             const nodeUpdateKey:string = AOP2P.routeNodeRegistrationUpdate({
                 nameSpace,
@@ -342,7 +378,11 @@ export default class AOP2P extends AORouterInterface {
                 metaDatKey,
                 ethAddress
             })
-            this.hyperdb.insert( nodeUpdateKey, Date.now() ).then(() => {
+            const insertObject = {
+                timestamp: Date.now(),
+                contentHostId
+            }
+            this.hyperdb.insert( nodeUpdateKey, insertObject ).then(() => {
                 resolve()
             }).catch(reject)
         })

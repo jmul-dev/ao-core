@@ -154,7 +154,8 @@ describe('AO P2P module', () => {
             //TODO: Assign more believable values?
             metaDatKey: 'bogusMetaKey',
             fileDatKey: 'bogusKey',
-            ethAddress: "bogusEth"
+            ethAddress: "bogusEth",
+            contentHostId: "bogusHostId"
         }
         aoP2P.router.emit('/p2p/addDiscovery',{
             data: addDiscoveryData,

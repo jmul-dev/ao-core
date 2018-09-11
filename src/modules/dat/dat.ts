@@ -37,6 +37,10 @@ export interface AODat_GetDatStats_Data {
     key: string;
 }
 
+export interface AODat_Encrypted_Download_Data {
+    nodes: object;
+}
+
 export interface DatEntry {
     key: string;
     createdAt?: Date;
@@ -75,6 +79,7 @@ export default class AODat extends AORouterInterface {
         this.router.on('/dat/stopAll', this._handleDatStopAll.bind(this))
         this.router.on('/dat/create', this._handleDatCreate.bind(this))
         this.router.on('/dat/download', this._handleDatDownload.bind(this))
+        this.router.on('/dat/encryptedFileDownload', this._handleEncryptedFileDownload.bind(this))
         this.router.on('/dat/exists', this._handleDatExists.bind(this))
         this.router.on('/dat/stats', this._handleGetDatStats.bind(this))
         this.datsDb = new Datastore({
@@ -235,70 +240,135 @@ export default class AODat extends AORouterInterface {
         })
     }
 
-    // https://github.com/datproject/dat-node/blob/master/examples/download.js
+    /**
+     * Individual and known dat downloads
+     * @param request 
+     */
     private _handleDatDownload(request: IAORouterRequest) {
-        const requestData: AODat_Download_Data = request.data;        
-        if ( this.dats[requestData.key] ) {
-            // A. This dat already exists!
-            this._getDatEntry(requestData.key).then(request.respond).catch(request.reject)
-        } else {
-            // B. We do not have this dat, proceed to create and download
-            const newDatPath = path.join(this.datDir, requestData.key);
-            let downloadComplete = false
-            Dat(newDatPath, {key: requestData.key}, (err, dat) => {
-                if ( err || !dat ) {
-                    debug('failed to download dat', err)
-                    request.reject(err)
-                    return;
-                }
-                try {
-                    dat.joinNetwork((err) => {
-                        if ( err ) {
-                            debug('failed to join network for dat download', err)
-                            request.reject(err)
-                            return;
-                        } else if ( !dat.network.connected || !dat.network.connecting ) {
-                            debug('no one is hosting dat://' + requestData.key)
-                            request.reject(new Error('No users are hosting the requested content'))
-                            return;
-                        } else {
-                            debug('succesfully joined network for dat://' + requestData.key)
-                            const datKey = dat.key.toString('hex');
-                            this.dats[datKey] = dat;
-                            const newDatEntry: DatEntry = {
-                                key: datKey,
-                                complete: downloadComplete,
-                                updatedAt: new Date(),
-                                createdAt: new Date(),
-                            }
-                            this._updateDatEntry(newDatEntry)            
-                            request.respond({
-                                ...newDatEntry,
-                            })
-                        }
-                    })
-                    dat.archive.metadata.update(() => {
-                        var progress = mirror({fs: dat.archive, name: '/'}, newDatPath, (err) => {
-                            if ( err ) {
-                                debug('Error downloading dat file:', err)
-                            } else {
-                                debug('fully downloaded the goods!')
-                                downloadComplete = true
-                                const updatedDatEntry: DatEntry = {
-                                    key: requestData.key,
-                                    complete: true,
-                                    updatedAt: new Date(),
-                                }
-                                this._updateDatEntry(updatedDatEntry)
-                            }                        
-                        })
-                    })
-                } catch (error) {
-                    debug(`Dat error while attempting to download...`, error)
-                    request.reject(error)
-                }
-            })
+        const {key}: AODat_Download_Data = request.data;        
+        this.downloadDat(key).then( (datEntry:DatEntry) => {
+            request.respond(datEntry)
+        }).catch(e => {
+            request.reject(e)
+        })
+    }
+
+    /**
+     * Dat Downloads for encrypted files.  Goes doesn the list of given nodes
+     * @param request 
+     */
+    private _handleEncryptedFileDownload(request:IAORouterRequest) {
+        const {nodes}: AODat_Encrypted_Download_Data = request.data
+        let keys = []
+        for (const fileDatKey in nodes) {
+            if (nodes.hasOwnProperty(fileDatKey)) {
+                keys.push(fileDatKey)
+            }
         }
+        this.firstInSequence(keys, this.downloadDat.bind(this)).then((datEntry:DatEntry) => {
+            //For when we return it.
+            const contentHostId = nodes[datEntry.key]
+            request.respond({
+                datEntry,
+                contentHostId
+            })
+            
+        }).catch(request.reject)
+    }
+
+    /**
+     * Downloads dats and resolves the internal entry for that dat.
+     * https://github.com/datproject/dat-node/blob/master/examples/download.js
+     * @param key 
+     * @returns datEntry
+     */
+    private downloadDat(key) {
+        return new Promise((resolve,reject) => {
+            if ( this.dats[key] ) {
+                // A. This dat already exists!
+                this._getDatEntry(key).then(() => {
+                    resolve(this.dats[key])
+                }).catch(reject)
+            } else {
+                // B. We do not have this dat, proceed to create and download
+                const newDatPath = path.join(this.datDir, key);
+                let downloadComplete = false
+                Dat(newDatPath, {key: key}, (err, dat) => {
+                    if ( err || !dat ) {
+                        debug('failed to download dat', err)
+                        reject(err)
+                        return;
+                    }
+                    try {
+                        dat.joinNetwork((err) => {
+                            if ( err ) {
+                                debug('failed to join network for dat download', err)
+                                reject(err)
+                                return;
+                            } else if ( !dat.network.connected || !dat.network.connecting ) {
+                                debug('no one is hosting dat://' + key)
+                                reject(new Error('No users are hosting the requested content'))
+                                return;
+                            } else {
+                                debug('succesfully joined network for dat://' + key)
+                                const datKey = dat.key.toString('hex');
+                                this.dats[datKey] = dat;
+                                const newDatEntry: DatEntry = {
+                                    key: datKey,
+                                    complete: downloadComplete,
+                                    updatedAt: new Date(),
+                                    createdAt: new Date(),
+                                }
+                                this._updateDatEntry(newDatEntry)            
+                                resolve({
+                                    ...newDatEntry,
+                                })
+                            }
+                        })
+                        dat.archive.metadata.update(() => {
+                            var progress = mirror({fs: dat.archive, name: '/'}, newDatPath, (err) => {
+                                if ( err ) {
+                                    debug('Error downloading dat file:', err)
+                                } else {
+                                    debug('fully downloaded the goods!')
+                                    downloadComplete = true
+                                    const updatedDatEntry: DatEntry = {
+                                        key: key,
+                                        complete: true,
+                                        updatedAt: new Date(),
+                                    }
+                                    this._updateDatEntry(updatedDatEntry)
+                                }                        
+                            })
+                        })
+                    } catch (error) {
+                        debug(`Dat error while attempting to download...`, error)
+                        reject(error)
+                    }
+                })
+            }
+        })
+    }
+
+    //For Dat download in sequence: https://www.abeautifulsite.net/executing-promises-in-sequence-and-stopping-at-the-first-resolved-promise
+    private firstInSequence(values, asyncFn) {
+        return new Promise((resolve, reject) => {
+            // Are there any values to check?
+            if(values.length === 0) {
+                // All were rejected
+                reject();
+            }
+            // Try the first value
+            asyncFn(values[0]).then((val) =>  {
+                // Resolved, we're all done
+                resolve(val);
+            }).catch(() =>{
+                // Rejected, remove the first item from the array and recursively
+                // try the next one
+                values.shift();
+                this.firstInSequence(values, asyncFn).then(resolve).catch(reject);
+            });
+        });
     }
 
     private _handleDatExists(request: IAORouterRequest) {
@@ -311,4 +381,6 @@ export default class AODat extends AORouterInterface {
             }
         }).catch(request.reject)
     }
+
+    
 }
