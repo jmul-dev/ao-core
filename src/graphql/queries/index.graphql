@@ -15,7 +15,7 @@ type Query {
     node: NodeIdentity
     statistics: NodeStatistics
     wallet: Wallet
-    videos: [VideoContent]
+    videos(query: String): [VideoContent]
     video(id: ID!): VideoContent
     settings: Settings!
 }

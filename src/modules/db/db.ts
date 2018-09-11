@@ -1,9 +1,9 @@
-import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
+import Debug from 'debug';
+import Fuse from 'fuse.js';
 import Datastore from 'nedb';
 import path from 'path';
-import Debug from 'debug';
-import { error } from "util";
-import { responsePathAsArray } from "graphql";
+import AONetworkContent from "../../models/AONetworkContent";
+import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
 const debug = Debug('ao:db');
 
 
@@ -74,7 +74,9 @@ export interface AODB_UserContentUpdate_Data {
  */
 export interface AODB_NetworkContentGet_Data {
     query?: Object;
+    fuzzyQuery?: string;
     projection?: Object;
+    contentOnly?: boolean;
 }
 export interface AODB_NetworkContentInsert_Data {
     key: string;
@@ -425,17 +427,37 @@ export default class AODB extends AORouterInterface {
         const requestData: AODB_NetworkContentGet_Data = request.data
         let query = requestData.query || {}
         let cursor = this.db.networkContent.find(query)
-        if ( requestData.projection ) {
+        if (requestData.projection) {
             cursor = cursor.projection(requestData.projection)
         }
         cursor.exec((error, results) => {
             if (error) {
                 request.reject(error)
             } else {
+                if (requestData.contentOnly) {
+                    results = results.map((result: AONetworkContent) => {
+                        return result.content
+                    })
+                }
+                if (requestData.fuzzyQuery) {
+                    const fuseOptions = {
+                        shouldSort: true,
+                        threshold: 0.6,
+                        location: 0,
+                        distance: 100,
+                        maxPatternLength: 32,
+                        minMatchCharLength: 1,
+                        keys: [
+                            "title",
+                            "description"
+                        ]
+                    }
+                    const fuse = new Fuse(results, fuseOptions)
+                    results = fuse.search(requestData.fuzzyQuery)
+                }
                 request.respond(results)
             }
         })
-
     }
 
     private _insertNetworkContent(request: IAORouterRequest) {
