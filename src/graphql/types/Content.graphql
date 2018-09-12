@@ -42,9 +42,14 @@ type ContentTransactions {
 }
 
 type VideoMetadata {
-    duration: Float
-    resolution: String
     encoding: String
+    duration: Float
+    width: Int
+    height: Int
+    aspectRatio: Float
+    aspectRatioDisplay: String
+    bitRate: Int
+    frameRate: Float
 }
 
 type Signature {

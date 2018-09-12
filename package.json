@@ -42,6 +42,7 @@
     "ffprobe": "^1.1.0",
     "ffprobe-static": "^2.0.0",
     "fs-extra": "^6.0.1",
+    "fuse.js": "^3.2.1",
     "got": "git:git@github.com:ryuheiyokokawa/got.git#ao",
     "graphql": "^0.13.2",
     "graphql-import-loader": "^0.2.1",

@@ -93,12 +93,9 @@ export default (obj: any, args: any, context: IGraphqlResolverContext, info: any
                             contentDatKey = datResponseData.key
                         }
                     }
-                    // NOTE: anything that should be omitted from the public metadata dat file should 
-                    // be added below in `userContentJson`
                     let contentJson: AOContent = AOContent.fromObject({
                         id: contentDatKey,
                         nodeId: ethAddress,
-
                         creatorId: ethAddress,
                         metadataDatKey: metadataDatKey,
                         contentType: 'VOD',
@@ -122,9 +119,7 @@ export default (obj: any, args: any, context: IGraphqlResolverContext, info: any
                         featuredImageUrl: `${metadataDatKey}/${contentFileNames[2]}`,
 
                         metadata: {
-                            duration: videoStats['duration'],
-                            resolution: videoStats['height'],//we have the width too, but dunno
-                            encoding: videoStats['codec'],
+                            ...videoStats,  // see fs@getVideoData
                         },
                         decryptionKey: decryptionKey,
                         state: AOContentState.ENCRYPTED,

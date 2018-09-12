@@ -26,7 +26,7 @@ const AOContentStateOrdered = [
     AOContentState.DOWNLOADING,
     AOContentState.DOWNLOADED,
     AOContentState.PURCHASING,
-    AOContentState.PURCHASED,        
+    AOContentState.PURCHASED,
     AOContentState.DECRYPTION_KEY_RECEIVED,
     AOContentState.VERIFIED,
     AOContentState.VERIFICATION_FAILED,
@@ -38,16 +38,6 @@ const AOContentStateOrdered = [
 ]
 
 /**
- * For a content to be considered in a completed state if must
- * have been made discoverable.
- */
-export function getListOfContentCompletedStates() {
-    return [
-        AOContentState.DISCOVERABLE
-    ]
-}
-
-/**
  * These are all intermediate steps before a piece of content
  * is fully brought into the node and re-hosted (or uploaded
  * and hosted).
@@ -57,7 +47,7 @@ export function getListOfContentIncompleteStates() {
         AOContentState.DOWNLOADING,
         AOContentState.DOWNLOADED,
         AOContentState.PURCHASING,
-        AOContentState.PURCHASED,        
+        AOContentState.PURCHASED,
         AOContentState.DECRYPTION_KEY_RECEIVED,
         AOContentState.VERIFIED,
         AOContentState.VERIFICATION_FAILED,
@@ -68,15 +58,21 @@ export function getListOfContentIncompleteStates() {
     ]
 }
 
-// NOTE: Data models should be implemented at *some* point. A few thoughts:
-// - these models/classes should reflect the graphql types (possibly even generate those types)
-// - graphql resolvers can resolve these class instances directly
-// - should probably wrap object types in the AORouter (for cross-process communication)
-//
+/**
+ * AOContent
+ * 
+ * This class should closely reflect the structure of the IContent graphql type.
+ * Ideally we would generate the graphql types from this (another time for another
+ * time). Also note, graphql resolvers can resolve these class instances directly, 
+ * and even call instance methods to resolve fields. Also a todo, should probably wrap 
+ * object types in the AORouter (for cross-process communication).
+ * 
+ * Main usage: const content: AOContent = AOContent.fromObject({})
+ */
 export default abstract class AOContent {
     public id: string
     public contentHostId?: string
-    public state: string  // derived
+    public state: string
     public stakeId: string
     public nodeId: string
     public creatorId: string
@@ -90,9 +86,9 @@ export default abstract class AOContent {
     public baseChallenge: string
     public baseChallengeSignature: string
     public encChallenge: string
-    public metadataDatKey: string    
+    public metadataDatKey: string
     public title: string
-    public description: string    
+    public description: string
     public stake: number
     public fileSize: number
     public premium: number
@@ -109,7 +105,7 @@ export default abstract class AOContent {
     public receivedIndexData: AOP2P_IndexDataRow
     public decryptionKey: string
 
-    static fromObject( contentObject ) {
+    static fromObject(contentObject) {
         let instance;
         switch (contentObject.contentType) {
             case 'VOD':
@@ -127,7 +123,7 @@ export default abstract class AOContent {
     }
 
     public isPurchased(): boolean {
-        return AOContentStateOrdered.indexOf(this.state) >= AOContentStateOrdered.indexOf( AOContentState.PURCHASED )
+        return AOContentStateOrdered.indexOf(this.state) >= AOContentStateOrdered.indexOf(AOContentState.PURCHASED)
     }
 
     public getFilePath(): string {
@@ -148,21 +144,43 @@ export default abstract class AOContent {
 
     /**
      * Returns a json structure that can be safely saved to 
-     * a metadata file (exludes any sensitive information)
+     * a metadata file (exludes any sensitive information).
+     * This is the content that will exist in the public Dat
+     * file and shows up during discovery.
      */
     public toMetadataJson() {
-        let json = Object.assign({}, this)
-        delete json.decryptionKey
-        delete json.nodeId
-        delete json.stakeId
-        delete json.state
-        delete json.baseChallenge
-        delete json.encChallenge
-        delete json.receivedIndexData
-        
-        return json
+        const metadataJsonKeys = [
+            'stakeId',
+            'creatorId',
+            'contentType',
+            'isFolder',
+            'isMutable',
+            'fileName',
+            'fileDatKey',
+            'fileUrl',
+            'fileChecksum',
+            'title',
+            'description',
+            'stake',            
+            'fileSize',
+            'premium',
+            'profit',
+            'split',
+            'adSupport',
+            'createdAt',
+            'teaserUrl',
+            'teaserName',
+            'featuredImageUrl',
+            'featuredImageName',
+            'metadata',
+        ]
+        let metadataJson = {}
+        metadataJsonKeys.forEach(key => {
+            metadataJson[key] = this[key]
+        });
+        return metadataJson
     }
-    
+
     /**
      * Unlike above, returns a raw dangerous json!
      */
@@ -184,8 +202,13 @@ export class AOVideoContent extends AOContent {
     public featuredImageUrl: string
     public featuredImageName: string
     public metadata: {
-        duration: number
-        resolution: string
         encoding: string
+        duration: number
+        width: number
+        height: number
+        aspectRatio: number
+        aspectRatioDisplay: string
+        bitRate: number
+        frameRate: number
     }
 }

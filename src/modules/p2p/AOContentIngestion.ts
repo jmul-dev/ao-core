@@ -1,4 +1,4 @@
-import AOContent from "../../models/AOContent";
+import AOContent, { AOContentState } from "../../models/AOContent";
 import queue, { IQueue, IQueueOptions, IQueueEventCallback, IQueueWorker } from 'queue';
 import { AORouterInterface } from "../../router/AORouterInterface";
 import { IAORouterMessage } from "../../router/AORouter";
@@ -64,6 +64,7 @@ export default class AOContentIngestion {
                                 if ( contentJson ) {
                                     networkContent.status = 'imported'
                                     networkContent.content = AOContent.fromObject(contentJson)
+                                    networkContent.content.state = AOContentState.DISCOVERED
                                 }
                             } catch (error) {
                                 debug(`Unable to add network content ${metadataDatKey}, failed to parse metadata file.`)

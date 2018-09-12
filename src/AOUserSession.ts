@@ -192,7 +192,7 @@ export default class AOUserSession {
                 contentRequesterPublicKey: buyContentEvent.publicKey,
                 contentOwnersPrivateKey: this.identity.privateKey,
             }
-            const { encryptedDecryptionKey, encryptedDecryptionKeySignature } = await AOCrypto.generateContentEncrytionKeyForUser(contentDecryptParams)
+            const { encryptedDecryptionKey, encryptedDecryptionKeySignature } = await AOCrypto.generateContentEncryptionKeyForUser(contentDecryptParams)
 
             // 4. Handoff to discovery
             const sendDecryptionKeyMessage: AOP2P_Write_Decryption_Key_Data = {

@@ -1,11 +1,9 @@
 'use strict';
 import { GraphQLUpload } from 'apollo-upload-server';
-import { addMockFunctionsToSchema, makeExecutableSchema } from 'graphql-tools';
-import mocks from './mocks';
+import Debug from 'debug';
+import { makeExecutableSchema } from 'graphql-tools';
 import resolvers from './resolvers/resolvers';
-import Debug from 'debug'
 const debug = Debug('ao:graphql');
-
 const graphqlSchema = require('./schema.graphql');
 const packageJson = require('../../package.json');
 
@@ -38,7 +36,7 @@ export default function () {
             Query: {
                 version: () => packageJson.version,
                 logs: resolvers.resolveLogs,
-                node: resolvers.resolveLocalNode,                
+                node: resolvers.resolveLocalNode,
                 state: resolvers.resolveState,
                 settings: resolvers.resolveSettings,
                 videos: resolvers.resolveVideos,
@@ -61,9 +59,5 @@ export default function () {
         },
         inheritResolversFromInterfaces: true,
     });
-    // NOTE: set preserveResolvers to true if we only want to mock undefined resolvers,
-    // and use resolvers that are already defined.
-    if ( process.env.NODE_ENV !== 'production' )
-        addMockFunctionsToSchema({ schema, mocks, preserveResolvers: true });
     return schema;
 }
