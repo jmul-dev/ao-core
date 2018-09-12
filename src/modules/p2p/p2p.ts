@@ -258,7 +258,7 @@ export default class AOP2P extends AORouterInterface {
     private _handleWatchAndGetIndexData(request: IAORouterRequest) {
         const { key, ethAddress }: AOP2P_Watch_AND_Get_IndexData_Data = request.data
         this.hyperdb.query(key).then((indexDataString: string) => {
-            this.parseIndexData({indexDataString,ethAddress})
+            this.parseIndexDataByEth({indexDataString,ethAddress})
             .then((indexData) => {
                 // If it exists, send it back.
                 request.respond(indexData)
@@ -266,7 +266,7 @@ export default class AOP2P extends AORouterInterface {
                 // If it doens't, watch for change
                 this.hyperdb.watch(key).then(() => {
                     this.hyperdb.query(key).then((indexDataString: string) => {
-                        this.parseIndexData({indexDataString, ethAddress})
+                        this.parseIndexDataByEth({indexDataString, ethAddress})
                         .then((indexData) => {
                             request.respond(indexData)
                         }).catch( () => {
@@ -281,7 +281,7 @@ export default class AOP2P extends AORouterInterface {
         }).catch(request.reject)
     }
 
-    private parseIndexData({indexDataString, ethAddress}) {
+    private parseIndexDataByEth({indexDataString, ethAddress}) {
         return new Promise((resolve,reject) => {
             let indexData: object = {}
             try {
@@ -294,7 +294,7 @@ export default class AOP2P extends AORouterInterface {
                     reject()
                 } else {
                     let indexDataRow: AOP2P_IndexDataRow = indexData[ethAddress]
-                    resolve({ indexDataRow })
+                    resolve(indexDataRow)
                 }
             }
         })
