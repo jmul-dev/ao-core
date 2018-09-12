@@ -35,6 +35,7 @@ type DatStats {
     uploadTotal: Float
     peersTotal: Int
     peersComplete: Int
+    complete: Boolean
 }
 
 type ContentTransactions {

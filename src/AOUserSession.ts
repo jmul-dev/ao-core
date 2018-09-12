@@ -1,7 +1,7 @@
 import Debug from 'debug';
 import path, { resolve } from 'path';
 import AOContent, { AOContentState } from "./models/AOContent";
-import { AODat_Create_Data, AODat_ResumeSingle_Data, AODat_Encrypted_Download_Data } from './modules/dat/dat';
+import { AODat_Create_Data, AODat_ResumeSingle_Data, AODat_Encrypted_Download_Data, DatStats, AODat_GetDatStats_Data } from './modules/dat/dat';
 import { AODB_UserContentGet_Data, AODB_UserContentUpdate_Data, AODB_UserInsert_Data, AODB_NetworkContentUpdate_Data } from "./modules/db/db";
 import { BuyContentEvent, HostContentEvent, IAOEth_BuyContentEvent_Data } from "./modules/eth/eth";
 import { IAOFS_DecryptCheck_Data, IAOFS_Mkdir_Data, IAOFS_Move_Data, IAOFS_Reencrypt_Data, IAOFS_Unlink_Data } from "./modules/fs/fs";
@@ -298,7 +298,28 @@ export default class AOUserSession {
      * @param {AOContent} content
      */
     private _handleContentDownloading(content: AOContent) {
-        
+        setTimeout(() => {
+            const datStatsParams: AODat_GetDatStats_Data = { key: content.fileDatKey }
+            this.router.send('/dat/stats', datStatsParams).then((response: IAORouterMessage) => {
+                const datStats: DatStats = response.data
+                if ( datStats.complete ) {
+                    let userContentUpdate: AODB_UserContentUpdate_Data = {
+                        id: content.id,
+                        update: {
+                            state: AOContentState.DOWNLOADED
+                        }
+                    }
+                    this.router.send('/db/user/content/update', userContentUpdate).then((userContentUpdateResponse: IAORouterMessage) => {
+                        let updatedContent = AOContent.fromObject(userContentUpdateResponse.data)
+                        this.processContent(updatedContent)
+                    }).catch(error => {
+                        debug(`Error updating user content: ${error.message}`)
+                    })
+                } else {
+                    this.processContent(content)
+                }
+            })
+        }, 1500)
     }
 
     /**

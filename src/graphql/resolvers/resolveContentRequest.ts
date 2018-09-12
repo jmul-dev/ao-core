@@ -1,11 +1,7 @@
-import Debug from 'debug';
 import { IGraphqlResolverContext } from '../../http';
 import AOContent, { AOContentState } from '../../models/AOContent';
-import { AODat_Encrypted_Download_Data } from '../../modules/dat/dat';
-import { AODB_NetworkContentGet_Data, AODB_NetworkContentUpdate_Data } from '../../modules/db/db';
-import { AOP2P_Get_File_Node_Data } from '../../modules/p2p/p2p';
+import { AODB_NetworkContentGet_Data } from '../../modules/db/db';
 import { IAORouterMessage } from "../../router/AORouter";
-const debug = Debug('ao:graphql:contentRequest')
 
 
 interface IContentRequest_Args {
@@ -34,66 +30,6 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                 resolve(updatedContent)
                 context.userSession.processContent(updatedContent)
             }).catch(reject)
-
-            /*
-            // 2. Update the network content db to be in DOWNLOADING state
-            let networkContentUpdate: AODB_NetworkContentUpdate_Data = {
-                id: args.metadataDatKey,
-                update: {
-                    "content.state": AOContentState.DOWNLOADING
-                }
-            }
-            context.router.send('/db/network/content/update', networkContentUpdate)
-
-            
-            // Let the frontend know downloading has begun
-            resolve(updatedNetworkContent)
-            
-            // 4. Grab all nodes/contentHostId's for this piece of content
-            const findEncryptedNodeData: AOP2P_Get_File_Node_Data = { 
-                content: updatedNetworkContent
-            }
-            context.router.send('/p2p/findEncryptedNode', findEncryptedNodeData).then((fileNodesResponse: IAORouterMessage) => {
-                const resultNodes = fileNodesResponse.data
-                const nodes = {}
-                resultNodes.map((a) => {
-                    let datKey = a.splitKey[1]
-                    nodes[datKey] = a.value.contentHostId //<-- datkey to contentHostId
-                })
-                // 5. Attempt to download the content from ONE of the nodes above (we may not even find someone who is hosting this content)
-                const encryptedDownloadData: AODat_Encrypted_Download_Data = { nodes }
-                context.router.send('/dat/encryptedFileDownload', encryptedDownloadData).then((downloadResponse: IAORouterMessage) => {
-                    // 6a. Content has been download from a host! Update the network content db
-                    let networkContentUpdate: AODB_NetworkContentUpdate_Data = {
-                        id: args.metadataDatKey,
-                        update: {
-                            "content.state": AOContentState.DOWNLOADED,
-                            "content.contentHostId": downloadResponse.data.contentHostId
-                        }
-                    }
-                    context.router.send('/db/network/content/update', networkContentUpdate)
-                    // 6b. Insert the item into 
-
-                    if (downloadResponse.data.datEntry.complete) {
-                        updatedNetworkContent.state = 'DOWNLOADED'
-                        updatedNetworkContent.contentHostId = downloadResponse.data.contentHostId //This is important!
-                    }
-
-                    
-
-                    // 6. Insert the content into user's content DB
-                    context.router.send('/db/user/content/insert', updatedNetworkContent.toRawJson()).then((insertResponse: IAORouterMessage) => {
-                        resolve(insertResponse.data)
-                    }).catch(reject)
-                }).catch(error => {
-                    debug('Error downloading dat://' + updatedNetworkContent.fileDatKey, error)
-                    // FAIL: The dat download failed. This is possibly due to no-one hosting the dat file
-                    reject(new Error(`Unable to reach the content dat file`))
-                })
-            }).catch(error => {
-                reject(error)
-            })
-            */
         }).catch(reject)
     })
 }
