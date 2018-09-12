@@ -258,28 +258,46 @@ export default class AOP2P extends AORouterInterface {
     private _handleWatchAndGetIndexData(request: IAORouterRequest) {
         const { key, ethAddress }: AOP2P_Watch_AND_Get_IndexData_Data = request.data
         this.hyperdb.query(key).then((indexDataString: string) => {
-            let indexData = JSON.parse(indexDataString)
-            if (!indexData[ethAddress]) {
+            this.parseIndexDataByEth({indexDataString,ethAddress})
+            .then((indexData) => {
+                // If it exists, send it back.
+                request.respond(indexData)
+            }).catch( () => {
+                // If it doens't, watch for change
                 this.hyperdb.watch(key).then(() => {
                     this.hyperdb.query(key).then((indexDataString: string) => {
-                        let indexData = JSON.parse(indexDataString)
-                        if (!indexData[ethAddress]) {
+                        this.parseIndexDataByEth({indexDataString, ethAddress})
+                        .then((indexData) => {
+                            request.respond(indexData)
+                        }).catch( () => {
                             //Self call if there isn't a record for our own indexData
                             setTimeout(() => {
                                 this._handleWatchAndGetIndexData(request)
                             }, 500);
-                        } else {
-                            let indexDataRow: AOP2P_IndexDataRow = indexData[ethAddress]
-                            request.respond({ indexDataRow: indexDataRow })
-                        }
-                    }).catch(request.reject)
-                }).catch(request.reject)
-            } else {
-                let indexDataRow: AOP2P_IndexDataRow = indexData[ethAddress]
-                request.respond({ indexDataRow: indexDataRow })
-            }
-
+                        })
+                    })
+                })
+            })
         }).catch(request.reject)
+    }
+
+    private parseIndexDataByEth({indexDataString, ethAddress}) {
+        return new Promise((resolve,reject) => {
+            let indexData: object = {}
+            try {
+                indexData = JSON.parse(indexDataString)
+            } catch(e) {
+                debug('Index Data was not able to be parsed')
+                indexData = {}
+            } finally {
+                if (!indexData[ethAddress]) {
+                    reject()
+                } else {
+                    let indexDataRow: AOP2P_IndexDataRow = indexData[ethAddress]
+                    resolve(indexDataRow)
+                }
+            }
+        })
     }
 
     private _handleAddDiscovery(request: IAORouterRequest) {
@@ -348,7 +366,13 @@ export default class AOP2P extends AORouterInterface {
         const nodeRoute = AOP2P.routeNodeRegistration(nodeRouteArgs)
 
         this.hyperdb.query(nodeRoute).then((indexDataString: string) => {
-            let indexData = JSON.parse(indexDataString)
+            let indexData:object = {}
+            try {
+                indexData = JSON.parse(indexDataString)
+            } catch(e) {
+                debug('Index Data could not be read/parsed while selling a key')
+                indexData = {}
+            }
             // 2. Add row to indexData
             indexData[buyerEthAddress] = {
                 decryptionKey: encryptedDecryptionKey, // Encrypted key with publicKey
