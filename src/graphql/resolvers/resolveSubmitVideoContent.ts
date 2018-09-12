@@ -94,7 +94,7 @@ export default (obj: any, args: any, context: IGraphqlResolverContext, info: any
                         }
                     }
                     let contentJson: AOContent = AOContent.fromObject({
-                        id: contentDatKey,
+                        id: metadataDatKey,
                         nodeId: ethAddress,
                         creatorId: ethAddress,
                         metadataDatKey: metadataDatKey,
