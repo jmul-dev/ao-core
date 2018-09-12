@@ -7,6 +7,8 @@ export type AOContentType = "VOD" | 'STREAM' | 'FILE' | 'APP'
 // NOTE: match graphql/types/content.graphql -> ContentState enum
 export const AOContentState = Object.freeze({
     DISCOVERED: 'DISCOVERED',
+    HOST_DISCOVERY: 'HOST_DISCOVERY',
+    HOST_DISCOVERY_FAILED: 'HOST_DISCOVERY_FAILED',
     DOWNLOADING: 'DOWNLOADING',
     DOWNLOADED: 'DOWNLOADED',
     PURCHASING: 'PURCHASING',
@@ -23,6 +25,8 @@ export const AOContentState = Object.freeze({
 
 const AOContentStateOrdered = [
     AOContentState.DISCOVERED,
+    AOContentState.HOST_DISCOVERY,
+    AOContentState.HOST_DISCOVERY_FAILED,
     AOContentState.DOWNLOADING,
     AOContentState.DOWNLOADED,
     AOContentState.PURCHASING,
@@ -44,6 +48,8 @@ const AOContentStateOrdered = [
  */
 export function getListOfContentIncompleteStates() {
     return [
+        AOContentState.HOST_DISCOVERY,
+        AOContentState.HOST_DISCOVERY_FAILED,
         AOContentState.DOWNLOADING,
         AOContentState.DOWNLOADED,
         AOContentState.PURCHASING,

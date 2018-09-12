@@ -1,11 +1,11 @@
 import Debug from 'debug';
-import path from 'path';
+import path, { resolve } from 'path';
 import AOContent, { AOContentState } from "./models/AOContent";
-import { AODat_Create_Data, AODat_ResumeSingle_Data } from './modules/dat/dat';
-import { AODB_UserContentGet_Data, AODB_UserContentUpdate_Data, AODB_UserInsert_Data } from "./modules/db/db";
+import { AODat_Create_Data, AODat_ResumeSingle_Data, AODat_Encrypted_Download_Data, DatStats, AODat_GetDatStats_Data } from './modules/dat/dat';
+import { AODB_UserContentGet_Data, AODB_UserContentUpdate_Data, AODB_UserInsert_Data, AODB_NetworkContentUpdate_Data } from "./modules/db/db";
 import { BuyContentEvent, HostContentEvent, IAOEth_BuyContentEvent_Data } from "./modules/eth/eth";
 import { IAOFS_DecryptCheck_Data, IAOFS_Mkdir_Data, IAOFS_Move_Data, IAOFS_Reencrypt_Data, IAOFS_Unlink_Data } from "./modules/fs/fs";
-import { AOP2P_Add_Discovery_Data, AOP2P_IndexDataRow, AOP2P_Watch_AND_Get_IndexData_Data, AOP2P_Write_Decryption_Key_Data } from "./modules/p2p/p2p";
+import { AOP2P_Add_Discovery_Data, AOP2P_IndexDataRow, AOP2P_Watch_AND_Get_IndexData_Data, AOP2P_Write_Decryption_Key_Data, AOP2P_Get_File_Node_Data } from "./modules/p2p/p2p";
 import { IAORouterMessage } from "./router/AORouter";
 import { AORouterInterface, IAORouterRequest } from "./router/AORouterInterface";
 import * as AOCrypto from './AOCrypto'
@@ -119,6 +119,15 @@ export default class AOUserSession {
      */
     public processContent(content: AOContent) {
         switch (content.state) {
+            case AOContentState.HOST_DISCOVERY:
+                this._handleContentHostDiscovery(content)
+                break;
+            case AOContentState.DOWNLOADING:
+                this._handleContentDownloading(content)
+                break;
+            case AOContentState.DOWNLOADED:
+                // Pending user purchase tx
+                break;
             case AOContentState.PURCHASING:
                 this._listenForContentPurchaseReceipt(content)
                 break;
@@ -211,6 +220,106 @@ export default class AOUserSession {
                 debug(`Failed to handle content purhcase`, error)
             })
         })
+    }
+
+    /**
+     * User has initiated a content request action, meaning we need to bring
+     * the content into the node before proceeding with purchase process.
+     * 
+     * content.state ==== HOST_DISCOVERY
+     * 
+     * @param {AOContent} content
+     */
+    private _handleContentHostDiscovery(content: AOContent) {
+        // 1. Grab all nodes/contentHostId's for this piece of content
+        const findEncryptedNodeData: AOP2P_Get_File_Node_Data = { content }
+        this.router.send('/p2p/findEncryptedNode', findEncryptedNodeData).then((fileNodesResponse: IAORouterMessage) => {
+            const resultNodes = fileNodesResponse.data
+            const nodes = {}
+            resultNodes.map((a) => {
+                let datKey = a.splitKey[1]
+                nodes[datKey] = a.value.contentHostId //<-- datkey to contentHostId
+            })
+            // 2. Attempt to download the content from ONE of the nodes above (we may not even find someone who is hosting this content)
+            const encryptedDownloadData: AODat_Encrypted_Download_Data = { nodes }
+            this.router.send('/dat/encryptedFileDownload', encryptedDownloadData).then((downloadResponse: IAORouterMessage) => {
+                // 3a. Content has started downloading from a host!
+                let userContentUpdate: AODB_UserContentUpdate_Data = {
+                    id: content.id,
+                    update: {
+                        state: downloadResponse.data.datEntry.complete ? AOContentState.DOWNLOADED : AOContentState.DOWNLOADING,
+                        contentHostId: downloadResponse.data.contentHostId,
+                        fileDatKey: downloadResponse.data.datEntry.key
+                    }
+                }
+                this.router.send('/db/user/content/update', userContentUpdate).then((userContentUpdateResponse: IAORouterMessage) => {
+                    let updatedContent = AOContent.fromObject(userContentUpdateResponse.data)
+                    this.processContent(updatedContent)
+                }).catch(error => {
+                    debug(`Error updating user content: ${error.message}`)
+                })
+            }).catch(error => {
+                // 3b. We were unable to download the content from any host (likely that all hosted dats were not reachable)
+                let userContentUpdate: AODB_UserContentUpdate_Data = {
+                    id: content.id,
+                    update: {
+                        state: AOContentState.HOST_DISCOVERY_FAILED
+                    }
+                }
+                this.router.send('/db/user/content/update', userContentUpdate).then((userContentUpdateResponse: IAORouterMessage) => {
+                    let updatedContent = AOContent.fromObject(userContentUpdateResponse.data)
+                    this.processContent(updatedContent)
+                }).catch(error => {
+                    debug(`Error updating user content: ${error.message}`)
+                })
+            })
+        }).catch(error => {
+            debug(`Error while trying to pull content hosts from p2p: ${error.message}`)
+            let userContentUpdate: AODB_UserContentUpdate_Data = {
+                id: content.id,
+                update: {
+                    state: AOContentState.HOST_DISCOVERY_FAILED
+                }
+            }
+            this.router.send('/db/user/content/update', userContentUpdate).then((userContentUpdateResponse: IAORouterMessage) => {
+                let updatedContent = AOContent.fromObject(userContentUpdateResponse.data)
+                this.processContent(updatedContent)
+            }).catch(error => {
+                debug(`Error updating user content: ${error.message}`)
+            })
+        })
+    }
+
+    /**
+     * Content is currently downloading (via dat). Ping dat until content is completely downloaded.
+     * 
+     * content.state ==== DOWNLOADING
+     * 
+     * @param {AOContent} content
+     */
+    private _handleContentDownloading(content: AOContent) {
+        setTimeout(() => {
+            const datStatsParams: AODat_GetDatStats_Data = { key: content.fileDatKey }
+            this.router.send('/dat/stats', datStatsParams).then((response: IAORouterMessage) => {
+                const datStats: DatStats = response.data
+                if ( datStats.complete ) {
+                    let userContentUpdate: AODB_UserContentUpdate_Data = {
+                        id: content.id,
+                        update: {
+                            state: AOContentState.DOWNLOADED
+                        }
+                    }
+                    this.router.send('/db/user/content/update', userContentUpdate).then((userContentUpdateResponse: IAORouterMessage) => {
+                        let updatedContent = AOContent.fromObject(userContentUpdateResponse.data)
+                        this.processContent(updatedContent)
+                    }).catch(error => {
+                        debug(`Error updating user content: ${error.message}`)
+                    })
+                } else {
+                    this.processContent(content)
+                }
+            })
+        }, 1500)
     }
 
     /**

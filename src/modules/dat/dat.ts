@@ -59,6 +59,7 @@ export interface DatStats {
     uploadTotal: number;
     peersTotal: number;
     peersComplete: number;
+    complete: boolean;
 }
 
 
@@ -153,6 +154,21 @@ export default class AODat extends AORouterInterface {
                 debug(`Joined network: dat://${dat.key.toString('hex')}`)
                 this.dats[datEntry.key] = dat
                 resolve()
+                // Finally, if the datEntry is not complete, listen for completion and update our
+                // db.
+                dat.archive.metadata.update(() => {
+                    mirror({fs: dat.archive, name: '/'}, datDir, (err) => {
+                        if ( !err ) {
+                            debug('fully downloaded the goods!')
+                            const updatedDatEntry: DatEntry = {
+                                key: datEntry.key,
+                                complete: true,
+                                updatedAt: new Date(),
+                            }
+                            this._updateDatEntry(updatedDatEntry)
+                        }                        
+                    })
+                })
             })
         })
     }
@@ -182,14 +198,17 @@ export default class AODat extends AORouterInterface {
             request.reject(new Error(`Dat instance not found`))
             return;
         }
-        const datInstance = this.dats[requestData.key]
-        const stats = datInstance.trackStats()
-        const datStats = datInstance.stats.get()
-        request.respond({
-            ...datStats,
-            network: stats.network,
-            peers: stats.peers,
-        })
+        this._getDatEntry(requestData.key).then((datEntry: DatEntry) => {
+            const datInstance = this.dats[requestData.key]
+            const stats = datInstance.trackStats()
+            const datStats = datInstance.stats.get()
+            request.respond({
+                ...datStats,
+                network: stats.network,
+                peers: stats.peers,
+                complete: datEntry.complete,
+            })
+        }).catch(request.reject)
     }
     
     private _handleResumeAll(request: IAORouterRequest) {
@@ -343,6 +362,10 @@ export default class AODat extends AORouterInterface {
                                     this._updateDatEntry(updatedDatEntry)
                                 }                        
                             })
+                        })
+                        dat.archive.content.on('download-finished', () => {
+                            // In case the above method does not fire
+                            debug('TODO: download-finished event listener triggered!')
                         })
                     } catch (error) {
                         debug(`Dat error while attempting to download...`, error)

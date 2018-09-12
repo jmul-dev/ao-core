@@ -8,6 +8,8 @@ enum ContentType {
 # Keep in sync with `src/models/AOContent.ts`
 enum ContentState {
     DISCOVERED
+    HOST_DISCOVERY
+    HOST_DISCOVERY_FAILED
     DOWNLOADING
     DOWNLOADED
     PURCHASING
@@ -33,6 +35,7 @@ type DatStats {
     uploadTotal: Float
     peersTotal: Int
     peersComplete: Int
+    complete: Boolean
 }
 
 type ContentTransactions {

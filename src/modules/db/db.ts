@@ -82,6 +82,10 @@ export interface AODB_NetworkContentInsert_Data {
     key: string;
     value: Object;
 }
+export interface AODB_NetworkContentUpdate_Data {
+    id: string;
+    update: any;
+}
 
 
 export default class AODB extends AORouterInterface {
@@ -129,6 +133,8 @@ export default class AODB extends AORouterInterface {
 
         this.router.on('/db/network/content/get', this._getNetworkContent.bind(this))
         this.router.on('/db/network/content/insert', this._insertNetworkContent.bind(this))
+        this.router.on('/db/network/content/update', this._networkContentUpdate.bind(this))
+        
         this._setupCoreDbs()
         debug(`started`)
         this.router.send('/core/log', { message: `[AO DB] Core database initialized` })
@@ -467,6 +473,19 @@ export default class AODB extends AORouterInterface {
                 request.reject(err)
             } else {
                 request.respond(doc)
+            }
+        })
+    }
+
+    private _networkContentUpdate(request: IAORouterRequest) {
+        const requestData: AODB_NetworkContentUpdate_Data = request.data
+        this.db.networkContent.update({ _id: requestData.id }, requestData.update, { returnUpdatedDocs: true, multi: false }, (error: Error, numAffected, updatedDoc, upsert) => {
+            if (error) {
+                request.reject(error)
+            } else if (numAffected !== 1 || !updatedDoc) {
+                request.reject(new Error(`Network content not found or failed to update for query: id = ${requestData.id}`))
+            } else {
+                request.respond(updatedDoc)
             }
         })
     }
