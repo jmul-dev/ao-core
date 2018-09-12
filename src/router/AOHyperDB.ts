@@ -10,6 +10,12 @@ export interface AO_Hyper_Options {
     autoAuth: boolean;
 }
 
+export interface HDB_ListValueRow {
+    key: string, 
+    splitKey: Array<string>, 
+    value: any
+}
+
 export default class AOHyperDB {
     private db:hyperdb
     private dbKey:string
@@ -145,6 +151,34 @@ export default class AOHyperDB {
                             const node = nodes[i];
                             let node_split = node[0].key.split("/")
                             result.push(node_split)
+                        }
+                        resolve(result)
+                    } else {
+                        reject()
+                    }
+                }
+            })
+        })
+    }
+
+    public listValue(key) {
+        return new Promise((resolve,reject) => {
+            this.db.list(key, (err, nodes) => {
+                if(err) {
+                    reject(err)
+                } else {
+                    if(nodes.length) {
+                        //Result is the key paths in an array format split by / for easy perusing
+                        let result:Array<HDB_ListValueRow> = []
+                        for (let i = 0; i < nodes.length; i++) {
+                            const node = nodes[i];
+                            const split_key = node[0].key.split("/")
+                            const node_repack = {
+                                key: split_key[0],
+                                splitKey: split_key,
+                                value: node[0].value
+                            }
+                            result.push(node_repack)
                         }
                         resolve(result)
                     } else {

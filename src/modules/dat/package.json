@@ -14,7 +14,8 @@
             "/dat/create",
             "/dat/exists",
             "/dat/stats",
-            "/dat/download"
+            "/dat/download",
+            "/dat/encryptedFileDownload"
         ],
         "activationEvents": [
             
