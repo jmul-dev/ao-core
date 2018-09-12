@@ -1,5 +1,5 @@
 import { IGraphqlResolverContext } from '../../http';
-import { AODB_NetworkContentGet_Data } from '../../modules/db/db';
+import { AODB_UserContentGet_Data } from '../../modules/db/db';
 import { IAORouterMessage } from '../../router/AORouter';
 
 
@@ -12,7 +12,7 @@ interface IVideo_Args {
 
 export default  (obj: any, args: IVideo_Args, context: IGraphqlResolverContext, info: any) => {
     return new Promise((resolve, reject) => {
-        let userDbQuery: AODB_NetworkContentGet_Data = {
+        let userDbQuery: AODB_UserContentGet_Data = {
             query: { 
                 id: args.id
             }

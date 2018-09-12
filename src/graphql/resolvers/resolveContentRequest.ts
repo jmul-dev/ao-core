@@ -1,11 +1,13 @@
-import Debug from 'debug'
+import Debug from 'debug';
 import { IGraphqlResolverContext } from '../../http';
-import { IAORouterMessage } from "../../router/AORouter";
-import { AODB_NetworkContentGet_Data } from '../../modules/db/db';
 import AOContent, { AOContentState } from '../../models/AOContent';
-import { AOP2P_Get_File_Node_Data } from '../../modules/p2p/p2p';
 import { AODat_Encrypted_Download_Data } from '../../modules/dat/dat';
+import { AODB_NetworkContentGet_Data } from '../../modules/db/db';
+import { AOP2P_Get_File_Node_Data } from '../../modules/p2p/p2p';
+import { IAORouterMessage } from "../../router/AORouter";
 const debug = Debug('ao:graphql:contentRequest')
+
+
 interface IContentRequest_Args {
     id: string
 }
@@ -14,7 +16,8 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
     return new Promise((resolve, reject) => {
         // 1. Pull the Content from network content db
         let networkContentQuery: AODB_NetworkContentGet_Data = {
-            query: { id: args.id }
+            query: { _id: args.id },
+            contentOnly: true,
         }
         context.router.send('/db/network/content/get', networkContentQuery).then((response: IAORouterMessage) => {
             if (!response.data || response.data.length !== 1) {
@@ -29,18 +32,18 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
             })
 
             // 3. Grab the key nodes/contentHostId
-            const findEncryptedNodeData:AOP2P_Get_File_Node_Data = {content: clonedContent.toMetadataJson()}
-            context.router.send('/p2p/findEncryptedNode',findEncryptedNodeData).then((fileNodesResponse:IAORouterMessage) => {
+            const findEncryptedNodeData: AOP2P_Get_File_Node_Data = { content: clonedContent.toMetadataJson() }
+            context.router.send('/p2p/findEncryptedNode', findEncryptedNodeData).then((fileNodesResponse: IAORouterMessage) => {
                 const resultNodes = fileNodesResponse.data
                 const nodes = {}
-                resultNodes.map( (a) => {
+                resultNodes.map((a) => {
                     let datKey = a.splitKey[1]
                     nodes[datKey] = a.value.contentHostId //<-- datkey to contentHostId
                 })
-                
+
                 // 4. Trigger encrypted file dat download
-                const encryptedDownloadData:AODat_Encrypted_Download_Data = { nodes }
-                context.router.send('/dat/encryptedFileDownload', encryptedDownloadData ).then((downloadResponse: IAORouterMessage) => {
+                const encryptedDownloadData: AODat_Encrypted_Download_Data = { nodes }
+                context.router.send('/dat/encryptedFileDownload', encryptedDownloadData).then((downloadResponse: IAORouterMessage) => {
                     if (downloadResponse.data.datEntry.complete) {
                         clonedContent.state = 'DOWNLOADED'
                         clonedContent.contentHostId = downloadResponse.data.contentHostId //This is important!
