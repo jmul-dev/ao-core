@@ -35,7 +35,7 @@ export default class AOContentIngestion {
     }
 
     public addDiscoveredMetadataDatKeyToQueue(metadataDatKey: string) {
-        if ( this.datKeysInQueue.indexOf(metadataDatKey) === -1 )
+        if (this.datKeysInQueue.indexOf(metadataDatKey) === -1)
             this.processingQueue.push(this._queueHandler.bind(this, metadataDatKey))
     }
 
@@ -44,15 +44,16 @@ export default class AOContentIngestion {
             debug(`Processing discovered network content: ${metadataDatKey} [qlength=${this.processingQueue.length}]`)
 
             // 0. Check to see if the user content db contains the metadata datkey already
-            const userContentQuery: AODB_UserContentGet_Data = {query: {metadataDatKey:metadataDatKey}}
-            this.router.send('/db/user/content/get', userContentQuery ).then((userContentData: IAORouterMessage) => {
+            const userContentQuery: AODB_UserContentGet_Data = { query: { metadataDatKey: metadataDatKey } }
+            this.router.send('/db/user/content/get', userContentQuery).then((userContentData: IAORouterMessage) => {
                 const userContent = userContentData.data
-                if(userContent.length){
+                if (userContent.length) {
+                    debug(`Skipping discovered content (already in user db)`)
                     resolve()
                 } else {
                     // 1. Ping the network content db to see if we have already seen this
-                    this.router.send('/db/network/content/get', {_id: metadataDatKey}).then((contentResponse: IAORouterMessage) => {
-                        if ( contentResponse.data && contentResponse.data[0] ) {
+                    this.router.send('/db/network/content/get', { _id: metadataDatKey }).then((contentResponse: IAORouterMessage) => {
+                        if (contentResponse.data && contentResponse.data[0]) {
                             const existingNetworkContent: AONetworkContent = contentResponse.data[0]
                             // 2a. Content already exists (TODO: decide if we want to retry?)
                             resolve()
@@ -70,7 +71,7 @@ export default class AOContentIngestion {
                                     }
                                     try {
                                         const contentJson = JSON.parse(readResponse.data)
-                                        if ( contentJson ) {
+                                        if (contentJson) {
                                             networkContent.status = 'imported'
                                             networkContent.content = AOContent.fromObject(contentJson)
                                             networkContent.content.state = AOContentState.DISCOVERED
