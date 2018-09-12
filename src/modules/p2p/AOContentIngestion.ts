@@ -60,6 +60,7 @@ export default class AOContentIngestion {
                                 _id: metadataDatKey,
                                 status: 'failed'
                             }
+                            console.log(readResponse.data)
                             try {
                                 const contentJson = JSON.parse(readResponse.data)
                                 if (contentJson) {
@@ -68,6 +69,7 @@ export default class AOContentIngestion {
                                     networkContent.content.state = AOContentState.DISCOVERED
                                 }
                             } catch (error) {
+                                debug(error)
                                 debug(`Unable to add network content ${metadataDatKey}, failed to parse metadata file.`)
                             } finally {
                                 // 4. Insert into network content db, marked as failed or imported
