@@ -275,8 +275,8 @@ export default class AOP2P extends AORouterInterface {
                                 this._handleWatchAndGetIndexData(request)
                             }, 500);
                         })
-                    })
-                })
+                    }).catch(request.reject)
+                }).catch(request.reject)
             })
         }).catch(request.reject)
     }
