@@ -9,19 +9,19 @@ const debug = Debug('ao:graphql:contentRequest')
 
 
 interface IContentRequest_Args {
-    id: string
+    metadataDatKey: string
 }
 
 export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverContext, info: any) => {
     return new Promise((resolve, reject) => {
         // 1. Pull the Content from network content db
         let networkContentQuery: AODB_NetworkContentGet_Data = {
-            query: { _id: args.id },
+            query: { _id: args.metadataDatKey },
             contentOnly: true,
         }
         context.router.send('/db/network/content/get', networkContentQuery).then((response: IAORouterMessage) => {
             if (!response.data || response.data.length !== 1) {
-                reject(new Error(`No discovered content with id: ${args.id}`))
+                reject(new Error(`No discovered content with id: ${args.metadataDatKey}`))
                 return;
             }
             // 2. Modify the content to account for it entering user database
