@@ -306,17 +306,21 @@ export default class AOP2P extends AORouterInterface {
             metaDatKey: content.metadataDatKey
         })
         this.hyperdb.listValue(fineNodeRoute).then((results: Array<HDB_ListValueRow>) => {
-            //Store the JSON object as value instead of just a stringified JSON.
-            let jsonResults = results.map(a => {
+            // 1. Convert entry data to json (map)
+            let jsonResults = results.map(entry => {
                 try {
-                    a.value = JSON.parse(a.value)
-                } catch (e) {
-                    request.reject(new Error('Malformatted timestamp/contentHostId for ' + a.key))
+                    entry.value = JSON.parse(entry.value)
+                } catch (error) {
+                    // Instead of letting a single malformed entry ruin the show, we just ignore it
+                    debug('Malformatted timestamp/contentHostId for ' + entry.key)
+                    entry.value = null
                 }
-                return a
-            })
-            //Sort by timestamp data
-            jsonResults.sort((a, b) => {
+                return entry
+            // 2. Filter any malformed entries
+            }).filter(entry => {
+                return entry.value !== null
+            // 3. Sort by timestamps
+            }).sort((a, b) => {
                 const timestampA = a.value.timestamp
                 const timestampB = b.value.timestamp
                 return timestampA > timestampB ? -1 : timestampA < timestampB ? 1 : 0;
