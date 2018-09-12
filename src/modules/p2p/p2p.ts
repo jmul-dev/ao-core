@@ -296,7 +296,7 @@ export default class AOP2P extends AORouterInterface {
     /**
      * Gets time sorted keys for a specific content nodes
      * @param request 
-     * @returns sortedKeys
+     * @returns jsonResults // key, splitKey, and json value 
      */
     private _handleGetFileNodes(request: IAORouterRequest) {
         const { content }:AOP2P_Get_File_Node_Data = request.data
@@ -308,7 +308,11 @@ export default class AOP2P extends AORouterInterface {
         this.hyperdb.listValue(fineNodeRoute).then((results:Array<HDB_ListValueRow>) => {
             //Store the JSON object as value instead of just a stringified JSON.
             let jsonResults = results.map (a => {
-                a.value = JSON.parse(a.value)
+                try {
+                    a.value = JSON.parse(a.value)
+                } catch(e) {
+                    request.reject(new Error('Malformatted timestamp/contentHostId for '+ a.key))
+                }
                 return a
             })
             //Sort by timestamp data

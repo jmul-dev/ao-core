@@ -32,7 +32,7 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
             const findEncryptedNodeData:AOP2P_Get_File_Node_Data = {content: clonedContent.toMetadataJson()}
             context.router.send('/p2p/findEncryptedNode',findEncryptedNodeData).then((fileNodesResponse:IAORouterMessage) => {
                 const resultNodes = fileNodesResponse.data
-                const nodes:{[key:string]: string;} = {}
+                const nodes = {}
                 resultNodes.map( (a) => {
                     let datKey = a.splitKey[1]
                     nodes[datKey] = a.value.contentHostId //<-- datkey to contentHostId
