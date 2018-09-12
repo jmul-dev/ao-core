@@ -113,7 +113,7 @@ export default class AOP2P extends AORouterInterface {
         super(routerArgs)
         this.storageLocation = args.storageLocation
         this.dbPath = path.join(this.storageLocation, 'p2p')
-        this.dbPrefix = args.dbNameSpace ? args.dbNameSpace :'/AOSpace/' //Also known as App ID
+        this.dbPrefix = args.dbNameSpace ? args.dbNameSpace : '/AOSpace/' //Also known as App ID
 
         //New Content upload
         this.contentIngestion = new AOContentIngestion(this.router)
@@ -140,7 +140,7 @@ export default class AOP2P extends AORouterInterface {
                 dbPath: this.dbPath,
                 autoAuth: true
             }
-            this.hyperdb.init(hyperDBOptions).then(() => {                
+            this.hyperdb.init(hyperDBOptions).then(() => {
                 resolve({ success: true })
                 this._beginDiscovery()
             }).catch(e => {
@@ -163,7 +163,7 @@ export default class AOP2P extends AORouterInterface {
         return new Promise((resolve, reject) => {
             let contentCompare = []
             contentCompare.push(this.hyperdb.list(this.contentWatchKey))
-            contentCompare.push(this.router.send('/db/network/content/get', {projection: {_id: 1}}))  // Only return _ids = metadataDatKey
+            contentCompare.push(this.router.send('/db/network/content/get', { projection: { _id: 1 } }))  // Only return _ids = metadataDatKey
             Promise.all(contentCompare).then((results) => {
                 const contentInNetworkDb = results[0]
                 const contentInLocalNetworkDb: Array<AONetworkContent> = results[1].data
@@ -206,13 +206,13 @@ export default class AOP2P extends AORouterInterface {
         let allInserts = []
 
         //Content Signature/Meta Data
-        const contentRegistrationKey = AOP2P.routeContentRegistrtionPrefix({nameSpace:this.dbPrefix, contentType, ethAddress, metaDatKey})
+        const contentRegistrationKey = AOP2P.routeContentRegistrtionPrefix({ nameSpace: this.dbPrefix, contentType, ethAddress, metaDatKey })
         allInserts.push(this.hyperdb.insert(contentRegistrationKey + '/signature', signature))
         allInserts.push(this.hyperdb.insert(contentRegistrationKey + '/metaData', metaData))
 
         //IndexData
-        const selfRegistration = AOP2P.routeSelfRegistration({nameSpace:this.dbPrefix, ethAddress,contentType, fileDatKey})
-        const nodeRegistration = AOP2P.routeNodeRegistration({nameSpace:this.dbPrefix, contentType,metaDatKey,ethAddress,fileDatKey})
+        const selfRegistration = AOP2P.routeSelfRegistration({ nameSpace: this.dbPrefix, ethAddress, contentType, fileDatKey })
+        const nodeRegistration = AOP2P.routeNodeRegistration({ nameSpace: this.dbPrefix, contentType, metaDatKey, ethAddress, fileDatKey })
         allInserts.push(this.hyperdb.insert(selfRegistration, indexData))
         allInserts.push(this.hyperdb.insert(nodeRegistration, indexData))
 
@@ -284,10 +284,10 @@ export default class AOP2P extends AORouterInterface {
 
     private _handleAddDiscovery(request: IAORouterRequest) {
         const { contentType, fileDatKey, ethAddress, metaDatKey, contentHostId }: AOP2P_Add_Discovery_Data = request.data
-        const nodeRoute = AOP2P.routeNodeRegistration({nameSpace: this.dbPrefix, contentType, metaDatKey, ethAddress, fileDatKey})
+        const nodeRoute = AOP2P.routeNodeRegistration({ nameSpace: this.dbPrefix, contentType, metaDatKey, ethAddress, fileDatKey })
         this.hyperdb.insert(nodeRoute, {})
             .then(() => {
-                this.nodeTimestampUpdate({ nameSpace: this.dbPrefix, contentType, ethAddress, metaDatKey, contentHostId}).then(() => {
+                this.nodeTimestampUpdate({ nameSpace: this.dbPrefix, contentType, ethAddress, metaDatKey, contentHostId }).then(() => {
                     request.respond({ success: true })
                 }).catch(request.reject)
             }).catch(request.reject)
@@ -299,27 +299,27 @@ export default class AOP2P extends AORouterInterface {
      * @returns jsonResults // key, splitKey, and json value 
      */
     private _handleGetFileNodes(request: IAORouterRequest) {
-        const { content }:AOP2P_Get_File_Node_Data = request.data
+        const { content }: AOP2P_Get_File_Node_Data = request.data
         const fineNodeRoute = AOP2P.routeBaseRegistrationPrefix({
-            nameSpace: this.dbPrefix, 
+            nameSpace: this.dbPrefix,
             contentType: content.contentType,
             metaDatKey: content.metadataDatKey
         })
-        this.hyperdb.listValue(fineNodeRoute).then((results:Array<HDB_ListValueRow>) => {
+        this.hyperdb.listValue(fineNodeRoute).then((results: Array<HDB_ListValueRow>) => {
             //Store the JSON object as value instead of just a stringified JSON.
-            let jsonResults = results.map (a => {
+            let jsonResults = results.map(a => {
                 try {
                     a.value = JSON.parse(a.value)
-                } catch(e) {
-                    request.reject(new Error('Malformatted timestamp/contentHostId for '+ a.key))
+                } catch (e) {
+                    request.reject(new Error('Malformatted timestamp/contentHostId for ' + a.key))
                 }
                 return a
             })
             //Sort by timestamp data
-            jsonResults.sort( (a,b) => {
+            jsonResults.sort((a, b) => {
                 const timestampA = a.value.timestamp
                 const timestampB = b.value.timestamp
-                return timestampA>timestampB ? -1 : timestampA<timestampB ? 1 : 0;
+                return timestampA > timestampB ? -1 : timestampA < timestampB ? 1 : 0;
             })
             request.respond(jsonResults)
         }).catch(request.reject)
@@ -334,7 +334,7 @@ export default class AOP2P extends AORouterInterface {
             sellerEthAddress = request.ethAddress
         }
         // 1. Let's get the current indexData for this
-        const nodeRouteArgs:AOP2P_NodeRegistrationRoute = {
+        const nodeRouteArgs: AOP2P_NodeRegistrationRoute = {
             nameSpace: this.dbPrefix,
             contentType: content.contentType,
             metaDatKey: content.metadataDatKey,
@@ -362,7 +362,7 @@ export default class AOP2P extends AORouterInterface {
     }
 
     private _handleNodeUpdate(request: IAORouterRequest) {
-        const { content }:AOP2P_Update_Node_Timestamp_Data = request.data
+        const { content }: AOP2P_Update_Node_Timestamp_Data = request.data
         this.nodeTimestampUpdate({
             nameSpace: this.dbPrefix,
             contentType: content.contentType,
@@ -374,9 +374,9 @@ export default class AOP2P extends AORouterInterface {
         }).catch(request.reject)
     }
 
-    private nodeTimestampUpdate({nameSpace, contentType, metaDatKey, ethAddress, contentHostId}) {
-        return new Promise((resolve,reject) => {
-            const nodeUpdateKey:string = AOP2P.routeNodeRegistrationUpdate({
+    private nodeTimestampUpdate({ nameSpace, contentType, metaDatKey, ethAddress, contentHostId }) {
+        return new Promise((resolve, reject) => {
+            const nodeUpdateKey: string = AOP2P.routeNodeRegistrationUpdate({
                 nameSpace,
                 contentType,
                 metaDatKey,
@@ -386,7 +386,7 @@ export default class AOP2P extends AORouterInterface {
                 timestamp: Date.now(),
                 contentHostId
             }
-            this.hyperdb.insert( nodeUpdateKey, insertObject ).then(() => {
+            this.hyperdb.insert(nodeUpdateKey, insertObject).then(() => {
                 resolve()
             }).catch(reject)
         })
@@ -396,50 +396,50 @@ export default class AOP2P extends AORouterInterface {
      * Creator Dat registration.  Only used for initial upload
      * App ID / Content Type / Creator EthAddress / Meta Dat Key 
      */
-    public static routeContentRegistrtionPrefix({nameSpace, contentType, ethAddress, metaDatKey}:AOP2P_ContentRegistrationRoute) {
+    public static routeContentRegistrtionPrefix({ nameSpace, contentType, ethAddress, metaDatKey }: AOP2P_ContentRegistrationRoute) {
         return nameSpace + contentType + '/' + ethAddress + '/' + metaDatKey
     }
 
     /**
      * Prefix Route for your own ethAddress
      */
-    public static routeSelfRegistrationPrefix({nameSpace, ethAddress, contentType}) {
+    public static routeSelfRegistrationPrefix({ nameSpace, ethAddress, contentType }) {
         return ethAddress + '/' + nameSpace + contentType + '/nodes/'
     }
 
     /**
      * Prefix Route for the App's namespace
      */
-    public static routeBaseRegistrationPrefix({nameSpace, contentType, metaDatKey}) {
+    public static routeBaseRegistrationPrefix({ nameSpace, contentType, metaDatKey }) {
         return nameSpace + contentType + '/' + metaDatKey + '/nodes/'
     }
 
     /**
      * Registration Data route to IndexData
      */
-    public static routeRegistrationData({ethAddress, fileDatKey}) {
+    public static routeRegistrationData({ ethAddress, fileDatKey }) {
         return ethAddress + '/' + fileDatKey + '/indexData'
     }
 
     /**
      * Entire route for self registration
      */
-    public static routeSelfRegistration({nameSpace, ethAddress, contentType, fileDatKey}:AOP2P_SelfRegistrationRoute ) {
-        return AOP2P.routeSelfRegistrationPrefix({nameSpace, ethAddress,contentType}) + AOP2P.routeRegistrationData({ethAddress,fileDatKey})
+    public static routeSelfRegistration({ nameSpace, ethAddress, contentType, fileDatKey }: AOP2P_SelfRegistrationRoute) {
+        return AOP2P.routeSelfRegistrationPrefix({ nameSpace, ethAddress, contentType }) + AOP2P.routeRegistrationData({ ethAddress, fileDatKey })
     }
 
     /**
      * Entire route for node registration
      */
-    public static routeNodeRegistration({nameSpace, contentType, metaDatKey, ethAddress, fileDatKey}:AOP2P_NodeRegistrationRoute) {
-        return AOP2P.routeBaseRegistrationPrefix({nameSpace, contentType, metaDatKey}) + AOP2P.routeRegistrationData({ethAddress, fileDatKey})
+    public static routeNodeRegistration({ nameSpace, contentType, metaDatKey, ethAddress, fileDatKey }: AOP2P_NodeRegistrationRoute) {
+        return AOP2P.routeBaseRegistrationPrefix({ nameSpace, contentType, metaDatKey }) + AOP2P.routeRegistrationData({ ethAddress, fileDatKey })
     }
 
     /**
      * Entire route for updating your node registration timestamp
      */
-    public static routeNodeRegistrationUpdate({nameSpace, contentType, metaDatKey, ethAddress}:AOP2P_NodeUpdateRoute) {
-        return AOP2P.routeBaseRegistrationPrefix({nameSpace, contentType, metaDatKey}) + ethAddress
+    public static routeNodeRegistrationUpdate({ nameSpace, contentType, metaDatKey, ethAddress }: AOP2P_NodeUpdateRoute) {
+        return AOP2P.routeBaseRegistrationPrefix({ nameSpace, contentType, metaDatKey }) + ethAddress
     }
 
     /**
