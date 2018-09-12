@@ -6,7 +6,7 @@ type Mutation {
     updateSettings(inputs: SettingsInputs): Settings
     submitVideoContent(inputs: VideoContentSubmissionInputs): VideoContent
     stakeContent(inputs: StakeContentInputs): IContent
-    contentRequest(id: ID!): IContent
+    contentRequest(metadataDatKey: ID!): IContent
     contentPurchaseTransaction(inputs: ContentPurchaseTransactionInputs): IContent        
     contentUploadStakeTransaction(inputs: ContentUploadStakeTransactionInputs): IContent
     contentBecomeHostTransaction(inputs: ContentHostTransactionInputs): IContent
