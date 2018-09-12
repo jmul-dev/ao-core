@@ -24,18 +24,32 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                 reject(new Error(`No discovered content with id: ${args.metadataDatKey}`))
                 return;
             }
-            // 2. Modify the content to account for it entering user database
-            let updatedNetworkContent: AOContent = AOContent.fromObject({
+            // 2. Insert the content into user db (they have begun the content purchase/hosting process)
+            let updatedContent: AOContent = AOContent.fromObject({
                 ...response.data[0],
                 nodeId: context.userSession.id,
-                state: AOContentState.DOWNLOADING,
+                state: AOContentState.HOST_DISCOVERY,
             })
+            context.router.send('/db/user/content/insert', updatedContent.toRawJson()).then((insertResponse: IAORouterMessage) => {
+                resolve(updatedContent)
+                context.userSession.processContent(updatedContent)
+            }).catch(reject)
 
-            // let networkContentUpdate: AODB_NetworkContentUpdate_Data = {
-            //     id: args.id
-            // }
+            /*
+            // 2. Update the network content db to be in DOWNLOADING state
+            let networkContentUpdate: AODB_NetworkContentUpdate_Data = {
+                id: args.metadataDatKey,
+                update: {
+                    "content.state": AOContentState.DOWNLOADING
+                }
+            }
+            context.router.send('/db/network/content/update', networkContentUpdate)
 
-            // 3. Grab the key nodes/contentHostId
+            
+            // Let the frontend know downloading has begun
+            resolve(updatedNetworkContent)
+            
+            // 4. Grab all nodes/contentHostId's for this piece of content
             const findEncryptedNodeData: AOP2P_Get_File_Node_Data = { 
                 content: updatedNetworkContent
             }
@@ -46,15 +60,28 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                     let datKey = a.splitKey[1]
                     nodes[datKey] = a.value.contentHostId //<-- datkey to contentHostId
                 })
-
-                // 4. Trigger encrypted file dat download
+                // 5. Attempt to download the content from ONE of the nodes above (we may not even find someone who is hosting this content)
                 const encryptedDownloadData: AODat_Encrypted_Download_Data = { nodes }
                 context.router.send('/dat/encryptedFileDownload', encryptedDownloadData).then((downloadResponse: IAORouterMessage) => {
+                    // 6a. Content has been download from a host! Update the network content db
+                    let networkContentUpdate: AODB_NetworkContentUpdate_Data = {
+                        id: args.metadataDatKey,
+                        update: {
+                            "content.state": AOContentState.DOWNLOADED,
+                            "content.contentHostId": downloadResponse.data.contentHostId
+                        }
+                    }
+                    context.router.send('/db/network/content/update', networkContentUpdate)
+                    // 6b. Insert the item into 
+
                     if (downloadResponse.data.datEntry.complete) {
                         updatedNetworkContent.state = 'DOWNLOADED'
                         updatedNetworkContent.contentHostId = downloadResponse.data.contentHostId //This is important!
                     }
-                    // 5. Insert the content into user's content DB
+
+                    
+
+                    // 6. Insert the content into user's content DB
                     context.router.send('/db/user/content/insert', updatedNetworkContent.toRawJson()).then((insertResponse: IAORouterMessage) => {
                         resolve(insertResponse.data)
                     }).catch(reject)
@@ -66,6 +93,7 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
             }).catch(error => {
                 reject(error)
             })
+            */
         }).catch(reject)
     })
 }
