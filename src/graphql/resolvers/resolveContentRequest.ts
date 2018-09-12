@@ -2,7 +2,7 @@ import Debug from 'debug';
 import { IGraphqlResolverContext } from '../../http';
 import AOContent, { AOContentState } from '../../models/AOContent';
 import { AODat_Encrypted_Download_Data } from '../../modules/dat/dat';
-import { AODB_NetworkContentGet_Data } from '../../modules/db/db';
+import { AODB_NetworkContentGet_Data, AODB_NetworkContentUpdate_Data } from '../../modules/db/db';
 import { AOP2P_Get_File_Node_Data } from '../../modules/p2p/p2p';
 import { IAORouterMessage } from "../../router/AORouter";
 const debug = Debug('ao:graphql:contentRequest')
@@ -25,14 +25,19 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                 return;
             }
             // 2. Modify the content to account for it entering user database
-            let clonedContent: AOContent = AOContent.fromObject({
+            let updatedNetworkContent: AOContent = AOContent.fromObject({
                 ...response.data[0],
-                nodeId: context.userSession.id,  // AORouter attaches current user address
+                nodeId: context.userSession.id,
                 state: AOContentState.DOWNLOADING,
             })
+
+            // let networkContentUpdate: AODB_NetworkContentUpdate_Data = {
+            //     id: args.id
+            // }
+
             // 3. Grab the key nodes/contentHostId
             const findEncryptedNodeData: AOP2P_Get_File_Node_Data = { 
-                content: clonedContent
+                content: updatedNetworkContent
             }
             context.router.send('/p2p/findEncryptedNode', findEncryptedNodeData).then((fileNodesResponse: IAORouterMessage) => {
                 const resultNodes = fileNodesResponse.data
@@ -46,15 +51,15 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                 const encryptedDownloadData: AODat_Encrypted_Download_Data = { nodes }
                 context.router.send('/dat/encryptedFileDownload', encryptedDownloadData).then((downloadResponse: IAORouterMessage) => {
                     if (downloadResponse.data.datEntry.complete) {
-                        clonedContent.state = 'DOWNLOADED'
-                        clonedContent.contentHostId = downloadResponse.data.contentHostId //This is important!
+                        updatedNetworkContent.state = 'DOWNLOADED'
+                        updatedNetworkContent.contentHostId = downloadResponse.data.contentHostId //This is important!
                     }
                     // 5. Insert the content into user's content DB
-                    context.router.send('/db/user/content/insert', clonedContent.toRawJson()).then((insertResponse: IAORouterMessage) => {
+                    context.router.send('/db/user/content/insert', updatedNetworkContent.toRawJson()).then((insertResponse: IAORouterMessage) => {
                         resolve(insertResponse.data)
                     }).catch(reject)
                 }).catch(error => {
-                    debug('Error downloading dat://' + clonedContent.fileDatKey, error)
+                    debug('Error downloading dat://' + updatedNetworkContent.fileDatKey, error)
                     // FAIL: The dat download failed. This is possibly due to no-one hosting the dat file
                     reject(new Error(`Unable to reach the content dat file`))
                 })

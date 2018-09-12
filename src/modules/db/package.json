@@ -20,7 +20,8 @@
             "/db/user/content/insert",
             "/db/user/content/update",
             "/db/network/content/get",
-            "/db/network/content/insert"
+            "/db/network/content/insert",
+            "/db/network/content/update"
         ],
         "activationEvents": [
             
