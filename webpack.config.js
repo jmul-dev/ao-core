@@ -58,11 +58,12 @@ module.exports = {
             {
                 test: /\.node$/,
                 use: {
-                    loader: 'node-addon-loader',
+                    loader: 'native-ext-loader',        
+                    //use: 'node-addon-loader',
+                    //use: 'node-loader',
                     options: {
-                        // basePath: './dist/',
-                        rewritePath: './dist/',
-                    }
+                      rewritePath: path.resolve(__dirname, 'dist')
+                    },  
                 }
             } 
         ]
