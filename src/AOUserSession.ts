@@ -1,7 +1,7 @@
 import Debug from 'debug';
 import path, { resolve } from 'path';
 import AOContent, { AOContentState } from "./models/AOContent";
-import { AODat_Create_Data, AODat_ResumeSingle_Data, AODat_Encrypted_Download_Data, DatStats, AODat_GetDatStats_Data } from './modules/dat/dat';
+import { AODat_Create_Data, AODat_ResumeSingle_Data, AODat_Encrypted_Download_Data, DatStats, AODat_GetDatStats_Data, AODat_ImportSingle_Data } from './modules/dat/dat';
 import { AODB_UserContentGet_Data, AODB_UserContentUpdate_Data, AODB_UserInsert_Data, AODB_NetworkContentUpdate_Data } from "./modules/db/db";
 import { BuyContentEvent, HostContentEvent, IAOEth_BuyContentEvent_Data } from "./modules/eth/eth";
 import { IAOFS_DecryptCheck_Data, IAOFS_Mkdir_Data, IAOFS_Move_Data, IAOFS_Reencrypt_Data, IAOFS_Unlink_Data } from "./modules/fs/fs";
@@ -656,32 +656,47 @@ export default class AOUserSession {
         }
         this.router.send('/p2p/addDiscovery', p2pAddDiscoveryData).then((response: IAORouterMessage) => {
             if (response.data.success) {
-                // 2. Ensure the dats are resumed (they may already be, but need to make sure)
-                const fileResumeDatData:AODat_ResumeSingle_Data = {
+
+                // 2. Import all the freaken files.
+                const fileImportDatData:AODat_ImportSingle_Data = {
                     key: p2pAddDiscoveryData.fileDatKey
                 }
-                const metaResumeDatData:AODat_ResumeSingle_Data = {
+                const metaImportDatData:AODat_ImportSingle_Data = {
                     key: p2pAddDiscoveryData.metaDatKey
                 }
-                let resumeDats = []
-                resumeDats.push( this.router.send('/dat/resumeSingle', fileResumeDatData) )
-                resumeDats.push( this.router.send('/dat/resumeSingle', metaResumeDatData) )
-                Promise.all(resumeDats).then(() => {
-                    // 4. Update the content state (mark as Discoverable)
-                    const contentUpdateQuery: AODB_UserContentUpdate_Data = {
-                        id: content.id,
-                        update: {
-                            $set: {
-                                "state": AOContentState.DISCOVERABLE
+                let importDats = []
+                importDats.push( this.router.send('/dat/importSingle', fileImportDatData))
+                importDats.push( this.router.send('/dat/importSingle', metaImportDatData))
+                Promise.all(importDats).then(() => {
+                    // 3. Ensure the dats are resumed (they may already be, but need to make sure)
+                    const fileResumeDatData:AODat_ResumeSingle_Data = {
+                        key: p2pAddDiscoveryData.fileDatKey
+                    }
+                    const metaResumeDatData:AODat_ResumeSingle_Data = {
+                        key: p2pAddDiscoveryData.metaDatKey
+                    }
+
+                    let resumeDats = []                
+                    resumeDats.push( this.router.send('/dat/resumeSingle', fileResumeDatData) )
+                    resumeDats.push( this.router.send('/dat/resumeSingle', metaResumeDatData) )
+                    Promise.all(resumeDats).then(() => {
+                        // 4. Update the content state (mark as Discoverable)
+                        const contentUpdateQuery: AODB_UserContentUpdate_Data = {
+                            id: content.id,
+                            update: {
+                                $set: {
+                                    "state": AOContentState.DISCOVERABLE
+                                }
                             }
                         }
-                    }
-                    this.router.send('/db/user/content/update', contentUpdateQuery).then((contentUpdateResponse: IAORouterMessage) => {
-                        const updatedContent: AOContent = AOContent.fromObject(contentUpdateResponse.data)
-                        // Handoff to next state handler
-                        this.processContent(updatedContent)
+                        this.router.send('/db/user/content/update', contentUpdateQuery).then((contentUpdateResponse: IAORouterMessage) => {
+                            const updatedContent: AOContent = AOContent.fromObject(contentUpdateResponse.data)
+                            // Handoff to next state handler
+                            this.processContent(updatedContent)
+                        }).catch(debug)
                     }).catch(debug)
                 }).catch(debug)
+                
             } else {
                 debug(`Error, failed to add content to discovery`)
             }

@@ -18,6 +18,10 @@ export interface AODat_ResumeSingle_Data {
     key: string
 }
 
+export interface AODat_ImportSingle_Data {
+    key: string
+}
+
 export interface AODat_StopAll_Data {
 }
 
@@ -77,6 +81,7 @@ export default class AODat extends AORouterInterface {
         this.datDir = path.resolve(this.storageLocation, 'content')
         this.router.on('/dat/resumeAll', this._handleResumeAll.bind(this))
         this.router.on('/dat/resumeSingle', this._handleResumeSingle.bind(this))
+        this.router.on('/dat/importSingle',this._handleImportSingle.bind(this))
         this.router.on('/dat/stopAll', this._handleDatStopAll.bind(this))
         this.router.on('/dat/create', this._handleDatCreate.bind(this))
         this.router.on('/dat/download', this._handleDatDownload.bind(this))
@@ -169,6 +174,22 @@ export default class AODat extends AORouterInterface {
                         }                        
                     })
                 })
+            })
+        })
+    }
+
+    private _handleImportSingle(request:IAORouterRequest) {
+        const {key}:AODat_ImportSingle_Data = request.data
+        const datDir = path.join(this.datDir, key)
+        Dat(datDir, (err: Error, dat:Dat) => {
+            dat.importFiles((err)=> {
+                if(err) {
+                    request.reject(new Error('Error importing files'))
+                    return
+                } else {
+                    debug('Files Imported!')
+                    request.respond({success:true})
+                }
             })
         })
     }
