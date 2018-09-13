@@ -56,6 +56,7 @@ export interface IAOFS_Move_Data {
 
 export interface IAOFS_Unlink_Data {
     removePath: string;
+    isAbsolute?: boolean;
 }
 
 export interface IAOFS_FileStat_data {
@@ -316,7 +317,7 @@ export default class AOFS extends AORouterInterface {
 
     _handleUnlink(request: IAORouterRequest) {
         const requestData: IAOFS_Unlink_Data = request.data
-        const removePath = path.resolve(this.storageLocation, requestData.removePath)
+        const removePath = requestData.isAbsolute ? requestData.removePath : path.resolve(this.storageLocation, requestData.removePath)
         fsExtra.remove(removePath, (err) => {
             if (err) {
                 request.reject(err)

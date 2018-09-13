@@ -5,6 +5,7 @@ import path from "path";
 import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
 import Datastore from 'nedb';
 import { ContentNodeHostEntry } from '../p2p/p2p';
+import { IAOFS_Unlink_Data } from '../fs/fs';
 const debug = Debug('ao:dat');
 
 
@@ -151,7 +152,7 @@ export default class AODat extends AORouterInterface {
                     } else {
                         this._updateDatEntry(datEntry)
                     }
-                })
+                })                
                 debug(`Joined network: dat://${dat.key.toString('hex')}`)
                 this.dats[datEntry.key] = dat
                 resolve()
@@ -199,16 +200,25 @@ export default class AODat extends AORouterInterface {
             request.reject(new Error(`Dat instance not found`))
             return;
         }
-        this._getDatEntry(requestData.key).then((datEntry: DatEntry) => {
+        debug(`Fetching dat stats for dat://${requestData.key}`)
+        this._getDatEntry(requestData.key).then((datEntry: DatEntry) => {            
             const datInstance = this.dats[requestData.key]
-            const stats = datInstance.trackStats()
+            if ( !datInstance.AO_isTrackingStats ) {
+                datInstance.trackStats()
+                datInstance.AO_isTrackingStats = true
+            }
             const datStats = datInstance.stats.get()
-            request.respond({
+            let returnValue = {
                 ...datStats,
-                network: stats.network,
-                peers: stats.peers,
+                network: {
+                    ...datInstance.stats.network
+                },
+                peers: {
+                    ...datInstance.stats.peers
+                },
                 complete: datEntry.complete,
-            })
+            }
+            request.respond(returnValue)
         }).catch(request.reject)
     }
 
@@ -327,10 +337,12 @@ export default class AODat extends AORouterInterface {
                         dat.joinNetwork((err) => {
                             if (err) {
                                 debug(`[${key}] Failed to join network`, err)
+                                this.removeDat(key)
                                 reject(err)
                                 return;
                             } else if (!dat.network.connected || !dat.network.connecting) {
                                 debug(`[${key}] Failed to download, no one is hosting`)
+                                this.removeDat(key)
                                 reject(new Error('No users are hosting the requested content'))
                                 return;
                             } else {
@@ -369,11 +381,26 @@ export default class AODat extends AORouterInterface {
                         })
                     } catch (error) {
                         debug(`Dat error while attempting to download...`, error)
+                        this.removeDat(key)
                         reject(error)
                     }
                 })
             }
         })
+    }
+
+    private removeDat(key: string) {
+        const datPath = path.join(this.datDir, key);
+        // remove dat instance if exists
+        delete this.dats[key]
+        // remove db entry
+        this.datsDb.remove({key: key})
+        // cleanup disk
+        let unlinkParams: IAOFS_Unlink_Data = {
+            removePath: datPath,
+            isAbsolute: true,
+        }
+        this.router.send('/fs/unlink', unlinkParams)
     }
 
     private _handleDatExists(request: IAORouterRequest) {
