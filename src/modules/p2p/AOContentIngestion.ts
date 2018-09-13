@@ -73,7 +73,11 @@ export default class AOContentIngestion {
                                 debug(`Unable to add network content ${metadataDatKey}, failed to parse metadata file.`)
                             } finally {
                                 // 4. Insert into network content db, marked as failed or imported
-                                this.router.send('/db/network/content/insert', networkContent).then(resolve).catch(resolve)
+                                this.router.send('/db/network/content/insert', networkContent)
+                                .then(resolve)
+                                .catch(e => {
+                                    debug(e)
+                                })
                             }
                         }).catch(error => {
                             debug(`Unable to add network content ${metadataDatKey}, failed to read metadata file.`,error)
