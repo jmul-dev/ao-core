@@ -384,10 +384,10 @@ export default class AODat extends AORouterInterface {
                                 }                        
                             })
                         })
-                        dat.archive.content.on('download-finished', () => {
-                            // In case the above method does not fire
-                            debug('TODO: download-finished event listener triggered!')
-                        })
+                        // dat.archive.content.on('download-finished', () => {
+                        //     // In case the above method does not fire
+                        //     debug('TODO: download-finished event listener triggered!')
+                        // })
                     } catch (error) {
                         debug(`Dat error while attempting to download...`, error)
                         reject(error)
