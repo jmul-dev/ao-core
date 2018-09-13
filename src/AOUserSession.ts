@@ -5,7 +5,7 @@ import { AODat_Create_Data, AODat_ResumeSingle_Data, AODat_Encrypted_Download_Da
 import { AODB_UserContentGet_Data, AODB_UserContentUpdate_Data, AODB_UserInsert_Data, AODB_NetworkContentUpdate_Data } from "./modules/db/db";
 import { BuyContentEvent, HostContentEvent, IAOEth_BuyContentEvent_Data } from "./modules/eth/eth";
 import { IAOFS_DecryptCheck_Data, IAOFS_Mkdir_Data, IAOFS_Move_Data, IAOFS_Reencrypt_Data, IAOFS_Unlink_Data } from "./modules/fs/fs";
-import { AOP2P_Add_Discovery_Data, AOP2P_IndexDataRow, AOP2P_Watch_AND_Get_IndexData_Data, AOP2P_Write_Decryption_Key_Data, AOP2P_Get_File_Node_Data } from "./modules/p2p/p2p";
+import { AOP2P_Add_Discovery_Data, AOP2P_IndexDataRow, AOP2P_Watch_AND_Get_IndexData_Data, AOP2P_Write_Decryption_Key_Data, AOP2P_Get_File_Node_Data, ContentNodeHostEntry } from "./modules/p2p/p2p";
 import { IAORouterMessage } from "./router/AORouter";
 import { AORouterInterface, IAORouterRequest } from "./router/AORouterInterface";
 import * as AOCrypto from './AOCrypto'
@@ -233,15 +233,11 @@ export default class AOUserSession {
     private _handleContentHostDiscovery(content: AOContent) {
         // 1. Grab all nodes/contentHostId's for this piece of content
         const findEncryptedNodeData: AOP2P_Get_File_Node_Data = { content }
-        this.router.send('/p2p/findEncryptedNode', findEncryptedNodeData).then((fileNodesResponse: IAORouterMessage) => {
-            const resultNodes = fileNodesResponse.data
-            const nodes = {}
-            resultNodes.map((a) => {
-                let datKey = a.splitKey[1]
-                nodes[datKey] = a.value.contentHostId //<-- datkey to contentHostId
-            })
+        this.router.send('/p2p/content/getContentHosts', findEncryptedNodeData).then((fileNodesResponse: IAORouterMessage) => {            
+            const potentialNodes: Array<ContentNodeHostEntry> = fileNodesResponse.data
+            debug(potentialNodes)
             // 2. Attempt to download the content from ONE of the nodes above (we may not even find someone who is hosting this content)
-            const encryptedDownloadData: AODat_Encrypted_Download_Data = { nodes }
+            const encryptedDownloadData: AODat_Encrypted_Download_Data = { nodes: potentialNodes }
             this.router.send('/dat/encryptedFileDownload', encryptedDownloadData).then((downloadResponse: IAORouterMessage) => {
                 // 3a. Content has started downloading from a host!
                 let userContentUpdate: AODB_UserContentUpdate_Data = {
@@ -259,6 +255,7 @@ export default class AOUserSession {
                     debug(`Error updating user content: ${error.message}`)
                 })
             }).catch(error => {
+                debug(`Unable to download content from any host: ${error.message}`)
                 // 3b. We were unable to download the content from any host (likely that all hosted dats were not reachable)
                 let userContentUpdate: AODB_UserContentUpdate_Data = {
                     id: content.id,

@@ -5,6 +5,7 @@ import path from "path";
 import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
 import Datastore from 'nedb';
 import { IAOFS_Unlink_Data } from '../fs/fs';
+import { ContentNodeHostEntry } from '../p2p/p2p';
 const debug = Debug('ao:dat');
 
 
@@ -43,7 +44,7 @@ export interface AODat_GetDatStats_Data {
 }
 
 export interface AODat_Encrypted_Download_Data {
-    nodes: {[key:string]: string;}; //nodes[datkey] = contentHostId
+    nodes: Array<ContentNodeHostEntry>
 }
 
 export interface DatEntry {
@@ -93,9 +94,9 @@ export default class AODat extends AORouterInterface {
             filename: path.resolve(this.storageLocation, 'dats.db.json'),
             autoload: true,
             onload: (error?: Error) => {
-                if ( error ) {
+                if (error) {
                     debug('Error loading dats database', error)
-                    this.router.send('/core/log', {message: 'Error loading dats database'})
+                    this.router.send('/core/log', { message: 'Error loading dats database' })
                 }
                 this._resumeAll().then(() => {
                     debug(`Resumed all dats`)
@@ -114,7 +115,7 @@ export default class AODat extends AORouterInterface {
     private _resumeAll(): Promise<any> {
         return new Promise((resolve, reject) => {
             this.datsDb.find({}).exec((error: Error, docs) => {
-                if ( error ) {
+                if (error) {
                     debug('Error loading dats from datsDb', error)
                     reject(error)
                     return;
@@ -133,7 +134,7 @@ export default class AODat extends AORouterInterface {
 
     private _resume(datEntry: DatEntry): Promise<any> {
         return new Promise((resolve, reject) => {
-            if ( this.dats[datEntry.key] ) {
+            if (this.dats[datEntry.key]) {
                 debug(`Dat ${datEntry.key} already resumed`)
                 resolve()
                 return;
@@ -144,14 +145,14 @@ export default class AODat extends AORouterInterface {
                 if (err || !dat) {
                     debug('Error resuming dat ' + datEntry.key)
                     reject(err)
-                    if ( err.name === 'IncompatibleError' ) {
+                    if (err.name === 'IncompatibleError') {
                         // TODO: Dat folder is kinda fucked, recommended route it to `rm -fr .dat`
                         // Going to ingore for now, but might want to address this at some point.
                     }
                     return null;
                 }
                 dat.joinNetwork((err) => {
-                    if(err) {
+                    if (err) {
                         debug(err)
                     } else {
                         this._updateDatEntry(datEntry)
@@ -163,8 +164,8 @@ export default class AODat extends AORouterInterface {
                 // Finally, if the datEntry is not complete, listen for completion and update our
                 // db.
                 dat.archive.metadata.update(() => {
-                    mirror({fs: dat.archive, name: '/'}, datDir, (err) => {
-                        if ( !err ) {
+                    mirror({ fs: dat.archive, name: '/' }, datDir, (err) => {
+                        if (!err) {
                             debug('fully downloaded the goods!')
                             const updatedDatEntry: DatEntry = {
                                 key: datEntry.key,
@@ -172,7 +173,7 @@ export default class AODat extends AORouterInterface {
                                 updatedAt: new Date(),
                             }
                             this._updateDatEntry(updatedDatEntry)
-                        }                        
+                        }
                     })
                 })
             })
@@ -196,16 +197,16 @@ export default class AODat extends AORouterInterface {
     }
 
     private _updateDatEntry(datEntry: DatEntry) {
-        this.datsDb.update({key: datEntry.key}, datEntry, {upsert: true})
+        this.datsDb.update({ key: datEntry.key }, datEntry, { upsert: true })
     }
 
     private _getDatEntry(datKey: string): Promise<any> {
         return new Promise((resolve, reject) => {
-            this.datsDb.findOne({key: datKey}, function(error: Error, doc: DatEntry) {
-                if ( error ) {
+            this.datsDb.findOne({ key: datKey }, function (error: Error, doc: DatEntry) {
+                if (error) {
                     reject(error)
-                } else if ( !doc ) {
-                    reject( new Error(`No dat entry found for key: ${datKey}`) )
+                } else if (!doc) {
+                    reject(new Error(`No dat entry found for key: ${datKey}`))
                 } else {
                     resolve(doc)
                 }
@@ -215,7 +216,7 @@ export default class AODat extends AORouterInterface {
 
     private _handleGetDatStats(request: IAORouterRequest) {
         const requestData: AODat_GetDatStats_Data = request.data
-        if ( !this.dats[requestData.key] ) {
+        if (!this.dats[requestData.key]) {
             debug(`No dat instance found for dat://${requestData.key}`)
             request.reject(new Error(`Dat instance not found`))
             return;
@@ -232,12 +233,12 @@ export default class AODat extends AORouterInterface {
             })
         }).catch(request.reject)
     }
-    
+
     private _handleResumeAll(request: IAORouterRequest) {
         this._resumeAll().then(request.respond).catch(request.reject)
     }
 
-    private _handleResumeSingle(request:IAORouterRequest) {
+    private _handleResumeSingle(request: IAORouterRequest) {
         const requestData: AODat_ResumeSingle_Data = request.data
         this._resume(this.dats[requestData.key]).then(request.respond).catch(request.reject)
     }
@@ -273,7 +274,7 @@ export default class AODat extends AORouterInterface {
                 updatedAt: new Date(),
                 createdAt: new Date(),
             }
-            this._updateDatEntry(newDatEntry)            
+            this._updateDatEntry(newDatEntry)
             request.respond({
                 ...newDatEntry,
                 dir: requestData.newDatDir
@@ -286,8 +287,8 @@ export default class AODat extends AORouterInterface {
      * @param request 
      */
     private _handleDatDownload(request: IAORouterRequest) {
-        const {key}: AODat_Download_Data = request.data;        
-        this.downloadDat(key).then( (datEntry:DatEntry) => {
+        const { key }: AODat_Download_Data = request.data;
+        this.downloadDat(key).then((datEntry: DatEntry) => {
             request.respond(datEntry)
         }).catch(e => {
             request.reject(e)
@@ -298,26 +299,25 @@ export default class AODat extends AORouterInterface {
      * Dat Downloads for encrypted files.  Goes doesn the list of given nodes
      * @param request 
      */
-    private _handleEncryptedFileDownload(request:IAORouterRequest) {
-        const {nodes}: AODat_Encrypted_Download_Data = request.data
-        let keys = []
-        for (const fileDatKey in nodes) {
-            if (nodes.hasOwnProperty(fileDatKey)) {
-                keys.push(fileDatKey)
+    private async _handleEncryptedFileDownload(request: IAORouterRequest) {
+        const requestData: AODat_Encrypted_Download_Data = request.data
+        const nodes: Array<ContentNodeHostEntry> = requestData.nodes
+        debug(nodes)
+        for (let i = 0; i < nodes.length; i++) {
+            const nodeEntry: ContentNodeHostEntry = nodes[i];
+            try {
+                const datEntry: DatEntry = await this.downloadDat(nodeEntry.contentDatKey)
+                request.respond({
+                    datEntry,
+                    contentHostId: nodeEntry.contentHostId
+                })
+                return;
+            } catch (error) {
+                // Unable to download dat, continue to next dat key
             }
         }
-        this.firstInSequence(keys, this.downloadDat.bind(this)).then((datEntry:DatEntry) => {
-            //For when we return it.
-            const contentHostId = nodes[datEntry.key]
-            request.respond({
-                datEntry,
-                contentHostId
-            })
-            
-        }).catch(e => {
-            debug('This is bad ay! No encrypted file dat is available for download')
-            request.reject(e)
-        })
+        debug(`Host for the given nodes not found`)
+        request.reject(new Error(`Unable to find a host`))
     }
 
     /**
@@ -326,20 +326,20 @@ export default class AODat extends AORouterInterface {
      * @param key 
      * @returns datEntry
      */
-    private downloadDat(key) {
-        return new Promise((resolve,reject) => {
-            if ( this.dats[key] ) {
+    private downloadDat(key): Promise<DatEntry> {
+        return new Promise((resolve, reject) => {
+            debug(`[${key}] Attempting to download dat`)
+            if (this.dats[key]) {
                 // A. This dat already exists!
+                debug(`[${key}] Dat already exists, skip download`)
                 this._getDatEntry(key).then((datEntry: DatEntry) => {
-                    resolve({...datEntry})
-                }).catch((error) => {
-                    debug('Debug on A: ',error)
-                })
+                    resolve(datEntry)
+                }).catch(reject)
             } else {
                 // B. We do not have this dat, proceed to create and download
                 const newDatPath = path.join(this.datDir, key);
                 let downloadComplete = false
-                Dat(newDatPath, {key: key}, (err, dat) => {
+                Dat(newDatPath, { key: key }, (err, dat) => {
                     if ( err || !dat ) {
                         if ( err.name === 'IncompatibleError' ) {
                             // Erase this mofo
@@ -356,16 +356,16 @@ export default class AODat extends AORouterInterface {
                     }
                     try {
                         dat.joinNetwork((err) => {
-                            if ( err ) {
-                                debug('failed to join network for dat download', err)
+                            if (err) {
+                                debug(`[${key}] Failed to join network`, err)
                                 reject(err)
                                 return;
-                            } else if ( !dat.network.connected || !dat.network.connecting ) {
-                                debug('no one is hosting dat://' + key)
+                            } else if (!dat.network.connected || !dat.network.connecting) {
+                                debug(`[${key}] Failed to download, no one is hosting`)
                                 reject(new Error('No users are hosting the requested content'))
                                 return;
                             } else {
-                                debug('succesfully joined network for dat://' + key)
+                                debug(`[${key}] Succesfully joined network!`)
                                 const datKey = dat.key.toString('hex');
                                 this.dats[datKey] = dat;
                                 const newDatEntry: DatEntry = {
@@ -375,14 +375,12 @@ export default class AODat extends AORouterInterface {
                                     createdAt: new Date(),
                                 }
                                 this._updateDatEntry(newDatEntry)
-                                resolve({
-                                    ...newDatEntry,
-                                })
+                                resolve(newDatEntry)
                             }
                         })
                         dat.archive.metadata.update(() => {
-                            var progress = mirror({fs: dat.archive, name: '/'}, newDatPath, (err) => {
-                                if ( err ) {
+                            var progress = mirror({ fs: dat.archive, name: '/' }, newDatPath, (err) => {
+                                if (err) {
                                     debug('Error downloading dat file:', err)
                                 } else {
                                     debug('fully downloaded the goods!')
@@ -393,7 +391,7 @@ export default class AODat extends AORouterInterface {
                                         updatedAt: new Date(),
                                     }
                                     this._updateDatEntry(updatedDatEntry)
-                                }                        
+                                }
                             })
                         })
                         // dat.archive.content.on('download-finished', () => {
@@ -409,37 +407,14 @@ export default class AODat extends AORouterInterface {
         })
     }
 
-    //For Dat download in sequence: https://www.abeautifulsite.net/executing-promises-in-sequence-and-stopping-at-the-first-resolved-promise
-    private firstInSequence(values, asyncFn) {
-        return new Promise((resolve, reject) => {
-            // Are there any values to check?
-            if(values.length === 0) {
-                // All were rejected
-                reject();
-            }
-            // Try the first value
-            asyncFn(values[0]).then((val) =>  {
-                // Resolved, we're all done
-                resolve(val);
-            }).catch(() =>{
-                // Rejected, remove the first item from the array and recursively
-                // try the next one
-                values.shift();
-                this.firstInSequence(values, asyncFn).then(resolve).catch(reject);
-            });
-        });
-    }
-
     private _handleDatExists(request: IAORouterRequest) {
         const requestData: AODat_Check_Data = request.data
         this._getDatEntry(requestData.key).then((datEntry: DatEntry) => {
-            if ( datEntry.complete ) {
+            if (datEntry.complete) {
                 request.respond(datEntry)
             } else {
                 request.reject(new Error(`Dat not initialized or complete: ${requestData.key}`))
             }
         }).catch(request.reject)
     }
-
-    
 }
