@@ -22,6 +22,9 @@ export default (obj: AOContent, args: any, context: IGraphqlResolverContext, inf
                 peersTotal: response.data.peers.total,
                 peersComplete: response.data.peers.complete,
             })
-        }).catch(reject)
+        }).catch(() => {
+            // In case the dat does not exist yet for whatever reason
+            resolve(null)
+        })
     })
 }

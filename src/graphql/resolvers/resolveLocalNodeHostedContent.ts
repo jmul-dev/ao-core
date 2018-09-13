@@ -23,6 +23,7 @@ export default (obj: any, args: ILocalNode_Hosted_Content_Args, context: IGraphq
         }
         context.router.send('/db/user/content/get', contentQueryParams).then((response: IAORouterMessage) => {
             let userContent: Array<AOContent> = new Array();
+            console.log(response);
             // ensures array in case response is single item
             [].concat(response.data).forEach(content => {
                 userContent.push(AOContent.fromObject(content))

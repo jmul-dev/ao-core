@@ -5,7 +5,6 @@ type Mutation {
     register(inputs: RegisterInputs): NodeIdentity
     updateSettings(inputs: SettingsInputs): Settings
     submitVideoContent(inputs: VideoContentSubmissionInputs): VideoContent
-    stakeContent(inputs: StakeContentInputs): IContent
     contentRequest(metadataDatKey: ID!): IContent
     contentPurchaseTransaction(inputs: ContentPurchaseTransactionInputs): IContent        
     contentUploadStakeTransaction(inputs: ContentUploadStakeTransactionInputs): IContent
@@ -20,13 +19,6 @@ input ContentHostTransactionInputs {
 input ContentUploadStakeTransactionInputs {
     transactionHash: String
     contentId: String
-}
-
-input StakeContentInputs {
-    stakeId: String!    
-    contentId: String!
-    stakeAmount: Int!
-    profitPercentage: Int!
 }
 
 input RegisterInputs {

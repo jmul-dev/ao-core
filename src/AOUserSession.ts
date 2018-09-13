@@ -249,9 +249,11 @@ export default class AOUserSession {
                 let userContentUpdate: AODB_UserContentUpdate_Data = {
                     id: content.id,
                     update: {
-                        state: downloadResponse.data.datEntry.complete ? AOContentState.DOWNLOADED : AOContentState.DOWNLOADING,
-                        contentHostId: downloadResponse.data.contentHostId,
-                        fileDatKey: downloadResponse.data.datEntry.key
+                        $set: {
+                            "state": downloadResponse.data.datEntry.complete ? AOContentState.DOWNLOADED : AOContentState.DOWNLOADING,
+                            "contentHostId": downloadResponse.data.contentHostId,
+                            "fileDatKey": downloadResponse.data.datEntry.key
+                        }
                     }
                 }
                 this.router.send('/db/user/content/update', userContentUpdate).then((userContentUpdateResponse: IAORouterMessage) => {
@@ -266,7 +268,9 @@ export default class AOUserSession {
                 let userContentUpdate: AODB_UserContentUpdate_Data = {
                     id: content.id,
                     update: {
-                        state: AOContentState.HOST_DISCOVERY_FAILED
+                        $set: {
+                            "state": AOContentState.HOST_DISCOVERY_FAILED
+                        }
                     }
                 }
                 this.router.send('/db/user/content/update', userContentUpdate).then((userContentUpdateResponse: IAORouterMessage) => {
@@ -281,7 +285,9 @@ export default class AOUserSession {
             let userContentUpdate: AODB_UserContentUpdate_Data = {
                 id: content.id,
                 update: {
-                    state: AOContentState.HOST_DISCOVERY_FAILED
+                    $set: {
+                        "state": AOContentState.HOST_DISCOVERY_FAILED
+                    }
                 }
             }
             this.router.send('/db/user/content/update', userContentUpdate).then((userContentUpdateResponse: IAORouterMessage) => {
@@ -309,7 +315,9 @@ export default class AOUserSession {
                     let userContentUpdate: AODB_UserContentUpdate_Data = {
                         id: content.id,
                         update: {
-                            state: AOContentState.DOWNLOADED
+                            $set: {
+                                "state": AOContentState.DOWNLOADED
+                            }
                         }
                     }
                     this.router.send('/db/user/content/update', userContentUpdate).then((userContentUpdateResponse: IAORouterMessage) => {

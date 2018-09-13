@@ -4,7 +4,6 @@ import resolveDatStats from './resolveDatStats';
 import resolveLocalNodeStakedContent from './resolveLocalNodeStakedContent';
 import resolveLocalNodeHostedContent from './resolveLocalNodeHostedContent';
 import resolveVideo from './resolveVideo';
-import resolveStakeContent from './resolveStakeContent';
 import resolveLogs from './resolveLogs';
 import resolveSettings from './resolveSettings';
 import resolveSetNetwork from './resolveSetNetwork';
@@ -33,7 +32,6 @@ export default {
     resolveState,
     // Mutation resolvers
     resolveSubmitVideoContent,
-    resolveStakeContent,
     resolveSetNetwork,
     resolveRegister,
     resolveUpdateSettings,
