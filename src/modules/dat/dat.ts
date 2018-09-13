@@ -330,16 +330,17 @@ export default class AODat extends AORouterInterface {
         return new Promise((resolve,reject) => {
             if ( this.dats[key] ) {
                 // A. This dat already exists!
-                this._getDatEntry(key).then(() => {
-                    resolve(this.dats[key])
-                }).catch(reject)
+                this._getDatEntry(key).then((datEntry: DatEntry) => {
+                    resolve({...datEntry})
+                }).catch((error) => {
+                    debug('Debug on A: ',error)
+                })
             } else {
                 // B. We do not have this dat, proceed to create and download
                 const newDatPath = path.join(this.datDir, key);
                 let downloadComplete = false
                 Dat(newDatPath, {key: key}, (err, dat) => {
                     if ( err || !dat ) {
-                        debug('failed to download dat '+ key, err)
                         if ( err.name === 'IncompatibleError' ) {
                             // Erase this mofo
                             const removeDatData:IAOFS_Unlink_Data = {removePath: newDatPath}
@@ -348,6 +349,7 @@ export default class AODat extends AORouterInterface {
                                 this.downloadDat(key).then(resolve).catch(reject)
                             }).catch(reject)
                         } else {
+                            debug('failed to download dat '+ key, err)
                             reject(err)
                             return;
                         }
@@ -372,7 +374,7 @@ export default class AODat extends AORouterInterface {
                                     updatedAt: new Date(),
                                     createdAt: new Date(),
                                 }
-                                this._updateDatEntry(newDatEntry)            
+                                this._updateDatEntry(newDatEntry)
                                 resolve({
                                     ...newDatEntry,
                                 })

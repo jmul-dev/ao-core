@@ -60,7 +60,6 @@ export default class AOContentIngestion {
                                 _id: metadataDatKey,
                                 status: 'failed'
                             }
-                            console.log(readResponse.data)
                             try {
                                 const contentJson = JSON.parse(readResponse.data)
                                 if (contentJson) {
@@ -76,16 +75,16 @@ export default class AOContentIngestion {
                                 this.router.send('/db/network/content/insert', networkContent).then(resolve).catch(resolve)
                             }
                         }).catch(error => {
-                            debug(`Unable to add network content ${metadataDatKey}, failed to read metadata file. ${error.emssage}`)
+                            debug(`Unable to add network content ${metadataDatKey}, failed to read metadata file.`,error)
                             resolve()
                         })
                     }).catch(error => {
-                        debug(`Unable to add network content ${metadataDatKey}, failed to download metadata dat file. ${error.emssage}`)
+                        debug(`Unable to add network content ${metadataDatKey}, failed to download metadata dat file.`,error)
                         resolve()
                     })
                 }
             }).catch(error => {
-                debug(`Unable to add network content ${metadataDatKey}, failed to download metadata dat file. ${error.emssage}`)
+                debug(`Unable to add network content ${metadataDatKey}, failed to get network content.`,error)
                 resolve()
             })
         })
