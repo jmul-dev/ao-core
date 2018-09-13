@@ -171,7 +171,7 @@ export default class AOUserSession {
      * @param {AOContent} content
      */
     private _listenForBuyContentEventsOnDiscoverableContent(content: AOContent) {
-        this.router.send('/eth/content/BuyContent/subscribe', { contentHostId: content.contentHostId })
+        this.router.send('/eth/events/BuyContent/subscribe', { contentHostId: content.contentHostId })
     }
 
     /**
