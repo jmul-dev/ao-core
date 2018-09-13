@@ -8,6 +8,7 @@ const debug = Debug('ao:eth');
 
 
 export interface AOEth_Args {
+    network: string;
     rpcMainnet: string;
     rpcRinkeby: string;
 }
@@ -71,9 +72,8 @@ interface Subscription {
  * This is the main fs package for AO. Note all reads/writes are relative
  * to the `storageLocation` argument.
  */
-export default class AOEth extends AORouterInterface {
+export default class AOEth extends AORouterInterface {    
     private web3: Web3;
-
     private networkId: string;
     private rpcMainnet: string;
     private rpcRinkeby: string;
@@ -110,45 +110,77 @@ export default class AOEth extends AORouterInterface {
         debug(`started`)
     }
 
-    _handleNetworkChange(request: IAORouterRequest) {
-        const requestData: IAOEth_NetworkChange_Data = request.data;
-        if (['1', '4'].indexOf(requestData.networkId) < 0) {
-            debug(`Network currently not supported: ${requestData.networkId}`)
-            request.reject(new Error(`Network currently not supported: ${requestData.networkId}`))
-            return;
-        }
-        let rpcEndpoint = this.rpcMainnet
-        if (requestData.networkId === '1')  // mainnet
-            rpcEndpoint = this.rpcMainnet
-        else if (requestData.networkId === '4')  // rinkeby
-            rpcEndpoint = this.rpcRinkeby
-        if ( rpcEndpoint.indexOf('wss://') !== 0 ) {
-            debug(`Eth module currently requires web socket rpc endpoint in order to support filters`)
-            request.reject(new Error(`Invalid eth network rpc, requires websocket connection.`))
-            return;
-        }
+    private connectToNetwork(networkId: string): Promise<any> {
+        return new Promise((resolve, reject) => {
+            if (['1', '4'].indexOf(networkId) < 0) {
+                debug(`Network currently not supported: ${networkId}`)
+                reject(new Error(`Network currently not supported: ${networkId}`))
+                return;
+            }
+            let rpcEndpoint = this.rpcMainnet
+            if (networkId === '1')  // mainnet
+                rpcEndpoint = this.rpcMainnet
+            else if (networkId === '4')  // rinkeby
+                rpcEndpoint = this.rpcRinkeby
+            if ( rpcEndpoint.indexOf('wss://') !== 0 ) {
+                debug(`Eth module currently requires web socket rpc endpoint in order to support filters`)
+                reject(new Error(`Invalid eth network rpc, requires websocket connection.`))
+                return;
+            }
+            this.setNetworkProvider(rpcEndpoint)
+            this.web3.eth.net.getId().then(networkId => {
+                debug(`Connected to network with id [${networkId}]`)
+                this.networkId = `${networkId}`
+                // Setup contracts
+                try {
+                    this.contracts = {
+                        aoContent: new this.web3.eth.Contract(AOContent.abi, AOContent.networks[this.networkId].address), //.at(AOContent.networks[this.networkId].address),
+                        aoToken: new this.web3.eth.Contract(AOToken.abi, AOToken.networks[this.networkId].address), //.at(AOToken.networks[this.networkId].address)
+                    }
+                    resolve({ networkId: this.networkId })
+                } catch (error) {
+                    reject(new Error(`Error initializing contracts for network: ${networkId}. ${error.message}`))
+                }
+            }).catch(error => {
+                debug('Error getting network:', error)
+                reject(error)
+            })
+        })
+    }
+
+    private setNetworkProvider(rpcEndpoint: string) {
         const provider = new Web3.providers.WebsocketProvider(rpcEndpoint)
+        provider.on('error', (error?) => {
+            debug('Web3 Provider Error', error)
+        });
+        provider.on('end', (error?) => {
+            debug('Web3 Provider END', error)
+            // Attempt to reconnect
+            this.setNetworkProvider(rpcEndpoint)
+        });
+        provider.on('connect', () => {
+            debug('Web3 Provider Connected')
+        });
         if ( this.web3 )
             this.web3.setProvider(provider)
         else
             this.web3 = new Web3(provider)
-        this.web3.eth.net.getId().then(networkId => {
-            debug(`Connected to network with id [${networkId}]`)
-            this.networkId = `${networkId}`
-            // Setup contracts
-            try {
-                this.contracts = {
-                    aoContent: new this.web3.eth.Contract(AOContent.abi, AOContent.networks[this.networkId].address), //.at(AOContent.networks[this.networkId].address),
-                    aoToken: new this.web3.eth.Contract(AOToken.abi, AOToken.networks[this.networkId].address), //.at(AOToken.networks[this.networkId].address)
-                }                
-                request.respond({ networkId: this.networkId })
-            } catch (error) {
-                request.reject(new Error(`Error initializing contracts for network: ${networkId}. ${error.message}`))
-            }
-        }).catch(error => {
-            debug('Error getting network:', error)
-            request.reject(error)
-        })
+    }
+
+    _handleNetworkChange(request: IAORouterRequest) {
+        const requestData: IAOEth_NetworkChange_Data = request.data;
+        // Check if we are already connected (to avoid uneccesarilly reconnecting)
+        if ( this.web3 ) {
+            this.web3.eth.net.getId().then(networkId => {
+                if ( `${networkId}` === `${requestData.networkId}` ) {
+                    request.respond({networkId})
+                } else {
+                    this.connectToNetwork(requestData.networkId).then(request.respond).catch(request.reject)
+                }
+            })
+        } else {
+            this.connectToNetwork(requestData.networkId).then(request.respond).catch(request.reject)
+        }        
     }
 
     /**
@@ -160,6 +192,7 @@ export default class AOEth extends AORouterInterface {
     _listenForBuyContentEvents(request: IAORouterRequest) {
         const requestData: IAOEth_Events_BuyContent_Data = request.data;
         const { contentHostId } = requestData
+        debug(`Attempting to listen for BuyContent events for contentHostId[${contentHostId}] on network[${this.networkId}]`)
         if ( this.events.BuyContent.subscriptions[contentHostId] ) {
             debug(`Warning, already subscribed to BuyContent events for contentHostId[${contentHostId}]`)
             request.respond({subscribed: true})
@@ -171,11 +204,17 @@ export default class AOEth extends AORouterInterface {
                         contentHostId,
                     },
                     fromBlock: 0
+                }, (error, event) => {
+                    if ( error ) {
+                        debug(`BuyContent callback error: ${error.message}`)
+                        return;
+                    }
+                    debug(`BuyContent callback, no error`, event)
                 }).on('data', event => {
                     const buyContentEvent: BuyContentEvent = event.returnValues
                     this.router.emit('/core/content/incomingPurchase', buyContentEvent)
                 }).on('error', (error) => {
-                    debug(error)
+                    debug(`BuyContent subscription error: ${error.message}`)
                     if ( !responded ) {
                         request.reject(error)
                         responded = true
@@ -185,7 +224,7 @@ export default class AOEth extends AORouterInterface {
                 request.respond({subscribed: true})
                 responded = true
             } catch (error) {
-                debug(error)
+                debug(`Caught error while trying to subscribe to BuyContent events: ${error.message}`)
                 request.reject(error)
                 responded = true
             }

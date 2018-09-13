@@ -12,18 +12,18 @@ interface IRegister_Args {
 }
 
 export default (obj: any, args: IRegister_Args, context: IGraphqlResolverContext, info: any) => {
-    return new Promise((resolve, reject) => {
-        context.userSession.register(args.inputs.ethAddress).then(() => {
-            resolveSetNetwork(obj, args, context, info).then((ethNetworkConnected: boolean) => {
-                if ( !ethNetworkConnected ) {
-                    reject(new Error(`Unable to connect to ethereum network`))
-                } else {
+    return new Promise((resolve, reject) => {        
+        resolveSetNetwork(obj, args, context, info).then((ethNetworkConnected: boolean) => {
+            if ( !ethNetworkConnected ) {
+                reject(new Error(`Unable to connect to ethereum network`))
+            } else {
+                context.userSession.register(args.inputs.ethAddress).then(() => {
                     resolve({
                         id: args.inputs.ethAddress,
                         ethAddress: args.inputs.ethAddress,
                     })
-                }
-            }).catch(reject)  
+                }).catch(reject)  
+            }        
         }).catch(reject)        
     })
 }

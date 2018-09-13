@@ -235,6 +235,12 @@ export default class AOUserSession {
         const findEncryptedNodeData: AOP2P_Get_File_Node_Data = { content }
         this.router.send('/p2p/content/getContentHosts', findEncryptedNodeData).then((fileNodesResponse: IAORouterMessage) => {            
             const potentialNodes: Array<ContentNodeHostEntry> = fileNodesResponse.data
+            if ( !potentialNodes || potentialNodes.length === 0 ) {
+                // NOTE: we *shouldnt* hit this case unless the hyperdb is behind or the content has not been hosted
+                // (in which case user should not have made it this far)
+                debug(`No content hosts found in the database for content id[${content.id}]`)
+                return;
+            }
             debug(potentialNodes)
             // 2. Attempt to download the content from ONE of the nodes above (we may not even find someone who is hosting this content)
             const encryptedDownloadData: AODat_Encrypted_Download_Data = { nodes: potentialNodes }
