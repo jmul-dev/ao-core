@@ -338,7 +338,7 @@ export default class AODat extends AORouterInterface {
                 let downloadComplete = false
                 Dat(newDatPath, {key: key}, (err, dat) => {
                     if ( err || !dat ) {
-                        debug('failed to download dat', err)
+                        debug('failed to download dat '+ key, err)
                         reject(err)
                         return;
                     }
