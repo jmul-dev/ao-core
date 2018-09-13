@@ -4,6 +4,7 @@ import Debug from 'debug';
 import path from "path";
 import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
 import Datastore from 'nedb';
+import { IAOFS_Unlink_Data } from '../fs/fs';
 const debug = Debug('ao:dat');
 
 
@@ -262,7 +263,7 @@ export default class AODat extends AORouterInterface {
                 request.reject(err)
                 return;
             }
-            dat.importFiles()
+            dat.importFiles() //Note, this doesn't do a lot for our code base since the import has to be run post file creation.
             const datKey = dat.key.toString('hex')
             debug('Created new dat file: dat://' + datKey)
             this.dats[datKey] = dat;
@@ -339,8 +340,17 @@ export default class AODat extends AORouterInterface {
                 Dat(newDatPath, {key: key}, (err, dat) => {
                     if ( err || !dat ) {
                         debug('failed to download dat '+ key, err)
-                        reject(err)
-                        return;
+                        if ( err.name === 'IncompatibleError' ) {
+                            // Erase this mofo
+                            const removeDatData:IAOFS_Unlink_Data = {removePath: newDatPath}
+                            this.router.send('/fs/unlink', removeDatData).then(() => {
+                                //Self call. might be a bad idea, but let's try it
+                                this.downloadDat(key).then(resolve).catch(reject)
+                            }).catch(reject)
+                        } else {
+                            reject(err)
+                            return;
+                        }
                     }
                     try {
                         dat.joinNetwork((err) => {
