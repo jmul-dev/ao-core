@@ -363,6 +363,9 @@ export default class AODat extends AORouterInterface {
                         if ( err.name === 'IncompatibleError' ) {
                             // TODO: incompatible metadata issue, hoping to solve elsewhere   
                         }
+                        if ( !dat ) {
+                            debug('borked dat ',dat)
+                        }
                         debug(`[${key}] Failed to download dat`, err)
                         reject(err)
                         return;
