@@ -334,14 +334,15 @@ export default class AOP2P extends AORouterInterface {
             /**
              * Results needs quite a bit of formatting
              */
+            debug(results)
             // 1. Convert entry value data to json
             let jsonResults = results.map(entry => {
                 try {
-                    entry.value = JSON.parse(entry.value)
+                    let entryValue = JSON.parse(entry.value)
                     return {
-                        contentDatKey: entry.value.contentDatKey,
-                        contentHostId: entry.value.contentHostId,
-                        timestamp: entry.value.timestamp,
+                        contentDatKey: entryValue.contentDatKey,
+                        contentHostId: entryValue.contentHostId,
+                        timestamp: entryValue.timestamp,
                     }
                 } catch (error) {
                     // Instead of letting a single malformed entry ruin the show, we just ignore it
