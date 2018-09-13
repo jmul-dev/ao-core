@@ -155,29 +155,30 @@ export default class AODat extends AORouterInterface {
                 }
                 dat.joinNetwork((err) => {
                     if (err) {
-                        debug(err)
-                    } else {
-                        this._updateDatEntry(datEntry)
+                        debug(`Error joining network for dat://${datEntry.key}: ${err.emssage}`)
+                        reject(err)
+                        return;
                     }
-                })                
-                debug(`Joined network: dat://${dat.key.toString('hex')}`)
-                this.dats[datEntry.key] = dat
-                resolve()
-                // Finally, if the datEntry is not complete, listen for completion and update our
-                // db.
-                dat.archive.metadata.update(() => {
-                    mirror({ fs: dat.archive, name: '/' }, datDir, (err) => {
-                        if (!err) {
-                            debug('fully downloaded the goods!')
-                            const updatedDatEntry: DatEntry = {
-                                key: datEntry.key,
-                                complete: true,
-                                updatedAt: new Date(),
+                    debug(`Joined network: dat://${dat.key.toString('hex')}`)
+                    this.dats[datEntry.key] = dat
+                    resolve()
+                    this._updateDatEntry(datEntry)
+                    // Finally, if the datEntry is not complete, listen for completion and update our
+                    // db.
+                    dat.archive.metadata.update(() => {
+                        mirror({ fs: dat.archive, name: '/' }, datDir, (err) => {
+                            if (!err) {
+                                debug(`Resumed dat is now fully download dat://${datEntry.key}`)
+                                const updatedDatEntry: DatEntry = {
+                                    key: datEntry.key,
+                                    complete: true,
+                                    updatedAt: new Date(),
+                                }
+                                this._updateDatEntry(updatedDatEntry)
                             }
-                            this._updateDatEntry(updatedDatEntry)
-                        }
+                        })
                     })
-                })
+                })                
             })
         })
     }
