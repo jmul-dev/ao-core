@@ -160,6 +160,7 @@ export default class AODat extends AORouterInterface {
                         return;
                     }
                     debug(`Joined network: dat://${dat.key.toString('hex')}`)
+                    dat.AO_joinedNetwork = true
                     this.dats[datEntry.key] = dat
                     resolve()
                     this._updateDatEntry(datEntry)
@@ -227,6 +228,11 @@ export default class AODat extends AORouterInterface {
         debug(`Fetching dat stats for dat://${requestData.key}`)
         this._getDatEntry(requestData.key).then((datEntry: DatEntry) => {            
             const datInstance = this.dats[requestData.key]
+            if ( !datInstance ) {
+                debug(`Attempting to get datStats, no dat instance found: dat://${requestData.key}`)
+                request.reject(new Error(`Dat instance not available`))
+                return;
+            }
             if ( !datInstance.AO_isTrackingStats ) {
                 datInstance.trackStats()
                 datInstance.AO_isTrackingStats = true
@@ -241,6 +247,7 @@ export default class AODat extends AORouterInterface {
                     ...datInstance.stats.peers
                 },
                 complete: datEntry.complete,
+                joinedNetwork: datInstance.AO_joinedNetwork,
             }
             request.respond(returnValue)
         }).catch(request.reject)
@@ -375,6 +382,7 @@ export default class AODat extends AORouterInterface {
                             } else {
                                 debug(`[${key}] Succesfully joined network!`)
                                 const datKey = dat.key.toString('hex');
+                                dat.AO_joinedNetwork = true
                                 this.dats[datKey] = dat;
                                 const newDatEntry: DatEntry = {
                                     key: datKey,

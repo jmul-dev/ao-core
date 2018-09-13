@@ -36,6 +36,7 @@ type DatStats {
     peersTotal: Int
     peersComplete: Int
     complete: Boolean
+    joinedNetwork: Boolean
 }
 
 type ContentTransactions {
@@ -75,6 +76,7 @@ interface IContent {
     isMutable: Boolean!
     fileName: String
     fileDatKey: String
+    fileDatStats: DatStats
     fileUrl: String
     fileChecksum: String
     baseChallenge: String
@@ -83,7 +85,7 @@ interface IContent {
     metadataDatKey: ID!
     metadataDatStats: DatStats
     title: String
-    description: String    
+    description: String
     # Econ
     stake: Float
     fileSize: Float
@@ -108,6 +110,7 @@ type VideoContent implements IContent {
     isMutable: Boolean!
     fileName: String
     fileDatKey: String
+    fileDatStats: DatStats
     fileUrl: String
     fileChecksum: String
     baseChallenge: String
