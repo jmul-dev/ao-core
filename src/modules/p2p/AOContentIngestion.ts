@@ -44,7 +44,6 @@ export default class AOContentIngestion {
             debug(`Processing discovered network content: ${metadataDatKey} [qlength=${this.processingQueue.length}]`)
             // 1. Ping the network content db to see if we have already seen this
             this.router.send('/db/network/content/get', { query: {_id: metadataDatKey} }).then((contentResponse: IAORouterMessage) => {
-                console.log(contentResponse.data)
                 if (contentResponse.data && contentResponse.data[0]) {
                     const existingNetworkContent: AONetworkContent = contentResponse.data[0]
                     // 2a. Content already exists (TODO: decide if we want to retry?)

@@ -307,7 +307,9 @@ export default class AODat extends AORouterInterface {
      */
     private _handleDatDownload(request: IAORouterRequest) {
         const { key, resolveOnNetworkJoined, resolveOnDownloadCompletion }: AODat_Download_Data = request.data;
-        this.downloadDat(key, resolveOnDownloadCompletion).then(request.respond).catch(request.reject)
+        this.downloadDat(key, resolveOnDownloadCompletion).then(()=> {
+            request.respond({})
+        }).catch(request.reject)
     }
 
     /**
@@ -377,11 +379,11 @@ export default class AODat extends AORouterInterface {
                                 this.removeDat(key)
                                 reject(err)
                                 return;
-                            // } else if (!dat.network.connected || !dat.network.connecting) {
-                            //     debug(`[${key}] Failed to download, no one is hosting`)
-                            //     this.removeDat(key)
-                            //     reject(new Error('No users are hosting the requested content'))
-                            //     return;
+                            } else if (!dat.network.connected || !dat.network.connecting) {
+                                debug(`[${key}] Failed to download, no one is hosting`)
+                                this.removeDat(key)
+                                reject(new Error('No users are hosting the requested content'))
+                                return;
                             } else {
                                 debug(`[${key}] Succesfully joined network!`)
                                 const datKey = dat.key.toString('hex');
@@ -397,33 +399,32 @@ export default class AODat extends AORouterInterface {
                                 if ( !resolveOnDownloadCompletion ) {
                                     resolve(newDatEntry)
                                 }
-                                // Begin listening for completion & start tracking stats
-                                if ( !dat.AO_isTrackingStats ) {
-                                    dat.trackStats()
-                                    dat.AO_isTrackingStats = true
-                                }
-                                dat.archive.metadata.update(() => {
-                                    var progress = mirror({ fs: dat.archive, name: '/' }, newDatPath, (err) => {
-                                        if (err) {
-                                            debug('Error downloading dat file:', err)
-                                        } else {
-                                            debug('fully downloaded the goods!')
-                                            downloadComplete = true
-                                            const updatedDatEntry: DatEntry = {
-                                                key: key,
-                                                complete: true,
-                                                updatedAt: new Date(),
-                                            }
-                                            this._updateDatEntry(updatedDatEntry)
-                                            if ( resolveOnDownloadCompletion ) {
-                                                resolve(updatedDatEntry)
-                                            }
-                                        }
-                                    })
-                                })
-                                
                             }
                         })
+                        dat.archive.metadata.update(() => {
+                            var progress = mirror({ fs: dat.archive, name: '/' }, newDatPath, (err) => {
+                                if (err) {
+                                    debug('Error downloading dat file:', err)
+                                } else {
+                                    debug(`[${key}] Fully downloaded the goods!`)
+                                    downloadComplete = true
+                                    const updatedDatEntry: DatEntry = {
+                                        key: key,
+                                        complete: true,
+                                        updatedAt: new Date(),
+                                    }
+                                    this._updateDatEntry(updatedDatEntry)
+                                    if ( resolveOnDownloadCompletion ) {
+                                        resolve(updatedDatEntry)
+                                    }
+                                }
+                            })
+                        })
+                        // Begin listening for completion & start tracking stats
+                        if ( !dat.AO_isTrackingStats ) {
+                            dat.trackStats()
+                            dat.AO_isTrackingStats = true
+                        }
                     } catch (error) {
                         debug(`Dat error while attempting to download...`, error)
                         this.removeDat(key)

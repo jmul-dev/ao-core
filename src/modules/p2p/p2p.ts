@@ -109,7 +109,7 @@ const routerArgs: AORouterArgs = {
 
 export default class AOP2P extends AORouterInterface {
     private dbPath: string;
-    private dbKey: string = '006c3ce5918f7a577156adc74668a8bfad80b2420d1f11d4b5d66cbbe36e49d2'; //TODO: Set the production static dbKey
+    private dbKey: string = '93b87287b697bd8ca27e119ec6a88f330f16db83823e06cc177155f31fa42789'; //TODO: Set the production static dbKey
     private dbPrefix: string;
     private storageLocation: string;
     private contentWatchKey: string;
@@ -169,7 +169,7 @@ export default class AOP2P extends AORouterInterface {
         return new Promise((resolve, reject) => {
             let contentCompare = []
             contentCompare.push(this.hyperdb.list(this.contentWatchKey))
-            contentCompare.push(this.router.send('/db/network/content/get', { projection: { _id: 1 } }))  // Only return _ids = metadataDatKey
+            contentCompare.push(this.router.send('/db/network/content/get', { query: { projection: { _id: 1 } } }))  // Only return _ids = metadataDatKey
             Promise.all(contentCompare).then((results) => {
                 const contentInNetworkDb = results[0]
                 const contentInLocalNetworkDb: Array<AONetworkContent> = results[1].data
@@ -190,20 +190,20 @@ export default class AOP2P extends AORouterInterface {
                     }
                 }
                 //Run a comparater
-                const newMetadataDatKeys = metadataDatKeysInNetworkDb.filter((el) => {
+                const newMetadataDatKeys: Array<string> = metadataDatKeysInNetworkDb.filter((el) => {
                     return metadataDatKeysInLocalNetworkDb.indexOf(el) < 0;
                 });
                 //Add to content ingestion helper
                 if (newMetadataDatKeys.length) {
-                    for (const metadataDatKey in newMetadataDatKeys) {
-                        if (newMetadataDatKeys.hasOwnProperty(metadataDatKey)) {
-                            const datKey = newMetadataDatKeys[metadataDatKey];
-                            this.contentIngestion.addDiscoveredMetadataDatKeyToQueue(datKey)
-                        }
+                    for (let i = 0; i < newMetadataDatKeys.length; i++) {
+                        const datKey = newMetadataDatKeys[i];
+                        this.contentIngestion.addDiscoveredMetadataDatKeyToQueue(datKey)
                     }
                 }
                 resolve()
-            }).catch(reject)
+            }).catch((err) => {
+                reject(err)
+            })
         })
     }
 
