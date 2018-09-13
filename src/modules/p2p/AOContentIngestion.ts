@@ -1,12 +1,12 @@
-import AOContent, { AOContentState } from "../../models/AOContent";
-import queue, { IQueue, IQueueOptions, IQueueEventCallback, IQueueWorker } from 'queue';
-import { AORouterInterface } from "../../router/AORouterInterface";
-import { IAORouterMessage } from "../../router/AORouter";
-import { IAOFS_Read_Data } from "../fs/fs";
 import Debug from "debug";
 import path from 'path';
-import AONetworkContent from '../../models/AONetworkContent'
-import { AODB_UserContentGet_Data } from "../db/db";
+import queue, { IQueue } from 'queue';
+import AOContent, { AOContentState } from "../../models/AOContent";
+import AONetworkContent from '../../models/AONetworkContent';
+import { IAORouterMessage } from "../../router/AORouter";
+import { AORouterInterface } from "../../router/AORouterInterface";
+import { AODat_Download_Data } from "../dat/dat";
+import { IAOFS_Read_Data } from "../fs/fs";
 const debug = Debug('ao:p2p:contentIngestion')
 
 
@@ -50,7 +50,8 @@ export default class AOContentIngestion {
                     resolve()
                 } else {
                     // 2b. Download the dat file
-                    this.router.send('/dat/download', { key: metadataDatKey }).then((downloadResponse: IAORouterMessage) => {
+                    const datDownloadParams: AODat_Download_Data = { key: metadataDatKey, resolveOnDownloadCompletion: true }
+                    this.router.send('/dat/download', datDownloadParams).then((downloadResponse: IAORouterMessage) => {
                         const readContentJson: IAOFS_Read_Data = {
                             readPath: path.join('content', metadataDatKey, 'content.json')
                         }

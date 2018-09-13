@@ -1,12 +1,11 @@
 import Dat from 'dat-node';
-import mirror from 'mirror-folder';
 import Debug from 'debug';
+import mirror from 'mirror-folder';
+import Datastore from 'nedb';
 import path from "path";
 import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
-import Datastore from 'nedb';
 import { IAOFS_Unlink_Data } from '../fs/fs';
 import { ContentNodeHostEntry } from '../p2p/p2p';
-import { IAOFS_Unlink_Data } from '../fs/fs';
 const debug = Debug('ao:dat');
 
 
@@ -34,6 +33,8 @@ export interface AODat_Create_Data {
 
 export interface AODat_Download_Data {
     key: string;
+    resolveOnNetworkJoined?: boolean;
+    resolveOnDownloadCompletion?: boolean;
 }
 
 export interface AODat_Check_Data {
@@ -297,12 +298,8 @@ export default class AODat extends AORouterInterface {
      * @param request 
      */
     private _handleDatDownload(request: IAORouterRequest) {
-        const { key }: AODat_Download_Data = request.data;
-        this.downloadDat(key).then((datEntry: DatEntry) => {
-            request.respond(datEntry)
-        }).catch(e => {
-            request.reject(e)
-        })
+        const { key, resolveOnNetworkJoined, resolveOnDownloadCompletion }: AODat_Download_Data = request.data;
+        this.downloadDat(key, resolveOnDownloadCompletion).then(request.respond).catch(request.reject)
     }
 
     /**
@@ -316,7 +313,7 @@ export default class AODat extends AORouterInterface {
         for (let i = 0; i < nodes.length; i++) {
             const nodeEntry: ContentNodeHostEntry = nodes[i];
             try {
-                const datEntry: DatEntry = await this.downloadDat(nodeEntry.contentDatKey)
+                const datEntry: DatEntry = await this.downloadDat(nodeEntry.contentDatKey, false)
                 request.respond({
                     datEntry,
                     contentHostId: nodeEntry.contentHostId
@@ -331,12 +328,15 @@ export default class AODat extends AORouterInterface {
     }
 
     /**
-     * Downloads dats and resolves the internal entry for that dat.
+     * Attempts to download a Dat file from the network.
      * https://github.com/datproject/dat-node/blob/master/examples/download.js
-     * @param key 
-     * @returns datEntry
+     * 
+     * @param {string} key Dat key to download
+     * @param {boolean} resolveOnDownloadCompletion If true, waits to resolve when the 
+     *                  download is complete, otherwise resolves once we joined the network.
+     * @returns {Promise<DatEntry>}
      */
-    private downloadDat(key): Promise<DatEntry> {
+    private downloadDat(key, resolveOnDownloadCompletion): Promise<DatEntry> {
         return new Promise((resolve, reject) => {
             debug(`[${key}] Attempting to download dat`)
             if (this.dats[key]) {
@@ -381,8 +381,10 @@ export default class AODat extends AORouterInterface {
                                     updatedAt: new Date(),
                                     createdAt: new Date(),
                                 }
-                                this._updateDatEntry(newDatEntry)
-                                resolve(newDatEntry)
+                                this._updateDatEntry(newDatEntry)    
+                                if ( !resolveOnDownloadCompletion ) {
+                                    resolve(newDatEntry)
+                                }
                                 // Begin listening for completion & start tracking stats
                                 if ( !dat.AO_isTrackingStats ) {
                                     dat.trackStats()
@@ -401,9 +403,13 @@ export default class AODat extends AORouterInterface {
                                                 updatedAt: new Date(),
                                             }
                                             this._updateDatEntry(updatedDatEntry)
+                                            if ( resolveOnDownloadCompletion ) {
+                                                resolve(updatedDatEntry)
+                                            }
                                         }
                                     })
                                 })
+                                
                             }
                         })
                     } catch (error) {
