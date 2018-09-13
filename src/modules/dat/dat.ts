@@ -76,7 +76,7 @@ export default class AODat extends AORouterInterface {
     private datDir: string;
     private dats: {
         [key: string]: Dat
-    } = {};
+    };
     private datsDb: Datastore;
 
     constructor(args: AODat_Args) {
@@ -92,6 +92,7 @@ export default class AODat extends AORouterInterface {
         this.router.on('/dat/encryptedFileDownload', this._handleEncryptedFileDownload.bind(this))
         this.router.on('/dat/exists', this._handleDatExists.bind(this))
         this.router.on('/dat/stats', this._handleGetDatStats.bind(this))
+        this.dats = {}
         this.datsDb = new Datastore({
             filename: path.resolve(this.storageLocation, 'dats.db.json'),
             autoload: true,
@@ -153,19 +154,19 @@ export default class AODat extends AORouterInterface {
                     }
                     return null;
                 }
+                // NOTE: joinNetwork callback only fires when someone connects (or an error occurs)
                 dat.joinNetwork((err) => {
                     if (err) {
                         debug(`Error joining network for dat://${datEntry.key}: ${err.emssage}`)
-                        reject(err)
-                        return;
                     }
-                    debug(`Joined network: dat://${dat.key.toString('hex')}`)
-                    dat.AO_joinedNetwork = true
-                    this.dats[datEntry.key] = dat
-                    resolve()
-                    this._updateDatEntry(datEntry)
-                    // Finally, if the datEntry is not complete, listen for completion and update our
-                    // db.
+                })
+                dat.AO_joinedNetwork = true
+                this.dats[datEntry.key] = dat
+                resolve()
+                this._updateDatEntry(datEntry)
+                // Finally, if the datEntry is not complete, listen for completion and update our
+                // db.
+                if ( !datEntry.complete ) {
                     dat.archive.metadata.update(() => {
                         mirror({ fs: dat.archive, name: '/' }, datDir, (err) => {
                             if (!err) {
@@ -179,7 +180,7 @@ export default class AODat extends AORouterInterface {
                             }
                         })
                     })
-                })                
+                }
             })
         })
     }
@@ -268,7 +269,9 @@ export default class AODat extends AORouterInterface {
 
     private _handleResumeSingle(request: IAORouterRequest) {
         const requestData: AODat_ResumeSingle_Data = request.data
-        this._resume(this.dats[requestData.key]).then(request.respond).catch(request.reject)
+        this._getDatEntry(requestData.key).then((datEntry: DatEntry) => {
+            this._resume(datEntry).then(request.respond).catch(request.reject)
+        })        
     }
 
     private _handleDatStopAll(request: IAORouterRequest) {
@@ -367,7 +370,6 @@ export default class AODat extends AORouterInterface {
             } else {
                 // B. We do not have this dat, proceed to create and download
                 const newDatPath = path.join(this.datDir, key);
-                let downloadComplete = false
                 Dat(newDatPath, { key: key }, (err, dat) => {
                     if ( err || !dat ) {
                         this.removeDat(key)
@@ -394,13 +396,13 @@ export default class AODat extends AORouterInterface {
                                 reject(new Error('No users are hosting the requested content'))
                                 return;
                             } else {
-                                debug(`[${key}] Succesfully joined network!`)
+                                debug(`[${key}] Succesfully joined network and began downloading!`)
                                 const datKey = dat.key.toString('hex');
                                 dat.AO_joinedNetwork = true
                                 this.dats[datKey] = dat;
                                 const newDatEntry: DatEntry = {
                                     key: datKey,
-                                    complete: downloadComplete,
+                                    complete: false,
                                     updatedAt: new Date(),
                                     createdAt: new Date(),
                                 }
@@ -416,7 +418,6 @@ export default class AODat extends AORouterInterface {
                                     debug('Error downloading dat file:', err)
                                 } else {
                                     debug(`[${key}] Fully downloaded the goods!`)
-                                    downloadComplete = true
                                     const updatedDatEntry: DatEntry = {
                                         key: key,
                                         complete: true,

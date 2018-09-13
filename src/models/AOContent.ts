@@ -156,6 +156,8 @@ export default abstract class AOContent {
      */
     public toMetadataJson() {
         const metadataJsonKeys = [
+            "id",
+            "metadataDatKey",
             'stakeId',
             'creatorId',
             'contentType',

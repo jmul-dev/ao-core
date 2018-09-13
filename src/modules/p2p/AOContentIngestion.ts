@@ -7,6 +7,7 @@ import { IAORouterMessage } from "../../router/AORouter";
 import { AORouterInterface } from "../../router/AORouterInterface";
 import { AODat_Download_Data } from "../dat/dat";
 import { IAOFS_Read_Data } from "../fs/fs";
+import { AODB_NetworkContentGet_Data } from "../db/db";
 const debug = Debug('ao:p2p:contentIngestion')
 
 
@@ -43,7 +44,10 @@ export default class AOContentIngestion {
         return new Promise((resolve, reject) => {
             debug(`Processing discovered network content: ${metadataDatKey} [qlength=${this.processingQueue.length}]`)
             // 1. Ping the network content db to see if we have already seen this
-            this.router.send('/db/network/content/get', { query: {_id: metadataDatKey} }).then((contentResponse: IAORouterMessage) => {
+            const networkContentQuery: AODB_NetworkContentGet_Data = {
+                query: { _id: metadataDatKey }
+            }
+            this.router.send('/db/network/content/get', networkContentQuery).then((contentResponse: IAORouterMessage) => {
                 if (contentResponse.data && contentResponse.data[0]) {
                     const existingNetworkContent: AONetworkContent = contentResponse.data[0]
                     // 2a. Content already exists (TODO: decide if we want to retry?)

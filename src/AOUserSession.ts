@@ -1,14 +1,14 @@
 import Debug from 'debug';
-import path, { resolve } from 'path';
+import path from 'path';
+import * as AOCrypto from './AOCrypto';
 import AOContent, { AOContentState } from "./models/AOContent";
-import { AODat_Create_Data, AODat_ResumeSingle_Data, AODat_Encrypted_Download_Data, DatStats, AODat_GetDatStats_Data, AODat_ImportSingle_Data } from './modules/dat/dat';
-import { AODB_UserContentGet_Data, AODB_UserContentUpdate_Data, AODB_UserInsert_Data, AODB_NetworkContentUpdate_Data } from "./modules/db/db";
+import { AODat_Create_Data, AODat_Encrypted_Download_Data, AODat_GetDatStats_Data, AODat_ImportSingle_Data, AODat_ResumeSingle_Data, DatStats } from './modules/dat/dat';
+import { AODB_UserContentGet_Data, AODB_UserContentUpdate_Data, AODB_UserInsert_Data } from "./modules/db/db";
 import { BuyContentEvent, HostContentEvent, IAOEth_BuyContentEvent_Data } from "./modules/eth/eth";
 import { IAOFS_DecryptCheck_Data, IAOFS_Mkdir_Data, IAOFS_Move_Data, IAOFS_Reencrypt_Data, IAOFS_Unlink_Data } from "./modules/fs/fs";
-import { AOP2P_Add_Discovery_Data, AOP2P_IndexDataRow, AOP2P_Watch_AND_Get_IndexData_Data, AOP2P_Write_Decryption_Key_Data, AOP2P_Get_File_Node_Data, ContentNodeHostEntry } from "./modules/p2p/p2p";
+import { AOP2P_Add_Discovery_Data, AOP2P_Get_File_Node_Data, AOP2P_IndexDataRow, AOP2P_Watch_AND_Get_IndexData_Data, AOP2P_Write_Decryption_Key_Data, ContentNodeHostEntry } from "./modules/p2p/p2p";
 import { IAORouterMessage } from "./router/AORouter";
 import { AORouterInterface, IAORouterRequest } from "./router/AORouterInterface";
-import * as AOCrypto from './AOCrypto'
 const debug = Debug('ao:userSession');
 
 
@@ -171,7 +171,7 @@ export default class AOUserSession {
      * @param {AOContent} content
      */
     private _listenForBuyContentEventsOnDiscoverableContent(content: AOContent) {
-        this.router.send('/eth/content/BuyContent/subscribe', { contentHostId: content.contentHostId })
+        this.router.send('/eth/events/BuyContent/subscribe', { contentHostId: content.contentHostId })
     }
 
     /**
@@ -235,6 +235,12 @@ export default class AOUserSession {
         const findEncryptedNodeData: AOP2P_Get_File_Node_Data = { content }
         this.router.send('/p2p/content/getContentHosts', findEncryptedNodeData).then((fileNodesResponse: IAORouterMessage) => {            
             const potentialNodes: Array<ContentNodeHostEntry> = fileNodesResponse.data
+            if ( !potentialNodes || potentialNodes.length === 0 ) {
+                // NOTE: we *shouldnt* hit this case unless the hyperdb is behind or the content has not been hosted
+                // (in which case user should not have made it this far)
+                debug(`No content hosts found in the database for content id[${content.id}]`)
+                return;
+            }
             debug(potentialNodes)
             // 2. Attempt to download the content from ONE of the nodes above (we may not even find someone who is hosting this content)
             const encryptedDownloadData: AODat_Encrypted_Download_Data = { nodes: potentialNodes }
@@ -243,9 +249,11 @@ export default class AOUserSession {
                 let userContentUpdate: AODB_UserContentUpdate_Data = {
                     id: content.id,
                     update: {
-                        state: downloadResponse.data.datEntry.complete ? AOContentState.DOWNLOADED : AOContentState.DOWNLOADING,
-                        contentHostId: downloadResponse.data.contentHostId,
-                        fileDatKey: downloadResponse.data.datEntry.key
+                        $set: {
+                            "state": downloadResponse.data.datEntry.complete ? AOContentState.DOWNLOADED : AOContentState.DOWNLOADING,
+                            "contentHostId": downloadResponse.data.contentHostId,
+                            "fileDatKey": downloadResponse.data.datEntry.key
+                        }
                     }
                 }
                 this.router.send('/db/user/content/update', userContentUpdate).then((userContentUpdateResponse: IAORouterMessage) => {
@@ -260,7 +268,9 @@ export default class AOUserSession {
                 let userContentUpdate: AODB_UserContentUpdate_Data = {
                     id: content.id,
                     update: {
-                        state: AOContentState.HOST_DISCOVERY_FAILED
+                        $set: {
+                            "state": AOContentState.HOST_DISCOVERY_FAILED
+                        }
                     }
                 }
                 this.router.send('/db/user/content/update', userContentUpdate).then((userContentUpdateResponse: IAORouterMessage) => {
@@ -275,7 +285,9 @@ export default class AOUserSession {
             let userContentUpdate: AODB_UserContentUpdate_Data = {
                 id: content.id,
                 update: {
-                    state: AOContentState.HOST_DISCOVERY_FAILED
+                    $set: {
+                        "state": AOContentState.HOST_DISCOVERY_FAILED
+                    }
                 }
             }
             this.router.send('/db/user/content/update', userContentUpdate).then((userContentUpdateResponse: IAORouterMessage) => {
@@ -303,7 +315,9 @@ export default class AOUserSession {
                     let userContentUpdate: AODB_UserContentUpdate_Data = {
                         id: content.id,
                         update: {
-                            state: AOContentState.DOWNLOADED
+                            $set: {
+                                "state": AOContentState.DOWNLOADED
+                            }
                         }
                     }
                     this.router.send('/db/user/content/update', userContentUpdate).then((userContentUpdateResponse: IAORouterMessage) => {

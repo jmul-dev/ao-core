@@ -47,7 +47,6 @@ export default function () {
                 register: resolvers.resolveRegister,
                 updateSettings: resolvers.resolveUpdateSettings,
                 submitVideoContent: resolvers.resolveSubmitVideoContent,
-                stakeContent: resolvers.resolveStakeContent,
                 contentRequest: resolvers.resolveContentRequest,
                 contentPurchaseTransaction: resolvers.resolveContentPurchaseTransaction,
                 contentBecomeHostTransaction: resolvers.resolveContentBecomeHostTransaction,
