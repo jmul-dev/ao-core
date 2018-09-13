@@ -351,18 +351,13 @@ export default class AODat extends AORouterInterface {
                 let downloadComplete = false
                 Dat(newDatPath, { key: key }, (err, dat) => {
                     if ( err || !dat ) {
+                        this.removeDat(key)
                         if ( err.name === 'IncompatibleError' ) {
-                            // Erase this mofo
-                            const removeDatData:IAOFS_Unlink_Data = {removePath: newDatPath}
-                            this.router.send('/fs/unlink', removeDatData).then(() => {
-                                //Self call. might be a bad idea, but let's try it
-                                this.downloadDat(key).then(resolve).catch(reject)
-                            }).catch(reject)
-                        } else {
-                            debug('failed to download dat '+ key, err)
-                            reject(err)
-                            return;
+                            // TODO: incompatible metadata issue, hoping to solve elsewhere   
                         }
+                        debug(`[${key}] Failed to download dat`, err)
+                        reject(err)
+                        return;
                     }
                     try {
                         dat.joinNetwork((err) => {
@@ -388,28 +383,29 @@ export default class AODat extends AORouterInterface {
                                 }
                                 this._updateDatEntry(newDatEntry)
                                 resolve(newDatEntry)
+                                // Begin listening for completion & start tracking stats
+                                if ( !dat.AO_isTrackingStats ) {
+                                    dat.trackStats()
+                                    dat.AO_isTrackingStats = true
+                                }
+                                dat.archive.metadata.update(() => {
+                                    var progress = mirror({ fs: dat.archive, name: '/' }, newDatPath, (err) => {
+                                        if (err) {
+                                            debug('Error downloading dat file:', err)
+                                        } else {
+                                            debug('fully downloaded the goods!')
+                                            downloadComplete = true
+                                            const updatedDatEntry: DatEntry = {
+                                                key: key,
+                                                complete: true,
+                                                updatedAt: new Date(),
+                                            }
+                                            this._updateDatEntry(updatedDatEntry)
+                                        }
+                                    })
+                                })
                             }
                         })
-                        dat.archive.metadata.update(() => {
-                            var progress = mirror({ fs: dat.archive, name: '/' }, newDatPath, (err) => {
-                                if (err) {
-                                    debug('Error downloading dat file:', err)
-                                } else {
-                                    debug('fully downloaded the goods!')
-                                    downloadComplete = true
-                                    const updatedDatEntry: DatEntry = {
-                                        key: key,
-                                        complete: true,
-                                        updatedAt: new Date(),
-                                    }
-                                    this._updateDatEntry(updatedDatEntry)
-                                }
-                            })
-                        })
-                        // dat.archive.content.on('download-finished', () => {
-                        //     // In case the above method does not fire
-                        //     debug('TODO: download-finished event listener triggered!')
-                        // })
                     } catch (error) {
                         debug(`Dat error while attempting to download...`, error)
                         this.removeDat(key)
