@@ -1,10 +1,15 @@
 import { IGraphqlResolverContext } from '../../http';
 import { IAORouterMessage } from "../../router/AORouter";
+import AOContent from '../../models/AOContent';
 
-// TODO: obj is of type Content (sorry still no types outside of graphql)
-export default (obj: any, args: any, context: IGraphqlResolverContext, info: any) => {
+
+export default (obj: AOContent, args: any, context: IGraphqlResolverContext, info: any) => {
     return new Promise((resolve, reject) => {
-        context.router.send('/dat/stats', {key: obj.metadataDatKey}).then((response: IAORouterMessage) => {
+        let datKey = obj.metadataDatKey
+        if ( info.fieldName === 'fileDatStats' ) {
+            datKey = obj.fileDatKey
+        }
+        context.router.send('/dat/stats', {key: datKey}).then((response: IAORouterMessage) => {
             resolve({
                 files: response.data.files,
                 byteLength: response.data.byteLength,
