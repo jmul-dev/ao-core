@@ -10,6 +10,7 @@
         "events": [
             "/dat/resumeAll",
             "/dat/resumeSingle",
+            "/dat/importSingle",
             "/dat/stopAll",
             "/dat/create",
             "/dat/exists",

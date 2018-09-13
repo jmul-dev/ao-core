@@ -4,6 +4,7 @@ import Debug from 'debug';
 import path from "path";
 import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
 import Datastore from 'nedb';
+import { IAOFS_Unlink_Data } from '../fs/fs';
 import { ContentNodeHostEntry } from '../p2p/p2p';
 import { IAOFS_Unlink_Data } from '../fs/fs';
 const debug = Debug('ao:dat');
@@ -17,6 +18,10 @@ export interface AODat_ResumeAll_Data {
 }
 
 export interface AODat_ResumeSingle_Data {
+    key: string
+}
+
+export interface AODat_ImportSingle_Data {
     key: string
 }
 
@@ -79,6 +84,7 @@ export default class AODat extends AORouterInterface {
         this.datDir = path.resolve(this.storageLocation, 'content')
         this.router.on('/dat/resumeAll', this._handleResumeAll.bind(this))
         this.router.on('/dat/resumeSingle', this._handleResumeSingle.bind(this))
+        this.router.on('/dat/importSingle',this._handleImportSingle.bind(this))
         this.router.on('/dat/stopAll', this._handleDatStopAll.bind(this))
         this.router.on('/dat/create', this._handleDatCreate.bind(this))
         this.router.on('/dat/download', this._handleDatDownload.bind(this))
@@ -175,6 +181,22 @@ export default class AODat extends AORouterInterface {
         })
     }
 
+    private _handleImportSingle(request:IAORouterRequest) {
+        const {key}:AODat_ImportSingle_Data = request.data
+        const datDir = path.join(this.datDir, key)
+        Dat(datDir, (err: Error, dat:Dat) => {
+            dat.importFiles((err)=> {
+                if(err) {
+                    request.reject(new Error('Error importing files'))
+                    return
+                } else {
+                    debug('Files Imported!')
+                    request.respond({success:true})
+                }
+            })
+        })
+    }
+
     private _updateDatEntry(datEntry: DatEntry) {
         this.datsDb.update({ key: datEntry.key }, datEntry, { upsert: true })
     }
@@ -252,7 +274,7 @@ export default class AODat extends AORouterInterface {
                 request.reject(err)
                 return;
             }
-            dat.importFiles()
+            dat.importFiles() //Note, this doesn't do a lot for our code base since the import has to be run post file creation.
             const datKey = dat.key.toString('hex')
             debug('Created new dat file: dat://' + datKey)
             this.dats[datKey] = dat;
@@ -328,10 +350,19 @@ export default class AODat extends AORouterInterface {
                 const newDatPath = path.join(this.datDir, key);
                 let downloadComplete = false
                 Dat(newDatPath, { key: key }, (err, dat) => {
-                    if (err || !dat) {
-                        debug(`[${key}] Failed to download`, err)
-                        reject(err)
-                        return;
+                    if ( err || !dat ) {
+                        if ( err.name === 'IncompatibleError' ) {
+                            // Erase this mofo
+                            const removeDatData:IAOFS_Unlink_Data = {removePath: newDatPath}
+                            this.router.send('/fs/unlink', removeDatData).then(() => {
+                                //Self call. might be a bad idea, but let's try it
+                                this.downloadDat(key).then(resolve).catch(reject)
+                            }).catch(reject)
+                        } else {
+                            debug('failed to download dat '+ key, err)
+                            reject(err)
+                            return;
+                        }
                     }
                     try {
                         dat.joinNetwork((err) => {
@@ -375,10 +406,10 @@ export default class AODat extends AORouterInterface {
                                 }
                             })
                         })
-                        dat.archive.content.on('download-finished', () => {
-                            // In case the above method does not fire
-                            debug('TODO: download-finished event listener triggered!')
-                        })
+                        // dat.archive.content.on('download-finished', () => {
+                        //     // In case the above method does not fire
+                        //     debug('TODO: download-finished event listener triggered!')
+                        // })
                     } catch (error) {
                         debug(`Dat error while attempting to download...`, error)
                         this.removeDat(key)
