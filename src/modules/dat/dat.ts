@@ -203,13 +203,14 @@ export default class AODat extends AORouterInterface {
                             request.reject(new Error('Error importing files'))
                             return
                         } else {
-                            debug('Files Imported!')
+                            debug('Files imported for '+ key)
                             request.respond({success:true})
                         }
                     })
                 } catch(e) {
                     debug(e)
                     request.reject(e)
+                    return
                 }
             }
         })
@@ -305,6 +306,7 @@ export default class AODat extends AORouterInterface {
             } catch(e) {
                 debug(e)
                 request.reject(e)
+                return
             }
             const datKey = dat.key.toString('hex')
             debug('Created new dat file: dat://' + datKey)
