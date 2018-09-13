@@ -188,15 +188,24 @@ export default class AODat extends AORouterInterface {
         const {key}:AODat_ImportSingle_Data = request.data
         const datDir = path.join(this.datDir, key)
         Dat(datDir, (err: Error, dat:Dat) => {
-            dat.importFiles((err)=> {
+            if(!dat || err) {
                 if(err) {
-                    request.reject(new Error('Error importing files'))
-                    return
+                    request.reject(err)
                 } else {
-                    debug('Files Imported!')
-                    request.respond({success:true})
+                    request.reject(new Error('No dat instance returned for import'))
                 }
-            })
+                
+            } else {
+                dat.importFiles((err)=> {
+                    if(err) {
+                        request.reject(new Error('Error importing files'))
+                        return
+                    } else {
+                        debug('Files Imported!')
+                        request.respond({success:true})
+                    }
+                })
+            }
         })
     }
 
