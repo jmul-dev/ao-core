@@ -197,15 +197,20 @@ export default class AODat extends AORouterInterface {
                 }
                 
             } else {
-                dat.importFiles((err)=> {
-                    if(err) {
-                        request.reject(new Error('Error importing files'))
-                        return
-                    } else {
-                        debug('Files Imported!')
-                        request.respond({success:true})
-                    }
-                })
+                try {
+                    dat.importFiles((err)=> {
+                        if(err) {
+                            request.reject(new Error('Error importing files'))
+                            return
+                        } else {
+                            debug('Files Imported!')
+                            request.respond({success:true})
+                        }
+                    })
+                } catch(e) {
+                    debug(e)
+                    request.reject(e)
+                }
             }
         })
     }
@@ -295,7 +300,12 @@ export default class AODat extends AORouterInterface {
                 request.reject(err)
                 return;
             }
-            dat.importFiles() //Note, this doesn't do a lot for our code base since the import has to be run post file creation.
+            try{
+                dat.importFiles() //Note, this doesn't do a lot for our code base since the import has to be run post file creation.
+            } catch(e) {
+                debug(e)
+                request.reject(e)
+            }
             const datKey = dat.key.toString('hex')
             debug('Created new dat file: dat://' + datKey)
             this.dats[datKey] = dat;
