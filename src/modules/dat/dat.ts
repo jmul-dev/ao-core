@@ -377,11 +377,11 @@ export default class AODat extends AORouterInterface {
                                 this.removeDat(key)
                                 reject(err)
                                 return;
-                            } else if (!dat.network.connected || !dat.network.connecting) {
-                                debug(`[${key}] Failed to download, no one is hosting`)
-                                this.removeDat(key)
-                                reject(new Error('No users are hosting the requested content'))
-                                return;
+                            // } else if (!dat.network.connected || !dat.network.connecting) {
+                            //     debug(`[${key}] Failed to download, no one is hosting`)
+                            //     this.removeDat(key)
+                            //     reject(new Error('No users are hosting the requested content'))
+                            //     return;
                             } else {
                                 debug(`[${key}] Succesfully joined network!`)
                                 const datKey = dat.key.toString('hex');
