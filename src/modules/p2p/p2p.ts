@@ -95,6 +95,12 @@ export interface AOP2P_NodeUpdateRoute {
     ethAddress: string;
 }
 
+export interface ContentNodeHostEntry {
+    contentDatKey: string;
+    contentHostId: string;
+    timestamp: number;
+}
+
 
 //This is out here since 
 const routerArgs: AORouterArgs = {
@@ -125,7 +131,7 @@ export default class AOP2P extends AORouterInterface {
         this.router.on('/p2p/addDiscovery', this._handleAddDiscovery.bind(this))
         this.router.on('/p2p/soldKey', this._handleSellDecryptionKey.bind(this))
         this.router.on('/p2p/updateNode', this._handleNodeUpdate.bind(this))
-        this.router.on('/p2p/findEncryptedNode', this._handleGetFileNodes.bind(this))
+        this.router.on('/p2p/content/getContentHosts', this._handleGetContentHosts.bind(this))
 
         this.init().then(() => {
             debug('started')
@@ -258,35 +264,35 @@ export default class AOP2P extends AORouterInterface {
     private _handleWatchAndGetIndexData(request: IAORouterRequest) {
         const { key, ethAddress }: AOP2P_Watch_AND_Get_IndexData_Data = request.data
         this.hyperdb.query(key).then((indexDataString: string) => {
-            this.parseIndexDataByEth({indexDataString,ethAddress})
-            .then((indexData) => {
-                // If it exists, send it back.
-                request.respond(indexData)
-            }).catch( () => {
-                // If it doens't, watch for change
-                this.hyperdb.watch(key).then(() => {
-                    this.hyperdb.query(key).then((indexDataString: string) => {
-                        this.parseIndexDataByEth({indexDataString, ethAddress})
-                        .then((indexData) => {
-                            request.respond(indexData)
-                        }).catch( () => {
-                            //Self call if there isn't a record for our own indexData
-                            setTimeout(() => {
-                                this._handleWatchAndGetIndexData(request)
-                            }, 500);
+            this.parseIndexDataByEth({ indexDataString, ethAddress })
+                .then((indexData) => {
+                    // If it exists, send it back.
+                    request.respond(indexData)
+                }).catch(() => {
+                    // If it doens't, watch for change
+                    this.hyperdb.watch(key).then(() => {
+                        this.hyperdb.query(key).then((indexDataString: string) => {
+                            this.parseIndexDataByEth({ indexDataString, ethAddress })
+                                .then((indexData) => {
+                                    request.respond(indexData)
+                                }).catch(() => {
+                                    //Self call if there isn't a record for our own indexData
+                                    setTimeout(() => {
+                                        this._handleWatchAndGetIndexData(request)
+                                    }, 500);
+                                })
                         })
                     })
                 })
-            })
         }).catch(request.reject)
     }
 
-    private parseIndexDataByEth({indexDataString, ethAddress}) {
-        return new Promise((resolve,reject) => {
+    private parseIndexDataByEth({ indexDataString, ethAddress }) {
+        return new Promise((resolve, reject) => {
             let indexData: object = {}
             try {
                 indexData = JSON.parse(indexDataString)
-            } catch(e) {
+            } catch (e) {
                 debug('Index Data was not able to be parsed')
                 indexData = {}
             } finally {
@@ -303,20 +309,21 @@ export default class AOP2P extends AORouterInterface {
     private _handleAddDiscovery(request: IAORouterRequest) {
         const { contentType, fileDatKey, ethAddress, metaDatKey, contentHostId }: AOP2P_Add_Discovery_Data = request.data
         const nodeRoute = AOP2P.routeNodeRegistration({ nameSpace: this.dbPrefix, contentType, metaDatKey, ethAddress, fileDatKey })
-        this.hyperdb.insert(nodeRoute, {})
-            .then(() => {
-                this.nodeTimestampUpdate({ nameSpace: this.dbPrefix, contentType, ethAddress, metaDatKey, contentHostId }).then(() => {
-                    request.respond({ success: true })
-                }).catch(request.reject)
+        this.hyperdb.insert(nodeRoute, {}).then(() => {
+            this.nodeTimestampUpdate({ nameSpace: this.dbPrefix, contentType, ethAddress, metaDatKey, contentHostId, contentDatKey: fileDatKey, }).then(() => {
+                request.respond({ success: true })
             }).catch(request.reject)
+        }).catch(request.reject)
     }
 
     /**
-     * Gets time sorted keys for a specific content nodes
-     * @param request 
-     * @returns jsonResults // key, splitKey, and json value 
+     * Get all potential hosts for a given piece of content. 
+     * 
+     * hyperdb: /AOSpace/{contentType}/metadataDatKey/nodes/*
+     * 
+     * @returns {Array<ContentNodeHostEntry>} response.data
      */
-    private _handleGetFileNodes(request: IAORouterRequest) {
+    private _handleGetContentHosts(request: IAORouterRequest) {
         const { content }: AOP2P_Get_File_Node_Data = request.data
         const fineNodeRoute = AOP2P.routeBaseRegistrationPrefix({
             nameSpace: this.dbPrefix,
@@ -324,25 +331,37 @@ export default class AOP2P extends AORouterInterface {
             metaDatKey: content.metadataDatKey
         })
         this.hyperdb.listValue(fineNodeRoute).then((results: Array<HDB_ListValueRow>) => {
-            // 1. Convert entry data to json (map)
+            /**
+             * Results needs quite a bit of formatting
+             */
+            // 1. Convert entry value data to json
             let jsonResults = results.map(entry => {
                 try {
                     entry.value = JSON.parse(entry.value)
+                    return {
+                        contentDatKey: entry.value.contentDatKey,
+                        contentHostId: entry.value.contentHostId,
+                        timestamp: entry.value.timestamp,
+                    }
                 } catch (error) {
                     // Instead of letting a single malformed entry ruin the show, we just ignore it
                     debug('Malformatted timestamp/contentHostId for ' + entry.key)
-                    entry.value = null
+                    return null
                 }
-                return entry
-            // 2. Filter any malformed entries
-            }).filter(entry => {
-                return entry.value !== null
-            // 3. Sort by timestamps
-            }).sort((a, b) => {
-                const timestampA = a.value.timestamp
-                const timestampB = b.value.timestamp
+                // 2. Filter any malformed entries or entries without the correct values
+            }).filter((entry: ContentNodeHostEntry) => {
+                if (entry === null)
+                    return false
+                if (!entry.timestamp || !entry.contentHostId || !entry.contentDatKey)
+                    return false
+                return true
+                // 3. Sort by timestamps
+            }).sort((a: ContentNodeHostEntry, b: ContentNodeHostEntry) => {
+                const timestampA = a.timestamp
+                const timestampB = b.timestamp
                 return timestampA > timestampB ? -1 : timestampA < timestampB ? 1 : 0;
             })
+            debug(`${jsonResults.length} potential hosts for content: ${content.title}`)
             request.respond(jsonResults)
         }).catch(request.reject)
     }
@@ -366,10 +385,10 @@ export default class AOP2P extends AORouterInterface {
         const nodeRoute = AOP2P.routeNodeRegistration(nodeRouteArgs)
 
         this.hyperdb.query(nodeRoute).then((indexDataString: string) => {
-            let indexData:object = {}
+            let indexData: object = {}
             try {
                 indexData = JSON.parse(indexDataString)
-            } catch(e) {
+            } catch (e) {
                 debug('Index Data could not be read/parsed while selling a key')
                 indexData = {}
             }
@@ -396,13 +415,14 @@ export default class AOP2P extends AORouterInterface {
             contentType: content.contentType,
             metaDatKey: content.metadataDatKey,
             ethAddress: request.ethAddress,
-            contentHostId: content.contentHostId
+            contentHostId: content.contentHostId,
+            contentDatKey: content.fileDatKey,
         }).then(() => {
             request.respond({})
         }).catch(request.reject)
     }
 
-    private nodeTimestampUpdate({ nameSpace, contentType, metaDatKey, ethAddress, contentHostId }) {
+    private nodeTimestampUpdate({ nameSpace, contentType, metaDatKey, ethAddress, contentHostId, contentDatKey }) {
         return new Promise((resolve, reject) => {
             const nodeUpdateKey: string = AOP2P.routeNodeRegistrationUpdate({
                 nameSpace,
@@ -412,7 +432,8 @@ export default class AOP2P extends AORouterInterface {
             })
             const insertObject = {
                 timestamp: Date.now(),
-                contentHostId
+                contentHostId,
+                contentDatKey,
             }
             this.hyperdb.insert(nodeUpdateKey, insertObject).then(() => {
                 resolve()
