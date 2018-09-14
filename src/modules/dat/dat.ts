@@ -460,7 +460,9 @@ export default class AODat extends AORouterInterface {
                                     this._updateDatEntry(updatedDatEntry)
                                     if ( resolveOnDownloadCompletion ) {
                                         debug('Resolving with resolveOnDownloadCompletion')
-                                        resolve(updatedDatEntry)
+                                        setTimeout(() => {
+                                            resolve(updatedDatEntry)
+                                        },1000)
                                     }
                                 }
                             })
