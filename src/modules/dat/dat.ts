@@ -137,7 +137,7 @@ export default class AODat extends AORouterInterface {
 
     private _resume(datEntry: DatEntry): Promise<any> {
         return new Promise((resolve, reject) => {
-            if (this.dats[datEntry.key]) {
+            if (this.dats[datEntry.key].AO_joinedNetwork) {
                 debug(`Dat ${datEntry.key} already resumed`)
                 resolve()
                 return;
@@ -399,12 +399,12 @@ export default class AODat extends AORouterInterface {
                         dat.joinNetwork((err) => {
                             if (err) {
                                 debug(`[${key}] Failed to join network`, err)
-                                this.removeDat(key)
+                                //this.removeDat(key)
                                 reject(err)
                                 return;
                             } else if (!dat.network.connected || !dat.network.connecting) {
                                 debug(`[${key}] Failed to download, no one is hosting`)
-                                this.removeDat(key)
+                                //this.removeDat(key)
                                 reject(new Error('No users are hosting the requested content'))
                                 return;
                             } else {
@@ -449,7 +449,7 @@ export default class AODat extends AORouterInterface {
                         }
                     } catch (error) {
                         debug(`Dat error while attempting to download...`, error)
-                        this.removeDat(key)
+                        //this.removeDat(key)
                         reject(error)
                     }
                 })
