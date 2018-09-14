@@ -22,6 +22,7 @@ export default function () {
                     return info.schema.getType(data.__typename || 'VideoContent'); // TODO: resolve type based off of data.contentType
                 },
                 metadataDatStats: resolvers.resolveDatStats,
+                fileDatStats: resolvers.resolveDatStats,
                 fileUrl: resolvers.resolveUrl,
                 baseChallengeSignature: resolvers.resolveSignatureVrs,
             },
