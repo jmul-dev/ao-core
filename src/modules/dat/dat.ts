@@ -445,23 +445,25 @@ export default class AODat extends AORouterInterface {
                                 const newStats = stats.get()
                                 //TODO: Add percentage off of length vs downloaded as percentage of newStats
                                 if(newStats.length.length == newStats.downloaded.length) {
-                                    if(!catchStupidDat) {
-                                        catchStupidDat = true
-                                        debug(`[${key}] Fully downloaded the goods!`)
-                                        const updatedDatEntry: DatEntry = {
-                                            key: key,
-                                            complete: true,
-                                            updatedAt: new Date(),
-                                        }
-                                        this._updateDatEntry(updatedDatEntry)
-                                        if ( resolveOnDownloadCompletion ) {
-                                            debug('Resolving with resolveOnDownloadCompletion')
-                                            resolve(updatedDatEntry)
-                                        }
+                                    
+                                }
+                            })
+                            dat.archive.stat(newDatPath, {wait:true},() => {
+                                if(!catchStupidDat) {
+                                    catchStupidDat = true
+                                    debug(`[${key}] Fully downloaded the goods!`)
+                                    const updatedDatEntry: DatEntry = {
+                                        key: key,
+                                        complete: true,
+                                        updatedAt: new Date(),
+                                    }
+                                    this._updateDatEntry(updatedDatEntry)
+                                    if ( resolveOnDownloadCompletion ) {
+                                        debug('Resolving with resolveOnDownloadCompletion')
+                                        resolve(updatedDatEntry)
                                     }
                                 }
                             })
-
                         }
                     } catch (error) {
                         debug(`Dat error while attempting to download...`, error)
