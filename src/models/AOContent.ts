@@ -1,5 +1,5 @@
 import path from 'path';
-import { AOP2P_IndexDataRow } from "../modules/p2p/p2p";
+import { AOP2P_IndexDataRow, NetworkContentHostEntry } from "../modules/p2p/p2p";
 
 
 export type AOContentType = "VOD" | 'STREAM' | 'FILE' | 'APP'
@@ -107,6 +107,7 @@ export default abstract class AOContent {
         stakeTx: string
         hostTx: string
     }
+    public lastSeenContentHost?: NetworkContentHostEntry
     // variables not exposed to graphql
     public receivedIndexData: AOP2P_IndexDataRow
     public decryptionKey: string

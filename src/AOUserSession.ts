@@ -3,10 +3,10 @@ import path from 'path';
 import * as AOCrypto from './AOCrypto';
 import AOContent, { AOContentState } from "./models/AOContent";
 import { AODat_Create_Data, AODat_Encrypted_Download_Data, AODat_GetDatStats_Data, AODat_ImportSingle_Data, AODat_ResumeSingle_Data, DatStats } from './modules/dat/dat';
-import { AODB_UserContentGet_Data, AODB_UserContentUpdate_Data, AODB_UserInsert_Data } from "./modules/db/db";
+import { AODB_UserContentGet_Data, AODB_UserContentUpdate_Data, AODB_UserInsert_Data, AODB_NetworkContentUpdate_Data } from "./modules/db/db";
 import { BuyContentEvent, HostContentEvent, IAOEth_BuyContentEvent_Data } from "./modules/eth/eth";
 import { IAOFS_DecryptCheck_Data, IAOFS_Mkdir_Data, IAOFS_Move_Data, IAOFS_Reencrypt_Data, IAOFS_Unlink_Data } from "./modules/fs/fs";
-import { AOP2P_Add_Discovery_Data, AOP2P_Get_File_Node_Data, AOP2P_IndexDataRow, AOP2P_Watch_AND_Get_IndexData_Data, AOP2P_Write_Decryption_Key_Data, ContentNodeHostEntry, AOP2P_Update_Node_Timestamp_Data } from "./modules/p2p/p2p";
+import { AOP2P_Add_Discovery_Data, AOP2P_Get_File_Node_Data, AOP2P_IndexDataRow, AOP2P_Watch_AND_Get_IndexData_Data, AOP2P_Write_Decryption_Key_Data, NetworkContentHostEntry, AOP2P_Update_Node_Timestamp_Data } from "./modules/p2p/p2p";
 import { IAORouterMessage } from "./router/AORouter";
 import { AORouterInterface, IAORouterRequest } from "./router/AORouterInterface";
 const debug = Debug('ao:userSession');
@@ -264,7 +264,7 @@ export default class AOUserSession {
         // 1. Grab all nodes/contentHostId's for this piece of content
         const findEncryptedNodeData: AOP2P_Get_File_Node_Data = { content }
         this.router.send('/p2p/content/getContentHosts', findEncryptedNodeData).then((fileNodesResponse: IAORouterMessage) => {            
-            const potentialNodes: Array<ContentNodeHostEntry> = fileNodesResponse.data
+            const potentialNodes: Array<NetworkContentHostEntry> = fileNodesResponse.data
             if ( !potentialNodes || potentialNodes.length === 0 ) {
                 // NOTE: we *shouldnt* hit this case unless the hyperdb is behind or the content has not been hosted
                 // (in which case user should not have made it this far)
@@ -272,10 +272,22 @@ export default class AOUserSession {
                 return;
             }
             debug(potentialNodes)
-            // 2. Attempt to download the content from ONE of the nodes above (we may not even find someone who is hosting this content)
+            // 2. Update the network content db with latest hosted timestamp for this content
+            const networkContentUpdate: AODB_NetworkContentUpdate_Data = {
+                id: content.id,
+                update: {
+                    $set: {
+                        lastSeenContentHost: potentialNodes[0]
+                    }
+                }
+            }
+            this.router.send('/db/network/content/update', networkContentUpdate).catch(error => {
+                debug(`Error updating network content lastSeenContentHost: ${error.message}`, error)
+            })
+            // 3. Attempt to download the content from ONE of the nodes above (we may not even find someone who is hosting this content)
             const encryptedDownloadData: AODat_Encrypted_Download_Data = { nodes: potentialNodes }
             this.router.send('/dat/encryptedFileDownload', encryptedDownloadData).then((downloadResponse: IAORouterMessage) => {
-                // 3a. Content has started downloading from a host!
+                // 4a. Content has started downloading from a host!
                 let userContentUpdate: AODB_UserContentUpdate_Data = {
                     id: content.id,
                     update: {
@@ -294,7 +306,7 @@ export default class AOUserSession {
                 })
             }).catch(error => {
                 debug(`Unable to download content from any host: ${error.message}`)
-                // 3b. We were unable to download the content from any host (likely that all hosted dats were not reachable)
+                // 4b. We were unable to download the content from any host (likely that all hosted dats were not reachable)
                 let userContentUpdate: AODB_UserContentUpdate_Data = {
                     id: content.id,
                     update: {

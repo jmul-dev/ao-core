@@ -5,7 +5,7 @@ import Datastore from 'nedb';
 import path from "path";
 import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
 import { IAOFS_Unlink_Data } from '../fs/fs';
-import { ContentNodeHostEntry } from '../p2p/p2p';
+import { NetworkContentHostEntry } from '../p2p/p2p';
 const debug = Debug('ao:dat');
 
 
@@ -46,7 +46,7 @@ export interface AODat_GetDatStats_Data {
 }
 
 export interface AODat_Encrypted_Download_Data {
-    nodes: Array<ContentNodeHostEntry>
+    nodes: Array<NetworkContentHostEntry>
 }
 
 export interface DatEntry {
@@ -319,10 +319,10 @@ export default class AODat extends AORouterInterface {
      */
     private async _handleEncryptedFileDownload(request: IAORouterRequest) {
         const requestData: AODat_Encrypted_Download_Data = request.data
-        const nodes: Array<ContentNodeHostEntry> = requestData.nodes
+        const nodes: Array<NetworkContentHostEntry> = requestData.nodes
         debug(nodes)
         for (let i = 0; i < nodes.length; i++) {
-            const nodeEntry: ContentNodeHostEntry = nodes[i];
+            const nodeEntry: NetworkContentHostEntry = nodes[i];
             try {
                 const datEntry: DatEntry = await this.downloadDat(nodeEntry.contentDatKey, false)
                 request.respond({
