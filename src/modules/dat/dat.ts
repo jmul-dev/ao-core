@@ -480,7 +480,7 @@ export default class AODat extends AORouterInterface {
                                         //Gotta wait for that dat node to actually write to disk!
                                         setTimeout(() => {
                                             resolve(updatedDatEntry)
-                                        },200)
+                                        },1000)
                                     }
                                 }
                             })
