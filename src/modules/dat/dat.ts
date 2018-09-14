@@ -150,6 +150,10 @@ export default class AODat extends AORouterInterface {
             debug(`Resuming dat: ${datDir}`)
             Dat(datDir, (err: Error, dat: Dat) => {
                 if (err || !dat) {
+                    if(dat) {
+                        debug('Dat error, closing')
+                        dat.close()
+                    }
                     debug('Error resuming dat ' + datEntry.key)
                     resolve(err)//This has to remain a resolve, or else the entire Promise.all dies
                     if (err.name === 'IncompatibleError') {
@@ -393,6 +397,9 @@ export default class AODat extends AORouterInterface {
                         }
                         if ( !dat ) {
                             debug('borked dat ',dat)
+                        } else {
+                            debug('Dat error, closing')
+                            dat.close()
                         }
                         debug(`[${key}] Failed to download dat`, err)
                         reject(err)
@@ -428,22 +435,20 @@ export default class AODat extends AORouterInterface {
                             }
                         })
                         dat.archive.metadata.update(() => {
-                            var progress = mirror({ fs: dat.archive, name: '/' }, newDatPath, (err) => {
-                                if (err) {
-                                    debug('Error downloading dat file:', err)
-                                } else {
-                                    debug(`[${key}] Fully downloaded the goods!`)
-                                    const updatedDatEntry: DatEntry = {
-                                        key: key,
-                                        complete: true,
-                                        updatedAt: new Date(),
-                                    }
-                                    this._updateDatEntry(updatedDatEntry)
-                                    if ( resolveOnDownloadCompletion ) {
-                                        resolve(updatedDatEntry)
-                                    }
+                            if (err) {
+                                debug('Error downloading dat file:', err)
+                            } else {
+                                debug(`[${key}] Fully downloaded the goods!`)
+                                const updatedDatEntry: DatEntry = {
+                                    key: key,
+                                    complete: true,
+                                    updatedAt: new Date(),
                                 }
-                            })
+                                this._updateDatEntry(updatedDatEntry)
+                                if ( resolveOnDownloadCompletion ) {
+                                    resolve(updatedDatEntry)
+                                }
+                            }
                         })
                         // Begin listening for completion & start tracking stats
                         if ( !dat.AO_isTrackingStats ) {
