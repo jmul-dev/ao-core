@@ -446,7 +446,7 @@ export default class AODat extends AORouterInterface {
                             dat.AO_isTrackingStats = true
                             stats.on('update', () => {
                                 const newStats = stats.get()
-                                debug(newStats)
+                                //TODO: Add percentage off of length vs downloaded as percentage of newStats
                                 if(newStats.length.length == newStats.downloaded.length) {
                                     catchStupidDat = true
                                     debug(`[${key}] Fully downloaded the goods!`)
@@ -457,6 +457,7 @@ export default class AODat extends AORouterInterface {
                                     }
                                     this._updateDatEntry(updatedDatEntry)
                                     if ( resolveOnDownloadCompletion ) {
+                                        debug('Resolving with resolveOnDownloadCompletion')
                                         resolve(updatedDatEntry)
                                     }
                                 }
