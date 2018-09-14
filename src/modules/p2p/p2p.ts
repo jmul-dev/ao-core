@@ -95,7 +95,7 @@ export interface AOP2P_NodeUpdateRoute {
     ethAddress: string;
 }
 
-export interface ContentNodeHostEntry {
+export interface NetworkContentHostEntry {
     contentDatKey: string;
     contentHostId: string;
     timestamp: number;
@@ -323,7 +323,7 @@ export default class AOP2P extends AORouterInterface {
      * 
      * hyperdb: /AOSpace/{contentType}/metadataDatKey/nodes/*
      * 
-     * @returns {Array<ContentNodeHostEntry>} response.data
+     * @returns {Array<NetworkContentHostEntry>} response.data
      */
     private _handleGetContentHosts(request: IAORouterRequest) {
         const { content }: AOP2P_Get_File_Node_Data = request.data
@@ -352,14 +352,14 @@ export default class AOP2P extends AORouterInterface {
                     return null
                 }
                 // 2. Filter any malformed entries or entries without the correct values
-            }).filter((entry: ContentNodeHostEntry) => {
+            }).filter((entry: NetworkContentHostEntry) => {
                 if (entry === null)
                     return false
                 if (!entry.timestamp || !entry.contentHostId || !entry.contentDatKey)
                     return false
                 return true
                 // 3. Sort by timestamps
-            }).sort((a: ContentNodeHostEntry, b: ContentNodeHostEntry) => {
+            }).sort((a: NetworkContentHostEntry, b: NetworkContentHostEntry) => {
                 const timestampA = a.timestamp
                 const timestampB = b.timestamp
                 return timestampA > timestampB ? -1 : timestampA < timestampB ? 1 : 0;

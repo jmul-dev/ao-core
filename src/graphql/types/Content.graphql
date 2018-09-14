@@ -62,6 +62,12 @@ type Signature {
     s: String!
 }
 
+type NetworkContentHostEntry {
+    contentDatKey: String
+    contentHostId: String
+    timestamp: Int
+}
+
 # Shared interface between all content types
 # Keep AOContent.ts up to date with this
 interface IContent {
@@ -96,6 +102,7 @@ interface IContent {
     createdAt: String
     transactions: ContentTransactions
     purchaseId: String
+    lastSeenContentHost: NetworkContentHostEntry
 }
 
 type VideoContent implements IContent {
@@ -130,10 +137,11 @@ type VideoContent implements IContent {
     createdAt: String
     transactions: ContentTransactions
     purchaseId: String
+    lastSeenContentHost: NetworkContentHostEntry
     # VideoContent
     teaserUrl: String
     featuredImageUrl: String
-    metadata: VideoMetadata
+    metadata: VideoMetadata    
 }
 
 input VideoContentSubmissionInputs {

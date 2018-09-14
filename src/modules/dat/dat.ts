@@ -5,8 +5,7 @@ import Datastore from 'nedb';
 import path from "path";
 import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
 import { IAOFS_Unlink_Data } from '../fs/fs';
-import { ContentNodeHostEntry } from '../p2p/p2p';
-import { AODB_UserContentGet_Data } from '../db/db';
+import { NetworkContentHostEntry } from '../p2p/p2p';
 const debug = Debug('ao:dat');
 
 
@@ -47,7 +46,7 @@ export interface AODat_GetDatStats_Data {
 }
 
 export interface AODat_Encrypted_Download_Data {
-    nodes: Array<ContentNodeHostEntry>
+    nodes: Array<NetworkContentHostEntry>
 }
 
 export interface DatEntry {
@@ -353,10 +352,10 @@ export default class AODat extends AORouterInterface {
      */
     private async _handleEncryptedFileDownload(request: IAORouterRequest) {
         const requestData: AODat_Encrypted_Download_Data = request.data
-        const nodes: Array<ContentNodeHostEntry> = requestData.nodes
+        const nodes: Array<NetworkContentHostEntry> = requestData.nodes
         debug(nodes)
         for (let i = 0; i < nodes.length; i++) {
-            const nodeEntry: ContentNodeHostEntry = nodes[i];
+            const nodeEntry: NetworkContentHostEntry = nodes[i];
             try {
                 const datEntry: DatEntry = await this.downloadDat(nodeEntry.contentDatKey, false)
                 request.respond({
@@ -455,36 +454,36 @@ export default class AODat extends AORouterInterface {
                                 const newStats = stats.get()
                                 //TODO: Add percentage off of length vs downloaded as percentage of newStats
                                 if(newStats.length.length == newStats.downloaded.length) {
-                                    if(!catchStupidDat) {
-                                        catchStupidDat = true
-                                        debug(`[${key}] Fully downloaded the goods!`)
-                                        const currentDate = new Date()
-                                        let updatedDatEntry: DatEntry = {
-                                            key: key,
-                                            complete: true,
-                                            updatedAt: currentDate
-                                        }
-                                        //Yaay!  Dat node sux
-                                        this._getDatEntry(key).then((datEntry:DatEntry) => {
-                                            this._updateDatEntry(updatedDatEntry)
-                                        }).catch((error:Error) => {
-                                            updatedDatEntry.createdAt = currentDate
-                                            this._updateDatEntry(updatedDatEntry)
-                                        })
-                                        
-                                        if ( resolveOnDownloadCompletion ) {
-                                            debug('Resolving with resolveOnDownloadCompletion')
-                                            //Gotta wait for that dat node to actually write to disk!
-                                            setTimeout(() => {
-                                                resolve(updatedDatEntry)
-                                            },200)
-                                        }
+                                    
+                                }
+                            })
+                            dat.archive.stat(newDatPath, { wait: true } ,() => {
+                                if(!catchStupidDat) {
+                                    catchStupidDat = true
+                                    debug(`[${key}] Fully downloaded the goods!`)
+                                    const currentDate = new Date()
+                                    let updatedDatEntry: DatEntry = {
+                                        key: key,
+                                        complete: true,
+                                        updatedAt: currentDate
+                                    }
+                                    //Yaay!  Dat node sux
+                                    this._getDatEntry(key).then((datEntry:DatEntry) => {
+                                        this._updateDatEntry(updatedDatEntry)
+                                    }).catch((error:Error) => {
+                                        updatedDatEntry.createdAt = currentDate
+                                        this._updateDatEntry(updatedDatEntry)
+                                    })
+                                    
+                                    if ( resolveOnDownloadCompletion ) {
+                                        debug('Resolving with resolveOnDownloadCompletion')
+                                        //Gotta wait for that dat node to actually write to disk!
+                                        setTimeout(() => {
+                                            resolve(updatedDatEntry)
+                                        },200)
                                     }
                                 }
                             })
-                            // dat.archive.stat(newDatPath, {wait:true},() => {
-                                
-                            // })
                         }
                     } catch (error) {
                         debug(`Dat error while attempting to download...`, error)

@@ -1,8 +1,11 @@
 import AOContent from "./AOContent";
+import { NetworkContentHostEntry } from "../modules/p2p/p2p";
 
 
-export default interface AONetworkContent {
+export interface AONetworkContent {
     _id: string;  /* metadataDatKey */
-    content?: AOContent;
     status: 'imported' | 'failed';
+    content?: AOContent;
+    lastSeenContentHost?: NetworkContentHostEntry;
 }
+export default AONetworkContent
