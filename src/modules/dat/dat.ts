@@ -466,14 +466,15 @@ export default class AODat extends AORouterInterface {
                                         }
                                         //Yaay!  Dat node sux
                                         this._getDatEntry(key).then((datEntry:DatEntry) => {
-                                            if(!datEntry) {
-                                                updatedDatEntry.createdAt = currentDate
-                                            }
                                             this._updateDatEntry(updatedDatEntry)
-                                        }).catch(debug)
+                                        }).catch((error:Error) => {
+                                            updatedDatEntry.createdAt = currentDate
+                                            this._updateDatEntry(updatedDatEntry)
+                                        })
                                         
                                         if ( resolveOnDownloadCompletion ) {
                                             debug('Resolving with resolveOnDownloadCompletion')
+                                            //Gotta wait for that dat node to actually write to disk!
                                             setTimeout(() => {
                                                 resolve(updatedDatEntry)
                                             },200)
