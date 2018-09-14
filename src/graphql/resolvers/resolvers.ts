@@ -14,9 +14,10 @@ import resolveState from './resolveState';
 import resolveUrl from './resolveUrl';
 import resolveContentRequest from './resolveContentRequest';
 import resolveContentPurchaseTransaction from './resolveContentPurchaseTransaction';
-import resolveContentBecomeHostTransaction from './resolveContentBecomeHostTransaction'
-import resolveContentUploadStakeTransaction from './resolveContentUploadStakeTransaction'
-import resolveSignatureVrs from './resolveSignatureVrs'
+import resolveContentBecomeHostTransaction from './resolveContentBecomeHostTransaction';
+import resolveContentUploadStakeTransaction from './resolveContentUploadStakeTransaction';
+import resolveSignatureVrs from './resolveSignatureVrs';
+import resolveContentRetryHostDiscovery from './resolveContentRetryHostDiscovery';
 
 
 export default {
@@ -39,6 +40,7 @@ export default {
     resolveContentPurchaseTransaction,
     resolveContentBecomeHostTransaction,    
     resolveContentUploadStakeTransaction,
+    resolveContentRetryHostDiscovery,
     // Field resolvers
     resolveUrl,
     resolveSignatureVrs,
