@@ -222,7 +222,7 @@ export default class AODat extends AORouterInterface {
 
     private _getDatEntry(datKey: string): Promise<any> {
         return new Promise((resolve, reject) => {
-            this.datsDb.findOne({ key: datKey }, function (error: Error, doc: DatEntry) {
+            this.datsDb.findOne({ key: datKey }, (error: Error, doc: DatEntry) => {
                 if (error) {
                     reject(error)
                 } else if (!doc) {
@@ -384,7 +384,7 @@ export default class AODat extends AORouterInterface {
                 const newDatPath = path.join(this.datDir, key);
                 Dat(newDatPath, { key: key }, (err, dat) => {
                     if ( err || !dat ) {
-                        this.removeDat(key)
+                        //this.removeDat(key)
                         if ( err.name === 'IncompatibleError' ) {
                             // TODO: incompatible metadata issue, hoping to solve elsewhere   
                         }
