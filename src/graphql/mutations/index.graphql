@@ -9,6 +9,7 @@ type Mutation {
     contentPurchaseTransaction(inputs: ContentPurchaseTransactionInputs): IContent        
     contentUploadStakeTransaction(inputs: ContentUploadStakeTransactionInputs): IContent
     contentBecomeHostTransaction(inputs: ContentHostTransactionInputs): IContent
+    contentRetryHostDiscovery(id: ID!): IContent
 }
 
 input ContentHostTransactionInputs {
