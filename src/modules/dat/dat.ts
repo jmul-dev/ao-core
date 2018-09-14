@@ -6,6 +6,7 @@ import path from "path";
 import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
 import { IAOFS_Unlink_Data } from '../fs/fs';
 import { ContentNodeHostEntry } from '../p2p/p2p';
+import { AODB_UserContentGet_Data } from '../db/db';
 const debug = Debug('ao:dat');
 
 
@@ -103,6 +104,9 @@ export default class AODat extends AORouterInterface {
                 }
                 this._resumeAll().then(() => {
                     debug(`Resumed all dats`)
+                    // Start p2p discovery
+                    this.router.send('/p2p/beginDiscovery').then(() => {
+                    }).catch(debug)
                 }).catch((error: Error) => {
                     debug(`Error resuming all dats: ${error.message}`)
                 })
@@ -137,7 +141,7 @@ export default class AODat extends AORouterInterface {
 
     private _resume(datEntry: DatEntry): Promise<any> {
         return new Promise((resolve, reject) => {
-            if (this.dats[datEntry.key].AO_joinedNetwork) {
+            if (this.dats[datEntry.key] && this.dats[datEntry.key].AO_joinedNetwork) {
                 debug(`Dat ${datEntry.key} already resumed`)
                 resolve()
                 return;
@@ -147,7 +151,7 @@ export default class AODat extends AORouterInterface {
             Dat(datDir, (err: Error, dat: Dat) => {
                 if (err || !dat) {
                     debug('Error resuming dat ' + datEntry.key)
-                    reject(err)
+                    resolve(err)//This has to remain a resolve, or else the entire Promise.all dies
                     if (err.name === 'IncompatibleError') {
                         // TODO: Dat folder is kinda fucked, recommended route it to `rm -fr .dat`
                         // Going to ingore for now, but might want to address this at some point.
@@ -195,7 +199,6 @@ export default class AODat extends AORouterInterface {
                 } else {
                     request.reject(new Error('No dat instance returned for import'))
                 }
-                
             } else {
                 try {
                     dat.importFiles((err)=> {
@@ -384,7 +387,7 @@ export default class AODat extends AORouterInterface {
                 const newDatPath = path.join(this.datDir, key);
                 Dat(newDatPath, { key: key }, (err, dat) => {
                     if ( err || !dat ) {
-                        //this.removeDat(key)
+                        this.removeDat(key)
                         if ( err.name === 'IncompatibleError' ) {
                             // TODO: incompatible metadata issue, hoping to solve elsewhere   
                         }
@@ -399,12 +402,12 @@ export default class AODat extends AORouterInterface {
                         dat.joinNetwork((err) => {
                             if (err) {
                                 debug(`[${key}] Failed to join network`, err)
-                                //this.removeDat(key)
+                                this.removeDat(key)
                                 reject(err)
                                 return;
                             } else if (!dat.network.connected || !dat.network.connecting) {
                                 debug(`[${key}] Failed to download, no one is hosting`)
-                                //this.removeDat(key)
+                                this.removeDat(key)
                                 reject(new Error('No users are hosting the requested content'))
                                 return;
                             } else {
@@ -449,7 +452,7 @@ export default class AODat extends AORouterInterface {
                         }
                     } catch (error) {
                         debug(`Dat error while attempting to download...`, error)
-                        //this.removeDat(key)
+                        this.removeDat(key)
                         reject(error)
                     }
                 })

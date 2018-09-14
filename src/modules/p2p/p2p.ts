@@ -124,6 +124,7 @@ export default class AOP2P extends AORouterInterface {
         //New Content upload
         this.contentIngestion = new AOContentIngestion(this.router)
 
+        this.router.on('/p2p/beginDiscovery', this._handleStartDiscovery.bind(this))
         this.router.on('/p2p/newContent', this._handleNewContent.bind(this))
         this.router.on('/p2p/watchKey', this._handleWatchKey.bind(this))
         this.router.on('/p2p/watchAndGetKey', this._handleWatchAndGetKey.bind(this))
@@ -148,7 +149,6 @@ export default class AOP2P extends AORouterInterface {
             }
             this.hyperdb.init(hyperDBOptions).then(() => {
                 resolve({ success: true })
-                this._beginDiscovery()
             }).catch(e => {
                 reject(e)
             })
@@ -159,11 +159,12 @@ export default class AOP2P extends AORouterInterface {
      * Runs the content discovery once, then again each time the 
      * hyperdb instance changes under the content watch key.
      */
-    private _beginDiscovery() {
+    private _handleStartDiscovery(request:IAORouterRequest) {
         this.contentWatchKey = this.dbPrefix + 'VOD/'; // /AOSpace/VOD/*
         this._runDiscovery().then(() => {
             this.hyperdb.watch(this.contentWatchKey).then(this._runDiscovery.bind(this)).catch(debug)
         }).catch(debug)
+        request.respond({})
     }
     private _runDiscovery() {
         return new Promise((resolve, reject) => {
