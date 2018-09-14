@@ -434,22 +434,31 @@ export default class AODat extends AORouterInterface {
                                 }
                             }
                         })
-                        dat.archive.metadata.update(() => {
-                            debug(`[${key}] Fully downloaded the goods!`)
-                            const updatedDatEntry: DatEntry = {
-                                key: key,
-                                complete: true,
-                                updatedAt: new Date(),
-                            }
-                            this._updateDatEntry(updatedDatEntry)
-                            if ( resolveOnDownloadCompletion ) {
-                                resolve(updatedDatEntry)
-                            }
-                        })
+                        // dat.archive.metadata.update(() => {
+                            
+                        // })
+
                         // Begin listening for completion & start tracking stats
                         if ( !dat.AO_isTrackingStats ) {
-                            dat.trackStats()
+                            const stats = dat.trackStats()
                             dat.AO_isTrackingStats = true
+                            stats.on('update', () => {
+                                const newStats = stats.get()
+                                debug(newStats)
+                                if(newStats.length.length == newStats.downloaded.length) {
+                                    debug(`[${key}] Fully downloaded the goods!`)
+                                    const updatedDatEntry: DatEntry = {
+                                        key: key,
+                                        complete: true,
+                                        updatedAt: new Date(),
+                                    }
+                                    this._updateDatEntry(updatedDatEntry)
+                                    if ( resolveOnDownloadCompletion ) {
+                                        resolve(updatedDatEntry)
+                                    }
+                                }
+                            })
+
                         }
                     } catch (error) {
                         debug(`Dat error while attempting to download...`, error)
