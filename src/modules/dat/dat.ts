@@ -224,7 +224,11 @@ export default class AODat extends AORouterInterface {
     }
 
     private _updateDatEntry(datEntry: DatEntry) {
-        this.datsDb.update({ key: datEntry.key }, datEntry, { upsert: true })
+        this.datsDb.update({ key: datEntry.key }, datEntry, { upsert: true }, (err:Error) => {
+            if(err) {
+                debug(err)
+            }
+        })
     }
 
     private _getDatEntry(datKey: string): Promise<any> {
@@ -462,7 +466,7 @@ export default class AODat extends AORouterInterface {
                                         debug('Resolving with resolveOnDownloadCompletion')
                                         setTimeout(() => {
                                             resolve(updatedDatEntry)
-                                        },1000)
+                                        },200)
                                     }
                                 }
                             })
