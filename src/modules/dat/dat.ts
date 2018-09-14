@@ -436,9 +436,6 @@ export default class AODat extends AORouterInterface {
                                 }
                             }
                         })
-                        // dat.archive.metadata.update(() => {
-                            
-                        // })
 
                         // Begin listening for completion & start tracking stats
                         if ( !dat.AO_isTrackingStats ) {
@@ -448,17 +445,19 @@ export default class AODat extends AORouterInterface {
                                 const newStats = stats.get()
                                 //TODO: Add percentage off of length vs downloaded as percentage of newStats
                                 if(newStats.length.length == newStats.downloaded.length) {
-                                    catchStupidDat = true
-                                    debug(`[${key}] Fully downloaded the goods!`)
-                                    const updatedDatEntry: DatEntry = {
-                                        key: key,
-                                        complete: true,
-                                        updatedAt: new Date(),
-                                    }
-                                    this._updateDatEntry(updatedDatEntry)
-                                    if ( resolveOnDownloadCompletion ) {
-                                        debug('Resolving with resolveOnDownloadCompletion')
-                                        resolve(updatedDatEntry)
+                                    if(!catchStupidDat) {
+                                        catchStupidDat = true
+                                        debug(`[${key}] Fully downloaded the goods!`)
+                                        const updatedDatEntry: DatEntry = {
+                                            key: key,
+                                            complete: true,
+                                            updatedAt: new Date(),
+                                        }
+                                        this._updateDatEntry(updatedDatEntry)
+                                        if ( resolveOnDownloadCompletion ) {
+                                            debug('Resolving with resolveOnDownloadCompletion')
+                                            resolve(updatedDatEntry)
+                                        }
                                     }
                                 }
                             })
