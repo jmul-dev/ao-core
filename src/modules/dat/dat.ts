@@ -428,16 +428,22 @@ export default class AODat extends AORouterInterface {
                                 const datKey = dat.key.toString('hex');
                                 dat.AO_joinedNetwork = true
                                 this.dats[datKey] = dat;
-                                const newDatEntry: DatEntry = {
-                                    key: datKey,
-                                    complete: false,
-                                    updatedAt: new Date(),
-                                    createdAt: new Date(),
-                                }
-                                this._updateDatEntry(newDatEntry)    
-                                if ( !resolveOnDownloadCompletion ) {
-                                    resolve(newDatEntry)
-                                }
+                                //Dat node is a shitty library.  We have an internal race condition we have to be aware of.
+                                this._getDatEntry(datKey).then((datEntry:DatEntry) => {
+                                    if(!datEntry) {
+                                        const newDatEntry: DatEntry = {
+                                            key: datKey,
+                                            complete: false,
+                                            updatedAt: new Date(),
+                                            createdAt: new Date(),
+                                        }
+                                        this._updateDatEntry(newDatEntry)    
+                                        if ( !resolveOnDownloadCompletion ) {
+                                            resolve(newDatEntry)
+                                        }
+                                    }
+                                }).catch(debug)
+                                
                             }
                         })
 
@@ -452,12 +458,20 @@ export default class AODat extends AORouterInterface {
                                     if(!catchStupidDat) {
                                         catchStupidDat = true
                                         debug(`[${key}] Fully downloaded the goods!`)
-                                        const updatedDatEntry: DatEntry = {
+                                        const currentDate = new Date()
+                                        let updatedDatEntry: DatEntry = {
                                             key: key,
                                             complete: true,
-                                            updatedAt: new Date(),
+                                            updatedAt: currentDate
                                         }
-                                        this._updateDatEntry(updatedDatEntry)
+                                        //Yaay!  Dat node sux
+                                        this._getDatEntry(key).then((datEntry:DatEntry) => {
+                                            if(!datEntry) {
+                                                updatedDatEntry.createdAt = currentDate
+                                            }
+                                            this._updateDatEntry(updatedDatEntry)
+                                        }).catch(debug)
+                                        
                                         if ( resolveOnDownloadCompletion ) {
                                             debug('Resolving with resolveOnDownloadCompletion')
                                             setTimeout(() => {
