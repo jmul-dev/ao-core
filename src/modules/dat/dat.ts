@@ -405,6 +405,8 @@ export default class AODat extends AORouterInterface {
                         reject(err)
                         return;
                     }
+                    //Dat is super stupid and will exit with its own recommended code when in fact its all okay: https://github.com/datproject/dat-node#downloading-files
+                    let catchStupidDat = false
                     try {
                         dat.joinNetwork((err) => {
                             if (err) {
@@ -412,7 +414,7 @@ export default class AODat extends AORouterInterface {
                                 this.removeDat(key)
                                 reject(err)
                                 return;
-                            } else if (!dat.network.connected || !dat.network.connecting) {
+                            } else if ( (!dat.network.connected || !dat.network.connecting) && !catchStupidDat) {
                                 debug(`[${key}] Failed to download, no one is hosting`)
                                 this.removeDat(key)
                                 reject(new Error('No users are hosting the requested content'))
@@ -446,6 +448,7 @@ export default class AODat extends AORouterInterface {
                                 const newStats = stats.get()
                                 debug(newStats)
                                 if(newStats.length.length == newStats.downloaded.length) {
+                                    catchStupidDat = true
                                     debug(`[${key}] Fully downloaded the goods!`)
                                     const updatedDatEntry: DatEntry = {
                                         key: key,
