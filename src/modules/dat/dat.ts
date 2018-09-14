@@ -435,19 +435,15 @@ export default class AODat extends AORouterInterface {
                             }
                         })
                         dat.archive.metadata.update(() => {
-                            if (err) {
-                                debug('Error downloading dat file:', err)
-                            } else {
-                                debug(`[${key}] Fully downloaded the goods!`)
-                                const updatedDatEntry: DatEntry = {
-                                    key: key,
-                                    complete: true,
-                                    updatedAt: new Date(),
-                                }
-                                this._updateDatEntry(updatedDatEntry)
-                                if ( resolveOnDownloadCompletion ) {
-                                    resolve(updatedDatEntry)
-                                }
+                            debug(`[${key}] Fully downloaded the goods!`)
+                            const updatedDatEntry: DatEntry = {
+                                key: key,
+                                complete: true,
+                                updatedAt: new Date(),
+                            }
+                            this._updateDatEntry(updatedDatEntry)
+                            if ( resolveOnDownloadCompletion ) {
+                                resolve(updatedDatEntry)
                             }
                         })
                         // Begin listening for completion & start tracking stats
