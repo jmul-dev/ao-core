@@ -454,10 +454,10 @@ export default class AODat extends AORouterInterface {
                                 const newStats = stats.get()
                                 //TODO: Add percentage off of length vs downloaded as percentage of newStats
                                 if(newStats.length.length == newStats.downloaded.length) {
-                                    
+                                    this.router.send('/fs/')
                                 }
                             })
-                            dat.archive.stat(newDatPath, { wait: true } ,() => {
+                            dat.archive.on('sync',() => {
                                 if(!catchStupidDat) {
                                     catchStupidDat = true
                                     debug(`[${key}] Fully downloaded the goods!`)
