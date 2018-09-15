@@ -65,7 +65,7 @@ type Signature {
 type NetworkContentHostEntry {
     contentDatKey: String
     contentHostId: String
-    timestamp: Int
+    timestamp: String
 }
 
 # Shared interface between all content types

@@ -98,7 +98,7 @@ export interface AOP2P_NodeUpdateRoute {
 export interface NetworkContentHostEntry {
     contentDatKey: string;
     contentHostId: string;
-    timestamp: number;
+    timestamp: string;
 }
 
 
@@ -358,8 +358,8 @@ export default class AOP2P extends AORouterInterface {
                 return true
                 // 3. Sort by timestamps
             }).sort((a: NetworkContentHostEntry, b: NetworkContentHostEntry) => {
-                const timestampA = a.timestamp
-                const timestampB = b.timestamp
+                const timestampA = parseInt(a.timestamp)
+                const timestampB = parseInt(b.timestamp)
                 return timestampA > timestampB ? -1 : timestampA < timestampB ? 1 : 0;
             })
             debug(`${jsonResults.length} potential hosts for content: ${content.title}`)
