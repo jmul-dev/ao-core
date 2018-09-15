@@ -453,8 +453,8 @@ export default class AODat extends AORouterInterface {
                             stats.on('update', () => {
                                 const newStats = stats.get()
                                 //TODO: Add percentage off of length vs downloaded as percentage of newStats
-                                if(newStats.length.length == newStats.downloaded.length) {
-                                }
+                                // if(newStats.length.length == newStats.downloaded.length) {
+                                // }
                             })
                             dat.archive.on('sync',() => {
                                 if(!catchStupidDat) {
