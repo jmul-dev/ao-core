@@ -4,7 +4,7 @@ import mirror from 'mirror-folder';
 import Datastore from 'nedb';
 import path from "path";
 import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
-import { IAOFS_Unlink_Data } from '../fs/fs';
+import { IAOFS_Unlink_Data, IAOFS_Mkdir_Data } from '../fs/fs';
 import { NetworkContentHostEntry } from '../p2p/p2p';
 const debug = Debug('ao:dat');
 
@@ -101,13 +101,20 @@ export default class AODat extends AORouterInterface {
                     debug('Error loading dats database', error)
                     this.router.send('/core/log', { message: 'Error loading dats database' })
                 }
-                this._resumeAll().then(() => {
-                    debug(`Resumed all dats`)
-                    // Start p2p discovery
-                    this.router.send('/p2p/beginDiscovery').then(() => {
-                    }).catch(debug)
+                const fsMakeContentDirData: IAOFS_Mkdir_Data = {
+                    dirPath: 'content'
+                }
+                this.router.send('/fs/mkdir', fsMakeContentDirData).then(() => {
+                    this._resumeAll().then(() => {
+                        debug(`Resumed all dats`)
+                        // Start p2p discovery
+                        this.router.send('/p2p/beginDiscovery').then(() => {
+                        }).catch(debug)
+                    }).catch((error: Error) => {
+                        debug(`Error resuming all dats: ${error.message}`)
+                    })
                 }).catch((error: Error) => {
-                    debug(`Error resuming all dats: ${error.message}`)
+                    debug('Error making dat content directory')
                 })
             }
         })
