@@ -40,18 +40,9 @@ export default class AOUserSession {
             this.ethAddress = ethAddress;
             // 1. Make sure user db has been setup for this user
             this.router.send('/db/user/init', { ethAddress }).then(() => {
-                // 2. Make sure directories exist
-                const fsMakeContentDirData: IAOFS_Mkdir_Data = {
-                    dirPath: 'content'
-                }
-                const fsMakeEthDirData: IAOFS_Mkdir_Data = {
-                    dirPath: path.join('users', ethAddress)
-                }
-                const mkdirPromises: Array<Promise<any>> = [
-                    this.router.send('/fs/mkdir', fsMakeContentDirData),
-                    this.router.send('/fs/mkdir', fsMakeEthDirData)
-                ]
-                Promise.all(mkdirPromises).then(() => {
+                // 2. Make sure the user/ethadd directory exist
+                const fsMakeEthDirData: IAOFS_Mkdir_Data = { dirPath: path.join('users', ethAddress) }
+                this.router.send('/fs/mkdir', fsMakeEthDirData).then(() => {
                     this.router.send('/core/log', { message: `[AO Core] Registered as user ${ethAddress}` })
                     // 3. Pull user identity
                     this.router.send('/db/user/getIdentity').then((response: IAORouterMessage) => {
