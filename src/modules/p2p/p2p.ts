@@ -160,6 +160,7 @@ export default class AOP2P extends AORouterInterface {
      * hyperdb instance changes under the content watch key.
      */
     private _handleStartDiscovery(request:IAORouterRequest) {
+        debug(`hyperdb starting discovery...`)
         this.contentWatchKey = this.dbPrefix + 'VOD/'; // /AOSpace/VOD/*
         this._runDiscovery().then(() => {
             this.hyperdb.watch(this.contentWatchKey).then(this._runDiscovery.bind(this)).catch(debug)
