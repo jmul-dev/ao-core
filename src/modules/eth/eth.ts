@@ -110,6 +110,13 @@ export default class AOEth extends AORouterInterface {
         debug(`started`)
     }
 
+    /**
+     * NOTE: this method attempts to connect to the given network via web3.
+     * If the connection fails, it will continue to retry until it makes a 
+     * connection.
+     * 
+     * @param networkId 
+     */
     private connectToNetwork(networkId: string): Promise<any> {
         return new Promise((resolve, reject) => {
             if (['1', '4'].indexOf(networkId) < 0) {
@@ -143,7 +150,9 @@ export default class AOEth extends AORouterInterface {
                 }
             }).catch(error => {
                 debug('Error getting network:', error)
-                reject(error)
+                setTimeout(() => {
+                    this.connectToNetwork(networkId).then(resolve).catch(reject)
+                }, 3000)
             })
         })
     }
