@@ -122,7 +122,7 @@ export default (obj: any, args: any, context: IGraphqlResolverContext, info: any
                             ...videoStats,  // see fs@getVideoData
                         },
                         decryptionKey: decryptionKey,
-                        state: AOContentState.ENCRYPTED,
+                        state: AOContentState.DAT_INITIALIZED,
                         baseChallenge: AOCrypto.generateContentBaseChallenge({ fileChecksum: checksum }),
                         encChallenge: AOCrypto.generateContentEncChallenge({ encryptedFileChecksum: encryptedChecksum }),
                     })

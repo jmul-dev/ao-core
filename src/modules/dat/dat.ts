@@ -305,34 +305,40 @@ export default class AODat extends AORouterInterface {
     private _handleDatCreate(request: IAORouterRequest) {
         const requestData: AODat_Create_Data = request.data
         const fullPath = path.join(this.datDir, requestData.newDatDir)
-        Dat(fullPath, (err, dat) => {
-            if (err) {
-                debug('failed to create new dat')
-                request.reject(err)
-                return;
-            }
-            try{
-                dat.importFiles() //Note, this doesn't do a lot for our code base since the import has to be run post file creation.
-            } catch(e) {
-                debug(e)
-                request.reject(e)
-                return
-            }
-            const datKey = dat.key.toString('hex')
-            debug('Created new dat file: dat://' + datKey)
-            this.dats[datKey] = dat;
-            const newDatEntry: DatEntry = {
-                key: datKey,
-                complete: true, // assume its complete since already on disk
-                updatedAt: new Date(),
-                createdAt: new Date(),
-            }
-            this._updateDatEntry(newDatEntry)
-            request.respond({
-                ...newDatEntry,
-                dir: requestData.newDatDir
+        try {
+            Dat(fullPath, (err, dat) => {
+                if (err) {
+                    debug('failed to create new dat')
+                    request.reject(err)
+                    return;
+                }
+                try{
+                    dat.importFiles() //Note, this doesn't do a lot for our code base since the import has to be run post file creation.
+                } catch(e) {
+                    debug(e)
+                    request.reject(e)
+                    return
+                }
+                const datKey = dat.key.toString('hex')
+                debug('Created new dat file: dat://' + datKey)
+                this.dats[datKey] = dat;
+                const newDatEntry: DatEntry = {
+                    key: datKey,
+                    complete: true, // assume its complete since already on disk
+                    updatedAt: new Date(),
+                    createdAt: new Date(),
+                }
+                this._updateDatEntry(newDatEntry)
+                request.respond({
+                    ...newDatEntry,
+                    dir: requestData.newDatDir
+                })
             })
-        })
+        } catch (error) {
+            debug(`Caught error while attempting to create dat: ${error.message}, path: ${fullPath}`)
+            request.reject(error)
+            return;
+        }
     }
 
     /**
