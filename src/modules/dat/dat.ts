@@ -103,6 +103,9 @@ export default class AODat extends AORouterInterface {
                 }
                 this._resumeAll().then(() => {
                     debug(`Resumed all dats`)
+                    // Start p2p discovery
+                    this.router.send('/p2p/beginDiscovery').then(() => {
+                    }).catch(debug)
                 }).catch((error: Error) => {
                     debug(`Error resuming all dats: ${error.message}`)
                 })
@@ -137,7 +140,7 @@ export default class AODat extends AORouterInterface {
 
     private _resume(datEntry: DatEntry): Promise<any> {
         return new Promise((resolve, reject) => {
-            if (this.dats[datEntry.key]) {
+            if (this.dats[datEntry.key] && this.dats[datEntry.key].AO_joinedNetwork) {
                 debug(`Dat ${datEntry.key} already resumed`)
                 resolve()
                 return;
@@ -146,8 +149,12 @@ export default class AODat extends AORouterInterface {
             debug(`Resuming dat: ${datDir}`)
             Dat(datDir, (err: Error, dat: Dat) => {
                 if (err || !dat) {
+                    if(dat) {
+                        debug('Dat error, closing')
+                        dat.close()
+                    }
                     debug('Error resuming dat ' + datEntry.key)
-                    reject(err)
+                    resolve(err)//This has to remain a resolve, or else the entire Promise.all dies
                     if (err.name === 'IncompatibleError') {
                         // TODO: Dat folder is kinda fucked, recommended route it to `rm -fr .dat`
                         // Going to ingore for now, but might want to address this at some point.
@@ -189,25 +196,43 @@ export default class AODat extends AORouterInterface {
         const {key}:AODat_ImportSingle_Data = request.data
         const datDir = path.join(this.datDir, key)
         Dat(datDir, (err: Error, dat:Dat) => {
-            dat.importFiles((err)=> {
+            if(!dat || err) {
                 if(err) {
-                    request.reject(new Error('Error importing files'))
-                    return
+                    request.reject(err)
                 } else {
-                    debug('Files Imported!')
-                    request.respond({success:true})
+                    request.reject(new Error('No dat instance returned for import'))
                 }
-            })
+            } else {
+                try {
+                    dat.importFiles((err)=> {
+                        if(err) {
+                            request.reject(new Error('Error importing files'))
+                            return
+                        } else {
+                            debug('Files imported for '+ key)
+                            request.respond({success:true})
+                        }
+                    })
+                } catch(e) {
+                    debug(e)
+                    request.reject(e)
+                    return
+                }
+            }
         })
     }
 
     private _updateDatEntry(datEntry: DatEntry) {
-        this.datsDb.update({ key: datEntry.key }, datEntry, { upsert: true })
+        this.datsDb.update({ key: datEntry.key }, datEntry, { upsert: true }, (err:Error) => {
+            if(err) {
+                debug(err)
+            }
+        })
     }
 
     private _getDatEntry(datKey: string): Promise<any> {
         return new Promise((resolve, reject) => {
-            this.datsDb.findOne({ key: datKey }, function (error: Error, doc: DatEntry) {
+            this.datsDb.findOne({ key: datKey }, (error: Error, doc: DatEntry) => {
                 if (error) {
                     reject(error)
                 } else if (!doc) {
@@ -286,7 +311,13 @@ export default class AODat extends AORouterInterface {
                 request.reject(err)
                 return;
             }
-            dat.importFiles() //Note, this doesn't do a lot for our code base since the import has to be run post file creation.
+            try{
+                dat.importFiles() //Note, this doesn't do a lot for our code base since the import has to be run post file creation.
+            } catch(e) {
+                debug(e)
+                request.reject(e)
+                return
+            }
             const datKey = dat.key.toString('hex')
             debug('Created new dat file: dat://' + datKey)
             this.dats[datKey] = dat;
@@ -310,7 +341,9 @@ export default class AODat extends AORouterInterface {
      */
     private _handleDatDownload(request: IAORouterRequest) {
         const { key, resolveOnNetworkJoined, resolveOnDownloadCompletion }: AODat_Download_Data = request.data;
-        this.downloadDat(key, resolveOnDownloadCompletion).then(request.respond).catch(request.reject)
+        this.downloadDat(key, resolveOnDownloadCompletion).then(()=> {
+            request.respond({})
+        }).catch(request.reject)
     }
 
     /**
@@ -365,10 +398,18 @@ export default class AODat extends AORouterInterface {
                         if ( err.name === 'IncompatibleError' ) {
                             // TODO: incompatible metadata issue, hoping to solve elsewhere   
                         }
+                        if ( !dat ) {
+                            debug('borked dat ',dat)
+                        } else {
+                            debug('Dat error, closing')
+                            dat.close()
+                        }
                         debug(`[${key}] Failed to download dat`, err)
                         reject(err)
                         return;
                     }
+                    //Dat is super stupid and will exit with its own recommended code when in fact its all okay: https://github.com/datproject/dat-node#downloading-files
+                    let catchStupidDat = false
                     try {
                         dat.joinNetwork((err) => {
                             if (err) {
@@ -376,7 +417,7 @@ export default class AODat extends AORouterInterface {
                                 this.removeDat(key)
                                 reject(err)
                                 return;
-                            } else if (!dat.network.connected || !dat.network.connecting) {
+                            } else if ( (!dat.network.connected || !dat.network.connecting) && !catchStupidDat) {
                                 debug(`[${key}] Failed to download, no one is hosting`)
                                 this.removeDat(key)
                                 reject(new Error('No users are hosting the requested content'))
@@ -386,42 +427,63 @@ export default class AODat extends AORouterInterface {
                                 const datKey = dat.key.toString('hex');
                                 dat.AO_joinedNetwork = true
                                 this.dats[datKey] = dat;
-                                const newDatEntry: DatEntry = {
-                                    key: datKey,
-                                    complete: false,
-                                    updatedAt: new Date(),
-                                    createdAt: new Date(),
-                                }
-                                this._updateDatEntry(newDatEntry)    
-                                if ( !resolveOnDownloadCompletion ) {
-                                    resolve(newDatEntry)
-                                }
-                                // Begin listening for completion & start tracking stats
-                                if ( !dat.AO_isTrackingStats ) {
-                                    dat.trackStats()
-                                    dat.AO_isTrackingStats = true
-                                }
-                                dat.archive.metadata.update(() => {
-                                    var progress = mirror({ fs: dat.archive, name: '/' }, newDatPath, (err) => {
-                                        if (err) {
-                                            debug(`[${key}] Error downloading dat file: ${err.message}`)
-                                        } else {
-                                            debug(`[${key}] Fully downloaded the goods!`)
-                                            const updatedDatEntry: DatEntry = {
-                                                key: key,
-                                                complete: true,
-                                                updatedAt: new Date(),
-                                            }
-                                            this._updateDatEntry(updatedDatEntry)
-                                            if ( resolveOnDownloadCompletion ) {
-                                                resolve(updatedDatEntry)
-                                            }
+                                //Dat node is a shitty library.  We have an internal race condition we have to be aware of.
+                                this._getDatEntry(datKey).then((datEntry:DatEntry) => {
+                                    if(!datEntry) {
+                                        const newDatEntry: DatEntry = {
+                                            key: datKey,
+                                            complete: false,
+                                            updatedAt: new Date(),
+                                            createdAt: new Date(),
                                         }
-                                    })
-                                })
+                                        this._updateDatEntry(newDatEntry)    
+                                        if ( !resolveOnDownloadCompletion ) {
+                                            resolve(newDatEntry)
+                                        }
+                                    }
+                                }).catch(debug)
                                 
                             }
                         })
+
+                        // Begin listening for completion & start tracking stats
+                        if ( !dat.AO_isTrackingStats ) {
+                            const stats = dat.trackStats()
+                            dat.AO_isTrackingStats = true
+                            stats.on('update', () => {
+                                const newStats = stats.get()
+                                //TODO: Add percentage off of length vs downloaded as percentage of newStats
+                                // if(newStats.length.length == newStats.downloaded.length) {
+                                // }
+                            })
+                            dat.archive.on('sync',() => {
+                                if(!catchStupidDat) {
+                                    catchStupidDat = true
+                                    debug(`[${key}] Fully downloaded the goods!`)
+                                    const currentDate = new Date()
+                                    let updatedDatEntry: DatEntry = {
+                                        key: key,
+                                        complete: true,
+                                        updatedAt: currentDate
+                                    }
+                                    //Yaay!  Dat node sux
+                                    this._getDatEntry(key).then((datEntry:DatEntry) => {
+                                        this._updateDatEntry(updatedDatEntry)
+                                    }).catch((error:Error) => {
+                                        updatedDatEntry.createdAt = currentDate
+                                        this._updateDatEntry(updatedDatEntry)
+                                    })
+                                    
+                                    if ( resolveOnDownloadCompletion ) {
+                                        debug('Resolving with resolveOnDownloadCompletion')
+                                        //Gotta wait for that dat node to actually write to disk!
+                                        setTimeout(() => {
+                                            resolve(updatedDatEntry)
+                                        },1000)
+                                    }
+                                }
+                            })
+                        }
                     } catch (error) {
                         debug(`Dat error while attempting to download...`, error)
                         this.removeDat(key)

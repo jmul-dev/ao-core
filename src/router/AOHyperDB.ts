@@ -154,7 +154,8 @@ export default class AOHyperDB {
                         }
                         resolve(result)
                     } else {
-                        reject()
+                        debug('Nothing found')
+                        resolve([])
                     }
                 }
             })

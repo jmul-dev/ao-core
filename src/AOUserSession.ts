@@ -699,40 +699,39 @@ export default class AOUserSession {
      * @param {AOContent} content 
      */
     private _handleContentStaked(content: AOContent) {
-        // 1. Add new discovery
-        const p2pAddDiscoveryData: AOP2P_Add_Discovery_Data = {
-            contentType: content.contentType,
-            fileDatKey: content.fileDatKey,
-            metaDatKey: content.metadataDatKey,
-            ethAddress: this.ethAddress, // Current user's ethAddress
-            contentHostId: content.contentHostId
+        // 1. Import all the freaken files.
+        const fileImportDatData:AODat_ImportSingle_Data = {
+            key: content.fileDatKey
         }
-        this.router.send('/p2p/addDiscovery', p2pAddDiscoveryData).then((response: IAORouterMessage) => {
-            if (response.data.success) {
+        const metaImportDatData:AODat_ImportSingle_Data = {
+            key: content.metadataDatKey
+        }
+        let importDats = []
+        importDats.push( this.router.send('/dat/importSingle', fileImportDatData))
+        importDats.push( this.router.send('/dat/importSingle', metaImportDatData))
+        Promise.all(importDats).then(() => {
+            // 2. Ensure the dats are resumed (they may already be, but need to make sure)
+            const fileResumeDatData:AODat_ResumeSingle_Data = {
+                key: content.fileDatKey
+            }
+            const metaResumeDatData:AODat_ResumeSingle_Data = {
+                key: content.metadataDatKey
+            }
 
-                // 2. Import all the freaken files.
-                const fileImportDatData:AODat_ImportSingle_Data = {
-                    key: p2pAddDiscoveryData.fileDatKey
+            let resumeDats = []                
+            resumeDats.push( this.router.send('/dat/resumeSingle', fileResumeDatData) )
+            resumeDats.push( this.router.send('/dat/resumeSingle', metaResumeDatData) )
+            Promise.all(resumeDats).then(() => {
+                // 3. Add new discovery
+                const p2pAddDiscoveryData: AOP2P_Add_Discovery_Data = {
+                    contentType: content.contentType,
+                    fileDatKey: content.fileDatKey,
+                    metaDatKey: content.metadataDatKey,
+                    ethAddress: this.ethAddress, // Current user's ethAddress
+                    contentHostId: content.contentHostId
                 }
-                const metaImportDatData:AODat_ImportSingle_Data = {
-                    key: p2pAddDiscoveryData.metaDatKey
-                }
-                let importDats = []
-                importDats.push( this.router.send('/dat/importSingle', fileImportDatData))
-                importDats.push( this.router.send('/dat/importSingle', metaImportDatData))
-                Promise.all(importDats).then(() => {
-                    // 3. Ensure the dats are resumed (they may already be, but need to make sure)
-                    const fileResumeDatData:AODat_ResumeSingle_Data = {
-                        key: p2pAddDiscoveryData.fileDatKey
-                    }
-                    const metaResumeDatData:AODat_ResumeSingle_Data = {
-                        key: p2pAddDiscoveryData.metaDatKey
-                    }
-
-                    let resumeDats = []                
-                    resumeDats.push( this.router.send('/dat/resumeSingle', fileResumeDatData) )
-                    resumeDats.push( this.router.send('/dat/resumeSingle', metaResumeDatData) )
-                    Promise.all(resumeDats).then(() => {
+                this.router.send('/p2p/addDiscovery', p2pAddDiscoveryData).then((response: IAORouterMessage) => {
+                    if (response.data.success) {
                         // 4. Update the content state (mark as Discoverable)
                         const contentUpdateQuery: AODB_UserContentUpdate_Data = {
                             id: content.id,
@@ -747,12 +746,12 @@ export default class AOUserSession {
                             // Handoff to next state handler
                             this.processContent(updatedContent)
                         }).catch(debug)
-                    }).catch(debug)
+                                        
+                    } else {
+                        debug(`Error, failed to add content to discovery`)
+                    }
                 }).catch(debug)
-                
-            } else {
-                debug(`Error, failed to add content to discovery`)
-            }
+            }).catch(debug)
         }).catch(debug)
     }
 }
