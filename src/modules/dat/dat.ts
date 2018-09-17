@@ -1,6 +1,5 @@
 import Dat from 'dat-node';
 import Debug from 'debug';
-import mirror from 'mirror-folder';
 import Datastore from 'nedb';
 import path from "path";
 import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
@@ -174,18 +173,14 @@ export default class AODat extends AORouterInterface {
                 // Finally, if the datEntry is not complete, listen for completion and update our
                 // db.
                 if ( !datEntry.complete ) {
-                    dat.archive.metadata.update(() => {
-                        mirror({ fs: dat.archive, name: '/' }, datDir, (err) => {
-                            if (!err) {
-                                debug(`Resumed dat is now fully download dat://${datEntry.key}`)
-                                const updatedDatEntry: DatEntry = {
-                                    key: datEntry.key,
-                                    complete: true,
-                                    updatedAt: new Date(),
-                                }
-                                this._updateDatEntry(updatedDatEntry)
-                            }
-                        })
+                    dat.archive.on('sync',() => {
+                        debug(`Resumed dat is now fully download dat://${datEntry.key}`)
+                        const updatedDatEntry: DatEntry = {
+                            key: datEntry.key,
+                            complete: true,
+                            updatedAt: new Date(),
+                        }
+                        this._updateDatEntry(updatedDatEntry)
                     })
                 }
             })
