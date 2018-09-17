@@ -263,7 +263,7 @@ export default class AOEth extends AORouterInterface {
         const requestData: IAOEth_BuyContentEvent_Data = request.data;
         this._listenForTransactionStatus(requestData.transactionHash).then(({ status, receipt }) => {
             if (status && receipt) {
-                const logs = this.receiptLogParser(receipt.logs, AOContent.abi)
+                const logs = this.receiptLogParser(receipt.logs, AOContent.abi) || []
                 const buyContentEvent: BuyContentEvent = logs.find(log => log.event === 'BuyContent').args;
                 request.respond({ status, buyContentEvent })
             } else {

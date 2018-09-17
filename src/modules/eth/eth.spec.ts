@@ -14,7 +14,10 @@ describe('AO Eth module', () => {
 
     const mainnetUnknownTx = '0xaaa19822a0d907e336146ccba8680e5a3fc6e0ac4d69aa8f5d29fe228aa6447e'
 
-    const rinkebySuccesfullStakeTx = '0x4087c63e470e7162f8366d5bad91dfdf6c1227352b18ac2cdab2c961375f96f6'
+    const rinkebySuccesfullStakeTx = '0xeff2ea575f8626f2969f839c5085b0341ec1d707bc0bed29ebaccc9241642317'
+    const rinkebySuccesfullStakeTxStakeId = '0xe09a21e2d95dbad6b78798deca1cd72c5af5210c23acf802e2a391c1b470b3df'
+
+    const rinkebySuccesfulBuyContentTx = '0xe9800a9c8273a4d61b971594e32b96e29c1f31b8417531ebf39b109613de1983'
 
     it('should connect to rinkeby testnet', (done) => {
         aoEth.router.emit('/eth/network/set', {
@@ -22,7 +25,7 @@ describe('AO Eth module', () => {
                 networkId: '4',
             },
             respond: ({networkId}) => {
-                expect(networkId).to.equal('4')
+                expect(networkId).to.be.oneOf(['4', 4])
                 done()
             },
             reject: (err) => {
@@ -37,7 +40,7 @@ describe('AO Eth module', () => {
                 networkId: '1',
             },
             respond: ({networkId}) => {
-                expect(networkId).to.equal(1)
+                expect(networkId).to.be.oneOf(['1', 1])
                 done()
             },
             reject: (err) => {
@@ -122,7 +125,7 @@ describe('AO Eth module', () => {
                 networkId: '4',
             },
             respond: ({networkId}) => {
-                expect(networkId).to.equal('4')
+                expect(networkId).to.be.oneOf(['4', 4])
                 // Check stake tx
                 aoEth.router.emit('/eth/tx/StakeContent', {
                     data: {
@@ -131,7 +134,7 @@ describe('AO Eth module', () => {
                     respond: ({status, stakeContentEvent, hostContentEvent}) => {
                         expect(status).to.be.ok
                         expect(stakeContentEvent).any
-                        expect(stakeContentEvent.stakeId).to.equal('0x1bb20435d2422bc6307162ca0f5bdb50b04dbb7322d30af44c65ee62cefe3d43')
+                        expect(stakeContentEvent.stakeId).to.equal(rinkebySuccesfullStakeTxStakeId)
                         expect(hostContentEvent).any
                         done()
                     },
@@ -143,6 +146,34 @@ describe('AO Eth module', () => {
             }
         })        
     })
+
+    it('should return logs for succesfull buyContent tx', (done) => {
+        // Switch to rinkeby
+        aoEth.router.emit('/eth/network/set', {
+            data: {
+                networkId: '4',
+            },
+            respond: ({networkId}) => {
+                expect(networkId).to.be.oneOf(['4', 4])
+                // Check stake tx
+                aoEth.router.emit('/eth/tx/BuyContent', {
+                    data: {
+                        transactionHash: rinkebySuccesfulBuyContentTx,
+                    },
+                    respond: ({status, buyContentEvent}) => {
+                        expect(status).to.be.ok
+                        expect(buyContentEvent).any
+                        // expect(buyContentEvent.stakeId).to.equal('0x1bb20435d2422bc6307162ca0f5bdb50b04dbb7322d30af44c65ee62cefe3d43')
+                        done()
+                    },
+                    reject: done
+                })
+            },
+            reject: (err) => {
+                done(err)
+            }
+        })        
+    }).timeout(5000)
 
     it('should be able to subscribe and unsubscribe from BuyContent events', (done) => {
         // Check stake tx
