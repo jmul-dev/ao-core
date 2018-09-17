@@ -84,7 +84,7 @@ export default class AODat extends AORouterInterface {
         this.datDir = path.resolve(this.storageLocation, 'content')
         this.router.on('/dat/resumeAll', this._handleResumeAll.bind(this))
         this.router.on('/dat/resumeSingle', this._handleResumeSingle.bind(this))
-        this.router.on('/dat/importSingle',this._handleImportSingle.bind(this))
+        this.router.on('/dat/importSingle', this._handleImportSingle.bind(this))
         this.router.on('/dat/stopAll', this._handleDatStopAll.bind(this))
         this.router.on('/dat/create', this._handleDatCreate.bind(this))
         this.router.on('/dat/download', this._handleDatDownload.bind(this))
@@ -155,7 +155,7 @@ export default class AODat extends AORouterInterface {
             debug(`Resuming dat: ${datDir}`)
             Dat(datDir, (err: Error, dat: Dat) => {
                 if (err || !dat) {
-                    if(dat) {
+                    if (dat) {
                         debug('Dat error, closing')
                         dat.close()
                     }
@@ -179,8 +179,8 @@ export default class AODat extends AORouterInterface {
                 this._updateDatEntry(datEntry)
                 // Finally, if the datEntry is not complete, listen for completion and update our
                 // db.
-                if ( !datEntry.complete ) {
-                    dat.archive.on('sync',() => {
+                if (!datEntry.complete) {
+                    dat.archive.on('sync', () => {
                         debug(`Resumed dat is now fully download dat://${datEntry.key}`)
                         const updatedDatEntry: DatEntry = {
                             key: datEntry.key,
@@ -194,28 +194,28 @@ export default class AODat extends AORouterInterface {
         })
     }
 
-    private _handleImportSingle(request:IAORouterRequest) {
-        const {key}:AODat_ImportSingle_Data = request.data
+    private _handleImportSingle(request: IAORouterRequest) {
+        const { key }: AODat_ImportSingle_Data = request.data
         const datDir = path.join(this.datDir, key)
-        Dat(datDir, (err: Error, dat:Dat) => {
-            if(!dat || err) {
-                if(err) {
+        Dat(datDir, (err: Error, dat: Dat) => {
+            if (!dat || err) {
+                if (err) {
                     request.reject(err)
                 } else {
                     request.reject(new Error('No dat instance returned for import'))
                 }
             } else {
                 try {
-                    dat.importFiles((err)=> {
-                        if(err) {
+                    dat.importFiles((err) => {
+                        if (err) {
                             request.reject(new Error('Error importing files'))
                             return
                         } else {
-                            debug('Files imported for '+ key)
-                            request.respond({success:true})
+                            debug('Files imported for ' + key)
+                            request.respond({ success: true })
                         }
                     })
-                } catch(e) {
+                } catch (e) {
                     debug(e)
                     request.reject(e)
                     return
@@ -225,8 +225,8 @@ export default class AODat extends AORouterInterface {
     }
 
     private _updateDatEntry(datEntry: DatEntry) {
-        this.datsDb.update({ key: datEntry.key }, datEntry, { upsert: true }, (err:Error) => {
-            if(err) {
+        this.datsDb.update({ key: datEntry.key }, datEntry, { upsert: true }, (err: Error) => {
+            if (err) {
                 debug(err)
             }
         })
@@ -254,14 +254,14 @@ export default class AODat extends AORouterInterface {
             return;
         }
         debug(`Fetching dat stats for dat://${requestData.key}`)
-        this._getDatEntry(requestData.key).then((datEntry: DatEntry) => {            
+        this._getDatEntry(requestData.key).then((datEntry: DatEntry) => {
             const datInstance = this.dats[requestData.key]
-            if ( !datInstance ) {
+            if (!datInstance) {
                 debug(`Attempting to get datStats, no dat instance found: dat://${requestData.key}`)
                 request.reject(new Error(`Dat instance not available`))
                 return;
             }
-            if ( !datInstance.AO_isTrackingStats ) {
+            if (!datInstance.AO_isTrackingStats) {
                 datInstance.trackStats()
                 datInstance.AO_isTrackingStats = true
             }
@@ -289,7 +289,7 @@ export default class AODat extends AORouterInterface {
         const requestData: AODat_ResumeSingle_Data = request.data
         this._getDatEntry(requestData.key).then((datEntry: DatEntry) => {
             this._resume(datEntry).then(request.respond).catch(request.reject)
-        })        
+        })
     }
 
     private _handleDatStopAll(request: IAORouterRequest) {
@@ -314,9 +314,9 @@ export default class AODat extends AORouterInterface {
                     request.reject(err)
                     return;
                 }
-                try{
+                try {
                     dat.importFiles() //Note, this doesn't do a lot for our code base since the import has to be run post file creation.
-                } catch(e) {
+                } catch (e) {
                     debug(e)
                     request.reject(e)
                     return
@@ -349,7 +349,7 @@ export default class AODat extends AORouterInterface {
      */
     private _handleDatDownload(request: IAORouterRequest) {
         const { key, resolveOnNetworkJoined, resolveOnDownloadCompletion }: AODat_Download_Data = request.data;
-        this.downloadDat(key, resolveOnDownloadCompletion).then(()=> {
+        this.downloadDat(key, resolveOnDownloadCompletion).then(() => {
             request.respond({})
         }).catch(request.reject)
     }
@@ -401,13 +401,13 @@ export default class AODat extends AORouterInterface {
                 // B. We do not have this dat, proceed to create and download
                 const newDatPath = path.join(this.datDir, key);
                 Dat(newDatPath, { key: key }, (err, dat) => {
-                    if ( err || !dat ) {
+                    if (err || !dat) {
                         this.removeDat(key)
-                        if ( err.name === 'IncompatibleError' ) {
+                        if (err.name === 'IncompatibleError') {
                             // TODO: incompatible metadata issue, hoping to solve elsewhere   
                         }
-                        if ( !dat ) {
-                            debug('borked dat ',dat)
+                        if (!dat) {
+                            debug('borked dat ', dat)
                         } else {
                             debug('Dat error, closing')
                             dat.close()
@@ -425,7 +425,7 @@ export default class AODat extends AORouterInterface {
                                 this.removeDat(key)
                                 reject(err)
                                 return;
-                            } else if ( (!dat.network.connected || !dat.network.connecting) && !catchStupidDat) {
+                            } else if ((!dat.network.connected || !dat.network.connecting) && !catchStupidDat) {
                                 debug(`[${key}] Failed to download, no one is hosting`)
                                 this.removeDat(key)
                                 reject(new Error('No users are hosting the requested content'))
@@ -436,26 +436,27 @@ export default class AODat extends AORouterInterface {
                                 dat.AO_joinedNetwork = true
                                 this.dats[datKey] = dat;
                                 //Dat node is a shitty library.  We have an internal race condition we have to be aware of.
-                                this._getDatEntry(datKey).then((datEntry:DatEntry) => {
-                                    if(!datEntry) {
+                                this._getDatEntry(datKey).then((datEntry: DatEntry) => {
+                                    if (!datEntry) {
                                         const newDatEntry: DatEntry = {
                                             key: datKey,
                                             complete: false,
                                             updatedAt: new Date(),
                                             createdAt: new Date(),
                                         }
-                                        this._updateDatEntry(newDatEntry)    
-                                        if ( !resolveOnDownloadCompletion ) {
+                                        this._updateDatEntry(newDatEntry)
+                                        if (!resolveOnDownloadCompletion) {
                                             resolve(newDatEntry)
                                         }
+                                    } else {
+                                        resolve(datEntry)
                                     }
                                 }).catch(debug)
-                                
                             }
                         })
 
                         // Begin listening for completion & start tracking stats
-                        if ( !dat.AO_isTrackingStats ) {
+                        if (!dat.AO_isTrackingStats) {
                             const stats = dat.trackStats()
                             dat.AO_isTrackingStats = true
                             stats.on('update', () => {
@@ -464,8 +465,8 @@ export default class AODat extends AORouterInterface {
                                 // if(newStats.length.length == newStats.downloaded.length) {
                                 // }
                             })
-                            dat.archive.on('sync',() => {
-                                if(!catchStupidDat) {
+                            dat.archive.on('sync', () => {
+                                if (!catchStupidDat) {
                                     catchStupidDat = true
                                     debug(`[${key}] Fully downloaded the goods!`)
                                     const currentDate = new Date()
@@ -475,19 +476,18 @@ export default class AODat extends AORouterInterface {
                                         updatedAt: currentDate
                                     }
                                     //Yaay!  Dat node sux
-                                    this._getDatEntry(key).then((datEntry:DatEntry) => {
+                                    this._getDatEntry(key).then((datEntry: DatEntry) => {
                                         this._updateDatEntry(updatedDatEntry)
-                                    }).catch((error:Error) => {
+                                    }).catch((error: Error) => {
                                         updatedDatEntry.createdAt = currentDate
                                         this._updateDatEntry(updatedDatEntry)
                                     })
-                                    
-                                    if ( resolveOnDownloadCompletion ) {
+                                    if (resolveOnDownloadCompletion) {
                                         debug('Resolving with resolveOnDownloadCompletion')
                                         //Gotta wait for that dat node to actually write to disk!
                                         setTimeout(() => {
                                             resolve(updatedDatEntry)
-                                        },1000)
+                                        }, 1000)
                                     }
                                 }
                             })
@@ -507,7 +507,7 @@ export default class AODat extends AORouterInterface {
         // remove dat instance if exists
         delete this.dats[key]
         // remove db entry
-        this.datsDb.remove({key: key})
+        this.datsDb.remove({ key: key })
         // cleanup disk
         let unlinkParams: IAOFS_Unlink_Data = {
             removePath: datPath,

@@ -265,7 +265,6 @@ export default class AOUserSession {
                 debug(`No content hosts found in the database for content id[${content.id}]`)
                 return;
             }
-            debug(potentialNodes)
             // 2. Update the network content db with latest hosted timestamp for this content
             const networkContentUpdate: AODB_NetworkContentUpdate_Data = {
                 id: content.id,
@@ -711,8 +710,7 @@ export default class AOUserSession {
             const metaResumeDatData:AODat_ResumeSingle_Data = {
                 key: content.metadataDatKey
             }
-
-            let resumeDats = []                
+            let resumeDats = []
             resumeDats.push( this.router.send('/dat/resumeSingle', fileResumeDatData) )
             resumeDats.push( this.router.send('/dat/resumeSingle', metaResumeDatData) )
             Promise.all(resumeDats).then(() => {
@@ -740,7 +738,6 @@ export default class AOUserSession {
                             // Handoff to next state handler
                             this.processContent(updatedContent)
                         }).catch(debug)
-                                        
                     } else {
                         debug(`Error, failed to add content to discovery`)
                     }
