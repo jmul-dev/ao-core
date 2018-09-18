@@ -36,8 +36,12 @@ export default class AOContentIngestion {
     }
 
     public addDiscoveredMetadataDatKeyToQueue(metadataDatKey: string) {
-        if (this.datKeysInQueue.indexOf(metadataDatKey) === -1)
+        if (this.datKeysInQueue.indexOf(metadataDatKey) === -1) {
             this.processingQueue.push(this._queueHandler.bind(this, metadataDatKey))
+            this.datKeysInQueue.push(metadataDatKey)
+        } else {
+            debug('Already added key to ingestion queue: ' + metadataDatKey)
+        }
     }
 
     private _queueHandler(metadataDatKey: string) {

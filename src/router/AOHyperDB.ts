@@ -192,9 +192,15 @@ export default class AOHyperDB {
 
     public watch(key) {
         return new Promise((resolve,reject) => {
-            this.db.watch(key, () => {
-                //change occured.
+            let watcher = this.db.watch(key, () => {
+            })
+            watcher.on('watching', () => {
+                debug('Watching for change on key: ' + key)
+            })
+            watcher.on('change', () => {
+                debug('Detected change on key: ' + key)
                 resolve()
+                watcher.destroy()
             })
         })
     }
