@@ -438,6 +438,7 @@ export default class AOUserSession {
             return null
         }
         const p2pWatchKeyRequest: AOP2P_Watch_AND_Get_IndexData_Data = {
+            // TODO: use AOP2P static methods to generate this path (or let AOP2P generate the path for us)
             key: '/AOSpace/VOD/' + content.metadataDatKey + '/nodes/' + content.creatorId + '/' + content.fileDatKey + '/indexData',
             ethAddress: this.ethAddress
         }
