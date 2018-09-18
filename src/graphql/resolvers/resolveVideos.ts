@@ -24,6 +24,12 @@ export default (obj: any, args: IVideos_Args, context: IGraphqlResolverContext, 
                 let aoContent: AOContent = AOContent.fromObject(networkContent.content)
                 aoContent.lastSeenContentHost = networkContent.lastSeenContentHost
                 return aoContent
+            }).sort((a, b) => {
+                if (!b.lastSeenContentHost)
+                    return -1;
+                if (!a.lastSeenContentHost)
+                    return 1;
+                return new Date(b.lastSeenContentHost.timestamp).getTime() - new Date(a.lastSeenContentHost.timestamp).getTime();
             })
             resolve(content)
         }).catch(reject)
