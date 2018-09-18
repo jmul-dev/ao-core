@@ -386,18 +386,18 @@ export default class AOUserSession {
         }
         this.router.send('/eth/tx/BuyContent', buyContentEventArgs).then((response: IAORouterMessage) => {
             const { status } = response.data
-            const event: BuyContentEvent = response.data.event
+            const buyContentEvent: BuyContentEvent = response.data.buyContentEvent
             let contentUpdateAfterTx: AODB_UserContentUpdate_Data = {
                 id: content.id,
                 update: {}
             }
-            if (status && event) {
+            if (status && buyContentEvent) {
                 // Succesful transaction
                 contentUpdateAfterTx.update = {
                     $set: {
                         "state": AOContentState.PURCHASED,
-                        "purchaseId": event.purchaseId,
-                        "nodeId": event.contentHostId,
+                        "purchaseId": buyContentEvent.purchaseId,
+                        "nodeId": buyContentEvent.contentHostId,
                     }
                 }
             } else {
