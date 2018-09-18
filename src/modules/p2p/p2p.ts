@@ -312,7 +312,9 @@ export default class AOP2P extends AORouterInterface {
         const { contentType, fileDatKey, ethAddress, metaDatKey, contentHostId }: AOP2P_Add_Discovery_Data = request.data
         const nodeRoute = AOP2P.routeNodeRegistration({ nameSpace: this.dbPrefix, contentType, metaDatKey, ethAddress, fileDatKey })
         this.hyperdb.insert(nodeRoute, {}).then(() => {
+            debug('NODE INSERTED')
             this.nodeTimestampUpdate({ nameSpace: this.dbPrefix, contentType, ethAddress, metaDatKey, contentHostId, contentDatKey: fileDatKey, }).then(() => {
+                debug('NODE TIMESTAMP UPDATED FO SURE')
                 request.respond({ success: true })
             }).catch(request.reject)
         }).catch(request.reject)
