@@ -286,15 +286,18 @@ export default class AOP2P extends AORouterInterface {
             this.parseIndexDataByEth({ indexDataString, ethAddress }).then((indexData) => {
                 debug(indexData)
                 // If it exists, send it back.
-                request.respond(indexData)
+                debug(`[${request.id}] _handleWatchAndGetIndexData got index data on first try`)
+                request.respond(indexData)                
             }).catch(() => {
                 // If it doens't, watch for change
+                debug(`[${request.id}] _handleWatchAndGetIndexData did not find index data on first try, watching...`)
                 this.hyperdb.watch(key).then(() => {
                     this.hyperdb.query(key).then((indexDataString: string) => {
                         this.parseIndexDataByEth({ indexDataString, ethAddress }).then((indexData) => {
                             request.respond(indexData)
                         }).catch(() => {
                             //Self call if there isn't a record for our own indexData
+                            debug(`[${request.id}] _handleWatchAndGetIndexData recursively called`)
                             setTimeout(() => {
                                 this._handleWatchAndGetIndexData(request)
                             }, 500);

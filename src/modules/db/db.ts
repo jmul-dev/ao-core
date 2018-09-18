@@ -212,6 +212,10 @@ export default class AODB extends AORouterInterface {
                 autoload: false,
             })
         }
+        this.userDbs[request.ethAddress].content.ensureIndex({
+            fieldName: 'id',
+            unique: true,
+        })
         let dbLoadPromises = [
             dbLoadHandler(),
             dbLoadHandler()
