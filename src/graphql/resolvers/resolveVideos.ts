@@ -23,6 +23,7 @@ export default (obj: any, args: IVideos_Args, context: IGraphqlResolverContext, 
             let content = networkContentResponse.data.map((networkContent: AONetworkContent) => {
                 let aoContent: AOContent = AOContent.fromObject(networkContent.content)
                 aoContent.lastSeenContentHost = networkContent.lastSeenContentHost
+                aoContent.isNetworkContent = true
                 return aoContent
             }).sort((a, b) => {
                 if (!b.lastSeenContentHost)

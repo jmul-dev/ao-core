@@ -108,6 +108,7 @@ export default abstract class AOContent {
         hostTx: string
     }
     public lastSeenContentHost?: NetworkContentHostEntry
+    public isNetworkContent?: boolean
     // variables not exposed to graphql
     public receivedIndexData: AOP2P_IndexDataRow
     public decryptionKey: string
