@@ -207,6 +207,7 @@ export default class AOP2P extends AORouterInterface {
                 const newMetadataDatKeys: Array<string> = metadataDatKeysInNetworkDb.filter((el) => {
                     return metadataDatKeysInLocalNetworkDb.indexOf(el) < 0;
                 });
+                debug(newMetadataDatKeys)
                 //Add to content ingestion helper
                 if (newMetadataDatKeys.length) {
                     for (let i = 0; i < newMetadataDatKeys.length; i++) {
