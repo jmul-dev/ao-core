@@ -33,7 +33,7 @@ export default class AOHyperDB {
             this.dbPath = hyperOptions.dbPath
             this.autoAuth = hyperOptions.autoAuth
             
-            this.db = hyperdb(this.dbPath, this.dbKey, { valueEncoding: 'utf-8'} )
+            this.db = hyperdb(this.dbPath, this.dbKey, { valueEncoding: 'utf-8' } )
             this.db.on('ready', () => {
                 this.swarm = discovery(
                     swarmDefaults({

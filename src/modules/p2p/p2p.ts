@@ -161,7 +161,9 @@ export default class AOP2P extends AORouterInterface {
      */
     private _handleStartDiscovery(request:IAORouterRequest) {
         debug(`hyperdb starting discovery...`)
+        this.contentWatchKey = this.dbPrefix + 'VOD/'; // /AOSpace/VOD/*
         this._runDiscovery().then(() => {
+            debug('Initial discovery ran')
             this._watchDiscovery()
         }).catch(debug)
         request.respond({})
@@ -169,8 +171,8 @@ export default class AOP2P extends AORouterInterface {
 
     //For the sake of clean recursive methods.
     private _watchDiscovery() {
-        this.contentWatchKey = this.dbPrefix + 'VOD/'; // /AOSpace/VOD/*
         this.hyperdb.watch(this.contentWatchKey).then(() => {
+            debug('Something changed in ' + this.contentWatchKey)
             this._runDiscovery().then(()=> {
                 this._watchDiscovery()
             }).catch(debug)
@@ -205,6 +207,7 @@ export default class AOP2P extends AORouterInterface {
                 const newMetadataDatKeys: Array<string> = metadataDatKeysInNetworkDb.filter((el) => {
                     return metadataDatKeysInLocalNetworkDb.indexOf(el) < 0;
                 });
+                debug(newMetadataDatKeys)
                 //Add to content ingestion helper
                 if (newMetadataDatKeys.length) {
                     for (let i = 0; i < newMetadataDatKeys.length; i++) {
