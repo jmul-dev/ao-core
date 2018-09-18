@@ -163,6 +163,7 @@ export default class AOP2P extends AORouterInterface {
         debug(`hyperdb starting discovery...`)
         this.contentWatchKey = this.dbPrefix + 'VOD/'; // /AOSpace/VOD/*
         this._runDiscovery().then(() => {
+            debug('Initial discovery ran')
             this._watchDiscovery()
         }).catch(debug)
         request.respond({})
@@ -171,6 +172,7 @@ export default class AOP2P extends AORouterInterface {
     //For the sake of clean recursive methods.
     private _watchDiscovery() {
         this.hyperdb.watch(this.contentWatchKey).then(() => {
+            debug('Something changed in ' + this.contentWatchKey)
             this._runDiscovery().then(()=> {
                 this._watchDiscovery()
             }).catch(debug)
