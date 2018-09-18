@@ -265,27 +265,26 @@ export default class AOP2P extends AORouterInterface {
 
     private _handleWatchAndGetIndexData(request: IAORouterRequest) {
         const { key, ethAddress }: AOP2P_Watch_AND_Get_IndexData_Data = request.data
+        debug(`[${request.id}] _handleWatchAndGetIndexData`)
         this.hyperdb.query(key).then((indexDataString: string) => {
-            this.parseIndexDataByEth({ indexDataString, ethAddress })
-                .then((indexData) => {
-                    // If it exists, send it back.
-                    request.respond(indexData)
-                }).catch(() => {
-                    // If it doens't, watch for change
-                    this.hyperdb.watch(key).then(() => {
-                        this.hyperdb.query(key).then((indexDataString: string) => {
-                            this.parseIndexDataByEth({ indexDataString, ethAddress })
-                                .then((indexData) => {
-                                    request.respond(indexData)
-                                }).catch(() => {
-                                    //Self call if there isn't a record for our own indexData
-                                    setTimeout(() => {
-                                        this._handleWatchAndGetIndexData(request)
-                                    }, 500);
-                                })
-                        }).catch(request.reject)
+            this.parseIndexDataByEth({ indexDataString, ethAddress }).then((indexData) => {
+                // If it exists, send it back.
+                request.respond(indexData)
+            }).catch(() => {
+                // If it doens't, watch for change
+                this.hyperdb.watch(key).then(() => {
+                    this.hyperdb.query(key).then((indexDataString: string) => {
+                        this.parseIndexDataByEth({ indexDataString, ethAddress }).then((indexData) => {
+                            request.respond(indexData)
+                        }).catch(() => {
+                            //Self call if there isn't a record for our own indexData
+                            setTimeout(() => {
+                                this._handleWatchAndGetIndexData(request)
+                            }, 500);
+                        })
                     }).catch(request.reject)
-                })
+                }).catch(request.reject)
+            })
         }).catch(request.reject)
     }
 
