@@ -433,16 +433,20 @@ export default class AOUserSession {
      * @param {AOContent} content
      */
     private _listenForContentDecryptionKey(content: AOContent) {
+        debug('starting to listen for content decryption keys')
         if (content.state !== AOContentState.PURCHASED) {
             debug(`Warning: _listenForContentDecryptionKey called with content state = ${content.state}, expected PURCHASED`)
             return null
         }
+        //TODO: make sure the below key route gets made with the static method out of p2p.
         const p2pWatchKeyRequest: AOP2P_Watch_AND_Get_IndexData_Data = {
             key: '/AOSpace/VOD/' + content.metadataDatKey + '/nodes/' + content.creatorId + '/' + content.fileDatKey + '/indexData',
             ethAddress: this.ethAddress
         }
+        debug(p2pWatchKeyRequest)
         this.router.send('/p2p/watchAndGetIndexData', p2pWatchKeyRequest).then((response: IAORouterMessage) => {
             const indexData: AOP2P_IndexDataRow = response.data
+            debug(indexData)
             if (indexData) {
                 let contentUpdateQuery: AODB_UserContentUpdate_Data = {
                     id: content.id,

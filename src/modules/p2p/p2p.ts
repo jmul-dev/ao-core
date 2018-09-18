@@ -282,7 +282,9 @@ export default class AOP2P extends AORouterInterface {
         const { key, ethAddress }: AOP2P_Watch_AND_Get_IndexData_Data = request.data
         debug(`[${request.id}] _handleWatchAndGetIndexData`)
         this.hyperdb.query(key).then((indexDataString: string) => {
+            debug(`[${indexDataString}] indexDataString`)
             this.parseIndexDataByEth({ indexDataString, ethAddress }).then((indexData) => {
+                debug(indexData)
                 // If it exists, send it back.
                 request.respond(indexData)
             }).catch(() => {
@@ -311,14 +313,20 @@ export default class AOP2P extends AORouterInterface {
             } catch (e) {
                 debug('Index Data was not able to be parsed')
                 indexData = {}
-            } finally {
-                if (!indexData[ethAddress]) {
-                    reject()
-                } else {
-                    let indexDataRow: AOP2P_IndexDataRow = indexData[ethAddress]
-                    resolve(indexDataRow)
+            }
+            let comparativeAddress = ethAddress.substring(2)
+            for (const address in indexData) {
+                if (indexData.hasOwnProperty(address)) {
+                    let currentAddress = address.substring(2).toLowerCase()
+                    if(comparativeAddress == currentAddress) {
+                        let indexDataRow: AOP2P_IndexDataRow = indexData[address];
+                        debug(indexDataRow)
+                        resolve(indexDataRow)
+                        return
+                    }
                 }
             }
+            reject()
         })
     }
 
