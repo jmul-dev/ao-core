@@ -692,7 +692,6 @@ export default class AOUserSession {
      * @param {AOContent} content 
      */
     private _handleContentStaked(content: AOContent) {
-        console.log('doing it! fucking doing it!')
         // 1. Import all the freaken files.
         const fileImportDatData:AODat_ImportSingle_Data = {
             key: content.fileDatKey
