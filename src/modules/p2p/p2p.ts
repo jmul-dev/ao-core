@@ -161,12 +161,22 @@ export default class AOP2P extends AORouterInterface {
      */
     private _handleStartDiscovery(request:IAORouterRequest) {
         debug(`hyperdb starting discovery...`)
-        this.contentWatchKey = this.dbPrefix + 'VOD/'; // /AOSpace/VOD/*
         this._runDiscovery().then(() => {
-            this.hyperdb.watch(this.contentWatchKey).then(this._runDiscovery.bind(this)).catch(debug)
+            this._watchDiscovery()
         }).catch(debug)
         request.respond({})
     }
+
+    //For the sake of clean recursive methods.
+    private _watchDiscovery() {
+        this.contentWatchKey = this.dbPrefix + 'VOD/'; // /AOSpace/VOD/*
+        this.hyperdb.watch(this.contentWatchKey).then(() => {
+            this._runDiscovery().then(()=> {
+                this._watchDiscovery()
+            }).catch(debug)
+        }).catch(debug)
+    }
+
     private _runDiscovery() {
         return new Promise((resolve, reject) => {
             let contentCompare = []
@@ -201,6 +211,8 @@ export default class AOP2P extends AORouterInterface {
                         const datKey = newMetadataDatKeys[i];
                         this.contentIngestion.addDiscoveredMetadataDatKeyToQueue(datKey)
                     }
+                } else {
+                    debug('No new meta dat keys found')
                 }
                 resolve()
             }).catch((err) => {
@@ -390,6 +402,7 @@ export default class AOP2P extends AORouterInterface {
         const nodeRoute = AOP2P.routeNodeRegistration(nodeRouteArgs)
 
         this.hyperdb.query(nodeRoute).then((indexDataString: string) => {
+            debug('Good query into finding '+ nodeRoute)
             let indexData: object = {}
             try {
                 indexData = JSON.parse(indexDataString)
@@ -402,8 +415,10 @@ export default class AOP2P extends AORouterInterface {
                 decryptionKey: encryptedDecryptionKey, // Encrypted key with publicKey
                 signature: encryptedKeySignature //
             }
+
             // 3. Let's write this thing into hyperdb
             this.hyperdb.insert(nodeRoute, indexData).then(() => {
+                debug('Wrote in sold decryption key')
                 request.respond({ success: true })
             }).catch(e => {
                 request.reject(e)
