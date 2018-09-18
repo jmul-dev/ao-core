@@ -216,9 +216,7 @@ export default class AOEth extends AORouterInterface {
                 }, (error, event) => {
                     if ( error ) {
                         debug(`BuyContent callback error: ${error.message}`)
-                        return;
                     }
-                    debug(`BuyContent callback, no error`, event)
                 }).on('data', event => {
                     const buyContentEvent: BuyContentEvent = event.returnValues
                     this.router.send('/core/content/incomingPurchase', buyContentEvent)
