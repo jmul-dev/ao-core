@@ -2,7 +2,8 @@ import { IGraphqlResolverContext } from '../../http';
 import AOContent, { AOContentState } from '../../models/AOContent';
 import { AODB_NetworkContentGet_Data, AODB_UserContentGet_Data } from '../../modules/db/db';
 import { IAORouterMessage } from "../../router/AORouter";
-
+import Debug from 'debug'
+const debug = Debug('ao:resolveContentRequest')
 
 interface IContentRequest_Args {
     metadataDatKey: string
@@ -14,7 +15,9 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
         let userContentQuery: AODB_UserContentGet_Data = {
             query: { id: args.metadataDatKey }
         }
+        debug('shiz is called', userContentQuery)
         context.router.send('/db/user/content/get', userContentQuery).then((response: IAORouterMessage) => {
+            debug('got back from user content db', response.data)
             if ( response.data && response.data.length > 0 ) {
                 // User already has this content! Pass through to processContent to try and bump through
                 // the process.
@@ -23,6 +26,7 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                 context.userSession.processContent(existingContent)
                 return null;
             }
+            debug('not found in user content')            
             // 2. Pull the Content from network content db
             let networkContentQuery: AODB_NetworkContentGet_Data = {
                 query: { _id: args.metadataDatKey },
@@ -33,6 +37,7 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                     reject(new Error(`No discovered content with id: ${args.metadataDatKey}`))
                     return;
                 }
+                debug('got from network')
                 // 3. Insert the content into user db (they have begun the content purchase/hosting process)
                 let updatedContent: AOContent = AOContent.fromObject({
                     ...response.data[0],
@@ -40,10 +45,14 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                     state: AOContentState.HOST_DISCOVERY,
                 })
                 context.router.send('/db/user/content/insert', updatedContent.toRawJson()).then((insertResponse: IAORouterMessage) => {
+                    debug('updated user content with stuff from network')
                     resolve(updatedContent)
                     context.userSession.processContent(updatedContent)
                 }).catch(reject)
             }).catch(reject)
-        }).catch(reject)
+        }).catch((e) => {
+            debug('problems from the user content get ay')
+            reject(e)
+        })
     })
 }
