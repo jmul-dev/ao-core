@@ -596,7 +596,7 @@ export default class AOUserSession {
     private _handleContentEncrypted(content: AOContent) {
         // 1. Initialize the new Dat within our temp folder created during encryption process
         const createDatData: AODat_Create_Data = {
-            newDatDir: content.getTempFolderPath()
+            newDatDir: content.getDatTempFolderPath()//Contextually aware of the dat's constraints to 'content' path
         }
         this.router.send('/dat/create', createDatData).then((datCreateResponse: IAORouterMessage) => {
             let newDatKey = datCreateResponse.data.key

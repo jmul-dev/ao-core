@@ -150,6 +150,11 @@ export default abstract class AOContent {
         return path.join('content','tmp', this.id)//Note, content is included here since dat works only inside of the content dir
     }
 
+    //This one is aware of the Dat context and won't add 'content'
+    public getDatTempFolderPath(): string {
+        return path.join('tmp', this.id)
+    }
+
     /**
      * Returns a json structure that can be safely saved to 
      * a metadata file (exludes any sensitive information).
