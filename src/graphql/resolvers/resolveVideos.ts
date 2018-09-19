@@ -25,6 +25,10 @@ export default (obj: any, args: IVideos_Args, context: IGraphqlResolverContext, 
                 aoContent.lastSeenContentHost = networkContent.lastSeenContentHost
                 aoContent.isNetworkContent = true
                 return aoContent
+            }).filter(content => {
+                // Filter out current user's content from this feed (so they dont see their own content
+                // showing up in the network content listing)
+                return content.creatorId !== context.userSession.ethAddress
             }).sort((a, b) => {
                 if (!b.lastSeenContentHost)
                     return -1;
