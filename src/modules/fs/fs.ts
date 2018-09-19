@@ -363,8 +363,10 @@ export default class AOFS extends AORouterInterface {
 
     _handleReencrypt(request: IAORouterRequest) {
         const requestData: IAOFS_Reencrypt_Data = request.data
-        const readStream = fs.createReadStream(requestData.originalPath)
-        const writeStream = fs.createWriteStream(requestData.finalPath)
+        const originalPath = path.resolve(this.storageLocation, requestData.originalPath)
+        const finalPath = path.resolve(this.storageLocation, requestData.finalPath)
+        const readStream = fs.createReadStream(originalPath)
+        const writeStream = fs.createWriteStream(finalPath)
         const newKey = this.newEncryptionKey()
         const encrypt = crypto.createCipher(this.encryptionAlgorithm, newKey)
         const decrypt = crypto.createDecipher(this.encryptionAlgorithm, requestData.decryptionKey)
