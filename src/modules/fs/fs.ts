@@ -383,6 +383,8 @@ export default class AOFS extends AORouterInterface {
                         })
                     }
                 })
+        }).on('error', (err) => {
+            debug(err)
         })
     }
     
