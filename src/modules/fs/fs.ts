@@ -373,10 +373,11 @@ export default class AOFS extends AORouterInterface {
         readStream.pipe(decrypt).pipe(encrypt).pipe(writeStream)
         .on('finish', () => {
             checksum.file(
-                requestData.finalPath,
+                finalPath,
                 {algorithm: this.checksumAlgorithm, encoding: this.checksumEncoding},
                 (err, encryptedHash) => {
                     if(err) {
+                        debug(err)
                         request.reject(err)
                     } else {
                         request.respond({
