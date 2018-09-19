@@ -17,6 +17,7 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
         }
         debug('shiz is called', userContentQuery)
         context.router.send('/db/user/content/get', userContentQuery).then((response: IAORouterMessage) => {
+            debug('got back from user content db', response.data)
             if ( response.data && response.data.length > 0 ) {
                 // User already has this content! Pass through to processContent to try and bump through
                 // the process.
@@ -25,7 +26,7 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                 context.userSession.processContent(existingContent)
                 return null;
             }
-            debug('not found in user content')
+            debug('not found in user content')            
             // 2. Pull the Content from network content db
             let networkContentQuery: AODB_NetworkContentGet_Data = {
                 query: { _id: args.metadataDatKey },
