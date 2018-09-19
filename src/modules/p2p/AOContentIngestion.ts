@@ -40,7 +40,7 @@ export default class AOContentIngestion {
             this.processingQueue.push(this._queueHandler.bind(this, metadataDatKey))
             this.datKeysInQueue.push(metadataDatKey)
         } else {
-            debug('Already added key to ingestion queue: ' + metadataDatKey)
+            //debug('Already added key to ingestion queue: ' + metadataDatKey)
         }
     }
 
