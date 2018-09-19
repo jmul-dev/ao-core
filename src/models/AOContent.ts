@@ -183,6 +183,7 @@ export default abstract class AOContent {
             'featuredImageUrl',
             'featuredImageName',
             'metadata',
+            'baseChallenge',
         ]
         let metadataJson = {}
         metadataJsonKeys.forEach(key => {
