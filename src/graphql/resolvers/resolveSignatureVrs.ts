@@ -6,5 +6,7 @@ import * as AOCrypto from '../../AOCrypto';
  * Converting a signature into { v, r, s } object
  */
 export default (obj: string, args: any, context: IGraphqlResolverContext, info: any) => {
-    return AOCrypto.vrsFromSignature( obj )
+    console.log(obj)
+    console.log(info)
+    return AOCrypto.vrsFromSignature( obj[info.fieldName] )
 }
