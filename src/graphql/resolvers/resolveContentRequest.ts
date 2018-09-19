@@ -50,6 +50,9 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                     context.userSession.processContent(updatedContent)
                 }).catch(reject)
             }).catch(reject)
-        }).catch(reject)
+        }).catch((e) => {
+            debug('problems from the user content get ay')
+            reject(e)
+        })
     })
 }
