@@ -147,7 +147,7 @@ export default abstract class AOContent {
     }
 
     public getTempFolderPath(): string {
-        return path.join('tmp', this.id)
+        return path.join('content','tmp', this.id)//Note, content is included here since dat works only inside of the content dir
     }
 
     /**
