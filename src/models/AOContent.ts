@@ -80,6 +80,7 @@ export default abstract class AOContent {
     public contentHostId?: string
     public state: string
     public stakeId: string
+    public purchaseId: string
     public nodeId: string
     public creatorId: string
     public contentType: AOContentType;
