@@ -162,7 +162,7 @@ export default class AOFS extends AORouterInterface {
                             //Grab the file checksum prior to encryption.
                             checksum.file(
                                 writePath,
-                                {algorith: this.checksumAlgorithm, encoding: this.checksumEncoding},
+                                {algorithm: this.checksumAlgorithm, encoding: this.checksumEncoding},
                                 (err, originalHash) => {
                                     if(err) {
                                         request.reject(err)
@@ -181,7 +181,7 @@ export default class AOFS extends AORouterInterface {
                                                     //Get the encrypted checksum
                                                     checksum.file(
                                                         writePath,
-                                                        {algorith: this.checksumAlgorithm, encoding: this.checksumEncoding},
+                                                        {algorithm: this.checksumAlgorithm, encoding: this.checksumEncoding},
                                                         (err, encryptedhash) => {
                                                             if(err) {
                                                                 request.reject(err)
