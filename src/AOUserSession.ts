@@ -90,9 +90,14 @@ export default class AOUserSession {
         // Incoming content resume
         if (!this.isListeningForIncomingContent) {
             this.isListeningForIncomingContent = true
-            this.router.on('/core/content/incomingPurchase', (message: IAORouterRequest) => {
-                const buyContentEvent: BuyContentEvent = message.data
-                this._handleIncomingContentPurchase(buyContentEvent)
+            this.router.on('/core/content/incomingPurchase', (request: IAORouterRequest) => {
+                const buyContentEvent: BuyContentEvent = request.data
+                this._handleIncomingContentPurchase(buyContentEvent).then(() => {
+                    request.respond({})
+                }).catch((error) => {
+                    debug(error)
+                    request.reject(error)
+                })
             })
         }
         // Updates p2p content timestamps periodically
@@ -203,46 +208,51 @@ export default class AOUserSession {
      * @param {BuyContentEvent} buyContentEvent
      */
     private _handleIncomingContentPurchase(buyContentEvent: BuyContentEvent) {
-        // 1. Get the corresponding content entry in user db
-        const contentQuery: AODB_UserContentGet_Data = {
-            query: { contentHostId: buyContentEvent.contentHostId }
-        }
-        this.router.send('/db/user/content/get', contentQuery).then(async (response: IAORouterMessage) => {
-            if (!response.data || response.data.length !== 1) {
-                debug(`Attempt to handle incoming purchase but did not find matching content in user db:`, buyContentEvent)
-                return;
+        return new Promise((resolve,reject) => {
+            // 1. Get the corresponding content entry in user db
+            const contentQuery: AODB_UserContentGet_Data = {
+                query: { contentHostId: buyContentEvent.contentHostId }
             }
-            const userContent: AOContent = AOContent.fromObject(response.data[0])
-            // 2. TODO: check to see if we have already handled this purchase transaction 
-            // (ie: wrote decryption key to discovery already)
-            debug(`Handling incoming purchase, content[${userContent.id}]->buyer[${buyContentEvent.buyer}]`)
-            try {
-                // 3. Generate the encryption key according to spec
-                const contentDecryptParams = {
-                    contentDecryptionKey: userContent.decryptionKey,
-                    contentRequesterPublicKey: buyContentEvent.publicKey,
-                    contentOwnersPrivateKey: this.identity.privateKey,
+            this.router.send('/db/user/content/get', contentQuery).then(async (response: IAORouterMessage) => {
+                if (!response.data || response.data.length !== 1) {
+                    debug(`Attempt to handle incoming purchase but did not find matching content in user db:`, buyContentEvent)
+                    return;
                 }
-                const { encryptedDecryptionKey, encryptedDecryptionKeySignature } = await AOCrypto.generateContentEncryptionKeyForUser(contentDecryptParams)
-                // 4. Handoff to discovery
-                const sendDecryptionKeyMessage: AOP2P_Write_Decryption_Key_Data = {
-                    content: userContent,
-                    buyerEthAddress: buyContentEvent.buyer,
-                    encryptedDecryptionKey,
-                    encryptedKeySignature: encryptedDecryptionKeySignature
-                }
-                this.router.send('/p2p/soldKey', sendDecryptionKeyMessage).then((response: IAORouterMessage) => {
-                    if (response.data && response.data.success) {
-                        debug(`Succesfully handled content purchase with: contentHostId[${buyContentEvent.contentHostId}], purchaseId[${buyContentEvent.purchaseId}]`)
-                    } else {
-                        debug(`Failed to handle content purhcase, writing to discovery resolved without success`)
+                const userContent: AOContent = AOContent.fromObject(response.data[0])
+                // 2. TODO: check to see if we have already handled this purchase transaction 
+                // (ie: wrote decryption key to discovery already)
+                debug(`Handling incoming purchase, content[${userContent.id}]->buyer[${buyContentEvent.buyer}]`)
+                try {
+                    // 3. Generate the encryption key according to spec
+                    const contentDecryptParams = {
+                        contentDecryptionKey: userContent.decryptionKey,
+                        contentRequesterPublicKey: buyContentEvent.publicKey,
+                        contentOwnersPrivateKey: this.identity.privateKey,
                     }
-                }).catch(error => {
-                    debug(`Failed to handle content purhcase`, error)
-                })   
-            } catch (error) {
-                debug(`Error generating content decryption key for user: ${error.message}`, error)
-            }            
+                    const { encryptedDecryptionKey, encryptedDecryptionKeySignature } = await AOCrypto.generateContentEncryptionKeyForUser(contentDecryptParams)
+                    // 4. Handoff to discovery
+                    const sendDecryptionKeyMessage: AOP2P_Write_Decryption_Key_Data = {
+                        content: userContent,
+                        buyerEthAddress: buyContentEvent.buyer,
+                        encryptedDecryptionKey,
+                        encryptedKeySignature: encryptedDecryptionKeySignature
+                    }
+                    this.router.send('/p2p/soldKey', sendDecryptionKeyMessage).then((response: IAORouterMessage) => {
+                        if (response.data && response.data.success) {
+                            debug(`Succesfully handled content purchase with: contentHostId[${buyContentEvent.contentHostId}], purchaseId[${buyContentEvent.purchaseId}]`)
+                        } else {
+                            debug(`Failed to handle content purhcase, writing to discovery resolved without success`)
+                        }
+                        resolve()
+                    }).catch(error => {
+                        debug(`Failed to handle content purhcase`, error)
+                        reject(error)
+                    })   
+                } catch (error) {
+                    debug(`Error generating content decryption key for user: ${error.message}`, error)
+                    reject(error)
+                }            
+            })
         })
     }
 
