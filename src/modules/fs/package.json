@@ -16,7 +16,9 @@
             "/fs/mkdir",
             "/fs/move",
             "/fs/unlink",
-            "/fs/stats"
+            "/fs/stats",
+            "/fs/decryptChecksum",
+            "/fs/reencrypt"
         ],
         "activationEvents": [
             "/fs/readStream",

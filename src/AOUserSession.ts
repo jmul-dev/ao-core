@@ -491,7 +491,8 @@ export default class AOUserSession {
             }
             this.router.send('/fs/decryptChecksum', decryptChecksumData).then((decryptChecksumResponse: IAORouterMessage) => {
                 // 3. Check that the decrypted file's checksum actually matches the original content checksum                
-                let checksum = decryptChecksumResponse.data[0].checksum
+                debug(decryptChecksumResponse)
+                let checksum = decryptChecksumResponse.data.checksum
                 let nextContentState = AOContentState.VERIFIED
                 if (checksum != content.fileChecksum) {
                     nextContentState = AOContentState.VERIFICATION_FAILED
