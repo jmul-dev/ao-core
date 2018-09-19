@@ -372,7 +372,7 @@ export default class AOFS extends AORouterInterface {
         .on('finish', () => {
             checksum.file(
                 requestData.finalPath,
-                {algorith: this.checksumAlgorithm, encoding: this.checksumEncoding},
+                {algorithm: this.checksumAlgorithm, encoding: this.checksumEncoding},
                 (err, encryptedHash) => {
                     if(err) {
                         request.reject(err)
