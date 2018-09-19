@@ -23,6 +23,7 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                 context.userSession.processContent(existingContent)
                 return null;
             }
+            console.log('not found in user content')
             // 2. Pull the Content from network content db
             let networkContentQuery: AODB_NetworkContentGet_Data = {
                 query: { _id: args.metadataDatKey },
@@ -33,6 +34,7 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                     reject(new Error(`No discovered content with id: ${args.metadataDatKey}`))
                     return;
                 }
+                console.log('got from network')
                 // 3. Insert the content into user db (they have begun the content purchase/hosting process)
                 let updatedContent: AOContent = AOContent.fromObject({
                     ...response.data[0],
@@ -40,6 +42,7 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
                     state: AOContentState.HOST_DISCOVERY,
                 })
                 context.router.send('/db/user/content/insert', updatedContent.toRawJson()).then((insertResponse: IAORouterMessage) => {
+                    console.log('updated user content with stuff from network')
                     resolve(updatedContent)
                     context.userSession.processContent(updatedContent)
                 }).catch(reject)
