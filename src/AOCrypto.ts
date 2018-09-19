@@ -66,11 +66,9 @@ export function generateBaseChallengeSignature({baseChallenge, privateKey}) {
  */
 export function decryptMessage({message, privateKey}): Promise<any> {
     return new Promise(async (resolve, reject) => {
-        console.log('Got the stuff')
         try {
             const cipherObject = EthCrypto.cipher.parse(message)
             const decryptedMessage = await EthCrypto.decryptWithPrivateKey(privateKey, cipherObject)
-            console.log(decryptedMessage)
             resolve(decryptedMessage)
         } catch (error) {
             reject(error)
