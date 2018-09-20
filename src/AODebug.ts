@@ -13,7 +13,7 @@ export default (prefix:string):any => {
         hash = ((hash << 5) - hash) + prefix.charCodeAt(i);
         hash |= 0; // Convert to 32bit integer
     }
-    let color = colors[Math.abs(hash) % colors.length];
+    let color = 'bold ' + colors[Math.abs(hash) % colors.length];
 
     const colorLevels = {
         levels: {},
@@ -30,14 +30,13 @@ export default (prefix:string):any => {
     let debug = winston.createLogger({
         levels: colorLevels.levels,
         format: combine(
-            colorize(),
             label({label: prefix}),
             timestamp(),
             debugFormat
         ),
         transports: [
             new transports.File({ filename: path.join('data','debug.log'), level: prefix }),
-            new transports.Console({level: prefix, format: debugFormat })
+            new transports.Console({level: prefix, format: combine(colorize(), debugFormat) })
         ]
     })
     return (logMessage) => {
@@ -58,6 +57,6 @@ export default (prefix:string):any => {
 }
 
 const getColors = () => {
-    let colors = ['black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white', 'gray', 'grey'];
+    let colors = ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white greenBG', 'white yellowBG', 'white blueBG', 'white magentaBG', 'white cyanBG', 'black whiteBG'];
     return colors
 }

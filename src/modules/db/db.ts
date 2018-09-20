@@ -1,4 +1,4 @@
-import Debug from 'debug';
+import Debug from '../../AODebug'
 import Fuse from 'fuse.js';
 import Datastore from 'nedb';
 import path from 'path';

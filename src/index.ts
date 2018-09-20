@@ -3,13 +3,11 @@ import { EVENT_LOG, DATA, DATA_TYPES } from './constants';
 import AORouter from './router/AORouter';
 import { IAORouterRequest } from './router/AORouterInterface';
 import Http from './http'
-//import Debug from 'debug';
 import { EventEmitter } from 'events';
 import path from 'path';
 import AOUserSession from './AOUserSession';
 import Debug from './AODebug'
 const debug = Debug('ao:core');
-debug('super testing stuff')
 const error = Debug('ao:core:error');
 
 

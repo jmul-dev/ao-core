@@ -1,6 +1,6 @@
 import { ChildProcess, spawn } from "child_process";
 import path from 'path';
-import Debug from 'debug';
+import Debug from '../AODebug'
 import { ReadStream, WriteStream } from "fs";
 import fs from 'fs';
 import ffprobeStatic from 'ffprobe-static';
