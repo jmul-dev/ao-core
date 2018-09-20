@@ -48,13 +48,16 @@
     "graphql-tools": "^3.0.2",
     "hyperdb": "^3.5.0",
     "jsonschema": "^1.2.4",
+    "logform": "^1.10.0",
     "md5": "^2.2.1",
     "minimist": "^1.2.0",
     "nedb": "^1.8.0",
     "queue": "^4.5.0",
     "scrypt": "git://github.com/ryuheiyokokawa/node-scrypt.git#ao",
+    "supports-color": "^5.5.0",
     "web3": "^1.0.0-beta.33",
-    "web3-legacy": "git://github.com/nharlow89/web3.js.git#legacy"
+    "web3-legacy": "git://github.com/nharlow89/web3.js.git#legacy",
+    "winston": "^3.1.0"
   },
   "devDependencies": {
     "@types/chai": "^4.1.4",
