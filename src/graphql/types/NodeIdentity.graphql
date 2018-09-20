@@ -4,6 +4,7 @@ type NodeIdentity {
     # Universal
     id: ID    
     publicKey: String
+    publicAddress: String
     ethAddress: ID
     datProfile: ID
     datStorage: ID

@@ -6,6 +6,7 @@ export default (obj: any, args: any, context: IGraphqlResolverContext, info: any
         resolve({
             id: context.userSession.id,
             publicKey: context.userSession.publicKey,
+            publicAddress: context.userSession.id,
             ethAddress: context.userSession.ethAddress,
         })
     })
