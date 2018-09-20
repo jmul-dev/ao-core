@@ -7,7 +7,7 @@ export const debugLogFile = 'debug.log'
 
 export default (prefix:string):any => {
 
-    let colors = getColors()
+    let colors = ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white greenBG', 'white yellowBG', 'white blueBG', 'white magentaBG', 'white cyanBG', 'black whiteBG'];
     let hash = 0;
     for (let i = 0; i < prefix.length; i++) {
         hash = ((hash << 5) - hash) + prefix.charCodeAt(i);
@@ -54,9 +54,4 @@ export default (prefix:string):any => {
         })
     }
     
-}
-
-const getColors = () => {
-    let colors = ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white greenBG', 'white yellowBG', 'white blueBG', 'white magentaBG', 'white cyanBG', 'black whiteBG'];
-    return colors
 }
