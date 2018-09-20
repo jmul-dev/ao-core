@@ -40,6 +40,7 @@ export interface BuyContentEvent {
     contentHostId: string;
     paidNetworkAmount: number;
     publicKey: string;
+    publicAddress: string;
     createdOnTimestamp: number;
 }
 
