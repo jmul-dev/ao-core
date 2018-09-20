@@ -577,7 +577,7 @@ export default class AOUserSession {
                             $set: {
                                 "state": AOContentState.ENCRYPTED,
                                 "decryptionKey": newDecrytionKey,
-                                "encChallenge": AOCrypto.generateContentEncChallenge({encryptedFileChecksum: newEncryptedChecksum}),
+                                "encChallenge": AOCrypto.generateContentEncChallenge({encryptedFileChecksum: newEncryptedChecksum, address: this.id }),
                                 "baseChallengeSignature": AOCrypto.generateBaseChallengeSignature({baseChallenge: content.baseChallenge, privateKey: this.identity.privateKey}),
                             }
                         }
