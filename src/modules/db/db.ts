@@ -457,9 +457,12 @@ export default class AODB extends AORouterInterface {
                         distance: 100,
                         maxPatternLength: 32,
                         minMatchCharLength: 1,
-                        keys: [
+                        keys: requestData.contentOnly ? [
                             "title",
                             "description"
+                        ] : [
+                            "content.title",
+                            "content.description"
                         ]
                     }
                     const fuse = new Fuse(results, fuseOptions)
