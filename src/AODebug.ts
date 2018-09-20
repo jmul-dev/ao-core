@@ -2,8 +2,8 @@
 import path from 'path'
 import winston, { format, transports } from 'winston'
 
-//import { Colorizer } from 'logform';
 const { combine, timestamp, label, colorize } = format
+export const debugLogFile = 'debug.log'
 
 export default (prefix:string):any => {
 
@@ -35,7 +35,7 @@ export default (prefix:string):any => {
             debugFormat
         ),
         transports: [
-            new transports.File({ filename: path.join('data','debug.log'), level: prefix }),
+            new transports.File({ filename: path.join('data', debugLogFile), level: prefix }),
             new transports.Console({level: prefix, format: combine(colorize(), debugFormat) })
         ]
     })
