@@ -143,10 +143,28 @@ export default class AODB extends AORouterInterface {
     private _setupCoreDbs(): void {
         this.db = {
             logs: new Datastore({
-                inMemoryOnly: true,
-                // filename: path.resolve(this.storageLocation, 'logs.db.json'),
-                // autoload: true,
-                // onload: this._handleCoreDbLoadError.bind(this)
+                //inMemoryOnly: true,
+                filename: path.resolve(this.storageLocation, 'logs.db.json'),
+                autoload: true,
+                onload: (error: Error) => {
+                    if(error) {
+                        debug('Error starting Logs Datastore: ',error)
+                    } else {
+                        //Removes crud from 5 days or older
+                        let d = new Date()
+                        d.setDate(d.getDate() - 5 )
+                        let removeQuery = {
+                            "createdAt.$$date": { $lt: d.getTime() }
+                        }
+                        this.db.logs.remove(removeQuery, {multi: true}, (err, numRemoved) => {
+                            if(err) {
+                                debug('Logs DB error: ', err)
+                            } else {
+                                debug('Logs DB removed '+ numRemoved+ ' records that were 5 days or olders')
+                            }
+                        })
+                    }
+                }
             }),
             settings: new Datastore({
                 filename: path.resolve(this.storageLocation, 'settings.db.json'),

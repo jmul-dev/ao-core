@@ -49,7 +49,11 @@ export default class Core extends EventEmitter {
         this.http = new Http(this.coreRouter.router, this.options, this.userSession)
         process.stdin.resume();  // Hack to keep the core processes running
         process.on('exit', () => {
+            this.coreRouter.shutdown()//Ensure that all child processes are killed
             debug('Core process exiting...')
+        })
+        process.on('SIGINT', () => {
+            process.exit()
         })
     }
     

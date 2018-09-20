@@ -350,9 +350,21 @@ export default class AORouter extends AORouterCoreProcessInterface {
         })
         entryProcess.on('exit', (code?: number) => {
             debug(`[${entry.name}] process: exit`)
-            this.removeProcessInstanceFromEntry(entry.name, entryProcess)
+            // Currently, if any of the major modules die, our entire system is set to shutdown.
+            this.shutdown()
+            process.exit()//Kill core process on entryProcess exit
+            //this.removeProcessInstanceFromEntry(entry.name, entryProcess)
             // TODO: cleanup references to this instance, notify anyone if necessary
         })
+        //Catch on this main process getting killed by Ctrl+C
+        process.on('SIGINT', () => {
+            entryProcess.kill()
+        })
+        //Catch on this main process exiting
+        process.on('SIGTERM', () => {
+            entryProcess.kill()
+        })
+
         entryProcess.on('message', (message: IAORouterMessage) => {
             this.incomingMessageRouter(message, entry, entryProcess)
         })
