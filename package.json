@@ -55,7 +55,8 @@
     "queue": "^4.5.0",
     "scrypt": "git://github.com/ryuheiyokokawa/node-scrypt.git#ao",
     "web3": "^1.0.0-beta.33",
-    "web3-legacy": "git://github.com/nharlow89/web3.js.git#legacy"
+    "web3-legacy": "git://github.com/nharlow89/web3.js.git#legacy",
+    "yargs": "^12.0.2"
   },
   "devDependencies": {
     "@types/chai": "^4.1.4",
