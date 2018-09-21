@@ -3,6 +3,7 @@ import Debug from 'debug';
 import ffprobe from 'ffprobe';
 import fs, { ReadStream } from 'fs';
 import fsExtra from 'fs-extra';
+import archiver from 'archiver'
 import checksum from 'checksum';
 import md5 from 'md5';
 import path from 'path';
@@ -74,6 +75,10 @@ export interface IAOFS_Reencrypt_Data {
     finalPath: string;
 }
 
+export interface IAOFS_DataExport_Data {
+    outputPath: string;
+}
+
 
 /**
  * AOFS
@@ -105,6 +110,7 @@ export default class AOFS extends AORouterInterface {
         //Specific usecase methods
         this.router.on('/fs/decryptChecksum', this._handleDecryptChecksum.bind(this))
         this.router.on('/fs/reencrypt', this._handleReencrypt.bind(this) )
+        this.router.on('/fs/dataExport', this._handleDataExport.bind(this))
         debug(`started`)
     }
 
@@ -389,6 +395,48 @@ export default class AOFS extends AORouterInterface {
         }).on('error', (err) => {
             debug(err)
         })
+    }
+
+    _handleDataExport(request: IAORouterRequest) {
+        const { outputPath }: IAOFS_DataExport_Data = request.data
+        const exportFilename = md5( new Date() ) + '-export'
+        const exportFullPath = path.join(outputPath, exportFilename )
+        //Setup output
+        const output = fs.createWriteStream( exportFullPath )
+        //Setup arhiver
+        const archive = archiver ('zip', {
+            zlib: { level: 9 }
+        })
+
+        //Define output events
+        output.on('close', () => {
+            debug(archive.pointer() + ' total bytes zipped')
+            debug('Data export complete')
+            request.respond({exportPath: exportFullPath})
+        })
+        output.on('end',() => {
+            debug('Export data fully fed')
+        })
+
+        //Setup archive events
+        archive.on('warning', (err) => {
+            if (err.code === 'ENOENT') {
+                debug(err)
+            } else {
+                // throw error
+                request.reject(err)
+                return
+            }
+        })        
+        archive.on('error', (err) => {
+            request.reject(err)
+        })
+
+        //Feed the data through
+        archive.pipe(output)
+        archive.directory(this.storageLocation, false)
+        archive.finalize()
+
     }
     
 }
