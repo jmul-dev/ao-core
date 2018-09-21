@@ -5,7 +5,7 @@ import { AODB_SettingsUpdate_Data } from "../../modules/db/db";
 import { IAORouterMessage } from "../../router/AORouter";
 const debug = Debug('ao:graphQL:exportData')
 
-interface IContentExport_Args {
+export interface IContentExport_Args {
     inputs: {
         exportPath: string
     }

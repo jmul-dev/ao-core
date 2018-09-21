@@ -2,11 +2,12 @@
 import { EVENT_LOG, DATA, DATA_TYPES } from './constants';
 import AORouter from './router/AORouter';
 import { IAORouterRequest } from './router/AORouterInterface';
-import Http from './http'
+import Http, { IGraphqlResolverContext } from './http'
 import Debug from 'debug';
 import { EventEmitter } from 'events';
 import path from 'path';
 import AOUserSession from './AOUserSession';
+import exportDataResolver, { IContentExport_Args } from './graphql/resolvers/resolveExportData'
 const debug = Debug('ao:core');
 const error = Debug('ao:core:error');
 
@@ -18,6 +19,7 @@ export interface ICoreOptions {
     httpOrigin: string;
     storageLocation: string;
     nodeBin: string;
+    exportData: string;
 }
 
 export interface AOCore_Log_Data {
@@ -32,6 +34,7 @@ export default class Core extends EventEmitter {
         httpOrigin: 'http://localhost:3000',
         storageLocation: path.resolve(__dirname, '..', 'data'),
         nodeBin: process.execPath,
+        exportData: '', // Takes a path for where the data is exported to
     }
     public options: ICoreOptions;
     private coreRouter: AORouter;
@@ -43,10 +46,14 @@ export default class Core extends EventEmitter {
         this.options = Object.assign({}, Core.DEFAULT_OPTIONS, args)
         debug(this.options)
         this.coreRouter = new AORouter(this.options)
-        this.coreRouter.init()
-        this.coreRouter.router.on('/core/log', this._handleLog.bind(this))
-        this.userSession = new AOUserSession( this.coreRouter.router )
-        this.http = new Http(this.coreRouter.router, this.options, this.userSession)
+        this.coreRouter.init().then(() => {            
+            this.coreRouter.router.on('/core/log', this._handleLog.bind(this))
+            this.userSession = new AOUserSession( this.coreRouter.router )
+            this.http = new Http(this.coreRouter.router, this.options, this.userSession)
+
+            //Used to handle things like data exports and other command line only options
+            this._handleCommandline(args)
+        }).catch(debug)
         process.stdin.resume();  // Hack to keep the core processes running
         process.on('exit', () => {
             debug('Core process exiting...')
@@ -67,6 +74,30 @@ export default class Core extends EventEmitter {
             createdAt: Date.now()
         }).then(request.respond).catch(request.reject)
         this.emit('log', {message: data.message})
+    }
+
+    _handleCommandline(args:ICoreOptions) {
+        const { exportData } = args
+        const context:IGraphqlResolverContext = {
+            router: this.coreRouter.router,
+            options: this.options,
+            userSession: this.userSession
+        }
+        if(exportData.length) {
+            let empty:object = {}
+            const exportArgs: IContentExport_Args = {
+                inputs: {
+                    exportPath: exportData
+                }
+            }
+            exportDataResolver(empty, exportArgs, context, empty).then(() => {
+                debug('Export complete. Export should be at: ' + exportData)
+            }).catch((error) => {
+                error('Bad news, export failed')
+                error(error)
+            })
+        }
+        
     }
   
     shutdownWithError(err) {

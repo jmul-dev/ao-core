@@ -7,6 +7,7 @@ import ffprobeStatic from 'ffprobe-static';
 import AORouterCoreProcessPretender from "./AORouterCoreProcessPretender";
 import { AORouterCoreProcessInterface } from "./AORouterInterface";
 import { ICoreOptions } from "../index";
+import { resolve } from "dns";
 const debug = Debug('ao:router');
 const packageJson = require('../../package.json');
 // Core modules
@@ -115,11 +116,15 @@ export default class AORouter extends AORouterCoreProcessInterface {
     }
 
     public init() {
-        this.registerCoreProcesses()
-        this.spawnCoreProcesses()
-        this.initialized = true
-        // this.registerExtensions()   
-        this._printRouterState()
+        return new Promise((resolve,reject) => {
+            this.registerCoreProcesses()
+            this.spawnCoreProcesses().then(() => {
+                resolve()
+            }).catch(reject)
+            this.initialized = true //Should this be in the above promise?
+            // this.registerExtensions()   
+            this._printRouterState()
+        })
     }
 
     private incomingMessageRouter(message: IAORouterMessage, from: IRegistryEntry, fromProcess: Process) {
@@ -308,61 +313,71 @@ export default class AORouter extends AORouterCoreProcessInterface {
     }
 
     private spawnCoreProcesses() {
-        Object.keys(this.registry).forEach((entryName: string) => {
-            const registryEntry: IRegistryEntry = this.registry[entryName]
-            if (registryEntry.AO.runUnderCore) {
-                this.bindCoreProcess(registryEntry)
-            } else if (!registryEntry.AO.activationEvents || registryEntry.AO.activationEvents.length === 0) {
-                this.spawnProcessForEntry(registryEntry)
+        return new Promise((resolve,reject) => {
+            let spawns = []
+            Object.keys(this.registry).forEach((entryName: string) => {
+                const registryEntry: IRegistryEntry = this.registry[entryName]
+                if (registryEntry.AO.runUnderCore) {
+                    spawns.push( this.bindCoreProcess(registryEntry) )
+                } else if (!registryEntry.AO.activationEvents || registryEntry.AO.activationEvents.length === 0) {
+                    spawns.push( this.spawnProcessForEntry(registryEntry) )
+                }
+            })
+            Promise.all(spawns).then(() => {
+                resolve()
+            }).catch(reject)
+        })
+    }
+
+    private bindCoreProcess(entry: IRegistryEntry): Promise<AORouterCoreProcessPretender> {
+        return new Promise((resolve,reject) => {
+            let coreEntryProcess: AORouterCoreProcessPretender = this.router.process
+            coreEntryProcess.on('exit', this.shutdown.bind(this))
+            coreEntryProcess.on('message', (message: IAORouterMessage) => {
+                this.incomingMessageRouter(message, entry, coreEntryProcess)
+            })
+            this.addProcessIntanceToEntry(entry.name, coreEntryProcess)
+            resolve(coreEntryProcess)
+        })
+    }
+
+    private spawnProcessForEntry(entry: IRegistryEntry): Promise<ChildProcess | null> {
+        return new Promise((resolve,reject) => {
+            let processLocation = path.join(__dirname, 'modules', entry.bin);
+            processLocation = processLocation.replace('app.asar', 'app.asar.unpacked');  // Sry, but if running within electron the paths are off
+            debug(`Attempting to spawn process ${entry.name} at: ${processLocation}`)
+            const processArgs = [
+                processLocation,
+                '--storageLocation', this.args.storageLocation,
+                '--httpOrigin', this.args.httpOrigin,
+                '--coreOrigin', this.args.coreOrigin,
+                '--corePort', `${this.args.corePort}`,
+                '--ffprobeBin', ffprobeStatic.path,
+                '--ao-core'
+            ]
+            let entryProcess: ChildProcess = spawn(this.args.nodeBin, processArgs, {
+                stdio: ['ipc', 'inherit', 'inherit', 'pipe', 'pipe'],
+            })
+            entryProcess.on('error', (err) => {
+                debug(`[${entry.name}] process: error`, err.message)
+                // TODO: handle err, log or something
+            })
+            entryProcess.on('exit', (code?: number) => {
+                debug(`[${entry.name}] process: exit`)
+                this.removeProcessInstanceFromEntry(entry.name, entryProcess)
+                // TODO: cleanup references to this instance, notify anyone if necessary
+            })
+            entryProcess.on('message', (message: IAORouterMessage) => {
+                this.incomingMessageRouter(message, entry, entryProcess)
+            })
+            if (entryProcess.pid) {
+                this.addProcessIntanceToEntry(entry.name, entryProcess)
+                resolve(entryProcess)
+            } else {
+                debug(new Error('Could not spawn process: ' + entry.name))
+                resolve(null)
             }
         })
-    }
-
-    private bindCoreProcess(entry: IRegistryEntry): AORouterCoreProcessPretender {
-        let coreEntryProcess: AORouterCoreProcessPretender = this.router.process
-        coreEntryProcess.on('exit', this.shutdown.bind(this))
-        coreEntryProcess.on('message', (message: IAORouterMessage) => {
-            this.incomingMessageRouter(message, entry, coreEntryProcess)
-        })
-        this.addProcessIntanceToEntry(entry.name, coreEntryProcess)
-        return coreEntryProcess
-    }
-
-    private spawnProcessForEntry(entry: IRegistryEntry): ChildProcess | null {
-        let processLocation = path.join(__dirname, 'modules', entry.bin);
-        processLocation = processLocation.replace('app.asar', 'app.asar.unpacked');  // Sry, but if running within electron the paths are off
-        debug(`Attempting to spawn process ${entry.name} at: ${processLocation}`)
-        const processArgs = [
-            processLocation,
-            '--storageLocation', this.args.storageLocation,
-            '--httpOrigin', this.args.httpOrigin,
-            '--coreOrigin', this.args.coreOrigin,
-            '--corePort', `${this.args.corePort}`,
-            '--ffprobeBin', ffprobeStatic.path,
-            '--ao-core'
-        ]
-        let entryProcess: ChildProcess = spawn(this.args.nodeBin, processArgs, {
-            stdio: ['ipc', 'inherit', 'inherit', 'pipe', 'pipe'],
-        })
-        entryProcess.on('error', (err) => {
-            debug(`[${entry.name}] process: error`, err.message)
-            // TODO: handle err, log or something
-        })
-        entryProcess.on('exit', (code?: number) => {
-            debug(`[${entry.name}] process: exit`)
-            this.removeProcessInstanceFromEntry(entry.name, entryProcess)
-            // TODO: cleanup references to this instance, notify anyone if necessary
-        })
-        entryProcess.on('message', (message: IAORouterMessage) => {
-            this.incomingMessageRouter(message, entry, entryProcess)
-        })
-        if (entryProcess.pid) {
-            this.addProcessIntanceToEntry(entry.name, entryProcess)
-            return entryProcess
-        } else {
-            debug(new Error('Could not spawn process: ' + entry.name))
-            return null
-        }
     }
 
     private addProcessIntanceToEntry(entryName: string, processInstance: Process) {

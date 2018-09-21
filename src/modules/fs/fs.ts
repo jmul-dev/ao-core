@@ -398,6 +398,7 @@ export default class AOFS extends AORouterInterface {
     }
 
     _handleDataExport(request: IAORouterRequest) {
+        debug('Started Data Export Process')
         const { outputPath }: IAOFS_DataExport_Data = request.data
         const exportFilename = md5( new Date() ) + '-export'
         const exportFullPath = path.join(outputPath, exportFilename )

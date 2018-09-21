@@ -39,6 +39,17 @@ const argv = require('yargs')
             return fsExtra.pathExistsSync(arg) ? arg : Core.DEFAULT_OPTIONS.nodeBin
         }
     })
+    .option('exportData', {
+        description: 'Exports a data to a defined path',
+        type: 'string',
+        coerce: (arg) => {
+            if(fsExtra.pathExistsSync(arg)) {
+                return arg
+            } else {
+                throw new Error('Path does not exist.  Please specify a place that does exist.')
+            }
+        }
+    })
     .default(Core.DEFAULT_OPTIONS)
     .argv
 
