@@ -46,7 +46,8 @@ const argv = require('yargs')
             if(fsExtra.pathExistsSync(arg)) {
                 return arg
             } else {
-                throw new Error('Path does not exist.  Please specify a place that does exist.')
+                console.log('Path does not exist.  Please specify a place that does exist.')
+                return ''
             }
         }
     })

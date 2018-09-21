@@ -91,7 +91,7 @@ export default class Core extends EventEmitter {
                 }
             }
             exportDataResolver(empty, exportArgs, context, empty).then(() => {
-                debug('Export complete. Export should be at: ' + exportData)
+                debug('Export started. Export should be at: ' + exportData)
             }).catch((error) => {
                 error('Bad news, export failed')
                 error(error)
