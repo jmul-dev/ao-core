@@ -8,14 +8,17 @@ const debug = Debug('ao:graphQL:exportData')
 export interface IContentExport_Args {
     inputs: {
         exportPath: string
+        commandLine?: boolean
     }
 }
 
 export default (obj:any, args: IContentExport_Args, context: IGraphqlResolverContext, info:any ) => {
     return new Promise((resolve,reject) => {
         debug(context.router)
-        // 0. Resolve right away
-        resolve()
+        // 0. Resolve right away if not command line
+        if(!args.inputs.commandLine) {
+            resolve()
+        }
         const exportPath = args.inputs.exportPath
         // 1. Start the zipping process
         const dataExportData: IAOFS_DataExport_Data = { outputPath: exportPath }
@@ -28,6 +31,9 @@ export default (obj:any, args: IContentExport_Args, context: IGraphqlResolverCon
                 }
                 context.router.send('/db/settings/update', storeExportInDB).then(() => {
                     debug('Export path is: ' + message.data.exportPath)
+                    if(args.inputs.commandLine) {
+                        resolve()
+                    }
                 }).catch(debug)
             } else {
                 debug('No Export Path returned from dataExport')

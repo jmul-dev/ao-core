@@ -87,7 +87,8 @@ export default class Core extends EventEmitter {
             let empty:object = {}
             const exportArgs: IContentExport_Args = {
                 inputs: {
-                    exportPath: exportData
+                    exportPath: exportData,
+                    commandLine: true
                 }
             }
             exportDataResolver(empty, exportArgs, context, empty).then(() => {
