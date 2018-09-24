@@ -13,11 +13,13 @@ export interface IContentExport_Args {
 
 export default (obj:any, args: IContentExport_Args, context: IGraphqlResolverContext, info:any ) => {
     return new Promise((resolve,reject) => {
+        debug(context.router)
         // 0. Resolve right away
         resolve()
         const exportPath = args.inputs.exportPath
         // 1. Start the zipping process
         const dataExportData: IAOFS_DataExport_Data = { outputPath: exportPath }
+        
         context.router.send('/fs/dataExport', dataExportData).then((message:IAORouterMessage) => {
             if(message.data.exportPath) {
                 // 4. Mark last export location in settings

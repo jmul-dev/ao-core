@@ -161,7 +161,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
             this.messageCount = 1
         }
         const event = incomingMessage.event
-        return new Promise((resolve, reject) => {
+        return new Promise( async (resolve, reject) => {
             // 0. For context, router passes along user id (ethAddress)
             if (incomingMessage.event == '/db/user/init') {
                 this.activeEthAddress = incomingMessage.data.ethAddress
@@ -186,15 +186,24 @@ export default class AORouter extends AORouterCoreProcessInterface {
             const receivingRegistryEntry = this.registry[entryNameThatCanHandleEvent]
             const existingProcesses = this.registryEntryNameToProcessInstances[entryNameThatCanHandleEvent]
             let receivingProcess: Process = null
+
+            // 3a. If this is an activation event for the entry, lets spawn another instance
             if (receivingRegistryEntry.AO.activationEvents && receivingRegistryEntry.AO.activationEvents.indexOf(event) > -1) {
-                // 3a. If this is an activation event for the entry, lets spawn another instance
-                receivingProcess = this.spawnProcessForEntry(receivingRegistryEntry)
+                try {
+                    receivingProcess = await this.spawnProcessForEntry(receivingRegistryEntry)
+                } catch(e) {
+                    debug(e)
+                }
             } else if (existingProcesses.length > 0) {
                 // 3b. Not an activation event & we have a running process that can handle this event
                 receivingProcess = existingProcesses[0]
             } else {
                 // 3c. Not an activation event, but no existing process
-                receivingProcess = this.spawnProcessForEntry(receivingRegistryEntry)
+                try {
+                    receivingProcess = await this.spawnProcessForEntry(receivingRegistryEntry)
+                } catch(e) {
+                    debug(e)
+                }
             }
             if (!receivingProcess) {
                 reject(new Error(`Unable to locate process for event: ${event}`))
@@ -318,26 +327,42 @@ export default class AORouter extends AORouterCoreProcessInterface {
             Object.keys(this.registry).forEach((entryName: string) => {
                 const registryEntry: IRegistryEntry = this.registry[entryName]
                 if (registryEntry.AO.runUnderCore) {
-                    spawns.push( this.bindCoreProcess(registryEntry) )
+                    spawns.push( () => this.bindCoreProcess(registryEntry) )
                 } else if (!registryEntry.AO.activationEvents || registryEntry.AO.activationEvents.length === 0) {
-                    spawns.push( this.spawnProcessForEntry(registryEntry) )
+                    spawns.push( () => this.spawnProcessForEntry(registryEntry) )
                 }
             })
-            Promise.all(spawns).then(() => {
+            this._promiseSerial(spawns).then(() => {
                 resolve()
             }).catch(reject)
         })
     }
+    
+    private _promiseSerial = funcs => 
+        funcs.reduce((promise, func) => 
+            promise.then(result => {
+                func().then((result) => {
+                    if(result) {
+                        Array.prototype.concat.bind(result)
+                    }
+                }).catch(debug)
+            }).catch(debug),
+            Promise.resolve([])
+        )
 
     private bindCoreProcess(entry: IRegistryEntry): Promise<AORouterCoreProcessPretender> {
         return new Promise((resolve,reject) => {
             let coreEntryProcess: AORouterCoreProcessPretender = this.router.process
             coreEntryProcess.on('exit', this.shutdown.bind(this))
             coreEntryProcess.on('message', (message: IAORouterMessage) => {
-                this.incomingMessageRouter(message, entry, coreEntryProcess)
+                if(message.event == 'ready') {
+                    resolve(coreEntryProcess)
+                } else {
+                    this.incomingMessageRouter(message, entry, coreEntryProcess)
+                }
             })
             this.addProcessIntanceToEntry(entry.name, coreEntryProcess)
-            resolve(coreEntryProcess)
+            //resolve(coreEntryProcess)
         })
     }
 
@@ -368,11 +393,14 @@ export default class AORouter extends AORouterCoreProcessInterface {
                 // TODO: cleanup references to this instance, notify anyone if necessary
             })
             entryProcess.on('message', (message: IAORouterMessage) => {
-                this.incomingMessageRouter(message, entry, entryProcess)
+                if(message.event == 'ready') {
+                    resolve(entryProcess)
+                } else {
+                    this.incomingMessageRouter(message, entry, entryProcess)
+                }
             })
             if (entryProcess.pid) {
                 this.addProcessIntanceToEntry(entry.name, entryProcess)
-                resolve(entryProcess)
             } else {
                 debug(new Error('Could not spawn process: ' + entry.name))
                 resolve(null)

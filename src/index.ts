@@ -46,14 +46,14 @@ export default class Core extends EventEmitter {
         this.options = Object.assign({}, Core.DEFAULT_OPTIONS, args)
         debug(this.options)
         this.coreRouter = new AORouter(this.options)
-        this.coreRouter.init().then(() => {            
+        this.coreRouter.init().then(() => {
             this.coreRouter.router.on('/core/log', this._handleLog.bind(this))
             this.userSession = new AOUserSession( this.coreRouter.router )
             this.http = new Http(this.coreRouter.router, this.options, this.userSession)
-
             //Used to handle things like data exports and other command line only options
             this._handleCommandline(args)
         }).catch(debug)
+        
         process.stdin.resume();  // Hack to keep the core processes running
         process.on('exit', () => {
             debug('Core process exiting...')
