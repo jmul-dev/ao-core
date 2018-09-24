@@ -8,6 +8,7 @@ import { EventEmitter } from 'events';
 import path from 'path';
 import AOUserSession from './AOUserSession';
 import exportDataResolver, { IContentExport_Args } from './graphql/resolvers/resolveExportData'
+import importDataResolver, { IContentImport_Args } from './graphql/resolvers/resolveImportData';
 const debug = Debug('ao:core');
 const error = Debug('ao:core:error');
 
@@ -20,6 +21,7 @@ export interface ICoreOptions {
     storageLocation: string;
     nodeBin: string;
     exportData: string;
+    importData: string;
 }
 
 export interface AOCore_Log_Data {
@@ -35,6 +37,7 @@ export default class Core extends EventEmitter {
         storageLocation: path.resolve(__dirname, '..', 'data'),
         nodeBin: process.execPath,
         exportData: '', // Takes a path for where the data is exported to
+        importData: '', // Takes a path to the zip file
     }
     public options: ICoreOptions;
     private coreRouter: AORouter;
@@ -77,12 +80,14 @@ export default class Core extends EventEmitter {
     }
 
     _handleCommandline(args:ICoreOptions) {
-        const { exportData } = args
+        const { exportData, importData } = args
         const context:IGraphqlResolverContext = {
             router: this.coreRouter.router,
             options: this.options,
             userSession: this.userSession
         }
+
+        //Exports data
         if(exportData.length) {
             let empty:object = {}
             const exportArgs: IContentExport_Args = {
@@ -92,13 +97,29 @@ export default class Core extends EventEmitter {
                 }
             }
             exportDataResolver(empty, exportArgs, context, empty).then(() => {
-                debug('Export started. Export should be at: ' + exportData)
+                debug('Export finished. Export should be at: ' + exportData)
             }).catch((error) => {
-                error('Bad news, export failed')
-                error(error)
+                error('Bad news, export failed: ', error)
             })
         }
-        
+
+        //Imports data
+        if(importData.length) {
+            let empty:object = {}
+            const importArgs: IContentImport_Args = {
+                inputs: {
+                    importPath: importData,
+                    commandLine: true
+                }
+            }
+            importDataResolver(empty, importArgs, context, empty).then(() => {
+                debug('Import finished. Please restart AO!')
+                this.coreRouter.shutdown()
+                process.exit(0);
+            }).catch((error) => {
+                error('Really bad news, import failed: ',error)
+            })
+        }
     }
   
     shutdownWithError(err) {

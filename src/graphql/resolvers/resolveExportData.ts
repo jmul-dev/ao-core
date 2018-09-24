@@ -1,5 +1,5 @@
 import { IGraphqlResolverContext } from "../../http";
-import { IAOFS_PathExists_Data, IAOFS_DataExport_Data } from "../../modules/fs/fs";
+import { IAOFS_DataExport_Data } from "../../modules/fs/fs";
 import Debug from 'debug'
 import { AODB_SettingsUpdate_Data } from "../../modules/db/db";
 import { IAORouterMessage } from "../../router/AORouter";
@@ -14,12 +14,11 @@ export interface IContentExport_Args {
 
 export default (obj:any, args: IContentExport_Args, context: IGraphqlResolverContext, info:any ) => {
     return new Promise((resolve,reject) => {
-        debug(context.router)
+        const {commandLine, exportPath} = args.inputs
         // 0. Resolve right away if not command line
-        if(!args.inputs.commandLine) {
+        if(!commandLine) {
             resolve()
         }
-        const exportPath = args.inputs.exportPath
         // 1. Start the zipping process
         const dataExportData: IAOFS_DataExport_Data = { outputPath: exportPath }
         
@@ -31,7 +30,7 @@ export default (obj:any, args: IContentExport_Args, context: IGraphqlResolverCon
                 }
                 context.router.send('/db/settings/update', storeExportInDB).then(() => {
                     debug('Export path is: ' + message.data.exportPath)
-                    if(args.inputs.commandLine) {
+                    if(commandLine) {
                         resolve()
                     }
                 }).catch(debug)
@@ -39,7 +38,13 @@ export default (obj:any, args: IContentExport_Args, context: IGraphqlResolverCon
                 debug('No Export Path returned from dataExport')
             }
             
-        }).catch(debug)
+        }).catch((err) => {
+            debug(err)
+            if(commandLine) {
+                reject(err)
+            }
+            
+        })
 
     })
  }

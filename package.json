@@ -54,7 +54,7 @@
     "nedb": "^1.8.0",
     "queue": "^4.5.0",
     "scrypt": "git://github.com/ryuheiyokokawa/node-scrypt.git#ao",
-    "unzip": "^0.1.11",
+    "unzipper": "^0.9.3",
     "web3": "^1.0.0-beta.33",
     "web3-legacy": "git://github.com/nharlow89/web3.js.git#legacy",
     "yargs": "^12.0.2"

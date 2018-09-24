@@ -46,7 +46,19 @@ const argv = require('yargs')
             if(fsExtra.pathExistsSync(arg)) {
                 return arg
             } else {
-                console.log('Path does not exist.  Please specify a place that does exist.')
+                console.log('Path does not exist for export. Please specify a path that exists')
+                return ''
+            }
+        }
+    })
+    .option('importData', {
+        description: 'Imports a zip file created through the export process',
+        type: 'string',
+        coerce: (arg) => {
+            if(fsExtra.pathExistsSync(arg)) {
+                return arg
+            } else {
+                console.log('File does not exist for import. Please specify a File that exists')
                 return ''
             }
         }

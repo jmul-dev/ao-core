@@ -9,7 +9,7 @@ import md5 from 'md5';
 import path from 'path';
 import stream from 'stream';
 import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
-import unzip from 'unzip';
+import unzip from 'unzipper';
 const debug = Debug('ao:fs');
 
 
