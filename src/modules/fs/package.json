@@ -26,7 +26,8 @@
             "/fs/writeStream",
             "/fs/decryptChecksum",
             "/fs/reencrypt",
-            "/fs/dataExport"
+            "/fs/dataExport",
+            "/fs/dataImport"
         ]
     }
   }

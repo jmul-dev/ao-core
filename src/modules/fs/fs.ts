@@ -116,6 +116,7 @@ export default class AOFS extends AORouterInterface {
         this.router.on('/fs/decryptChecksum', this._handleDecryptChecksum.bind(this))
         this.router.on('/fs/reencrypt', this._handleReencrypt.bind(this) )
         this.router.on('/fs/dataExport', this._handleDataExport.bind(this))
+        this.router.on('/fs/dataImport', this._handleDataImport.bind(this))
         debug(`started`)
     }
 
