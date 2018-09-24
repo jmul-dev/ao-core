@@ -417,19 +417,28 @@ export default class AOP2P extends AORouterInterface {
         this.hyperdb.query(nodeRoute).then((indexDataString: string) => {
             debug('Good query into finding '+ nodeRoute)
             let indexData: object = {}
+            let indexDataRow: AOP2P_IndexDataRow = {
+                decryptionKey: encryptedDecryptionKey, // Encrypted key with publicKey
+                signature: encryptedKeySignature //
+            }
             try {
                 indexData = JSON.parse(indexDataString)
             } catch (e) {
                 debug('Index Data could not be read/parsed while selling a key')
                 indexData = {}
             }
-            // 2. Add row to indexData
-            indexData[buyerEthAddress] = {
-                decryptionKey: encryptedDecryptionKey, // Encrypted key with publicKey
-                signature: encryptedKeySignature //
+
+            // 2. Check to see if we already wrote in the right data.
+            if(indexData[buyerEthAddress] == indexDataRow) {
+                debug('Transaction already written in')
+                request.respond({ success: true })
+                return
             }
 
-            // 3. Let's write this thing into hyperdb
+            // 3. Add row to indexData
+            indexData[buyerEthAddress] = indexDataRow
+
+            // 4. Let's write this thing into hyperdb
             this.hyperdb.insert(nodeRoute, indexData).then(() => {
                 debug('Wrote in sold decryption key')
                 request.respond({ success: true })
