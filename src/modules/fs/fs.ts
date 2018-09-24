@@ -9,6 +9,7 @@ import md5 from 'md5';
 import path from 'path';
 import stream from 'stream';
 import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
+import unzip from 'unzip';
 const debug = Debug('ao:fs');
 
 
@@ -77,6 +78,10 @@ export interface IAOFS_Reencrypt_Data {
 
 export interface IAOFS_DataExport_Data {
     outputPath: string;
+}
+
+export interface IAOFS_DataImport_Data {
+    inputPath: string;
 }
 
 
@@ -438,6 +443,34 @@ export default class AOFS extends AORouterInterface {
         archive.directory(this.storageLocation, false)
         archive.finalize()
 
+    }
+
+    _handleDataImport(request:IAORouterRequest) {
+        debug('Starting Data Import Process')
+        const { inputPath }: IAOFS_DataImport_Data = request.data
+        //Yeah, this is a brave operation
+        fsExtra.remove(this.storageLocation, (err) => {
+            if(err) {
+                request.reject(err)
+                return
+            }
+            const unzipper = unzip.Extract({path:this.storageLocation})
+            const input = fs.createReadStream(inputPath)
+            input.pipe(unzipper)
+            input.on('error', (error) => {
+                debug('Unzip input error: ', error)
+                request.reject(error)
+            })
+            unzipper.on('close',() => {
+                request.respond({})
+            })
+            unzipper.on('error', (error) => {
+                debug('Unzip error: ', error)
+                request.reject(error)
+            })
+        })
+
+        
     }
     
 }
