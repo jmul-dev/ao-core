@@ -19,7 +19,8 @@
             "/fs/stats",
             "/fs/decryptChecksum",
             "/fs/reencrypt",
-            "/fs/dataExport"
+            "/fs/dataExport",
+            "/fs/dataImport"
         ],
         "activationEvents": [
             "/fs/readStream",
