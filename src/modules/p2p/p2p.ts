@@ -1,4 +1,4 @@
-import Debug from 'debug';
+import Debug from '../../AODebug'
 import path from 'path';
 import AOContent from '../../models/AOContent';
 import AONetworkContent from '../../models/AONetworkContent';

@@ -2,7 +2,7 @@ import { IGraphqlResolverContext } from '../../http';
 import AOContent, { AOContentState } from '../../models/AOContent';
 import { AODB_NetworkContentGet_Data, AODB_UserContentGet_Data } from '../../modules/db/db';
 import { IAORouterMessage } from "../../router/AORouter";
-import Debug from 'debug'
+import Debug from '../../AODebug'
 const debug = Debug('ao:resolveContentRequest')
 
 interface IContentRequest_Args {
