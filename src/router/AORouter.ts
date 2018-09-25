@@ -1,6 +1,6 @@
 import { ChildProcess, spawn } from "child_process";
 import path from 'path';
-import Debug from 'debug';
+import Debug from '../AODebug'
 import { ReadStream, WriteStream } from "fs";
 import fs from 'fs';
 import ffprobeStatic from 'ffprobe-static';
@@ -366,6 +366,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
         })
     }
 
+
     private spawnProcessForEntry(entry: IRegistryEntry): Promise<ChildProcess | null> {
         return new Promise((resolve,reject) => {
             let processLocation = path.join(__dirname, 'modules', entry.bin);
@@ -389,9 +390,23 @@ export default class AORouter extends AORouterCoreProcessInterface {
             })
             entryProcess.on('exit', (code?: number) => {
                 debug(`[${entry.name}] process: exit`)
-                this.removeProcessInstanceFromEntry(entry.name, entryProcess)
+                // Currently, if any of the major modules die, our entire system is set to shutdown.
+                this.shutdown()
+                process.exit()//Kill core process on entryProcess exit
+                //this.removeProcessInstanceFromEntry(entry.name, entryProcess)
                 // TODO: cleanup references to this instance, notify anyone if necessary
             })
+            //Catch on this main process getting killed by Ctrl+C
+            process.on('SIGINT', () => {
+                entryProcess.kill()
+                resolve(null)
+            })
+            //Catch on this main process exiting
+            process.on('SIGTERM', () => {
+                entryProcess.kill()
+                resolve(null)
+            })
+
             entryProcess.on('message', (message: IAORouterMessage) => {
                 if(message.event == 'ready') {
                     resolve(entryProcess)
@@ -399,6 +414,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
                     this.incomingMessageRouter(message, entry, entryProcess)
                 }
             })
+            
             if (entryProcess.pid) {
                 this.addProcessIntanceToEntry(entry.name, entryProcess)
             } else {

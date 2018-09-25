@@ -3,12 +3,13 @@ import { EVENT_LOG, DATA, DATA_TYPES } from './constants';
 import AORouter from './router/AORouter';
 import { IAORouterRequest } from './router/AORouterInterface';
 import Http, { IGraphqlResolverContext } from './http'
-import Debug from 'debug';
 import { EventEmitter } from 'events';
 import path from 'path';
 import AOUserSession from './AOUserSession';
 import exportDataResolver, { IContentExport_Args } from './graphql/resolvers/resolveExportData'
 import importDataResolver, { IContentImport_Args } from './graphql/resolvers/resolveImportData';
+import fsExtra from 'fs-extra'
+import Debug, {debugLogFile} from './AODebug'
 const debug = Debug('ao:core');
 const error = Debug('ao:core:error');
 
@@ -46,21 +47,27 @@ export default class Core extends EventEmitter {
 
     constructor(args: ICoreOptions = Core.DEFAULT_OPTIONS) {
         super()
-        this.options = Object.assign({}, Core.DEFAULT_OPTIONS, args)
-        debug(this.options)
-        this.coreRouter = new AORouter(this.options)
-        this.coreRouter.init().then(() => {
-            this.coreRouter.router.on('/core/log', this._handleLog.bind(this))
-            this.userSession = new AOUserSession( this.coreRouter.router )
-            this.http = new Http(this.coreRouter.router, this.options, this.userSession)
-            //Used to handle things like data exports and other command line only options
-            this._handleCommandline(args)
-        }).catch(debug)
-        
-        process.stdin.resume();  // Hack to keep the core processes running
-        process.on('exit', () => {
-            debug('Core process exiting...')
-        })
+        fsExtra.remove(path.join(Core.DEFAULT_OPTIONS.storageLocation, debugLogFile)).then( () => {
+            this.options = Object.assign({}, Core.DEFAULT_OPTIONS, args)
+            debug(this.options)
+            this.coreRouter = new AORouter(this.options)
+            this.coreRouter.init().then(() => {
+                this.coreRouter.router.on('/core/log', this._handleLog.bind(this))
+                this.userSession = new AOUserSession( this.coreRouter.router )
+                this.http = new Http(this.coreRouter.router, this.options, this.userSession)
+                //Used to handle things like data exports and other command line only options
+                this._handleCommandline(args)
+            }).catch(debug)
+            
+            process.stdin.resume();  // Hack to keep the core processes running
+            process.on('exit', () => {
+                this.coreRouter.shutdown()//Ensure that all child processes are killed
+                debug('Core process exiting...')
+            })
+            process.on('SIGINT', () => {
+                process.exit()
+            })
+        }).catch(console.log)
     }
     
     _handleLog(request: IAORouterRequest) {

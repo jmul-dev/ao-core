@@ -1,6 +1,6 @@
 import { IGraphqlResolverContext } from '../../http';
 import * as AOCrypto from '../../AOCrypto';
-import Debug from 'debug'
+import Debug from '../../AODebug'
 //const debug = Debug('ao:signatureVRS')
 
 /**
