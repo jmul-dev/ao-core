@@ -24,6 +24,7 @@ export default (obj: any, args: IContentRequest_Args, context: IGraphqlResolverC
         context.router.send('/db/user/content/get',getContentDBData).then( (message: IAORouterMessage) => {
             if(!message.data.length) {
                 reject(new Error('Content is in incorrect state for staking'))
+                return
             }
             // 2. Update the content state in user db
             let contentUpdateQuery: AODB_UserContentUpdate_Data = {
