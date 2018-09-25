@@ -123,8 +123,8 @@ export default (obj: any, args: any, context: IGraphqlResolverContext, info: any
                         },
                         decryptionKey: decryptionKey,
                         state: AOContentState.DAT_INITIALIZED,
-                        baseChallenge: AOCrypto.generateContentBaseChallenge(checksum),
-                        encChallenge: AOCrypto.generateContentEncChallenge(encryptedChecksum),
+                        baseChallenge: checksum,
+                        encChallenge: encryptedChecksum,
                     })
 
                     const storagePromises: Array<Promise<any>> = []
