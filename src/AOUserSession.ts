@@ -570,7 +570,7 @@ export default class AOUserSession {
                         return null;
                     }
                     // 4. Generate the baseChallengeSignature & new encChallenge
-                    let encChallenge = AOCrypto.generateContentEncChallenge(newEncryptedChecksum)
+                    let encChallenge = newEncryptedChecksum
                     let baseChallengeSignature = AOCrypto.generateBaseChallengeSignature({baseChallenge: content.baseChallenge, privateKey: this.identity.privateKey})
                     //debug('Recovered: ',EthCrypto.recover(baseChallengeSignature, content.baseChallenge))
                     
