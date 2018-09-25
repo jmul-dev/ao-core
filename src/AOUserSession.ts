@@ -571,7 +571,8 @@ export default class AOUserSession {
                     }
                     // 4. Generate the baseChallengeSignature & new encChallenge
                     let encChallenge = newEncryptedChecksum
-                    let baseChallengeSignature = AOCrypto.generateBaseChallengeSignature({baseChallenge: content.baseChallenge, privateKey: this.identity.privateKey})
+                    let hashedBaseChallenge = AOCrypto.generateContentBaseChallenge(content.baseChallenge)
+                    let baseChallengeSignature = AOCrypto.generateBaseChallengeSignature({baseChallenge: hashedBaseChallenge, privateKey: this.identity.privateKey})
                     //debug('Recovered: ',EthCrypto.recover(baseChallengeSignature, content.baseChallenge))
                     
                     // 5. Update Content State to Encrypted
