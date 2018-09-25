@@ -10,7 +10,7 @@ import { AOP2P_Add_Discovery_Data, AOP2P_Get_File_Node_Data, AOP2P_IndexDataRow,
 import { IAORouterMessage } from "./router/AORouter";
 import { AORouterInterface, IAORouterRequest } from "./router/AORouterInterface";
 const debug = Debug('ao:userSession');
-
+import EthCrypto from 'eth-crypto'
 
 export default class AOUserSession {
     private router: AORouterInterface;
@@ -570,6 +570,10 @@ export default class AOUserSession {
                         return null;
                     }
                     // 4. Generate the baseChallengeSignature & new encChallenge
+                    let encChallenge = AOCrypto.generateContentEncChallenge(newEncryptedChecksum)
+                    let baseChallengeSignature = AOCrypto.generateBaseChallengeSignature({baseChallenge: content.baseChallenge, privateKey: this.identity.privateKey})
+                    //debug('Recovered: ',EthCrypto.recover(baseChallengeSignature, content.baseChallenge))
+                    
                     // 5. Update Content State to Encrypted
                     let contentUpdateQuery: AODB_UserContentUpdate_Data = {
                         id: content.id,
@@ -577,8 +581,8 @@ export default class AOUserSession {
                             $set: {
                                 "state": AOContentState.ENCRYPTED,
                                 "decryptionKey": newDecrytionKey,
-                                "encChallenge": AOCrypto.generateContentEncChallenge({encryptedFileChecksum: newEncryptedChecksum, address: this.id }),
-                                "baseChallengeSignature": AOCrypto.generateBaseChallengeSignature({baseChallenge: content.baseChallenge, privateKey: this.identity.privateKey}),
+                                "encChallenge": encChallenge,
+                                "baseChallengeSignature": baseChallengeSignature,
                             }
                         }
                     }

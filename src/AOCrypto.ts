@@ -1,4 +1,5 @@
 import EthCrypto from 'eth-crypto';
+const AOContentContract = require('ao-contracts/build/contracts/AOContent.json');
 
 export interface Identity {
     privateKey: string;
@@ -35,11 +36,11 @@ export async function generateContentEncryptionKeyForUser({contentDecryptionKey,
  * 
  * @param {string} fileChecksum
  */
-export function generateContentBaseChallenge({address, fileChecksum}) {
+export function generateContentBaseChallenge(fileChecksum) {
     return EthCrypto.hash.keccak256([
         {
             type: "address",
-            value: address
+            value: AOContentContract['networks']['4']['address']
         },
         {
             type: "string",
@@ -53,11 +54,11 @@ export function generateContentBaseChallenge({address, fileChecksum}) {
  * 
  * @param {string} encryptedFileChecksum
  */
-export function generateContentEncChallenge({address, encryptedFileChecksum}) {
+export function generateContentEncChallenge(encryptedFileChecksum) {
     return EthCrypto.hash.keccak256([
         {
             type: "address",
-            value: address
+            value: AOContentContract['networks']['4']['address']
         },
         {
             type: "string",
