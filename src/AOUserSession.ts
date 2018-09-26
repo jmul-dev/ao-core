@@ -713,6 +713,7 @@ export default class AOUserSession {
      * @param {AOContent} content 
      */
     private _handleContentStaked(content: AOContent) {
+        debug('Content is gonna become discoverable ', content.fileDatKey)
         // 1. Import all the freaken files.
         const fileImportDatData:AODat_ImportSingle_Data = {
             key: content.fileDatKey
@@ -724,6 +725,7 @@ export default class AOUserSession {
         importDats.push( this.router.send('/dat/importSingle', fileImportDatData))
         importDats.push( this.router.send('/dat/importSingle', metaImportDatData))
         Promise.all(importDats).then(() => {
+            debug('Content imports is good ')
             // 2. Ensure the dats are resumed (they may already be, but need to make sure)
             const fileResumeDatData:AODat_ResumeSingle_Data = {
                 key: content.fileDatKey
@@ -735,6 +737,7 @@ export default class AOUserSession {
             resumeDats.push( this.router.send('/dat/resumeSingle', fileResumeDatData) )
             resumeDats.push( this.router.send('/dat/resumeSingle', metaResumeDatData) )
             Promise.all(resumeDats).then(() => {
+                debug('Content resume is good ')
                 // 3. Add new discovery
                 const p2pAddDiscoveryData: AOP2P_Add_Discovery_Data = {
                     contentType: content.contentType,
@@ -744,6 +747,7 @@ export default class AOUserSession {
                     contentHostId: content.contentHostId
                 }
                 this.router.send('/p2p/addDiscovery', p2pAddDiscoveryData).then((response: IAORouterMessage) => {
+                    debug('Content has been added to discovery')
                     if (response.data.success) {
                         // 4. Update the content state (mark as Discoverable)
                         const contentUpdateQuery: AODB_UserContentUpdate_Data = {
