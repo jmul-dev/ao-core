@@ -219,18 +219,16 @@ export default class AOUserSession {
                     return;
                 }
                 const userContent: AOContent = AOContent.fromObject(response.data[0])
-                // 2. TODO: check to see if we have already handled this purchase transaction 
-                // (ie: wrote decryption key to discovery already)
                 debug(`Handling incoming purchase, content[${userContent.id}]->buyer[${buyContentEvent.buyer}]`)
                 try {
-                    // 3. Generate the encryption key according to spec
+                    // 2. Generate the encryption key according to spec
                     const contentDecryptParams = {
                         contentDecryptionKey: userContent.decryptionKey,
                         contentRequesterPublicKey: buyContentEvent.publicKey,
                         contentOwnersPrivateKey: this.identity.privateKey,
                     }
                     const { encryptedDecryptionKey, encryptedDecryptionKeySignature } = await AOCrypto.generateContentEncryptionKeyForUser(contentDecryptParams)
-                    // 4. Handoff to discovery
+                    // 3. Handoff to discovery
                     const sendDecryptionKeyMessage: AOP2P_Write_Decryption_Key_Data = {
                         content: userContent,
                         buyerEthAddress: buyContentEvent.buyer,
