@@ -642,7 +642,8 @@ export default class AOUserSession {
                     update: {
                         $set: {
                             "state": AOContentState.DAT_INITIALIZED,
-                            "fileDatKey": newDatKey
+                            "fileDatKey": newDatKey,
+                            "fileUrl": content.fileUrl.replace(content.fileDatKey, newDatKey),
                         }
                     }
                 }

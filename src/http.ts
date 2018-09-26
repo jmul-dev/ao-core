@@ -94,35 +94,32 @@ export default class Http {
             const datCheckData: AODat_Check_Data = {
                 key: datKey
             }
-            this.router.send('/dat/exists', datCheckData)
-                .then(() => {
-                    const filePath = path.join('content', datKey, filename)
-                    const statFileData: IAOFS_FileStat_data = {
-                        path: filePath
+            this.router.send('/dat/exists', datCheckData).then(() => {
+                const filePath = path.join('content', datKey, filename)
+                const statFileData: IAOFS_FileStat_data = {
+                    path: filePath
+                }
+                this.router.send('/fs/stats', statFileData).then((fileStats) => {
+                    const fileSize = fileStats.data.size
+                    let streamOptions: Object = {}
+                    //Images and smaller files
+                    let head200 = {
+                        "Accept-Ranges": "bytes",
+                        "Content-Length": fileSize
                     }
-                    this.router.send('/fs/stats', statFileData).then((fileStats) => {
-                        const fileSize = fileStats.data.size
-                        let streamOptions: Object = {}
-                        //Images and smaller files
-                        let head200 = {
-                            "Accept-Ranges": "bytes",
-                            "Content-Length": fileSize
-                        }
-                        response.writeHead(200, head200);
+                    response.writeHead(200, head200);
 
-                        const readFileData: IAOFS_ReadStream_Data = {
-                            stream: response,
-                            streamDirection: 'read',
-                            streamOptions: streamOptions,
-                            readPath: filePath
-                        }
-                        this.router.send('/fs/readStream', readFileData).then(() => {
-                            resolve()
-                        }).catch(reject)
+                    const readFileData: IAOFS_ReadStream_Data = {
+                        stream: response,
+                        streamDirection: 'read',
+                        streamOptions: streamOptions,
+                        readPath: filePath
+                    }
+                    this.router.send('/fs/readStream', readFileData).then(() => {
+                        resolve()
                     }).catch(reject)
-
-
                 }).catch(reject)
+            }).catch(reject)
         })
     }
 
@@ -135,40 +132,39 @@ export default class Http {
             const datCheckData: AODat_Check_Data = {
                 key: datKey
             }
-            this.router.send('/dat/exists', datCheckData)
-                .then(() => {
-                    //get the decryption key
-                    const userContentData: AODB_UserContentGet_Data = {
-                        query: { fileDatKey: datKey }
-                    }
-                    this.router.send('/db/user/content/get', userContentData)
-                        .then((doc) => {
-                            if (doc.data.length) {
-                                let docData: AOContent = AOContent.fromObject(doc.data[0])
-                                let total = docData.fileSize;
-                                let streamOptions: Object = {}
-                                let head200 = {
-                                    "Accept-Ranges": "bytes",
-                                    "Content-Length": total
-                                }
-                                response.writeHead(200, head200);
+            this.router.send('/dat/exists', datCheckData).then(() => {
+                //get the decryption key
+                const userContentData: AODB_UserContentGet_Data = {
+                    query: { fileDatKey: datKey }
+                }
+                this.router.send('/db/user/content/get', userContentData).then((doc) => {
+                    if (doc.data.length) {
+                        let docData: AOContent = AOContent.fromObject(doc.data[0])
+                        let total = docData.fileSize;
+                        let streamOptions: Object = {}
+                        let head200 = {
+                            "Accept-Ranges": "bytes",
+                            "Content-Length": total
+                        }
+                        response.writeHead(200, head200);
 
-                                //Stream the freaken file
-                                const readFileData: IAOFS_ReadStream_Data = {
-                                    stream: response,
-                                    streamDirection: 'read',
-                                    streamOptions: streamOptions,
-                                    readPath: path.join('content', datKey, filename),
-                                    key: docData.decryptionKey
-                                }
-                                this.router.send('/fs/readStream', readFileData).then(() => {
-                                    resolve()
-                                }).catch(reject)
-                            } else {
-                                reject(new Error('No such datKey'))
-                            }
+                        //Stream the freaken file
+                        const readFileData: IAOFS_ReadStream_Data = {
+                            stream: response,
+                            streamDirection: 'read',
+                            streamOptions: streamOptions,
+                            readPath: path.join('content', datKey, filename),
+                            key: docData.decryptionKey
+                        }
+                        this.router.send('/fs/readStream', readFileData).then(() => {
+                            debug('got past readFile')
+                            resolve()
                         }).catch(reject)
+                    } else {
+                        reject(new Error('No such datKey'))
+                    }
                 }).catch(reject)
+            }).catch(reject)
         })
     }
 
