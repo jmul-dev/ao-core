@@ -30,11 +30,14 @@ export default (obj: any, args: IVideos_Args, context: IGraphqlResolverContext, 
                 // showing up in the network content listing)
                 return content.creatorId !== context.userSession.ethAddress
             }).sort((a, b) => {
-                if (!b.lastSeenContentHost)
-                    return -1;
-                if (!a.lastSeenContentHost)
-                    return 1;
-                return new Date(b.lastSeenContentHost.timestamp).getTime() - new Date(a.lastSeenContentHost.timestamp).getTime();
+                // Sort by last seen host (useful for finding content that is still alive!)
+                // if (!b.lastSeenContentHost)
+                //     return -1;
+                // if (!a.lastSeenContentHost)
+                //     return 1;
+                // return new Date( parseInt(b.lastSeenContentHost.timestamp) ).getTime() - new Date( parseInt(a.lastSeenContentHost.timestamp) ).getTime();
+                // Sort by content createdAt
+                return new Date(parseInt(b.createdAt)).getTime() - new Date(parseInt(a.createdAt)).getTime();
             })
             resolve(content)
         }).catch(reject)

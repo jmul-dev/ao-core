@@ -10,6 +10,7 @@ import { IAOFS_DecryptCheck_Data, IAOFS_Mkdir_Data, IAOFS_Move_Data, IAOFS_Reenc
 import { AOP2P_Add_Discovery_Data, AOP2P_Get_File_Node_Data, AOP2P_IndexDataRow, AOP2P_Watch_AND_Get_IndexData_Data, AOP2P_Write_Decryption_Key_Data, NetworkContentHostEntry, AOP2P_Update_Node_Timestamp_Data } from "./modules/p2p/p2p";
 import { IAORouterMessage } from "./router/AORouter";
 import { AORouterInterface, IAORouterRequest } from "./router/AORouterInterface";
+const AOContentContract = require('ao-contracts/build/contracts/AOContent.json');
 const debug = Debug('ao:userSession');
 
 
@@ -17,6 +18,7 @@ export default class AOUserSession {
     private router: AORouterInterface;
     public ethAddress: string;
     private isListeningForIncomingContent: boolean = false;
+    private isSubscribedToBuyContentEvents: boolean = false;
     private usersContentDiscoveryUpdateInterval: NodeJS.Timer;
     public static CONTENT_DISCOVERY_UPDATE_INTERVAL: number = 1000 * 60 * 10  // 10 minutes
     private identity: AOCrypto.Identity;
@@ -109,6 +111,15 @@ export default class AOUserSession {
             this.usersContentDiscoveryUpdateInterval = setInterval(this._usersContentDiscoveryUpdate.bind(this), AOUserSession.CONTENT_DISCOVERY_UPDATE_INTERVAL)
             this._usersContentDiscoveryUpdate()
         }
+        // Listen for content purchases on Eth network
+        if ( this.isSubscribedToBuyContentEvents ) {
+            this.router.send('/eth/events/BuyContent/unsubscribe').then(() => {
+                this.router.send('/eth/events/BuyContent/subscribe')
+            })
+        } else {
+            this.router.send('/eth/events/BuyContent/subscribe')            
+        }
+        this.isSubscribedToBuyContentEvents = true;
     }
 
     private _usersContentDiscoveryUpdate() {
@@ -187,21 +198,12 @@ export default class AOUserSession {
                 this._handleContentStaked(content)
                 break;
             case AOContentState.DISCOVERABLE:
-                // Content has been hosted and is discoverable, listen for purchases
-                this._listenForBuyContentEventsOnDiscoverableContent(content)
+                // Content has been hosted and is discoverable, 
+                // we should already be listening for purchases
+                break;
             default:
                 break;
         }
-    }
-
-    /**
-     * Starts listening for BuyContent events on the ethereum network. Not 100% clear, 
-     * but these events come in on `/core/content/incomingPurchase` in _resume.
-     * 
-     * @param {AOContent} content
-     */
-    private _listenForBuyContentEventsOnDiscoverableContent(content: AOContent) {
-        this.router.send('/eth/events/BuyContent/subscribe', { contentHostId: content.contentHostId })
     }
 
     /**
@@ -219,22 +221,21 @@ export default class AOUserSession {
             }
             this.router.send('/db/user/content/get', contentQuery).then(async (response: IAORouterMessage) => {
                 if (!response.data || response.data.length !== 1) {
-                    debug(`Attempt to handle incoming purchase but did not find matching content in user db:`, buyContentEvent)
+                    // NOTE: this is most likely a BuyContent event for another user's content / host
+                    debug(`Attempt to handle incoming purchase but did not find matching content in user db.`)
                     return;
                 }
                 const userContent: AOContent = AOContent.fromObject(response.data[0])
-                // 2. TODO: check to see if we have already handled this purchase transaction 
-                // (ie: wrote decryption key to discovery already)
                 debug(`Handling incoming purchase, content[${userContent.id}]->buyer[${buyContentEvent.buyer}]`)
                 try {
-                    // 3. Generate the encryption key according to spec
+                    // 2. Generate the encryption key according to spec
                     const contentDecryptParams = {
                         contentDecryptionKey: userContent.decryptionKey,
                         contentRequesterPublicKey: buyContentEvent.publicKey,
                         contentOwnersPrivateKey: this.identity.privateKey,
                     }
                     const { encryptedDecryptionKey, encryptedDecryptionKeySignature } = await AOCrypto.generateContentEncryptionKeyForUser(contentDecryptParams)
-                    // 4. Handoff to discovery
+                    // 3. Handoff to discovery
                     const sendDecryptionKeyMessage: AOP2P_Write_Decryption_Key_Data = {
                         content: userContent,
                         buyerEthAddress: buyContentEvent.buyer,
@@ -573,24 +574,38 @@ export default class AOUserSession {
                         cleanupTmpContent()
                         return null;
                     }
-                    // 4. Generate the baseChallengeSignature & new encChallenge
-                    // 5. Update Content State to Encrypted
-                    let contentUpdateQuery: AODB_UserContentUpdate_Data = {
-                        id: content.id,
-                        update: {
-                            $set: {
-                                "state": AOContentState.ENCRYPTED,
-                                "decryptionKey": newDecrytionKey,
-                                "encChallenge": AOCrypto.generateContentEncChallenge({encryptedFileChecksum: newEncryptedChecksum, address: this.id }),
-                                "baseChallengeSignature": AOCrypto.generateBaseChallengeSignature({baseChallenge: content.baseChallenge, privateKey: this.identity.privateKey}),
+                    // 4. Generate the baseChallengeSignature & assign encChallenge
+                    this.router.send('/eth/network/get').then((networkIdResponse: IAORouterMessage) => {
+                        if(networkIdResponse.data.networkId == null) {
+                            debug('Bad news, we are not connected to a network')
+                            cleanupTmpContent()
+                            return null;
+                        }
+                        debug('typeof networkId ', networkIdResponse.data.networkId)
+                        const encChallenge = newEncryptedChecksum
+                        const contractAddress = AOContentContract['networks'][networkIdResponse.data.networkId]['address']
+                        const hashedBaseChallenge = AOCrypto.generateContentBaseChallenge({fileChecksum: content.baseChallenge, contractAddress})
+                        const baseChallengeSignature = AOCrypto.generateBaseChallengeSignature({baseChallenge: hashedBaseChallenge, privateKey: this.identity.privateKey})
+                        //debug('Recovered: ',EthCrypto.recover(baseChallengeSignature, content.baseChallenge))
+                        
+                        // 5. Update Content State to Encrypted
+                        let contentUpdateQuery: AODB_UserContentUpdate_Data = {
+                            id: content.id,
+                            update: {
+                                $set: {
+                                    "state": AOContentState.ENCRYPTED,
+                                    "decryptionKey": newDecrytionKey,
+                                    "encChallenge": encChallenge,
+                                    "baseChallengeSignature": baseChallengeSignature,
+                                }
                             }
                         }
-                    }
-                    this.router.send('/db/user/content/update', contentUpdateQuery).then((contentUpdateResponse: IAORouterMessage) => {
-                        const updatedContent: AOContent = AOContent.fromObject(contentUpdateResponse.data)
-                        // Handoff to next state handler
-                        this.processContent(updatedContent)
-                    }).catch(debug) // Content State update to Encrypted
+                        this.router.send('/db/user/content/update', contentUpdateQuery).then((contentUpdateResponse: IAORouterMessage) => {
+                            const updatedContent: AOContent = AOContent.fromObject(contentUpdateResponse.data)
+                            // Handoff to next state handler
+                            this.processContent(updatedContent)
+                        }).catch(debug) // Content State update to Encrypted
+                    }).catch(debug)
                 }).catch((error: Error) => {
                     debug(`Error re-encrypting file: ${error.message}`)
                     cleanupTmpContent()
@@ -712,6 +727,7 @@ export default class AOUserSession {
      * @param {AOContent} content 
      */
     private _handleContentStaked(content: AOContent) {
+        debug('Content is gonna become discoverable ', content.fileDatKey)
         // 1. Import all the freaken files.
         const fileImportDatData:AODat_ImportSingle_Data = {
             key: content.fileDatKey
@@ -721,8 +737,11 @@ export default class AOUserSession {
         }
         let importDats = []
         importDats.push( this.router.send('/dat/importSingle', fileImportDatData))
-        importDats.push( this.router.send('/dat/importSingle', metaImportDatData))
+        if(content.creatorId == this.ethAddress) {
+            importDats.push( this.router.send('/dat/importSingle', metaImportDatData))
+        }
         Promise.all(importDats).then(() => {
+            debug('Content imports is good ')
             // 2. Ensure the dats are resumed (they may already be, but need to make sure)
             const fileResumeDatData:AODat_ResumeSingle_Data = {
                 key: content.fileDatKey
@@ -732,8 +751,11 @@ export default class AOUserSession {
             }
             let resumeDats = []
             resumeDats.push( this.router.send('/dat/resumeSingle', fileResumeDatData) )
-            resumeDats.push( this.router.send('/dat/resumeSingle', metaResumeDatData) )
+            if(content.creatorId == this.ethAddress) {
+                resumeDats.push( this.router.send('/dat/resumeSingle', metaResumeDatData) )
+            }
             Promise.all(resumeDats).then(() => {
+                debug('Content resume is good ')
                 // 3. Add new discovery
                 const p2pAddDiscoveryData: AOP2P_Add_Discovery_Data = {
                     contentType: content.contentType,
@@ -743,6 +765,7 @@ export default class AOUserSession {
                     contentHostId: content.contentHostId
                 }
                 this.router.send('/p2p/addDiscovery', p2pAddDiscoveryData).then((response: IAORouterMessage) => {
+                    debug('Content has been added to discovery')
                     if (response.data.success) {
                         // 4. Update the content state (mark as Discoverable)
                         const contentUpdateQuery: AODB_UserContentUpdate_Data = {

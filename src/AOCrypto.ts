@@ -1,4 +1,5 @@
 import EthCrypto from 'eth-crypto';
+const AOContentContract = require('ao-contracts/build/contracts/AOContent.json');
 
 export interface Identity {
     privateKey: string;
@@ -34,34 +35,17 @@ export async function generateContentEncryptionKeyForUser({contentDecryptionKey,
  * baseChallenge (public key) of the content is simply the hash of the original files checksum.
  * 
  * @param {string} fileChecksum
+ * @param {string} contractAddress The address of the AOContent contract (which verifies this hash)
  */
-export function generateContentBaseChallenge({address, fileChecksum}) {
+export function generateContentBaseChallenge({fileChecksum, contractAddress}) {
     return EthCrypto.hash.keccak256([
         {
             type: "address",
-            value: address
+            value: contractAddress
         },
         {
             type: "string",
             value: fileChecksum
-        }
-    ])
-}
-
-/**
- * encChallenge (public key) of the content unique to this host.
- * 
- * @param {string} encryptedFileChecksum
- */
-export function generateContentEncChallenge({address, encryptedFileChecksum}) {
-    return EthCrypto.hash.keccak256([
-        {
-            type: "address",
-            value: address
-        },
-        {
-            type: "string",
-            value: encryptedFileChecksum
         }
     ])
 }

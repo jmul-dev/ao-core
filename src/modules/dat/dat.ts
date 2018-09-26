@@ -201,8 +201,10 @@ export default class AODat extends AORouterInterface {
             if (!dat || err) {
                 if (err) {
                     request.reject(err)
+                    return
                 } else {
                     request.reject(new Error('No dat instance returned for import'))
+                    return
                 }
             } else {
                 try {
@@ -213,6 +215,7 @@ export default class AODat extends AORouterInterface {
                         } else {
                             debug('Files imported for ' + key)
                             request.respond({ success: true })
+                            return
                         }
                     })
                 } catch (e) {
