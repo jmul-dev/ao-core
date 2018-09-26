@@ -14,7 +14,7 @@
             "/eth/tx/StakeContent",
             "/eth/tx/HostContent",
             "/eth/events/BuyContent/subscribe",
-            "/eth/events/BuyContent/unsubscribeAll"
+            "/eth/events/BuyContent/unsubscribe"
         ],
         "activationEvents": []
     }

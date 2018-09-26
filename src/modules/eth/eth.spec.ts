@@ -183,7 +183,7 @@ describe('AO Eth module', () => {
             },
             respond: ({subscribed}) => {
                 expect(subscribed).to.be.true
-                aoEth.router.emit('/eth/events/BuyContent/unsubscribeAll', {
+                aoEth.router.emit('/eth/events/BuyContent/unsubscribe', {
                     respond: ({success, subscriptionsCancelled}) => {
                         expect(success).to.be.true
                         expect(subscriptionsCancelled).to.equal(1)

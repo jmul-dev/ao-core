@@ -16,6 +16,7 @@ export default class AOUserSession {
     private router: AORouterInterface;
     public ethAddress: string;
     private isListeningForIncomingContent: boolean = false;
+    private isSubscribedToBuyContentEvents: boolean = false;
     private usersContentDiscoveryUpdateInterval: NodeJS.Timer;
     public static CONTENT_DISCOVERY_UPDATE_INTERVAL: number = 1000 * 60 * 10  // 10 minutes
     private identity: AOCrypto.Identity;
@@ -105,6 +106,15 @@ export default class AOUserSession {
             this.usersContentDiscoveryUpdateInterval = setInterval(this._usersContentDiscoveryUpdate.bind(this), AOUserSession.CONTENT_DISCOVERY_UPDATE_INTERVAL)
             this._usersContentDiscoveryUpdate()
         }
+        // Listen for content purchases on Eth network
+        if ( this.isSubscribedToBuyContentEvents ) {
+            this.router.send('/eth/events/BuyContent/unsubscribe').then(() => {
+                this.router.send('/eth/events/BuyContent/subscribe')
+            })
+        } else {
+            this.router.send('/eth/events/BuyContent/subscribe')            
+        }
+        this.isSubscribedToBuyContentEvents = true;
     }
 
     private _usersContentDiscoveryUpdate() {
@@ -183,21 +193,12 @@ export default class AOUserSession {
                 this._handleContentStaked(content)
                 break;
             case AOContentState.DISCOVERABLE:
-                // Content has been hosted and is discoverable, listen for purchases
-                this._listenForBuyContentEventsOnDiscoverableContent(content)
+                // Content has been hosted and is discoverable, 
+                // we should already be listening for purchases
+                break;
             default:
                 break;
         }
-    }
-
-    /**
-     * Starts listening for BuyContent events on the ethereum network. Not 100% clear, 
-     * but these events come in on `/core/content/incomingPurchase` in _resume.
-     * 
-     * @param {AOContent} content
-     */
-    private _listenForBuyContentEventsOnDiscoverableContent(content: AOContent) {
-        this.router.send('/eth/events/BuyContent/subscribe', { contentHostId: content.contentHostId })
     }
 
     /**
@@ -215,7 +216,8 @@ export default class AOUserSession {
             }
             this.router.send('/db/user/content/get', contentQuery).then(async (response: IAORouterMessage) => {
                 if (!response.data || response.data.length !== 1) {
-                    debug(`Attempt to handle incoming purchase but did not find matching content in user db:`, buyContentEvent)
+                    // NOTE: this is most likely a BuyContent event for another user's content / host
+                    debug(`Attempt to handle incoming purchase but did not find matching content in user db.`)
                     return;
                 }
                 const userContent: AOContent = AOContent.fromObject(response.data[0])

@@ -85,11 +85,7 @@ export default class AOEth extends AORouterInterface {
     };
 
     private events: {
-        BuyContent: {
-            subscriptions: {
-                [key: string]: Subscription
-            }
-        }
+        BuyContent: Subscription;
     }
 
     constructor(args: AOEth_Args) {
@@ -97,9 +93,7 @@ export default class AOEth extends AORouterInterface {
         this.rpcMainnet = args.rpcMainnet
         this.rpcRinkeby = args.rpcRinkeby
         this.events = {
-            BuyContent: {
-                subscriptions: {}
-            }
+            BuyContent: undefined
         }
         this.router.on('/eth/network/set', this._handleNetworkChange.bind(this))
         this.router.on('/eth/tx', this._handleTx.bind(this))
@@ -107,7 +101,7 @@ export default class AOEth extends AORouterInterface {
         this.router.on('/eth/tx/HostContent', this._getHostContentEventForTransaction.bind(this))
         this.router.on('/eth/tx/StakeContent', this._getStakeContentEventForTransaction.bind(this))
         this.router.on('/eth/events/BuyContent/subscribe', this._listenForBuyContentEvents.bind(this))
-        this.router.on('/eth/events/BuyContent/unsubscribeAll', this._unsubscribeBuyContentEvents.bind(this))
+        this.router.on('/eth/events/BuyContent/unsubscribe', this._unsubscribeBuyContentEvents.bind(this))
         debug(`started`)
     }
 
@@ -194,25 +188,21 @@ export default class AOEth extends AORouterInterface {
     }
 
     /**
-     * This method will begin listening for BuyContent events for 
-     * a specific piece of content (contentHostId)
+     * This method will begin listening for BuyContent events on the Eth network.
      * 
      * route: /eth/events/BuyContent/subscribe
      */
     _listenForBuyContentEvents(request: IAORouterRequest) {
         const requestData: IAOEth_Events_BuyContent_Data = request.data;
         const { contentHostId } = requestData
-        debug(`Attempting to listen for BuyContent events for contentHostId[${contentHostId}] on network[${this.networkId}]`)
-        if ( this.events.BuyContent.subscriptions[contentHostId] ) {
-            debug(`Warning, already subscribed to BuyContent events for contentHostId[${contentHostId}]`)
+        debug(`Attempting to listen for BuyContent events on network[${this.networkId}]`)
+        if ( this.events.BuyContent ) {
+            debug(`Warning, already subscribed to BuyContent events`)
             request.respond({subscribed: true})
         } else {
             let responded = false
             try {
                 let subscription = this.contracts.aoContent.events.BuyContent({
-                    filter: {
-                        contentHostId,
-                    },
                     fromBlock: 0
                 }, (error, event) => {
                     if ( error ) {
@@ -230,7 +220,7 @@ export default class AOEth extends AORouterInterface {
                         responded = true
                     }
                 })
-                this.events.BuyContent.subscriptions[contentHostId] = subscription
+                this.events.BuyContent = subscription
                 request.respond({subscribed: true})
                 responded = true
             } catch (error) {
@@ -242,18 +232,15 @@ export default class AOEth extends AORouterInterface {
     }
 
     /**
-     * route: /eth/events/BuyContent/unsubscribeAll
+     * route: /eth/events/BuyContent/unsubscribe
      */
     _unsubscribeBuyContentEvents(request: IAORouterRequest) {
         let subscriptionsCancelled = 0
-        Object.keys(this.events.BuyContent.subscriptions).forEach(contentHostId => {
-            const subscription: Subscription = this.events.BuyContent.subscriptions[contentHostId]
-            if ( subscription && subscription.unsubscribe ) {
-                subscription.unsubscribe()
-                delete this.events.BuyContent.subscriptions[contentHostId];
-                subscriptionsCancelled++;
-            }
-        })
+        if ( this.events.BuyContent ) {
+            this.events.BuyContent.unsubscribe()
+            delete this.events.BuyContent
+            subscriptionsCancelled++;
+        }
         request.respond({success: true, subscriptionsCancelled})
     }
 
