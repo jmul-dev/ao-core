@@ -1,4 +1,4 @@
-import Debug from 'debug';
+import Debug from '../../AODebug'
 import { IGraphqlResolverContext } from '../../http';
 import resolveSetNetwork from './resolveSetNetwork';
 const debug = Debug('ao:graphql:register')

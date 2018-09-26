@@ -1,7 +1,7 @@
 import hyperdb from 'hyperdb'
 import discovery from 'discovery-swarm'
 import swarmDefaults from 'dat-swarm-defaults'
-import Debug from 'debug';
+import Debug from '../AODebug'
 const debug = Debug('ao:hyperdb');
 
 export interface AO_Hyper_Options {

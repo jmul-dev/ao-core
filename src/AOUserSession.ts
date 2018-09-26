@@ -1,4 +1,4 @@
-import Debug from 'debug';
+import Debug from './AODebug'
 import path from 'path';
 import * as AOCrypto from './AOCrypto';
 import AOContent, { AOContentState } from "./models/AOContent";

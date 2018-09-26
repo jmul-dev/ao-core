@@ -1,5 +1,5 @@
 import Dat from 'dat-node';
-import Debug from 'debug';
+import Debug from '../../AODebug'
 import Datastore from 'nedb';
 import path from "path";
 import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";

@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import Debug from 'debug';
+import Debug from '../../AODebug'
 import ffprobe from 'ffprobe';
 import fs, { ReadStream } from 'fs';
 import fsExtra from 'fs-extra';

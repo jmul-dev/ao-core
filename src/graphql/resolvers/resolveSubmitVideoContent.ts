@@ -1,4 +1,4 @@
-import Debug from 'debug';
+import Debug from '../../AODebug'
 import md5 from 'md5';
 import path from 'path';
 import * as AOCrypto from '../../AOCrypto';
