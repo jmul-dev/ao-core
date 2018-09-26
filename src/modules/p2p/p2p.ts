@@ -434,7 +434,7 @@ export default class AOP2P extends AORouterInterface {
                 request.respond({ success: true })
                 return
             } else if(indexData[buyerEthAddress]) {
-                debug(`Looks like we've already sold this to ${buyerEthAddress}`)
+                debug(`Looks like we've already sold ${content.title} to ${buyerEthAddress}`)
                 request.respond({ success: true })
                 return
             }
