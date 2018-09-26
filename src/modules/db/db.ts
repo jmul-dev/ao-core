@@ -35,6 +35,7 @@ export interface AODB_SettingsUpdate_Data {
     runInBackground?: boolean;
     runOnStartup?: boolean;
     checkForUpdates?: boolean;
+    exportPath?:string;
 }
 export interface AODB_Setting {
     id: string;
