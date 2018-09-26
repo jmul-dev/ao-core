@@ -80,14 +80,13 @@ export default class Http {
             const address: AddressInfo = <AddressInfo>this.server.address();
             debug('Express server running on port: ' + address.port);
             this.router.send('/core/log', { message: `[AO Http] server running on port ${address.port} with cors ${options.httpOrigin}` })
+            debug(`started`)
         });
-        this.server.on('error', this.shutdown.bind(this));
-        debug(`started`)
+        this.server.on('error', this.shutdown.bind(this));        
     }
 
     private _streamFile(request, response) {
         return new Promise((resolve, reject) => {
-
             const datKey = request.params.key
             const filename = request.params.filename
 
@@ -129,7 +128,6 @@ export default class Http {
 
     private _streamEncryptedFile(request, response) {
         return new Promise((resolve, reject) => {
-            debug('Gettin hit at the encrypted stream!')
             const datKey = request.params.key
             const filename = request.params.filename
 
@@ -139,7 +137,6 @@ export default class Http {
             }
             this.router.send('/dat/exists', datCheckData)
                 .then(() => {
-                    debug('got to dat check')
                     //get the decryption key
                     const userContentData: AODB_UserContentGet_Data = {
                         query: { fileDatKey: datKey }
@@ -165,7 +162,6 @@ export default class Http {
                                     key: docData.decryptionKey
                                 }
                                 this.router.send('/fs/readStream', readFileData).then(() => {
-                                    debug('got past readFile')
                                     resolve()
                                 }).catch(reject)
                             } else {
@@ -177,6 +173,8 @@ export default class Http {
     }
 
     public shutdown(err?: Error) {
+        debug('Http shutting down')
+        debug( err )
         this.server.close()
     }
 }
