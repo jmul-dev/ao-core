@@ -113,7 +113,7 @@ export default class AODat extends AORouterInterface {
                         debug(`Error resuming all dats: ${error.message}`)
                     })
                 }).catch((error: Error) => {
-                    debug('Error making dat content directory')
+                    debug('Error making dat content directory',error)
                 })
             }
         })

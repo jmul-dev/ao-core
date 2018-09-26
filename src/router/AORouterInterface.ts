@@ -54,6 +54,8 @@ export class AOSubprocessRouter extends EventEmitter implements AORouterInterfac
         this.processIdentifier = Math.random().toString(36).substring(5);
         this.process = process
         this.process.on('message', this._routeMessage.bind(this))
+        const initMessage = {event: 'ready'}
+        this.process.send(initMessage)
     }
 
     /**
@@ -161,6 +163,7 @@ export class AOCoreProcessRouter extends EventEmitter implements AORouterInterfa
         this.processIdentifier = Math.random().toString(36).substring(5);
         this.process = new AORouterCoreProcessPretender()
         this.process.on('message', this._routeMessage.bind(this))
+        this.send('ready')
     }
     
     /**
