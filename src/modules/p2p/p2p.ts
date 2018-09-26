@@ -427,8 +427,7 @@ export default class AOP2P extends AORouterInterface {
                 debug('Index Data could not be read/parsed while selling a key')
                 indexData = {}
             }
-            debug('current indexData: ', indexData)
-            debug('indexDataRow: ', indexDataRow)
+
             // 2. Check to see if we already wrote in the right data.
             if(indexData[buyerEthAddress] == indexDataRow) {
                 debug('Transaction already written in')
@@ -438,6 +437,7 @@ export default class AOP2P extends AORouterInterface {
 
             // 3. Add row to indexData
             indexData[buyerEthAddress] = indexDataRow
+            debug('new indexData: ',indexData[buyerEthAddress])
 
             // 4. Let's write this thing into hyperdb
             this.hyperdb.insert(nodeRoute, indexData).then(() => {
