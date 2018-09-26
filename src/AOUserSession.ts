@@ -1,5 +1,6 @@
 import Debug from './AODebug'
 import path from 'path';
+import web3 from 'web3'
 import * as AOCrypto from './AOCrypto';
 import AOContent, { AOContentState } from "./models/AOContent";
 import { AODat_Create_Data, AODat_Encrypted_Download_Data, AODat_GetDatStats_Data, AODat_ImportSingle_Data, AODat_ResumeSingle_Data, DatStats } from './modules/dat/dat';
@@ -38,6 +39,9 @@ export default class AOUserSession {
         return new Promise((resolve, reject) => {
             if (this.ethAddress === ethAddress) {
                 return resolve({ ethAddress })
+            }
+            if(!web3.utils.isAddress(ethAddress)) {
+                return reject(new Error('ethAddress format rejected'))
             }
             this.ethAddress = ethAddress;
             // 1. Make sure user db has been setup for this user

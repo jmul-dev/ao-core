@@ -4,10 +4,10 @@ import resolveSetNetwork from './resolveSetNetwork';
 const debug = Debug('ao:graphql:register')
 
 
-interface IRegister_Args {
+export interface IRegister_Args {
     inputs: {
         ethAddress: string;
-        networkId: number;
+        networkId: string;
     }
 }
 

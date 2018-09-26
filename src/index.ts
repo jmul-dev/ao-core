@@ -8,13 +8,17 @@ import path from 'path';
 import AOUserSession from './AOUserSession';
 import exportDataResolver, { IContentExport_Args } from './graphql/resolvers/resolveExportData'
 import importDataResolver, { IContentImport_Args } from './graphql/resolvers/resolveImportData';
+import registerResolver, { IRegister_Args } from './graphql/resolvers/resolveRegister';
 import fsExtra from 'fs-extra'
 import Debug, {debugLogFile} from './AODebug'
+
 const debug = Debug('ao:core');
 const error = Debug('ao:core:error');
 
 
 export interface ICoreOptions {
+    ethAddress: string;
+    networkId: string;
     disableHttpInterface: boolean;
     corePort: number;
     coreOrigin: string;
@@ -31,6 +35,8 @@ export interface AOCore_Log_Data {
 
 export default class Core extends EventEmitter {
     public static DEFAULT_OPTIONS = {
+        ethAddress: '',
+        networkId: '4',//TODO: Make this 1 on production
         disableHttpInterface: false,
         corePort: 3003,
         coreOrigin: 'http://localhost',
@@ -87,16 +93,30 @@ export default class Core extends EventEmitter {
     }
 
     _handleCommandline(args:ICoreOptions) {
-        const { exportData, importData } = args
+        const { exportData, importData, ethAddress, networkId } = args
         const context:IGraphqlResolverContext = {
             router: this.coreRouter.router,
             options: this.options,
             userSession: this.userSession
         }
+        const empty:object = {} //Need an empty object?
+
+        if(ethAddress.length && networkId) {
+            const registerArgs: IRegister_Args = {
+                inputs: {
+                    ethAddress: ethAddress,
+                    networkId: networkId
+                }
+            }
+            registerResolver(empty, registerArgs, context, empty).then(() => {
+                debug(`ethAddress set as ${ethAddress} and networkId is ${networkId}`)
+            }).catch( (error) => {
+                error(error)
+            })            
+        }
 
         //Exports data
         if(exportData.length) {
-            let empty:object = {}
             const exportArgs: IContentExport_Args = {
                 inputs: {
                     exportPath: exportData,
@@ -112,7 +132,6 @@ export default class Core extends EventEmitter {
 
         //Imports data
         if(importData.length) {
-            let empty:object = {}
             const importArgs: IContentImport_Args = {
                 inputs: {
                     importPath: importData,
