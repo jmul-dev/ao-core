@@ -9,8 +9,9 @@ import { IAOFS_DecryptCheck_Data, IAOFS_Mkdir_Data, IAOFS_Move_Data, IAOFS_Reenc
 import { AOP2P_Add_Discovery_Data, AOP2P_Get_File_Node_Data, AOP2P_IndexDataRow, AOP2P_Watch_AND_Get_IndexData_Data, AOP2P_Write_Decryption_Key_Data, NetworkContentHostEntry, AOP2P_Update_Node_Timestamp_Data } from "./modules/p2p/p2p";
 import { IAORouterMessage } from "./router/AORouter";
 import { AORouterInterface, IAORouterRequest } from "./router/AORouterInterface";
+const AOContentContract = require('ao-contracts/build/contracts/AOContent.json');
 const debug = Debug('ao:userSession');
-import EthCrypto from 'eth-crypto'
+
 
 export default class AOUserSession {
     private router: AORouterInterface;
@@ -569,29 +570,38 @@ export default class AOUserSession {
                         cleanupTmpContent()
                         return null;
                     }
-                    // 4. Generate the baseChallengeSignature & new encChallenge
-                    let encChallenge = newEncryptedChecksum
-                    let hashedBaseChallenge = AOCrypto.generateContentBaseChallenge(content.baseChallenge)
-                    let baseChallengeSignature = AOCrypto.generateBaseChallengeSignature({baseChallenge: hashedBaseChallenge, privateKey: this.identity.privateKey})
-                    //debug('Recovered: ',EthCrypto.recover(baseChallengeSignature, content.baseChallenge))
-                    
-                    // 5. Update Content State to Encrypted
-                    let contentUpdateQuery: AODB_UserContentUpdate_Data = {
-                        id: content.id,
-                        update: {
-                            $set: {
-                                "state": AOContentState.ENCRYPTED,
-                                "decryptionKey": newDecrytionKey,
-                                "encChallenge": encChallenge,
-                                "baseChallengeSignature": baseChallengeSignature,
+                    // 4. Generate the baseChallengeSignature & assign encChallenge
+                    this.router.send('/eth/network/get').then((networkIdResponse: IAORouterMessage) => {
+                        if(networkIdResponse.data.networkId == null) {
+                            debug('Bad news, we are not connected to a network')
+                            cleanupTmpContent()
+                            return null;
+                        }
+                        debug('typeof networkId ', networkIdResponse.data.networkId)
+                        const encChallenge = newEncryptedChecksum
+                        const contractAddress = AOContentContract['networks'][networkIdResponse.data.networkId]['address']
+                        const hashedBaseChallenge = AOCrypto.generateContentBaseChallenge({fileChecksum: content.baseChallenge, address: contractAddress})
+                        const baseChallengeSignature = AOCrypto.generateBaseChallengeSignature({baseChallenge: hashedBaseChallenge, privateKey: this.identity.privateKey})
+                        //debug('Recovered: ',EthCrypto.recover(baseChallengeSignature, content.baseChallenge))
+                        
+                        // 5. Update Content State to Encrypted
+                        let contentUpdateQuery: AODB_UserContentUpdate_Data = {
+                            id: content.id,
+                            update: {
+                                $set: {
+                                    "state": AOContentState.ENCRYPTED,
+                                    "decryptionKey": newDecrytionKey,
+                                    "encChallenge": encChallenge,
+                                    "baseChallengeSignature": baseChallengeSignature,
+                                }
                             }
                         }
-                    }
-                    this.router.send('/db/user/content/update', contentUpdateQuery).then((contentUpdateResponse: IAORouterMessage) => {
-                        const updatedContent: AOContent = AOContent.fromObject(contentUpdateResponse.data)
-                        // Handoff to next state handler
-                        this.processContent(updatedContent)
-                    }).catch(debug) // Content State update to Encrypted
+                        this.router.send('/db/user/content/update', contentUpdateQuery).then((contentUpdateResponse: IAORouterMessage) => {
+                            const updatedContent: AOContent = AOContent.fromObject(contentUpdateResponse.data)
+                            // Handoff to next state handler
+                            this.processContent(updatedContent)
+                        }).catch(debug) // Content State update to Encrypted
+                    }).catch(debug)
                 }).catch((error: Error) => {
                     debug(`Error re-encrypting file: ${error.message}`)
                     cleanupTmpContent()

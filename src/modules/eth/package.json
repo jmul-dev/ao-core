@@ -9,6 +9,7 @@
     "AO": {
         "events": [
             "/eth/network/set",
+            "/eth/network/get",
             "/eth/tx",
             "/eth/tx/BuyContent",
             "/eth/tx/StakeContent",

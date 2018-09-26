@@ -102,6 +102,7 @@ export default class AOEth extends AORouterInterface {
             }
         }
         this.router.on('/eth/network/set', this._handleNetworkChange.bind(this))
+        this.router.on('/eth/network/get', this._handleNetworkGet.bind(this))
         this.router.on('/eth/tx', this._handleTx.bind(this))
         this.router.on('/eth/tx/BuyContent', this._getBuyContentEventForTransaction.bind(this))
         this.router.on('/eth/tx/HostContent', this._getHostContentEventForTransaction.bind(this))
@@ -191,6 +192,14 @@ export default class AOEth extends AORouterInterface {
         } else {
             this.connectToNetwork(requestData.networkId).then(request.respond).catch(request.reject)
         }        
+    }
+    
+    _handleNetworkGet(request: IAORouterRequest) {
+        if( this.networkId ) {
+            request.respond({networkId: this.networkId})
+        } else {
+            request.respond({networkId: null})
+        }
     }
 
     /**

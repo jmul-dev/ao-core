@@ -36,11 +36,11 @@ export async function generateContentEncryptionKeyForUser({contentDecryptionKey,
  * 
  * @param {string} fileChecksum
  */
-export function generateContentBaseChallenge(fileChecksum) {
+export function generateContentBaseChallenge({fileChecksum, address}) {
     return EthCrypto.hash.keccak256([
         {
             type: "address",
-            value: AOContentContract['networks']['4']['address']
+            value: address
         },
         {
             type: "string",
@@ -54,11 +54,11 @@ export function generateContentBaseChallenge(fileChecksum) {
  * 
  * @param {string} encryptedFileChecksum
  */
-export function generateContentEncChallenge(encryptedFileChecksum) {
+export function generateContentEncChallenge({encryptedFileChecksum, address}) {
     return EthCrypto.hash.keccak256([
         {
             type: "address",
-            value: AOContentContract['networks']['4']['address']
+            value: address
         },
         {
             type: "string",
