@@ -144,34 +144,33 @@ export default class Http {
                     const userContentData: AODB_UserContentGet_Data = {
                         query: { fileDatKey: datKey }
                     }
-                    this.router.send('/db/user/content/get', userContentData)
-                        .then((doc) => {
-                            if (doc.data.length) {
-                                let docData: AOContent = AOContent.fromObject(doc.data[0])
-                                let total = docData.fileSize;
-                                let streamOptions: Object = {}
-                                let head200 = {
-                                    "Accept-Ranges": "bytes",
-                                    "Content-Length": total
-                                }
-                                response.writeHead(200, head200);
-
-                                //Stream the freaken file
-                                const readFileData: IAOFS_ReadStream_Data = {
-                                    stream: response,
-                                    streamDirection: 'read',
-                                    streamOptions: streamOptions,
-                                    readPath: path.join('content', datKey, filename),
-                                    key: docData.decryptionKey
-                                }
-                                this.router.send('/fs/readStream', readFileData).then(() => {
-                                    debug('got past readFile')
-                                    resolve()
-                                }).catch(reject)
-                            } else {
-                                reject(new Error('No such datKey'))
+                    this.router.send('/db/user/content/get', userContentData).then((doc) => {
+                        if (doc.data.length) {
+                            let docData: AOContent = AOContent.fromObject(doc.data[0])
+                            let total = docData.fileSize;
+                            let streamOptions: Object = {}
+                            let head200 = {
+                                "Accept-Ranges": "bytes",
+                                "Content-Length": total
                             }
-                        }).catch(reject)
+                            response.writeHead(200, head200);
+
+                            //Stream the freaken file
+                            const readFileData: IAOFS_ReadStream_Data = {
+                                stream: response,
+                                streamDirection: 'read',
+                                streamOptions: streamOptions,
+                                readPath: path.join('content', datKey, filename),
+                                key: docData.decryptionKey
+                            }
+                            this.router.send('/fs/readStream', readFileData).then(() => {
+                                debug('got past readFile')
+                                resolve()
+                            }).catch(reject)
+                        } else {
+                            reject(new Error('No such datKey'))
+                        }
+                    }).catch(reject)
                 }).catch(reject)
         })
     }
