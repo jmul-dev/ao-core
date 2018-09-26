@@ -1,7 +1,7 @@
 import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
 import Web3 from 'web3';
 import SolidityEvent from 'web3-legacy/lib/web3/event.js';
-import Debug from 'debug';
+import Debug from '../../AODebug'
 const AOContent = require('ao-contracts/build/contracts/AOContent.json');
 const AOToken = require('ao-contracts/build/contracts/AOToken.json');
 const debug = Debug('ao:eth');

@@ -18,13 +18,17 @@
             "/fs/unlink",
             "/fs/stats",
             "/fs/decryptChecksum",
-            "/fs/reencrypt"
+            "/fs/reencrypt",
+            "/fs/dataExport",
+            "/fs/dataImport"
         ],
         "activationEvents": [
             "/fs/readStream",
             "/fs/writeStream",
             "/fs/decryptChecksum",
-            "/fs/reencrypt"
+            "/fs/reencrypt",
+            "/fs/dataExport",
+            "/fs/dataImport"
         ]
     }
   }

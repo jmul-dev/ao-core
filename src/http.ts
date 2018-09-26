@@ -6,7 +6,7 @@ import path from 'path';
 import { json } from "body-parser";
 import { graphqlExpress, graphiqlExpress } from "apollo-server-express";
 import { apolloUploadExpress } from 'apollo-upload-server';
-import Debug from 'debug';
+import Debug from './AODebug'
 import { AOCoreProcessRouter } from "./router/AORouterInterface";
 import { AODat_Check_Data } from './modules/dat/dat';
 import { IAOFS_ReadStream_Data, IAOFS_FileStat_data } from './modules/fs/fs';

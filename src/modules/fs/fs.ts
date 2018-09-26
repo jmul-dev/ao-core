@@ -1,13 +1,15 @@
 import crypto from 'crypto';
-import Debug from 'debug';
+import Debug from '../../AODebug'
 import ffprobe from 'ffprobe';
 import fs, { ReadStream } from 'fs';
 import fsExtra from 'fs-extra';
+import archiver from 'archiver'
 import checksum from 'checksum';
 import md5 from 'md5';
 import path from 'path';
 import stream from 'stream';
 import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
+import unzip from 'unzipper';
 const debug = Debug('ao:fs');
 
 
@@ -74,6 +76,14 @@ export interface IAOFS_Reencrypt_Data {
     finalPath: string;
 }
 
+export interface IAOFS_DataExport_Data {
+    outputPath: string;
+}
+
+export interface IAOFS_DataImport_Data {
+    inputPath: string;
+}
+
 
 /**
  * AOFS
@@ -105,6 +115,8 @@ export default class AOFS extends AORouterInterface {
         //Specific usecase methods
         this.router.on('/fs/decryptChecksum', this._handleDecryptChecksum.bind(this))
         this.router.on('/fs/reencrypt', this._handleReencrypt.bind(this) )
+        this.router.on('/fs/dataExport', this._handleDataExport.bind(this))
+        this.router.on('/fs/dataImport', this._handleDataImport.bind(this))
         debug(`started`)
     }
 
@@ -389,6 +401,77 @@ export default class AOFS extends AORouterInterface {
         }).on('error', (err) => {
             debug(err)
         })
+    }
+
+    _handleDataExport(request: IAORouterRequest) {
+        debug('Started Data Export Process')
+        const { outputPath }: IAOFS_DataExport_Data = request.data
+        const exportFilename = md5( new Date() ) + '-export.zip'
+        const exportFullPath = path.join(outputPath, exportFilename )
+        //Setup output
+        const output = fs.createWriteStream( exportFullPath )
+        //Setup arhiver
+        const archive = archiver ('zip', {
+            zlib: { level: 9 }
+        })
+
+        //Define output events
+        output.on('close', () => {
+            debug(archive.pointer() + ' total bytes zipped')
+            debug('Data export complete')
+            request.respond({exportPath: exportFullPath})
+        })
+        output.on('end',() => {
+            debug('Export data fully fed')
+        })
+
+        //Setup archive events
+        archive.on('warning', (err) => {
+            if (err.code === 'ENOENT') {
+                debug(err)
+            } else {
+                // throw error
+                request.reject(err)
+                return
+            }
+        })        
+        archive.on('error', (err) => {
+            request.reject(err)
+        })
+
+        //Feed the data through
+        archive.pipe(output)
+        archive.directory(this.storageLocation, false)
+        archive.finalize()
+
+    }
+
+    _handleDataImport(request:IAORouterRequest) {
+        debug('Starting Data Import Process')
+        const { inputPath }: IAOFS_DataImport_Data = request.data
+        //Yeah, this is a brave operation
+        fsExtra.remove(this.storageLocation, (err) => {
+            if(err) {
+                request.reject(err)
+                return
+            }
+            const unzipper = unzip.Extract({path:this.storageLocation})
+            const input = fs.createReadStream(inputPath)
+            input.pipe(unzipper)
+            input.on('error', (error) => {
+                debug('Unzip input error: ', error)
+                request.reject(error)
+            })
+            unzipper.on('close',() => {
+                request.respond({})
+            })
+            unzipper.on('error', (error) => {
+                debug('Unzip error: ', error)
+                request.reject(error)
+            })
+        })
+
+        
     }
     
 }

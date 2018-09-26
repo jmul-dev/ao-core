@@ -1,6 +1,6 @@
 'use strict';
 import { GraphQLUpload } from 'apollo-upload-server';
-import Debug from 'debug';
+import Debug from '../AODebug'
 import { makeExecutableSchema } from 'graphql-tools';
 import resolvers from './resolvers/resolvers';
 const debug = Debug('ao:graphql');

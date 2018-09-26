@@ -1,5 +1,5 @@
 import Dat from 'dat-node';
-import Debug from 'debug';
+import Debug from '../../AODebug'
 import Datastore from 'nedb';
 import path from "path";
 import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterface";
@@ -113,7 +113,7 @@ export default class AODat extends AORouterInterface {
                         debug(`Error resuming all dats: ${error.message}`)
                     })
                 }).catch((error: Error) => {
-                    debug('Error making dat content directory')
+                    debug('Error making dat content directory',error)
                 })
             }
         })
