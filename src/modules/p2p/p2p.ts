@@ -428,15 +428,13 @@ export default class AOP2P extends AORouterInterface {
                 indexData = {}
             }
 
-            // 2. Check to see if we already wrote in the right data.
-            if(indexData[buyerEthAddress] == indexDataRow) {
+            // 2. Check to see if we have already wrote in the right data (to avoid unecessary hyperdb update)
+            if(indexData[buyerEthAddress] && indexData[buyerEthAddress].signature == indexDataRow.signature) {
                 debug('This transaction is already recorded')
                 request.respond({ success: true })
                 return
             } else if(indexData[buyerEthAddress]) {
-                debug(`Looks like we've already sold ${content.title} to ${buyerEthAddress}`)
-                request.respond({ success: true })
-                return
+                debug(`Looks like we've already sold ${content.title} to ${buyerEthAddress}, going to overwrite the entry`)
             }
 
             // 3. Add row to indexData
