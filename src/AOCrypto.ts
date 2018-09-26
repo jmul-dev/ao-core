@@ -35,34 +35,17 @@ export async function generateContentEncryptionKeyForUser({contentDecryptionKey,
  * baseChallenge (public key) of the content is simply the hash of the original files checksum.
  * 
  * @param {string} fileChecksum
+ * @param {string} contractAddress The address of the AOContent contract (which verifies this hash)
  */
-export function generateContentBaseChallenge({fileChecksum, address}) {
+export function generateContentBaseChallenge({fileChecksum, contractAddress}) {
     return EthCrypto.hash.keccak256([
         {
             type: "address",
-            value: address
+            value: contractAddress
         },
         {
             type: "string",
             value: fileChecksum
-        }
-    ])
-}
-
-/**
- * encChallenge (public key) of the content unique to this host.
- * 
- * @param {string} encryptedFileChecksum
- */
-export function generateContentEncChallenge({encryptedFileChecksum, address}) {
-    return EthCrypto.hash.keccak256([
-        {
-            type: "address",
-            value: address
-        },
-        {
-            type: "string",
-            value: encryptedFileChecksum
         }
     ])
 }

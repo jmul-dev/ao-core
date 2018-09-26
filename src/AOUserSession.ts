@@ -580,7 +580,7 @@ export default class AOUserSession {
                         debug('typeof networkId ', networkIdResponse.data.networkId)
                         const encChallenge = newEncryptedChecksum
                         const contractAddress = AOContentContract['networks'][networkIdResponse.data.networkId]['address']
-                        const hashedBaseChallenge = AOCrypto.generateContentBaseChallenge({fileChecksum: content.baseChallenge, address: contractAddress})
+                        const hashedBaseChallenge = AOCrypto.generateContentBaseChallenge({fileChecksum: content.baseChallenge, contractAddress})
                         const baseChallengeSignature = AOCrypto.generateBaseChallengeSignature({baseChallenge: hashedBaseChallenge, privateKey: this.identity.privateKey})
                         //debug('Recovered: ',EthCrypto.recover(baseChallengeSignature, content.baseChallenge))
                         
