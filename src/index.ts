@@ -36,7 +36,7 @@ export interface AOCore_Log_Data {
 export default class Core extends EventEmitter {
     public static DEFAULT_OPTIONS = {
         ethAddress: '',
-        networkId: 4,//TODO: Make this 0 on production
+        networkId: 4,//TODO: Make this 1 on production
         disableHttpInterface: false,
         corePort: 3003,
         coreOrigin: 'http://localhost',
