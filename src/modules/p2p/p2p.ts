@@ -427,6 +427,10 @@ export default class AOP2P extends AORouterInterface {
                 debug('Index Data could not be read/parsed while selling a key')
                 indexData = {}
             }
+            debug('buyerAddress: '+ buyerEthAddress)
+            debug(indexData[buyerEthAddress])
+            debug('new index data:')
+            debug(indexDataRow)
 
             // 2. Check to see if we already wrote in the right data.
             if(indexData[buyerEthAddress] == indexDataRow) {
