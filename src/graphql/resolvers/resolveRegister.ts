@@ -7,7 +7,7 @@ const debug = Debug('ao:graphql:register')
 export interface IRegister_Args {
     inputs: {
         ethAddress: string;
-        networkId: number;
+        networkId: string;
     }
 }
 
