@@ -723,7 +723,9 @@ export default class AOUserSession {
         }
         let importDats = []
         importDats.push( this.router.send('/dat/importSingle', fileImportDatData))
-        importDats.push( this.router.send('/dat/importSingle', metaImportDatData))
+        if(content.creatorId == this.ethAddress) {
+            importDats.push( this.router.send('/dat/importSingle', metaImportDatData))
+        }
         Promise.all(importDats).then(() => {
             debug('Content imports is good ')
             // 2. Ensure the dats are resumed (they may already be, but need to make sure)
@@ -735,7 +737,9 @@ export default class AOUserSession {
             }
             let resumeDats = []
             resumeDats.push( this.router.send('/dat/resumeSingle', fileResumeDatData) )
-            resumeDats.push( this.router.send('/dat/resumeSingle', metaResumeDatData) )
+            if(content.creatorId == this.ethAddress) {
+                resumeDats.push( this.router.send('/dat/resumeSingle', metaResumeDatData) )
+            }
             Promise.all(resumeDats).then(() => {
                 debug('Content resume is good ')
                 // 3. Add new discovery
