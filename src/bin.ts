@@ -4,6 +4,11 @@ import Core, { ICoreOptions } from './index';
 import fsExtra from 'fs-extra'
 
 const argv = require('yargs')
+    .option('ethAddress', {
+        alias: 'e',
+        description: 'Run with a specific ethAddress',
+        type: 'string'
+    })
     .option('disableHttpInterface', {
         alias: 'd',
         description: 'Disables the HTTP interface',
