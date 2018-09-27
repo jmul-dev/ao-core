@@ -109,7 +109,7 @@ const routerArgs: AORouterArgs = {
 
 export default class AOP2P extends AORouterInterface {
     private dbPath: string;
-    private dbKey: string = '93b87287b697bd8ca27e119ec6a88f330f16db83823e06cc177155f31fa42789'; //TODO: Set the production static dbKey
+    private dbKey: string = '7fa866717f66a54fd51d481f7dd04bd7a508e3bd878553ec39c12021b2cb4deb';
     private dbPrefix: string;
     private storageLocation: string;
     private contentWatchKey: string;
