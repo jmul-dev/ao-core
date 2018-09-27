@@ -31,7 +31,6 @@ export interface IAOEth_HostContentEvent_Data {
     transactionHash: string;
 }
 export interface IAOEth_Events_BuyContent_Data {
-    contentHostId: string;
 }
 
 export interface BuyContentEvent {
@@ -203,7 +202,6 @@ export default class AOEth extends AORouterInterface {
      */
     _listenForBuyContentEvents(request: IAORouterRequest) {
         const requestData: IAOEth_Events_BuyContent_Data = request.data;
-        const { contentHostId } = requestData
         debug(`Attempting to listen for BuyContent events on network[${this.networkId}]`)
         if ( this.events.BuyContent ) {
             debug(`Warning, already subscribed to BuyContent events`)
@@ -219,9 +217,12 @@ export default class AOEth extends AORouterInterface {
                     }
                 }).on('data', event => {
                     const buyContentEvent: BuyContentEvent = event.returnValues
-                    this.router.send('/core/content/incomingPurchase', buyContentEvent).then(() => {
-                        
-                    }).catch(debug)
+                    // Disregard BuyContent events from the current user
+                    if ( buyContentEvent.buyer && buyContentEvent.buyer.toLowerCase() !== request.ethAddress.toLowerCase() ) {
+                        this.router.send('/core/content/incomingPurchase', buyContentEvent).then(() => {
+                            
+                        }).catch(debug)
+                    }
                 }).on('error', (error) => {
                     debug(`BuyContent subscription error: ${error.message}`)
                     if ( !responded ) {

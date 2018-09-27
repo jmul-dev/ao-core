@@ -215,10 +215,6 @@ export default class AOUserSession {
      */
     private _handleIncomingContentPurchase(buyContentEvent: BuyContentEvent) {
         return new Promise((resolve,reject) => {
-            if ( buyContentEvent.buyer.toLowerCase() === this.ethAddress.toLowerCase() ) {
-                debug(`Incoming BuyContent event is our own, disregard`)
-                return resolve()
-            }
             // 1. Get the corresponding content entry in user db (make sure it is not )
             const contentQuery: AODB_UserContentGet_Data = {
                 query: { 
