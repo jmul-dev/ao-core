@@ -98,6 +98,7 @@ export interface AOP2P_NodeUpdateRoute {
 export interface NetworkContentHostEntry {
     contentDatKey: string;
     contentHostId: string;
+    nodeId: string;
     timestamp: string;
 }
 
@@ -371,6 +372,7 @@ export default class AOP2P extends AORouterInterface {
                     return {
                         contentDatKey: entryValue.contentDatKey,
                         contentHostId: entryValue.contentHostId,
+                        nodeId: entry.splitKey[4], //node that holds the content
                         timestamp: entryValue.timestamp,
                     }
                 } catch (error) {
@@ -435,6 +437,8 @@ export default class AOP2P extends AORouterInterface {
                 return
             } else if(indexData[buyerEthAddress]) {
                 debug(`Looks like we've already sold ${content.title} to ${buyerEthAddress}, going to overwrite the entry`)
+                debug(indexData[buyerEthAddress])
+                debug(nodeRoute)
             }
 
             // 3. Add row to indexData
