@@ -98,9 +98,8 @@ export default abstract class AOContent {
     public description: string
     public stake: number
     public fileSize: number
-    public premium: number
-    public profit: number
-    public split: number
+    public stakePrimordialPercentage: number
+    public profitSplitPercentage: number
     public adSupport: boolean
     public createdAt: string
     public transactions?: {
@@ -179,9 +178,8 @@ export default abstract class AOContent {
             'description',
             'stake',            
             'fileSize',
-            'premium',
-            'profit',
-            'split',
+            'stakePrimordialPercentage',
+            'profitSplitPercentage',
             'adSupport',
             'createdAt',
             'teaserUrl',

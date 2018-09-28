@@ -15,7 +15,7 @@ function generateRandomVideo(coreOrigin,corePort) {
     const demoAsset = casual.random_element(demoAssets);
     const fileSize = casual.integer(1000, 1000000)
     const stake = Math.floor( casual.double(1, 4) * fileSize );
-    const premium = stake - fileSize
+    const stakePrimordialPercentage = stake - fileSize
     const originURL = coreOrigin+':'+corePort
 //    console.log(originURL+demoAsset.fileUrl)
     return {
@@ -32,8 +32,8 @@ function generateRandomVideo(coreOrigin,corePort) {
 
         fileSize: fileSize,
         stake: stake,
-        premium: premium,
-        split: casual.double(0, 1),
+        stakePrimordialPercentage: stakePrimordialPercentage,
+        profitSplitPercentage: casual.double(0, 1),
 
         adSupport: casual.boolean,
         createdAt: casual.date(),

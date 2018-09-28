@@ -10,7 +10,20 @@ import { IAORouterMessage } from "../../router/AORouter";
 const debug = Debug('ao:graphql:submitVideoContent');
 
 
-export default (obj: any, args: any, context: IGraphqlResolverContext, info: any) => {
+export interface ISubmitVideoContent_Args {
+    inputs: {
+        ethAddress: string,
+        video: Promise<any>,
+        videoTeaser: Promise<any>,
+        featuredImage: Promise<any>,
+        title: string,
+        description: string,
+        profitSplitPercentage: number,
+        stakePrimordialPercentage: number,
+    }
+}
+
+export default (obj: any, args: ISubmitVideoContent_Args, context: IGraphqlResolverContext, info: any) => {
     return new Promise((resolve, reject) => {
         const ethAddress: string = args.inputs.ethAddress;
 
@@ -103,8 +116,8 @@ export default (obj: any, args: any, context: IGraphqlResolverContext, info: any
                         isMutable: false,
                         title: args.inputs.title,
                         description: args.inputs.description,
-                        stake: args.inputs.stake,
-                        profit: args.inputs.profit,
+                        profitSplitPercentage: args.inputs.profitSplitPercentage,
+                        stakePrimordialPercentage: args.inputs.stakePrimordialPercentage,
                         createdAt: Date.now().toString(),
 
                         fileUrl: `${contentDatKey}/${contentFileNames[0]}`,

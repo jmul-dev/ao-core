@@ -95,8 +95,8 @@ interface IContent {
     # Econ
     stake: Float
     fileSize: Float
-    premium: Float
-    split: Float
+    stakePrimordialPercentage: Float
+    profitSplitPercentage: Float
     adSupport: Boolean
     # Network
     createdAt: String
@@ -131,8 +131,8 @@ type VideoContent implements IContent {
     # Econ
     stake: Float
     fileSize: Float
-    premium: Float
-    split: Float
+    stakePrimordialPercentage: Float
+    profitSplitPercentage: Float
     adSupport: Boolean
     # Network
     createdAt: String
@@ -154,5 +154,6 @@ input VideoContentSubmissionInputs {
     title: String!
     description: String!
     stake: Float!
-    profit: Float!
+    stakePrimordialPercentage: Float
+    profitSplitPercentage: Float!
 }
