@@ -1,7 +1,6 @@
 import Debug from '../../AODebug'
 import md5 from 'md5';
 import path from 'path';
-import * as AOCrypto from '../../AOCrypto';
 import { IGraphqlResolverContext } from '../../http';
 import AOContent, { AOContentState } from '../../models/AOContent';
 import { AODat_Create_Data } from '../../modules/dat/dat';
@@ -18,6 +17,7 @@ export interface ISubmitVideoContent_Args {
         featuredImage: Promise<any>,
         title: string,
         description: string,
+        stake: number,
         profitSplitPercentage: number,
         stakePrimordialPercentage: number,
     }
@@ -116,6 +116,7 @@ export default (obj: any, args: ISubmitVideoContent_Args, context: IGraphqlResol
                         isMutable: false,
                         title: args.inputs.title,
                         description: args.inputs.description,
+                        stake: args.inputs.stake,
                         profitSplitPercentage: args.inputs.profitSplitPercentage,
                         stakePrimordialPercentage: args.inputs.stakePrimordialPercentage,
                         createdAt: Date.now().toString(),
