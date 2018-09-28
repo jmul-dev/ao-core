@@ -369,7 +369,8 @@ export default class AODat extends AORouterInterface {
                 const datEntry: DatEntry = await this.downloadDat(nodeEntry.contentDatKey, false)
                 request.respond({
                     datEntry,
-                    contentHostId: nodeEntry.contentHostId
+                    contentHostId: nodeEntry.contentHostId,
+                    nodeEntry
                 })
                 return;
             } catch (error) {

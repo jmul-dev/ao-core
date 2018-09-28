@@ -215,6 +215,8 @@ export default class AOUserSession {
      */
     private _handleIncomingContentPurchase(buyContentEvent: BuyContentEvent) {
         return new Promise((resolve,reject) => {
+            debug('Buy Content Event: ')
+            debug(buyContentEvent)
             // 1. Get the corresponding content entry in user db (make sure it is not )
             const contentQuery: AODB_UserContentGet_Data = {
                 query: { 
@@ -304,7 +306,8 @@ export default class AOUserSession {
                         $set: {
                             "state": downloadResponse.data.datEntry.complete ? AOContentState.DOWNLOADED : AOContentState.DOWNLOADING,
                             "contentHostId": downloadResponse.data.contentHostId,
-                            "fileDatKey": downloadResponse.data.datEntry.key
+                            "fileDatKey": downloadResponse.data.datEntry.key,
+                            "nodeId": downloadResponse.data.nodeEntry.nodeId, //Important for when you're listening on the sold key channel.
                         }
                     }
                 }
@@ -414,7 +417,7 @@ export default class AOUserSession {
                     $set: {
                         "state": AOContentState.PURCHASED,
                         "purchaseId": buyContentEvent.purchaseId,
-                        "nodeId": buyContentEvent.contentHostId,
+                        //"nodeId": buyContentEvent.contentHostId, //taken out since this should be the node id, which is the seller's eth address
                     }
                 }
             } else {
@@ -458,7 +461,7 @@ export default class AOUserSession {
         //TODO: make sure the below key route gets made with the static method out of p2p.
         const p2pWatchKeyRequest: AOP2P_Watch_AND_Get_IndexData_Data = {
             // TODO: use AOP2P static methods to generate this path (or let AOP2P generate the path for us)
-            key: '/AOSpace/VOD/' + content.metadataDatKey + '/nodes/' + content.creatorId + '/' + content.fileDatKey + '/indexData',
+            key: '/AOSpace/VOD/' + content.metadataDatKey + '/nodes/' + content.nodeId + '/' + content.fileDatKey + '/indexData',
             ethAddress: this.ethAddress
         }
         debug(p2pWatchKeyRequest)
