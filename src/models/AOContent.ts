@@ -183,9 +183,7 @@ export default abstract class AOContent {
             'adSupport',
             'createdAt',
             'teaserUrl',
-            'teaserName',
             'featuredImageUrl',
-            'featuredImageName',
             'metadata',
             'baseChallenge',
         ]
@@ -213,9 +211,7 @@ export default abstract class AOContent {
 export class AOVideoContent extends AOContent {
     public contentType: AOContentType = 'VOD'
     public teaserUrl: string
-    public teaserName: string
     public featuredImageUrl: string
-    public featuredImageName: string
     public metadata: {
         encoding: string
         duration: number

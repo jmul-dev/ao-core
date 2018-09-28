@@ -120,18 +120,13 @@ export default (obj: any, args: ISubmitVideoContent_Args, context: IGraphqlResol
                         profitSplitPercentage: args.inputs.profitSplitPercentage,
                         stakePrimordialPercentage: args.inputs.stakePrimordialPercentage,
                         createdAt: Date.now().toString(),
-
-                        fileUrl: `${contentDatKey}/${contentFileNames[0]}`,
+                        fileUrl: `${contentFileNames[0]}`,
                         fileDatKey: contentDatKey,
                         fileName: contentFileNames[0],
                         fileSize: fileSize,
                         fileChecksum: checksum,
-
-                        teaserName: `${contentFileNames[1]}`,
-                        teaserUrl: `${metadataDatKey}/${contentFileNames[1]}`,
-                        featuredImageName: `${contentFileNames[2]}`,
-                        featuredImageUrl: `${metadataDatKey}/${contentFileNames[2]}`,
-
+                        teaserUrl: `${contentFileNames[1]}`,
+                        featuredImageUrl: `${contentFileNames[2]}`,
                         metadata: {
                             ...videoStats,  // see fs@getVideoData
                         },
