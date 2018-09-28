@@ -324,7 +324,6 @@ export default class AOP2P extends AORouterInterface {
                     let currentAddress = address.substring(2).toLowerCase()
                     if(comparativeAddress == currentAddress) {
                         let indexDataRow: AOP2P_IndexDataRow = indexData[address];
-                        debug(indexDataRow)
                         resolve(indexDataRow)
                         return
                     }
@@ -364,7 +363,6 @@ export default class AOP2P extends AORouterInterface {
             /**
              * Results needs quite a bit of formatting
              */
-            debug(results)
             // 1. Convert entry value data to json
             let jsonResults = results.map(entry => {
                 try {
@@ -437,8 +435,6 @@ export default class AOP2P extends AORouterInterface {
                 return
             } else if(indexData[buyerEthAddress]) {
                 debug(`Looks like we've already sold ${content.title} to ${buyerEthAddress}, going to overwrite the entry`)
-                debug(indexData[buyerEthAddress])
-                debug(nodeRoute)
             }
 
             // 3. Add row to indexData
