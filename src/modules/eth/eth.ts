@@ -210,7 +210,8 @@ export default class AOEth extends AORouterInterface {
             let responded = false
             try {
                 let subscription = this.contracts.aoContent.events.BuyContent({
-                    fromBlock: 0
+                    fromBlock: 0,
+                    toBlock: 'latest',
                 }, (error, event) => {
                     if ( error ) {
                         debug(`BuyContent callback error: ${error.message}`)
