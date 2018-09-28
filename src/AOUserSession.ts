@@ -216,7 +216,6 @@ export default class AOUserSession {
     private _handleIncomingContentPurchase(buyContentEvent: BuyContentEvent) {
         return new Promise((resolve,reject) => {
             debug('Buy Content Event: ')
-            debug(buyContentEvent)
             // 1. Get the corresponding content entry in user db (make sure it is not )
             const contentQuery: AODB_UserContentGet_Data = {
                 query: { 
@@ -467,7 +466,6 @@ export default class AOUserSession {
         debug(p2pWatchKeyRequest)
         this.router.send('/p2p/watchAndGetIndexData', p2pWatchKeyRequest).then((response: IAORouterMessage) => {
             const indexData: AOP2P_IndexDataRow = response.data
-            debug(indexData)
             if (indexData) {
                 let contentUpdateQuery: AODB_UserContentUpdate_Data = {
                     id: content.id,
@@ -511,7 +509,6 @@ export default class AOUserSession {
             }
             this.router.send('/fs/decryptChecksum', decryptChecksumData).then((decryptChecksumResponse: IAORouterMessage) => {
                 // 3. Check that the decrypted file's checksum actually matches the original content checksum                
-                debug(decryptChecksumResponse)
                 let checksum = decryptChecksumResponse.data.checksum
                 let nextContentState = AOContentState.VERIFIED
                 if (checksum != content.fileChecksum) {
