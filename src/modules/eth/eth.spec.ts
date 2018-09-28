@@ -6,7 +6,8 @@ import 'mocha';
 describe('AO Eth module', () => {
     const aoEth = new AOEth({
         rpcMainnet: 'wss://mainnet.infura.io/ws', // 'https://mainnet.infura.io/',
-        rpcRinkeby: 'wss://rinkeby.infura.io/ws', // 'https://rinkeby.infura.io/' ,
+        rpcRopsten: 'wss://ropsten.infura.io/ws', // 'https://rinkeby.infura.io/',
+        rpcRinkeby: 'wss://rinkeby.infura.io/ws', // 'https://rinkeby.infura.io/',
         network: '4',
     })
     const mainnetKnownFailedTx = '0xa0a5e34b9b19b398c5a073513ecb461899ceb45246f51e6d470ae0cf23b39075'

@@ -10,7 +10,8 @@ const debug = Debug('ao:eth');
 export interface AOEth_Args {
     network: string;
     rpcMainnet: string;
-    rpcRinkeby: string;
+    rpcRopsten: string;
+    rpcRinkeby: string;    
 }
 
 export interface IAOEth_NetworkChange_Data {
@@ -92,6 +93,7 @@ export default class AOEth extends AORouterInterface {
         super()
         this.rpcMainnet = args.rpcMainnet
         this.rpcRinkeby = args.rpcRinkeby
+        this.rpcRopsten = args.rpcRopsten
         this.events = {
             BuyContent: undefined
         }
