@@ -14,7 +14,7 @@ export interface AOEth_Args {
 }
 
 export interface IAOEth_NetworkChange_Data {
-    networkId: '1' | '4'
+    networkId: '1' | '3' | '4'
 }
 
 export interface IAOEth_TX_Data {
@@ -76,7 +76,8 @@ export default class AOEth extends AORouterInterface {
     private web3: Web3;
     private networkId: string;
     private rpcMainnet: string;
-    private rpcRinkeby: string;
+    private rpcRopsten: string;
+    private rpcRinkeby: string;    
 
     private contracts: { // sry no type checking on these bad boys!
         aoToken: any;
@@ -114,7 +115,7 @@ export default class AOEth extends AORouterInterface {
      */
     private connectToNetwork(networkId: string): Promise<any> {
         return new Promise((resolve, reject) => {
-            if (['1', '4'].indexOf(networkId) < 0) {
+            if (['1', '3', '4'].indexOf(networkId) < 0) {
                 debug(`Network currently not supported: ${networkId}`)
                 reject(new Error(`Network currently not supported: ${networkId}`))
                 return;
@@ -122,6 +123,8 @@ export default class AOEth extends AORouterInterface {
             let rpcEndpoint = this.rpcMainnet
             if (networkId === '1')  // mainnet
                 rpcEndpoint = this.rpcMainnet
+            else if (networkId === '3')  // ropsten
+                rpcEndpoint = this.rpcRopsten
             else if (networkId === '4')  // rinkeby
                 rpcEndpoint = this.rpcRinkeby
             if ( rpcEndpoint.indexOf('wss://') !== 0 ) {
