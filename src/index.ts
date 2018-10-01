@@ -84,7 +84,7 @@ export default class Core extends EventEmitter {
             process.send({event: EVENT_LOG, message: data.message});
         } else {
             // TODO: append to a temp log somewhere (make this configurable via command line)
-        }        
+        }
         this.coreRouter.router.send('/db/logs/insert', {
             message: data.message,
             createdAt: Date.now()
