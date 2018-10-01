@@ -73,7 +73,7 @@ export default class Http {
         // NOTE: this file is compiled down to 'dist/main.js' so referencing assets folder within dist
         // TODO: remove when ready
         let staticAssetPath = path.join(__dirname, './assets');
-        staticAssetPath = staticAssetPath.replace('app.asar', 'app.asar.unpacked')
+        //staticAssetPath = staticAssetPath.replace('app.asar', 'app.asar.unpacked')
         debug('Static asset path: ', staticAssetPath);
         this.express.use('/assets', express.static(staticAssetPath));
         this.server = this.express.listen(options.corePort, () => {

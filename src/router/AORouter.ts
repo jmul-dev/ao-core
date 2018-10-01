@@ -370,7 +370,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
     private spawnProcessForEntry(entry: IRegistryEntry): Promise<ChildProcess | null> {
         return new Promise((resolve,reject) => {
             let processLocation = path.join(__dirname, 'modules', entry.bin);
-            processLocation = processLocation.replace('app.asar', 'app.asar.unpacked');  // Sry, but if running within electron the paths are off
+            //processLocation = processLocation.replace('app.asar', 'app.asar.unpacked');  // Sry, but if running within electron the paths are off
             debug(`Attempting to spawn process ${entry.name} at: ${processLocation}`)
             const processArgs = [
                 processLocation,

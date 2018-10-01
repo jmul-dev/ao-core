@@ -5,6 +5,25 @@ const PermissionsOutputPlugin = require('webpack-permissions-plugin');
 
 console.log(__dirname + '/nodebin')
 
+const devMode = process.env.NODE_ENV !== 'production'
+
+console.log('Are we in development mode?', devMode ? 'yes':'no')
+
+const productionLoader = {
+    loader: 'awesome-node-loader',
+    options: {
+        rewritePath: path.join('..','..','..','ao-core','dist'),
+        useDirname: false // This uses the node binary location 
+    }
+}
+
+const developmentLoader = {
+    loader: 'awesome-node-loader',
+    options: {
+        rewritePath: path.resolve(__dirname, 'dist')
+    }
+}
+
 module.exports = {
     mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
     target: "node",
@@ -57,15 +76,10 @@ module.exports = {
             },
             {
                 test: /\.node$/,
-                use: {
-                    loader: 'native-ext-loader',        
-                    //use: 'node-addon-loader',
-                    //use: 'node-loader',
-                    options: {
-                      rewritePath: path.resolve(__dirname, 'dist')
-                    },  
-                }
-            } 
+                use: [
+                    devMode ? developmentLoader : productionLoader
+                ],
+            }
         ]
     },
     plugins: [
