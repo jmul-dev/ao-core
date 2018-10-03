@@ -8,8 +8,8 @@
   },
   "scripts": {
     "start": "DEBUG=ao:* node dist/bin.js",
-    "build": "npm run clean && NODE_ENV=development webpack",
-    "build-prod": "npm run clean && NODE_ENV=production webpack -p --progress",
+    "build": "npm run clean && cross-env NODE_ENV=development webpack",
+    "build-prod": "npm run clean && cross-env NODE_ENV=production webpack -p --progress",
     "clean": "rimraf dist",
     "test": "mocha -r ts-node/register src/**/*.spec.ts",
     "test-module": "mocha -r ts-node/register src/modules/${MODULE:-**}/*.spec.ts",
