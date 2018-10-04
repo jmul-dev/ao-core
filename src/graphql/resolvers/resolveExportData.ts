@@ -8,16 +8,17 @@ const debug = Debug('ao:graphQL:exportData')
 export interface IContentExport_Args {
     inputs: {
         exportPath: string
-        commandLine?: boolean
     }
 }
 
 export default (obj: any, args: IContentExport_Args, context: IGraphqlResolverContext, info: any) => {
     return new Promise((resolve, reject) => {
-        const commandLine = args.inputs.commandLine
-        let pathToExport = args.inputs.exportPath
+        let pathToExport = args.inputs ? args.inputs.exportPath : undefined
         if (!pathToExport) {
             pathToExport = context.options.desktopLocation
+        }
+        if ( !pathToExport ) {
+            return reject(new Error(`Expected a path for the zipped export, received undefined`))
         }
         // 1. Start the zipping process
         const dataExportData: IAOFS_DataExport_Data = { outputPath: pathToExport }
@@ -33,12 +34,11 @@ export default (obj: any, args: IContentExport_Args, context: IGraphqlResolverCo
                 }).catch(debug)
             } else {
                 debug('No Export Path returned from dataExport')
+                reject(new Error('No Export Path returned from dataExport'))
             }
         }).catch((err) => {
             debug(err)
-            if (commandLine) {
-                reject(err)
-            }
+            reject(err)
         })
     })
 }

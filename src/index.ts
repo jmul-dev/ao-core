@@ -119,10 +119,7 @@ export default class Core extends EventEmitter {
         //Exports data
         if (exportData.length) {
             const exportArgs: IContentExport_Args = {
-                inputs: {
-                    exportPath: exportData,
-                    commandLine: true
-                }
+                inputs: { exportPath: exportData }
             }
             exportDataResolver(empty, exportArgs, context, empty).then(() => {
                 debug('Export finished. Export should be at: ' + exportData)
