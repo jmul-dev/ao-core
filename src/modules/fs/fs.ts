@@ -150,10 +150,32 @@ export default class AOFS extends AORouterInterface {
         // TODO: verify inputs
         const writePath = path.resolve(this.storageLocation, requestData.writePath)
         debug('writing stream to: '+ writePath )
-        const destinationStream = fs.createWriteStream(writePath)
-        const readStream = fs.createReadStream(null, { fd: 3 })
-
+        const destinationStream = fs.createWriteStream(writePath, {autoClose:true})
+        let readStream
+        try {
+            readStream = fs.createReadStream(null, { fd: 3, autoClose:true })
+        } catch(e) {
+            debug(e)
+        }
+        
+        readStream
+        .on('end', () => {
+            debug('readStream: End of file')
+        })
+        .on('error', (error) => {
+            debug('hanle write stream original read error:')
+            debug(error)
+        })
         readStream.pipe(destinationStream)
+            .on('end', ()=> {
+                debug('pipe: End of file')
+            })
+            .on('error', (error) => {
+                console.log('fs rejecting', error)
+                request.reject(error)
+                // TODO: 'error' event does not mean the stream is closed, 
+                // should probably close up streams/cleanup
+            })
             .on('finish', () => {
                 const fileStats = fs.statSync(writePath)
                 this._getVideoData(writePath, requestData.videoStats)
@@ -179,7 +201,16 @@ export default class AOFS extends AORouterInterface {
                                     if(err) {
                                         request.reject(err)
                                     } else {
-                                        readFrom.pipe(encrypt).pipe(writeToEncrypted)
+                                        readFrom.on('error', (error) => {
+                                            debug('handle write stream re-encryption read error: ')
+                                            debug(error)
+                                        })
+                                        readFrom.pipe(encrypt)
+                                        .pipe(writeToEncrypted)
+                                        .on('error', (error) => {
+                                            debug('handle write stream re-encryption error: ')
+                                            debug(error)
+                                        })
                                         .on('finish', () => {
                                             //get stats for the encrypted file.
                                             //const fileStats = fs.statSync( encryptedPath )
@@ -221,11 +252,6 @@ export default class AOFS extends AORouterInterface {
                         request.reject(e)
                     })
 
-            }).on('error', (error) => {
-                console.log('fs rejecting', error)
-                request.reject(error)
-                // TODO: 'error' event does not mean the stream is closed, 
-                // should probably close up streams/cleanup
             })
     }
 
