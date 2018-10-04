@@ -404,16 +404,18 @@ export default class AODat extends AORouterInterface {
                 const newDatPath = path.join(this.datDir, key);
                 Dat(newDatPath, { key: key }, (err, dat) => {
                     if (err || !dat) {
-                        this.removeDat(key)
                         if (err.name === 'IncompatibleError') {
                             // TODO: incompatible metadata issue, hoping to solve elsewhere   
                         }
                         if (!dat) {
                             debug('borked dat ', dat)
+                            this.removeDat(key)
                         } else {
                             debug('Dat error, closing')
-                            dat.close()
-                        }
+                            dat.close(() => {
+                                this.removeDat(key)
+                            })
+                        }                        
                         debug(`[${key}] Failed to download dat`, err)
                         reject(err)
                         return;
@@ -424,12 +426,16 @@ export default class AODat extends AORouterInterface {
                         dat.joinNetwork((err) => {
                             if (err) {
                                 debug(`[${key}] Failed to join network`, err)
-                                this.removeDat(key)
+                                dat.close(() => {
+                                    this.removeDat(key)
+                                })
                                 reject(err)
                                 return;
                             } else if ((!dat.network.connected || !dat.network.connecting) && !catchStupidDat) {
                                 debug(`[${key}] Failed to download, no one is hosting`)
-                                this.removeDat(key)
+                                dat.close(() => {
+                                    this.removeDat(key)
+                                })
                                 reject(new Error('No users are hosting the requested content'))
                                 return;
                             } else {
@@ -496,7 +502,9 @@ export default class AODat extends AORouterInterface {
                         }
                     } catch (error) {
                         debug(`Dat error while attempting to download...`, error)
-                        this.removeDat(key)
+                        dat.close( () => {
+                            this.removeDat(key)
+                        })
                         reject(error)
                     }
                 })
@@ -506,19 +514,17 @@ export default class AODat extends AORouterInterface {
 
     private removeDat(key: string) {
         const datPath = path.join(this.datDir, key);
-        const instance = this.dats[key]
-        instance.close(() => {
-            // remove dat instance if exists
-            delete this.dats[key]
-            // remove db entry
-            this.datsDb.remove({ key: key })
-            // cleanup disk
-            let unlinkParams: IAOFS_Unlink_Data = {
-                removePath: datPath,
-                isAbsolute: true,
-            }
-            this.router.send('/fs/unlink', unlinkParams)
-        })
+        // remove dat instance if exists
+        delete this.dats[key]
+        // remove db entry
+        this.datsDb.remove({ key: key })
+        // cleanup disk
+        let unlinkParams: IAOFS_Unlink_Data = {
+            removePath: datPath,
+            isAbsolute: true,
+        }
+        this.router.send('/fs/unlink', unlinkParams)
+        
     }
 
     private _handleDatExists(request: IAORouterRequest) {
