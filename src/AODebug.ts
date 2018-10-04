@@ -1,7 +1,9 @@
 'user strict'
+import minimist from 'minimist'
 import path from 'path'
 import winston, { format, transports } from 'winston'
-
+const argv = minimist(process.argv.slice(2))
+const dataPath = argv.storageLocation ? argv.storageLocation : 'data'
 const { combine, timestamp, label, colorize } = format
 export const debugLogFile = 'debug.log'
 
@@ -35,7 +37,7 @@ export default (prefix:string):any => {
             debugFormat
         ),
         transports: [
-            new transports.File({ filename: path.join('data', debugLogFile), level: prefix }),
+            new transports.File({ filename: path.resolve(dataPath, debugLogFile), level: prefix }),
             new transports.Console({level: prefix, format: combine(colorize(), debugFormat) })
         ]
     })

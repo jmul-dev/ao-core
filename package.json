@@ -8,8 +8,8 @@
   },
   "scripts": {
     "start": "DEBUG=ao:* node dist/bin.js",
-    "build": "npm run clean && NODE_ENV=development webpack",
-    "build-prod": "npm run clean && NODE_ENV=production webpack -p --progress",
+    "build": "npm run clean && cross-env NODE_ENV=development webpack",
+    "build-prod": "npm run clean && cross-env NODE_ENV=production webpack -p --progress",
     "clean": "rimraf dist",
     "test": "mocha -r ts-node/register src/**/*.spec.ts",
     "test-module": "mocha -r ts-node/register src/modules/${MODULE:-**}/*.spec.ts",
@@ -55,6 +55,7 @@
     "nedb": "^1.8.0",
     "queue": "^4.5.0",
     "scrypt": "git://github.com/ryuheiyokokawa/node-scrypt.git#ao",
+    "secp256k1": "^3.5.2",
     "supports-color": "^5.5.0",
     "unzipper": "^0.9.3",
     "web3": "^1.0.0-beta.33",

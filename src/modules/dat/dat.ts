@@ -404,16 +404,18 @@ export default class AODat extends AORouterInterface {
                 const newDatPath = path.join(this.datDir, key);
                 Dat(newDatPath, { key: key }, (err, dat) => {
                     if (err || !dat) {
-                        this.removeDat(key)
                         if (err.name === 'IncompatibleError') {
                             // TODO: incompatible metadata issue, hoping to solve elsewhere   
                         }
                         if (!dat) {
                             debug('borked dat ', dat)
+                            this.removeDat(key)
                         } else {
                             debug('Dat error, closing')
-                            dat.close()
-                        }
+                            
+                            this.removeDat(key)
+                            
+                        }                        
                         debug(`[${key}] Failed to download dat`, err)
                         reject(err)
                         return;
@@ -424,7 +426,9 @@ export default class AODat extends AORouterInterface {
                         dat.joinNetwork((err) => {
                             if (err) {
                                 debug(`[${key}] Failed to join network`, err)
+                                
                                 this.removeDat(key)
+                                
                                 reject(err)
                                 return;
                             } else if ((!dat.network.connected || !dat.network.connecting) && !catchStupidDat) {
@@ -505,6 +509,19 @@ export default class AODat extends AORouterInterface {
     }
 
     private removeDat(key: string) {
+        if( this.dats[key] ) {
+            try {
+                this.dats[key].close(() => {
+                    this._removeDat(key)
+                })
+            } catch(e) {
+                debug(e)
+                this._removeDat(key)
+            }
+        }
+    }
+    //Thanks dat-node, the worst package ever!
+    private _removeDat(key: string) {
         const datPath = path.join(this.datDir, key);
         // remove dat instance if exists
         delete this.dats[key]
@@ -515,7 +532,9 @@ export default class AODat extends AORouterInterface {
             removePath: datPath,
             isAbsolute: true,
         }
-        this.router.send('/fs/unlink', unlinkParams)
+        this.router.send('/fs/unlink', unlinkParams).then(() => {
+            debug('Dat removed')
+        }).catch(debug)
     }
 
     private _handleDatExists(request: IAORouterRequest) {
