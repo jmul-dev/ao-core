@@ -10,6 +10,7 @@ type Mutation {
     contentUploadStakeTransaction(inputs: ContentUploadStakeTransactionInputs): IContent
     contentBecomeHostTransaction(inputs: ContentHostTransactionInputs): IContent
     contentRetryHostDiscovery(id: ID!): IContent
+    export(inputs: ExportInputs): String
 }
 
 input ContentHostTransactionInputs {
@@ -35,4 +36,8 @@ input ContentPurchaseTransactionInputs {
     transactionHash: String!
     contentId: String!
     contentHostId: String!
+}
+
+input ExportInputs {
+    exportPath: String
 }

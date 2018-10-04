@@ -53,6 +53,7 @@ export default function () {
                 contentBecomeHostTransaction: resolvers.resolveContentBecomeHostTransaction,
                 contentUploadStakeTransaction: resolvers.resolveContentUploadStakeTransaction,
                 contentRetryHostDiscovery: resolvers.resolveContentRetryHostDiscovery,
+                export: resolvers.resolveExportData,
             },
         },
         resolverValidationOptions: {

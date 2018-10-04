@@ -18,6 +18,7 @@ import resolveContentBecomeHostTransaction from './resolveContentBecomeHostTrans
 import resolveContentUploadStakeTransaction from './resolveContentUploadStakeTransaction';
 import resolveSignatureVrs from './resolveSignatureVrs';
 import resolveContentRetryHostDiscovery from './resolveContentRetryHostDiscovery';
+import resolveExportData from './resolveExportData';
 
 
 export default {
@@ -41,6 +42,7 @@ export default {
     resolveContentBecomeHostTransaction,    
     resolveContentUploadStakeTransaction,
     resolveContentRetryHostDiscovery,
+    resolveExportData,
     // Field resolvers
     resolveUrl,
     resolveSignatureVrs,
