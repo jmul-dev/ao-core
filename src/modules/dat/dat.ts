@@ -412,9 +412,9 @@ export default class AODat extends AORouterInterface {
                             this.removeDat(key)
                         } else {
                             debug('Dat error, closing')
-                            dat.close(() => {
-                                this.removeDat(key)
-                            })
+                            
+                            this.removeDat(key)
+                            
                         }                        
                         debug(`[${key}] Failed to download dat`, err)
                         reject(err)
@@ -426,16 +426,14 @@ export default class AODat extends AORouterInterface {
                         dat.joinNetwork((err) => {
                             if (err) {
                                 debug(`[${key}] Failed to join network`, err)
-                                dat.close(() => {
-                                    this.removeDat(key)
-                                })
+                                
+                                this.removeDat(key)
+                                
                                 reject(err)
                                 return;
                             } else if ((!dat.network.connected || !dat.network.connecting) && !catchStupidDat) {
                                 debug(`[${key}] Failed to download, no one is hosting`)
-                                dat.close(() => {
-                                    this.removeDat(key)
-                                })
+                                this.removeDat(key)
                                 reject(new Error('No users are hosting the requested content'))
                                 return;
                             } else {
@@ -502,9 +500,7 @@ export default class AODat extends AORouterInterface {
                         }
                     } catch (error) {
                         debug(`Dat error while attempting to download...`, error)
-                        dat.close( () => {
-                            this.removeDat(key)
-                        })
+                        this.removeDat(key)
                         reject(error)
                     }
                 })
@@ -513,6 +509,19 @@ export default class AODat extends AORouterInterface {
     }
 
     private removeDat(key: string) {
+        if( this.dats[key] ) {
+            try {
+                this.dats[key].close(() => {
+                    this._removeDat(key)
+                })
+            } catch(e) {
+                debug(e)
+                this._removeDat(key)
+            }
+        }
+    }
+    //Thanks dat-node, the worst package ever!
+    private _removeDat(key: string) {
         const datPath = path.join(this.datDir, key);
         // remove dat instance if exists
         delete this.dats[key]
@@ -523,8 +532,9 @@ export default class AODat extends AORouterInterface {
             removePath: datPath,
             isAbsolute: true,
         }
-        this.router.send('/fs/unlink', unlinkParams)
-        
+        this.router.send('/fs/unlink', unlinkParams).then(() => {
+            debug('Dat removed')
+        }).catch(debug)
     }
 
     private _handleDatExists(request: IAORouterRequest) {
