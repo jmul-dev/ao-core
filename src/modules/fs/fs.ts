@@ -151,12 +151,24 @@ export default class AOFS extends AORouterInterface {
         const writePath = path.resolve(this.storageLocation, requestData.writePath)
         debug('writing stream to: '+ writePath )
         const destinationStream = fs.createWriteStream(writePath)
-        const readStream = fs.createReadStream(null, { fd: 3 })
+        let readStream
+        try {
+            readStream = fs.createReadStream(null, { fd: 3 })
+        } catch(e) {
+            debug(e)
+        }
+        
         readStream.on('error', (error) => {
             debug('hanle write stream original read error:')
             debug(error)
         })
         readStream.pipe(destinationStream)
+            .on('error', (error) => {
+                console.log('fs rejecting', error)
+                request.reject(error)
+                // TODO: 'error' event does not mean the stream is closed, 
+                // should probably close up streams/cleanup
+            })
             .on('finish', () => {
                 const fileStats = fs.statSync(writePath)
                 this._getVideoData(writePath, requestData.videoStats)
@@ -233,11 +245,6 @@ export default class AOFS extends AORouterInterface {
                         request.reject(e)
                     })
 
-            }).on('error', (error) => {
-                console.log('fs rejecting', error)
-                request.reject(error)
-                // TODO: 'error' event does not mean the stream is closed, 
-                // should probably close up streams/cleanup
             })
     }
 
