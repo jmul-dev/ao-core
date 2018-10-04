@@ -506,16 +506,19 @@ export default class AODat extends AORouterInterface {
 
     private removeDat(key: string) {
         const datPath = path.join(this.datDir, key);
-        // remove dat instance if exists
-        delete this.dats[key]
-        // remove db entry
-        this.datsDb.remove({ key: key })
-        // cleanup disk
-        let unlinkParams: IAOFS_Unlink_Data = {
-            removePath: datPath,
-            isAbsolute: true,
-        }
-        this.router.send('/fs/unlink', unlinkParams)
+        const instance = this.dats[key]
+        instance.close(() => {
+            // remove dat instance if exists
+            delete this.dats[key]
+            // remove db entry
+            this.datsDb.remove({ key: key })
+            // cleanup disk
+            let unlinkParams: IAOFS_Unlink_Data = {
+                removePath: datPath,
+                isAbsolute: true,
+            }
+            this.router.send('/fs/unlink', unlinkParams)
+        })
     }
 
     private _handleDatExists(request: IAORouterRequest) {
