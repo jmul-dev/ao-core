@@ -149,7 +149,7 @@ export default class AOFS extends AORouterInterface {
         const requestData: IAOFS_WriteStream_Data = request.data;
         // TODO: verify inputs
         const writePath = path.resolve(this.storageLocation, requestData.writePath)
-        debug('writing stream to:', writePath)
+        debug('writing stream to: '+ writePath )
         const destinationStream = fs.createWriteStream(writePath)
         const readStream = fs.createReadStream(null, { fd: 3 })
 
