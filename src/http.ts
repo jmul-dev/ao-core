@@ -19,6 +19,8 @@ export interface Http_Args {
     httpOrigin: string;
     coreOrigin: string;
     corePort: number;
+    storageLocation: string;
+    desktopLocation?: string;
 }
 
 export interface IGraphqlResolverContext {

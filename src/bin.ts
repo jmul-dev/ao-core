@@ -37,6 +37,14 @@ const argv = require('yargs')
             return fsExtra.pathExistsSync(arg) ? arg : Core.DEFAULT_OPTIONS.storageLocation
         }
     })
+    .option('desktopLocation', {
+        description: 'Users desktop path (used for exporting)',
+        type: 'string',
+        coerce: (arg) => {
+            //If you use coerce, the default options don't get passed as it goes through this.
+            return fsExtra.pathExistsSync(arg) ? arg : Core.DEFAULT_OPTIONS.desktopLocation
+        }
+    })
     .option('nodeBin', {
         description: 'Node binary to use',
         type: 'string',
