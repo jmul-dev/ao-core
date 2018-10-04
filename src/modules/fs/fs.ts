@@ -152,7 +152,10 @@ export default class AOFS extends AORouterInterface {
         debug('writing stream to: '+ writePath )
         const destinationStream = fs.createWriteStream(writePath)
         const readStream = fs.createReadStream(null, { fd: 3 })
-
+        readStream.on('error', (error) => {
+            debug('hanle write stream original read error:')
+            debug(error)
+        })
         readStream.pipe(destinationStream)
             .on('finish', () => {
                 const fileStats = fs.statSync(writePath)
@@ -179,7 +182,16 @@ export default class AOFS extends AORouterInterface {
                                     if(err) {
                                         request.reject(err)
                                     } else {
-                                        readFrom.pipe(encrypt).pipe(writeToEncrypted)
+                                        readFrom.on('error', (error) => {
+                                            debug('handle write stream re-encryption read error: ')
+                                            debug(error)
+                                        })
+                                        readFrom.pipe(encrypt)
+                                        .pipe(writeToEncrypted)
+                                        .on('error', (error) => {
+                                            debug('handle write stream re-encryption error: ')
+                                            debug(error)
+                                        })
                                         .on('finish', () => {
                                             //get stats for the encrypted file.
                                             //const fileStats = fs.statSync( encryptedPath )
