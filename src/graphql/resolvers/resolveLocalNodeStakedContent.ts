@@ -18,6 +18,9 @@ export default (obj: any, args: any, context: IGraphqlResolverContext, info: any
             [].concat(response.data).forEach(content => {
                 userContent.push(AOContent.fromObject(content))
             });
+            userContent = userContent.sort((a, b) => {
+                return parseInt(b.createdAt) - parseInt(a.createdAt)
+            })
             resolve(userContent)
         }).catch(error => {
             reject(error)
