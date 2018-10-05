@@ -413,7 +413,8 @@ export default class AODat extends AORouterInterface {
                     Dat(newDatPath, { key: key }, (err, dat) => {
                         if (err || !dat) {
                             if (err.name === 'IncompatibleError') {
-                                // TODO: incompatible metadata issue, hoping to solve elsewhere   
+                                // TODO: incompatible metadata issue, hoping to solve elsewhere
+                                debug('Dat Incompatible Error')
                             }
                             if (!dat) {
                                 debug('borked dat ', dat)
@@ -439,6 +440,8 @@ export default class AODat extends AORouterInterface {
                                     return;
                                 } else if ((!dat.network.connected || !dat.network.connecting) && !catchStupidDat) {
                                     debug(`[${key}] Failed to download, no one is hosting`)
+                                    debug(`network connected: ${dat.network.connected}`)
+                                    debug(`network connecting: ${dat.network.connecting}`)
                                     this.removeDat(key)
                                     reject(new Error('No users are hosting the requested content'))
                                     return;
