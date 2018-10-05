@@ -57,24 +57,32 @@ export default class Core extends EventEmitter {
         this.options = Object.assign({}, Core.DEFAULT_OPTIONS, args)
         debug(this.options)
         // Overwriting previous debug logs before starting
-        fsExtra.remove(path.join(this.options.storageLocation, debugLogFile)).then(() => {
-            this.coreRouter = new AORouter(this.options)
-            this.coreRouter.init().then(() => {
-                this.coreRouter.router.on('/core/log', this._handleLog.bind(this))
-                this.userSession = new AOUserSession(this.coreRouter.router)
-                this.http = new Http(this.coreRouter.router, this.options, this.userSession)
-                //Used to handle things like data exports and other command line only options
-                this._handleCommandline(args)
-            }).catch(debug)
-            process.stdin.resume();  // Hack to keep the core processes running
-            process.on('exit', () => {
-                this.coreRouter.shutdown()//Ensure that all child processes are killed
-                debug('Core process exiting...')
-            })
-            process.on('SIGINT', () => {
-                process.exit()
-            })
-        }).catch(console.log)
+        if(process.platform === "win32") {
+            //Windows has a hard time dealing with filesystem stuff, can't delete something we're writing into.
+            this._init(args)
+        } else {
+            fsExtra.remove(path.join(this.options.storageLocation, debugLogFile)).then(() => {
+                this._init(args)
+            }).catch(console.log)
+        }
+    }
+    private _init(args) {
+        this.coreRouter = new AORouter(this.options)
+        this.coreRouter.init().then(() => {
+            this.coreRouter.router.on('/core/log', this._handleLog.bind(this))
+            this.userSession = new AOUserSession(this.coreRouter.router)
+            this.http = new Http(this.coreRouter.router, this.options, this.userSession)
+            //Used to handle things like data exports and other command line only options
+            this._handleCommandline(args)
+        }).catch(debug)
+        process.stdin.resume();  // Hack to keep the core processes running
+        process.on('exit', () => {
+            this.coreRouter.shutdown()//Ensure that all child processes are killed
+            debug('Core process exiting...')
+        })
+        process.on('SIGINT', () => {
+            process.exit()
+        })
     }
 
     _handleLog(request: IAORouterRequest) {
