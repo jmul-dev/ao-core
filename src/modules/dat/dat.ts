@@ -472,6 +472,7 @@ export default class AODat extends AORouterInterface {
     
                             // Begin listening for completion & start tracking stats
                             if (!dat.AO_isTrackingStats) {
+                                debug(`Tracking Stats fired for ${key}`)
                                 const stats = dat.trackStats()
                                 dat.AO_isTrackingStats = true
                                 stats.on('update', () => {
@@ -480,33 +481,34 @@ export default class AODat extends AORouterInterface {
                                     // if(newStats.length.length == newStats.downloaded.length) {
                                     // }
                                 })
-                                dat.archive.on('sync', () => {
-                                    if (!catchStupidDat) {
-                                        catchStupidDat = true
-                                        debug(`[${key}] Fully downloaded the goods!`)
-                                        const currentDate = new Date()
-                                        let updatedDatEntry: DatEntry = {
-                                            key: key,
-                                            complete: true,
-                                            updatedAt: currentDate
-                                        }
-                                        //Yaay!  Dat node sux
-                                        this._getDatEntry(key).then((datEntry: DatEntry) => {
-                                            this._updateDatEntry(updatedDatEntry)
-                                        }).catch((error: Error) => {
-                                            updatedDatEntry.createdAt = currentDate
-                                            this._updateDatEntry(updatedDatEntry)
-                                        })
-                                        if (resolveOnDownloadCompletion) {
-                                            debug('Resolving with resolveOnDownloadCompletion')
-                                            //Gotta wait for that dat node to actually write to disk!
-                                            setTimeout(() => {
-                                                resolve(updatedDatEntry)
-                                            }, 1000)
-                                        }
-                                    }
-                                })
                             }
+                            
+                            dat.archive.on('sync', () => {
+                                if (!catchStupidDat) {
+                                    catchStupidDat = true
+                                    debug(`[${key}] Fully downloaded the goods!`)
+                                    const currentDate = new Date()
+                                    let updatedDatEntry: DatEntry = {
+                                        key: key,
+                                        complete: true,
+                                        updatedAt: currentDate
+                                    }
+                                    //Yaay!  Dat node sux
+                                    this._getDatEntry(key).then((datEntry: DatEntry) => {
+                                        this._updateDatEntry(updatedDatEntry)
+                                    }).catch((error: Error) => {
+                                        updatedDatEntry.createdAt = currentDate
+                                        this._updateDatEntry(updatedDatEntry)
+                                    })
+                                    if (resolveOnDownloadCompletion) {
+                                        debug('Resolving with resolveOnDownloadCompletion')
+                                        //Gotta wait for that dat node to actually write to disk!
+                                        setTimeout(() => {
+                                            resolve(updatedDatEntry)
+                                        }, 1000)
+                                    }
+                                }
+                            })
                         } catch (error) {
                             debug(`Dat error while attempting to download...`, error)
                             this.removeDat(key)
