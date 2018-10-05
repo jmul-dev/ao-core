@@ -163,8 +163,21 @@ export default class AOFS extends AORouterInterface {
             debug('hanle write stream original read error:')
             debug(error)
         })
+        .on('finish', () => {
+            readStream.close()
+            readStream.push(null)
+            readStream.read(0)
+        })
+        .on('close', () => {
+            readStream.close()
+            readStream.push(null)
+            readStream.read(0)
+        })
         .on('end', () => {
             debug('readStream: End of file')
+            readStream.close()
+            readStream.push(null)
+            readStream.read(0)
         })
         
         readStream.pipe(destinationStream)
@@ -176,6 +189,9 @@ export default class AOFS extends AORouterInterface {
             })
             .on('end', ()=> {
                 debug('pipe: End of file')
+                readStream.close()
+                readStream.push(null)
+                readStream.read(0)
             })
             .on('finish', () => {
                 debug('Finish is called')
