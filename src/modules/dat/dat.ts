@@ -403,109 +403,116 @@ export default class AODat extends AORouterInterface {
                     resolve(datEntry)
                 }).catch(reject)
             } else {
-                // B. We do not have this dat, proceed to create and download
+                // B1. We do not have this dat in the DB records, let's make sure we didn't try to download it in the past
                 const newDatPath = path.join(this.datDir, key);
-                Dat(newDatPath, { key: key }, (err, dat) => {
-                    if (err || !dat) {
-                        if (err.name === 'IncompatibleError') {
-                            // TODO: incompatible metadata issue, hoping to solve elsewhere   
-                        }
-                        if (!dat) {
-                            debug('borked dat ', dat)
-                            this.removeDat(key)
-                        } else {
-                            debug('Dat error, closing')
-                            
-                            this.removeDat(key)
-                            
-                        }                        
-                        debug(`[${key}] Failed to download dat`, err)
-                        reject(err)
-                        return;
-                    }
-                    //Dat is super stupid and will exit with its own recommended code when in fact its all okay: https://github.com/datproject/dat-node#downloading-files
-                    let catchStupidDat = false
-                    try {
-                        dat.joinNetwork((err) => {
-                            if (err) {
-                                debug(`[${key}] Failed to join network`, err)
-                                
-                                this.removeDat(key)
-                                
-                                reject(err)
-                                return;
-                            } else if ((!dat.network.connected || !dat.network.connecting) && !catchStupidDat) {
-                                debug(`[${key}] Failed to download, no one is hosting`)
-                                this.removeDat(key)
-                                reject(new Error('No users are hosting the requested content'))
-                                return;
-                            } else {
-                                debug(`[${key}] Succesfully joined network and began downloading!`)
-                                const datKey = dat.key.toString('hex');
-                                dat.AO_joinedNetwork = true
-                                this.dats[datKey] = dat;
-                                //Dat node is a shitty library.  We have an internal race condition we have to be aware of.
-                                this._getDatEntry(datKey).then((datEntry: DatEntry) => {
-                                    if (!datEntry) {
-                                        const newDatEntry: DatEntry = {
-                                            key: datKey,
-                                            complete: false,
-                                            updatedAt: new Date(),
-                                            createdAt: new Date(),
-                                        }
-                                        this._updateDatEntry(newDatEntry)
-                                        if (!resolveOnDownloadCompletion) {
-                                            resolve(newDatEntry)
-                                        }
-                                    } else {
-                                        resolve(datEntry)
-                                    }
-                                }).catch(debug)
+                const removeDatPathData: IAOFS_Unlink_Data = {
+                    removePath: newDatPath
+                }
+                this.router.send('/fs/unlink', removeDatPathData).then(() => {
+                    // B2. All good, lets download this key
+                    Dat(newDatPath, { key: key }, (err, dat) => {
+                        if (err || !dat) {
+                            if (err.name === 'IncompatibleError') {
+                                // TODO: incompatible metadata issue, hoping to solve elsewhere   
                             }
-                        })
-
-                        // Begin listening for completion & start tracking stats
-                        if (!dat.AO_isTrackingStats) {
-                            const stats = dat.trackStats()
-                            dat.AO_isTrackingStats = true
-                            stats.on('update', () => {
-                                const newStats = stats.get()
-                                //TODO: Add percentage off of length vs downloaded as percentage of newStats
-                                // if(newStats.length.length == newStats.downloaded.length) {
-                                // }
-                            })
-                            dat.archive.on('sync', () => {
-                                if (!catchStupidDat) {
-                                    catchStupidDat = true
-                                    debug(`[${key}] Fully downloaded the goods!`)
-                                    const currentDate = new Date()
-                                    let updatedDatEntry: DatEntry = {
-                                        key: key,
-                                        complete: true,
-                                        updatedAt: currentDate
-                                    }
-                                    //Yaay!  Dat node sux
-                                    this._getDatEntry(key).then((datEntry: DatEntry) => {
-                                        this._updateDatEntry(updatedDatEntry)
-                                    }).catch((error: Error) => {
-                                        updatedDatEntry.createdAt = currentDate
-                                        this._updateDatEntry(updatedDatEntry)
-                                    })
-                                    if (resolveOnDownloadCompletion) {
-                                        debug('Resolving with resolveOnDownloadCompletion')
-                                        //Gotta wait for that dat node to actually write to disk!
-                                        setTimeout(() => {
-                                            resolve(updatedDatEntry)
-                                        }, 1000)
-                                    }
+                            if (!dat) {
+                                debug('borked dat ', dat)
+                                this.removeDat(key)
+                            } else {
+                                debug('Dat error, closing')
+                                this.removeDat(key)
+                            }                        
+                            debug(`[${key}] Failed to download dat`, err)
+                            reject(err)
+                            return;
+                        }
+                        //Dat is super stupid and will exit with its own recommended code when in fact its all okay: https://github.com/datproject/dat-node#downloading-files
+                        let catchStupidDat = false
+                        try {
+                            dat.joinNetwork((err) => {
+                                if (err) {
+                                    debug(`[${key}] Failed to join network`, err)
+                                    
+                                    this.removeDat(key)
+                                    
+                                    reject(err)
+                                    return;
+                                } else if ((!dat.network.connected || !dat.network.connecting) && !catchStupidDat) {
+                                    debug(`[${key}] Failed to download, no one is hosting`)
+                                    this.removeDat(key)
+                                    reject(new Error('No users are hosting the requested content'))
+                                    return;
+                                } else {
+                                    debug(`[${key}] Succesfully joined network and began downloading!`)
+                                    const datKey = dat.key.toString('hex');
+                                    dat.AO_joinedNetwork = true
+                                    this.dats[datKey] = dat;
+                                    //Dat node is a shitty library.  We have an internal race condition we have to be aware of.
+                                    this._getDatEntry(datKey).then((datEntry: DatEntry) => {
+                                        if (!datEntry) {
+                                            const newDatEntry: DatEntry = {
+                                                key: datKey,
+                                                complete: false,
+                                                updatedAt: new Date(),
+                                                createdAt: new Date(),
+                                            }
+                                            this._updateDatEntry(newDatEntry)
+                                            if (!resolveOnDownloadCompletion) {
+                                                resolve(newDatEntry)
+                                            }
+                                        } else {
+                                            resolve(datEntry)
+                                        }
+                                    }).catch(debug)
                                 }
                             })
+    
+                            // Begin listening for completion & start tracking stats
+                            if (!dat.AO_isTrackingStats) {
+                                const stats = dat.trackStats()
+                                dat.AO_isTrackingStats = true
+                                stats.on('update', () => {
+                                    const newStats = stats.get()
+                                    //TODO: Add percentage off of length vs downloaded as percentage of newStats
+                                    // if(newStats.length.length == newStats.downloaded.length) {
+                                    // }
+                                })
+                                dat.archive.on('sync', () => {
+                                    if (!catchStupidDat) {
+                                        catchStupidDat = true
+                                        debug(`[${key}] Fully downloaded the goods!`)
+                                        const currentDate = new Date()
+                                        let updatedDatEntry: DatEntry = {
+                                            key: key,
+                                            complete: true,
+                                            updatedAt: currentDate
+                                        }
+                                        //Yaay!  Dat node sux
+                                        this._getDatEntry(key).then((datEntry: DatEntry) => {
+                                            this._updateDatEntry(updatedDatEntry)
+                                        }).catch((error: Error) => {
+                                            updatedDatEntry.createdAt = currentDate
+                                            this._updateDatEntry(updatedDatEntry)
+                                        })
+                                        if (resolveOnDownloadCompletion) {
+                                            debug('Resolving with resolveOnDownloadCompletion')
+                                            //Gotta wait for that dat node to actually write to disk!
+                                            setTimeout(() => {
+                                                resolve(updatedDatEntry)
+                                            }, 1000)
+                                        }
+                                    }
+                                })
+                            }
+                        } catch (error) {
+                            debug(`Dat error while attempting to download...`, error)
+                            this.removeDat(key)
+                            reject(error)
                         }
-                    } catch (error) {
-                        debug(`Dat error while attempting to download...`, error)
-                        this.removeDat(key)
-                        reject(error)
-                    }
+                    })
+                }).catch((e) => {//FS delete of newDatPath
+                    debug(e)
+                    reject(e)
                 })
             }
         })
