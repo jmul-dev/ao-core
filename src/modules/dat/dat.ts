@@ -322,17 +322,20 @@ export default class AODat extends AORouterInterface {
                 dat.importFiles(() => {
                     const datKey = dat.key.toString('hex')
                     debug('Created new dat file: dat://' + datKey)
-                    this.dats[datKey] = dat;
-                    const newDatEntry: DatEntry = {
-                        key: datKey,
-                        complete: true, // assume its complete since already on disk
-                        updatedAt: new Date(),
-                        createdAt: new Date(),
-                    }
-                    this._updateDatEntry(newDatEntry)
-                    request.respond({
-                        ...newDatEntry,
-                        dir: requestData.newDatDir
+                    //this.dats[datKey] = dat;
+                    //Thanks windowz
+                    dat.close(() => {
+                        const newDatEntry: DatEntry = {
+                            key: datKey,
+                            complete: true, // assume its complete since already on disk
+                            updatedAt: new Date(),
+                            createdAt: new Date(),
+                        }
+                        this._updateDatEntry(newDatEntry)
+                        request.respond({
+                            ...newDatEntry,
+                            dir: requestData.newDatDir
+                        })
                     })
                 })
                     
