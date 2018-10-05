@@ -438,7 +438,7 @@ export default class AODat extends AORouterInterface {
                                     
                                     reject(err)
                                     return;
-                                } else if ((!dat.network.connected || !dat.network.connecting) && !catchStupidDat) {
+                                } else if (!(dat.network.connected + dat.network.connecting) && !catchStupidDat) {
                                     debug(`[${key}] Failed to download, no one is hosting`)
                                     debug(`network connected: ${dat.network.connected}`)
                                     debug(`network connecting: ${dat.network.connecting}`)
