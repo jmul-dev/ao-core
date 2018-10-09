@@ -9,6 +9,7 @@ const debug = Debug('ao:db');
 
 export interface AODB_Args {
     storageLocation: string;
+    networkId: string;
 }
 
 /**
@@ -100,6 +101,7 @@ export default class AODB extends AORouterInterface {
         checkForUpdates: true,
     }
     private storageLocation: string;
+    private networkId: string;
     private db: {
         logs: Datastore,
         settings: Datastore,
@@ -115,6 +117,7 @@ export default class AODB extends AORouterInterface {
     constructor(args: AODB_Args) {
         super()
         this.storageLocation = args.storageLocation
+        this.networkId = args.networkId
         this.router.on('/db/logs/get', this._logsGet.bind(this))
         this.router.on('/db/logs/insert', this._logsInsert.bind(this))
         this.router.on('/db/settings/get', this._settingsGet.bind(this))
@@ -142,6 +145,7 @@ export default class AODB extends AORouterInterface {
     }
 
     private _setupCoreDbs(): void {
+        const networkContentDBPath = path.resolve(this.storageLocation,`networkContent-${this.networkId}.db.json`)
         this.db = {
             logs: new Datastore({
                 //inMemoryOnly: true,
@@ -183,7 +187,7 @@ export default class AODB extends AORouterInterface {
                 }
             }),
             networkContent: new Datastore({
-                filename: path.resolve(this.storageLocation, 'networkContent.db.json'),
+                filename: networkContentDBPath,
                 autoload: true,
                 onload: (error: Error) => {
                     if (error) {
