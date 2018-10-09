@@ -117,7 +117,7 @@ export default class AODB extends AORouterInterface {
     constructor(args: AODB_Args) {
         super()
         this.storageLocation = args.storageLocation
-        this.networkId = args.networkId
+        this.networkId = String(args.networkId)
         this.router.on('/db/logs/get', this._logsGet.bind(this))
         this.router.on('/db/logs/insert', this._logsInsert.bind(this))
         this.router.on('/db/settings/get', this._settingsGet.bind(this))

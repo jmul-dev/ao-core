@@ -112,9 +112,9 @@ const routerArgs: AORouterArgs = {
 
 export default class AOP2P extends AORouterInterface {
     private dbPath: string;
-    private dbKeyMainNet: string = ''
+    private dbKeyMainNet: string = 'c26bf6279991f001cede1fe451cf2367a97e349cbbcbf8c740a5c162a5107a3c'
     private dbKeyRinkeby: string = '7fa866717f66a54fd51d481f7dd04bd7a508e3bd878553ec39c12021b2cb4deb';
-    private dbKeyRopsten: string = ''
+    private dbKeyRopsten: string = '5c1d0b40e9b17afb2488ad99c9755899a51fd7c4745c0df853e0237b101b8f74'
     private dbKey: string;
     private networkId: string;
     
@@ -126,7 +126,7 @@ export default class AOP2P extends AORouterInterface {
     constructor(args: AOP2P_Args) {
         super(routerArgs)
         this.storageLocation = args.storageLocation
-        this.networkId = args.networkId
+        this.networkId = String(args.networkId) //Apparently, numbers preferentially gets treated as such
         this.dbPath = path.join(this.storageLocation, 'p2p', this.networkId)
         this.dbPrefix = args.dbNameSpace ? args.dbNameSpace : '/AOSpace/' //Also known as App ID
 
@@ -162,8 +162,8 @@ export default class AOP2P extends AORouterInterface {
                 break;
             }
             const ensureP2PPathData: IAOFS_Mkdir_Data = { dirPath: this.dbPath }
+            debug(ensureP2PPathData)
             this.router.send('/fs/mkdir',ensureP2PPathData).then(() => {
-                //TODO: Should this be a file or just a key assigned per module?
                 const hyperDBOptions: AO_Hyper_Options = {
                     dbKey: this.dbKey,
                     dbPath: this.dbPath,
