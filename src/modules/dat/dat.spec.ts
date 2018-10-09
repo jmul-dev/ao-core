@@ -16,7 +16,8 @@ describe('AO Dat module', () => {
     before(function(done) {        
         fs.ensureDir(datStorageLocation + '/content').then(() => {
             aoEth = new AODat({
-                storageLocation: datStorageLocation
+                storageLocation: datStorageLocation,
+                networkId: '4'
             })
             // Faking the router send method
             aoEth.router.send = (route, message) => {
