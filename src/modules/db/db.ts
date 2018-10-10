@@ -227,7 +227,7 @@ export default class AODB extends AORouterInterface {
         })
         this.userDbs[request.ethAddress] = {
             content: new Datastore({
-                filename: path.resolve(this.storageLocation, 'users', request.ethAddress, 'content.db.json'),
+                filename: path.resolve(this.storageLocation, 'users', request.ethAddress, `content-${this.networkId}.db.json`),
                 autoload: false,
             }),
             user: new Datastore({
@@ -320,6 +320,8 @@ export default class AODB extends AORouterInterface {
         const requestData: AODB_UserContentGet_Data = request.data
         let query = requestData.query || {}
         let userId = requestData.userId ? requestData.userId : request.ethAddress
+        debug(`request eth: ${request.ethAddress}`)
+        debug(`request userId: ${requestData.userId}`)
         const userDbs = this.userDbs[userId]
         if (!userDbs) {
             request.reject(new Error(`User db not found for ${userId}`))

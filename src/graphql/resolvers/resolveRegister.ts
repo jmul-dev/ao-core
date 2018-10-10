@@ -14,7 +14,6 @@ export interface IRegister_Args {
 
 export default (obj: any, args: IRegister_Args, context: IGraphqlResolverContext, info: any) => {
     return new Promise((resolve, reject) => {
-        //Let's catch 
         if( args.inputs.networkId != context.options.networkId ) {
             debug('networkId changed, restarting core')
             const networkIdMismatchData: AOCore_NetworkIdMismatch_Data = {
