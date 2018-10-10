@@ -7,7 +7,8 @@
     "ao-core": "bin/bin.js"
   },
   "scripts": {
-    "start": "DEBUG=ao:* node dist/bin.js",
+    "start": "DEBUG=ao:* node dist/bin.js --networkId 4",
+    "start-prod": "DEBUG=ao:* node dist/bin.js --networkId 1",
     "build": "npm run clean && cross-env NODE_ENV=development webpack",
     "build-prod": "npm run clean && cross-env NODE_ENV=production webpack -p --progress",
     "clean": "rimraf dist",
