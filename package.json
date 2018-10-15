@@ -22,7 +22,7 @@
     "src"
   ],
   "dependencies": {
-    "ao-contracts": "git+ssh://git@git.y-designs.com:ao/ao-contracts.git#v1.0.6",
+    "ao-contracts": "git+ssh://git@git.y-designs.com:ao/ao-contracts.git#v1.0.7",
     "apollo-server-express": "^1.3.6",
     "apollo-upload-server": "^5.0.0",
     "archiver": "^3.0.0",
