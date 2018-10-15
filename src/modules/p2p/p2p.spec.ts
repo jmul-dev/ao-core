@@ -23,7 +23,8 @@ describe('AO P2P module', () => {
     const dbNameSpace = "/AOTest/"
     const args:AOP2P_Args =  {
         storageLocation: storageLocation,
-        dbNameSpace: dbNameSpace
+        dbNameSpace: dbNameSpace,
+        networkId: '4'
     }
     let aoP2P; //scoped outside
     before((done) => {

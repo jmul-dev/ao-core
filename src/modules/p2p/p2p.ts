@@ -5,12 +5,14 @@ import AONetworkContent from '../../models/AONetworkContent';
 import { AO_Hyper_Options, HDB_ListValueRow } from "../../router/AOHyperDB";
 import AORouterInterface, { AORouterArgs, IAORouterRequest } from "../../router/AORouterInterface";
 import AOContentIngestion from './AOContentIngestion';
+import { IAOFS_Mkdir_Data } from '../fs/fs';
 const debug = Debug('ao:p2p');
 
 
 export interface AOP2P_Args {
     storageLocation: string;
     dbNameSpace: string;
+    networkId: string;
 }
 
 export interface AOP2P_New_Content_Data {
@@ -110,7 +112,12 @@ const routerArgs: AORouterArgs = {
 
 export default class AOP2P extends AORouterInterface {
     private dbPath: string;
-    private dbKey: string = '7fa866717f66a54fd51d481f7dd04bd7a508e3bd878553ec39c12021b2cb4deb';
+    private dbKeyMainNet: string = 'c26bf6279991f001cede1fe451cf2367a97e349cbbcbf8c740a5c162a5107a3c'
+    private dbKeyRinkeby: string = '7fa866717f66a54fd51d481f7dd04bd7a508e3bd878553ec39c12021b2cb4deb';
+    private dbKeyRopsten: string = '5c1d0b40e9b17afb2488ad99c9755899a51fd7c4745c0df853e0237b101b8f74'
+    private dbKey: string;
+    private networkId: string;
+    
     private dbPrefix: string;
     private storageLocation: string;
     private contentWatchKey: string;
@@ -119,7 +126,8 @@ export default class AOP2P extends AORouterInterface {
     constructor(args: AOP2P_Args) {
         super(routerArgs)
         this.storageLocation = args.storageLocation
-        this.dbPath = path.join(this.storageLocation, 'p2p')
+        this.networkId = String(args.networkId) //Apparently, numbers preferentially gets treated as such
+        this.dbPath = path.join(this.storageLocation, 'p2p', this.networkId)
         this.dbPrefix = args.dbNameSpace ? args.dbNameSpace : '/AOSpace/' //Also known as App ID
 
         //New Content upload
@@ -142,17 +150,32 @@ export default class AOP2P extends AORouterInterface {
 
     private init() {
         return new Promise((resolve, reject) => {
-            //TODO: Should this be a file or just a key assigned per module?
-            const hyperDBOptions: AO_Hyper_Options = {
-                dbKey: this.dbKey,
-                dbPath: this.dbPath,
-                autoAuth: true
+            switch(this.networkId) {
+                case '1':
+                    this.dbKey = this.dbKeyMainNet
+                break;
+                case '3':
+                    this.dbKey = this.dbKeyRopsten
+                break;  
+                case '4':
+                    this.dbKey = this.dbKeyRinkeby
+                break;
             }
-            this.hyperdb.init(hyperDBOptions).then(() => {
-                resolve({ success: true })
-            }).catch(e => {
-                reject(e)
+            const ensureP2PPathData: IAOFS_Mkdir_Data = { dirPath: this.dbPath }
+            debug(ensureP2PPathData)
+            this.router.send('/fs/mkdir',ensureP2PPathData).then(() => {
+                const hyperDBOptions: AO_Hyper_Options = {
+                    dbKey: this.dbKey,
+                    dbPath: this.dbPath,
+                    autoAuth: true
+                }
+                this.hyperdb.init(hyperDBOptions).then(() => {
+                    resolve({ success: true })
+                }).catch(e => {
+                    reject(e)
+                })
             })
+            
         })
     }
 

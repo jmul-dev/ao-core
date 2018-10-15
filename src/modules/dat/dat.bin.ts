@@ -8,6 +8,7 @@ import path from 'path'
 var argv: AODat_Args = minimist<AODat_Args>(process.argv.slice(2), {
     default: {
         storageLocation: path.resolve(__dirname, '../..', 'data'),
+        networkId: '1'
     }
 });
 

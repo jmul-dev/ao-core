@@ -6,7 +6,7 @@ import minimist = require('minimist')
 
 var argv: AOP2P_Args = minimist<AOP2P_Args>(process.argv.slice(2), {
     default: {
-        
+        networkId: '1'
     }
 });
 

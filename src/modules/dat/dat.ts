@@ -10,6 +10,7 @@ const debug = Debug('ao:dat');
 
 export interface AODat_Args {
     storageLocation: string;
+    networkId: string;
 }
 
 export interface AODat_ResumeAll_Data {
@@ -72,6 +73,7 @@ export interface DatStats {
 
 export default class AODat extends AORouterInterface {
     private storageLocation: string;
+    private networkId: string;
     private datDir: string;
     private dats: {
         [key: string]: Dat
@@ -81,6 +83,7 @@ export default class AODat extends AORouterInterface {
     constructor(args: AODat_Args) {
         super()
         this.storageLocation = args.storageLocation
+        this.networkId = String(args.networkId)
         this.datDir = path.resolve(this.storageLocation, 'content')
         this.router.on('/dat/resumeAll', this._handleResumeAll.bind(this))
         this.router.on('/dat/resumeSingle', this._handleResumeSingle.bind(this))
@@ -93,7 +96,7 @@ export default class AODat extends AORouterInterface {
         this.router.on('/dat/stats', this._handleGetDatStats.bind(this))
         this.dats = {}
         this.datsDb = new Datastore({
-            filename: path.resolve(this.storageLocation, 'dats.db.json'),
+            filename: path.resolve(this.storageLocation, `dats-${this.networkId}.db.json`),
             autoload: true,
             onload: (error?: Error) => {
                 if (error) {
@@ -101,7 +104,7 @@ export default class AODat extends AORouterInterface {
                     this.router.send('/core/log', { message: 'Error loading dats database' })
                 }
                 const fsMakeContentDirData: IAOFS_Mkdir_Data = {
-                    dirPath: 'content'
+                    dirPath: path.join('content')
                 }
                 this.router.send('/fs/mkdir', fsMakeContentDirData).then(() => {
                     this._resumeAll().then(() => {
