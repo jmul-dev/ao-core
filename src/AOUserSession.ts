@@ -44,11 +44,11 @@ export default class AOUserSession {
                 return reject(new Error('ethAddress format rejected'))
             }
             this.ethAddress = ethAddress;
-            // 1. Make sure user db has been setup for this user
-            this.router.send('/db/user/init', { ethAddress }).then(() => {
-                // 2. Make sure the user/ethadd directory exist
-                const fsMakeEthDirData: IAOFS_Mkdir_Data = { dirPath: path.join('users', ethAddress) }
+            // 1. Make sure the user/ethadd directory exist
+            const fsMakeEthDirData: IAOFS_Mkdir_Data = { dirPath: path.join('users', ethAddress) }
                 this.router.send('/fs/mkdir', fsMakeEthDirData).then(() => {
+                // 2. Make sure user db has been setup for this user
+                this.router.send('/db/user/init', { ethAddress }).then(() => {
                     this.router.send('/core/log', { message: `[AO Core] Registered as user ${ethAddress}` })
                     // 3. Pull user identity
                     this.router.send('/db/user/getIdentity').then((response: IAORouterMessage) => {

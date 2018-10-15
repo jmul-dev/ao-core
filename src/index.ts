@@ -1,5 +1,5 @@
 'use strict';
-import { EVENT_LOG, DATA, DATA_TYPES } from './constants';
+import { EVENT_LOG, NETWORK_CHANGE, DATA, DATA_TYPES } from './constants';
 import AORouter from './router/AORouter';
 import { IAORouterRequest } from './router/AORouterInterface';
 import Http, { IGraphqlResolverContext } from './http'
@@ -33,10 +33,14 @@ export interface AOCore_Log_Data {
     message: string;
 }
 
+export interface AOCore_NetworkIdMismatch_Data {
+    newNetworkId: string;
+}
+
 export default class Core extends EventEmitter {
     public static DEFAULT_OPTIONS = {
         ethAddress: '',
-        networkId: '4',//TODO: Make this 1 on production
+        networkId: '1',//TODO: Make this 1 on production
         disableHttpInterface: false,
         corePort: 3003,
         coreOrigin: 'http://localhost',
@@ -70,6 +74,7 @@ export default class Core extends EventEmitter {
         this.coreRouter = new AORouter(this.options)
         this.coreRouter.init().then(() => {
             this.coreRouter.router.on('/core/log', this._handleLog.bind(this))
+            this.coreRouter.router.on('/core/networkIdMismatch', this._handleNetworkIdMismatch.bind(this))
             this.userSession = new AOUserSession(this.coreRouter.router)
             this.http = new Http(this.coreRouter.router, this.options, this.userSession)
             //Used to handle things like data exports and other command line only options
@@ -99,6 +104,19 @@ export default class Core extends EventEmitter {
             createdAt: Date.now()
         }).then(request.respond).catch(request.reject)
         this.emit('log', { message: data.message })
+    }
+
+    _handleNetworkIdMismatch(request: IAORouterRequest) {
+        const { newNetworkId } = request.data
+        if (process.send) {
+            process.send( {
+                event: NETWORK_CHANGE,
+                newNetworkId: newNetworkId
+            })
+        } else {
+            //Self kill if network id change happens
+            this.shutdownWithError(new Error('networkId changed'))
+        }
     }
 
     _handleCommandline(args: ICoreOptions) {

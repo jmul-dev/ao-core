@@ -27,6 +27,7 @@ const corePackageJson = {
         runUnderCore: true,
         events: [
             '/core/log',
+            '/core/networkIdMismatch',
             '/core/content/incomingPurchase',
         ],
     },
@@ -379,6 +380,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
                 '--coreOrigin', this.args.coreOrigin,
                 '--corePort', `${this.args.corePort}`,
                 '--ffprobeBin', ffprobeStatic.path,
+                '--networkId', this.args.networkId,
                 '--ao-core'
             ]
             let entryProcess: ChildProcess = spawn(this.args.nodeBin, processArgs, {
