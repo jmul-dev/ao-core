@@ -19,7 +19,7 @@ export default (obj: any, args: IVideos_Args, context: IGraphqlResolverContext, 
             fuzzyQuery: args.query,
             contentOnly: false,
         }
-        context.router.send('/db/network/content/get', networkQueryData).then((networkContentResponse: IAORouterMessage) => {
+        context.router.send('/db/network/content/get', networkQueryData, {ignoreLogging: true}).then((networkContentResponse: IAORouterMessage) => {
             let content = networkContentResponse.data.map((networkContent: AONetworkContent) => {
                 let aoContent: AOContent = AOContent.fromObject(networkContent.content)
                 aoContent.lastSeenContentHost = networkContent.lastSeenContentHost

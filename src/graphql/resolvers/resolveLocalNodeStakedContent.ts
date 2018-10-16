@@ -12,7 +12,7 @@ export default (obj: any, args: any, context: IGraphqlResolverContext, info: any
                 creatorId: obj.ethAddress
             }
         }
-        context.router.send('/db/user/content/get', contentQueryParams).then((response: IAORouterMessage) => {
+        context.router.send('/db/user/content/get', contentQueryParams, {ignoreLogging: true}).then((response: IAORouterMessage) => {
             let userContent: Array<AOContent> = new Array();
             // ensures array in case response is single item
             [].concat(response.data).forEach(content => {

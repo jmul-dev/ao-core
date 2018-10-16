@@ -9,7 +9,7 @@ export default (obj: AOContent, args: any, context: IGraphqlResolverContext, inf
         if ( info.fieldName === 'fileDatStats' ) {
             datKey = obj.fileDatKey
         }
-        context.router.send('/dat/stats', {key: datKey}).then((response: IAORouterMessage) => {
+        context.router.send('/dat/stats', {key: datKey}, {ignoreLogging: true}).then((response: IAORouterMessage) => {
             resolve({
                 files: response.data.files,
                 byteLength: response.data.byteLength,

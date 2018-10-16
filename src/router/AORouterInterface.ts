@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { IAORouterMessage } from './AORouter';
+import { IAORouterMessage, IAORouterMessageRouterParams } from './AORouter';
 import fs from 'fs';
 import AORouterCoreProcessPretender from './AORouterCoreProcessPretender';
 import AOHyperDB from './AOHyperDB';
@@ -110,7 +110,7 @@ export class AOSubprocessRouter extends EventEmitter implements AORouterInterfac
      * @param data 
      * @returns Promise<any>
      */
-    public send(event: string, data?: any): Promise<any> {
+    public send(event: string, data?: any, routerParams?: IAORouterMessageRouterParams): Promise<any> {
         return new Promise((resolve, reject) => {
             if ( !this.process || !this.process.send )
                 return console.warn('AOSubprocessRouter possibly used in wrong context. Expected parent process.')
@@ -119,6 +119,7 @@ export class AOSubprocessRouter extends EventEmitter implements AORouterInterfac
                 requestId,
                 event,
                 data,
+                routerParams: routerParams || {},
             };
             if ( data && data.stream ) {
                 /**
@@ -211,7 +212,7 @@ export class AOCoreProcessRouter extends EventEmitter implements AORouterInterfa
      * @param data 
      * @returns Promise<any>
      */
-    public send(event: string, data?: any): Promise<any> {
+    public send(event: string, data?: any, routerParams?: IAORouterMessageRouterParams): Promise<any> {
         // TODO: if we are sending a stream, make sure our stdio fd is not in use!
         // If so we need to move this onto a queue
         return new Promise((resolve, reject) => {
@@ -220,6 +221,7 @@ export class AOCoreProcessRouter extends EventEmitter implements AORouterInterfa
                 requestId,
                 event,
                 data,
+                routerParams: routerParams || {},
             }
             this.process.send(request, (error?: Error) => {
                 if ( error ) {
