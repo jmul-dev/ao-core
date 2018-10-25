@@ -117,7 +117,7 @@ export default class AOP2P extends AORouterInterface {
     private dbKeyRopsten: string = '5c1d0b40e9b17afb2488ad99c9755899a51fd7c4745c0df853e0237b101b8f74'
     private dbKey: string;
     private networkId: string;
-    
+
     private dbPrefix: string;
     private storageLocation: string;
     private contentWatchKey: string;
@@ -150,20 +150,20 @@ export default class AOP2P extends AORouterInterface {
 
     private init() {
         return new Promise((resolve, reject) => {
-            switch(this.networkId) {
+            switch (this.networkId) {
                 case '1':
                     this.dbKey = this.dbKeyMainNet
-                break;
+                    break;
                 case '3':
                     this.dbKey = this.dbKeyRopsten
-                break;  
+                    break;
                 case '4':
                     this.dbKey = this.dbKeyRinkeby
-                break;
+                    break;
             }
             const ensureP2PPathData: IAOFS_Mkdir_Data = { dirPath: this.dbPath }
             debug(ensureP2PPathData)
-            this.router.send('/fs/mkdir',ensureP2PPathData).then(() => {
+            this.router.send('/fs/mkdir', ensureP2PPathData).then(() => {
                 const hyperDBOptions: AO_Hyper_Options = {
                     dbKey: this.dbKey,
                     dbPath: this.dbPath,
@@ -175,7 +175,7 @@ export default class AOP2P extends AORouterInterface {
                     reject(e)
                 })
             })
-            
+
         })
     }
 
@@ -183,7 +183,7 @@ export default class AOP2P extends AORouterInterface {
      * Runs the content discovery once, then again each time the 
      * hyperdb instance changes under the content watch key.
      */
-    private _handleStartDiscovery(request:IAORouterRequest) {
+    private _handleStartDiscovery(request: IAORouterRequest) {
         debug(`hyperdb starting discovery...`)
         this.contentWatchKey = this.dbPrefix + 'VOD/'; // /AOSpace/VOD/*
         this._runDiscovery().then(() => {
@@ -197,7 +197,7 @@ export default class AOP2P extends AORouterInterface {
     private _watchDiscovery() {
         this.hyperdb.watch(this.contentWatchKey).then(() => {
             debug('Something changed in ' + this.contentWatchKey)
-            this._runDiscovery().then(()=> {
+            this._runDiscovery().then(() => {
                 this._watchDiscovery()
             }).catch(debug)
         }).catch(debug)
@@ -311,7 +311,7 @@ export default class AOP2P extends AORouterInterface {
                 debug(indexData)
                 // If it exists, send it back.
                 debug(`[${request.id}] _handleWatchAndGetIndexData got index data on first try`)
-                request.respond(indexData)                
+                request.respond(indexData)
             }).catch(() => {
                 // If it doens't, watch for change
                 debug(`[${request.id}] _handleWatchAndGetIndexData did not find index data on first try, watching...`)
@@ -345,7 +345,7 @@ export default class AOP2P extends AORouterInterface {
             for (const address in indexData) {
                 if (indexData.hasOwnProperty(address)) {
                     let currentAddress = address.substring(2).toLowerCase()
-                    if(comparativeAddress == currentAddress) {
+                    if (comparativeAddress == currentAddress) {
                         let indexDataRow: AOP2P_IndexDataRow = indexData[address];
                         resolve(indexDataRow)
                         return
@@ -438,7 +438,6 @@ export default class AOP2P extends AORouterInterface {
         const nodeRoute = AOP2P.routeNodeRegistration(nodeRouteArgs)
 
         this.hyperdb.query(nodeRoute).then((indexDataString: string) => {
-            debug('Good query into finding '+ nodeRoute)
             let indexData: object = {}
             let indexDataRow: AOP2P_IndexDataRow = {
                 decryptionKey: encryptedDecryptionKey, // Encrypted key with publicKey
@@ -452,22 +451,30 @@ export default class AOP2P extends AORouterInterface {
             }
 
             // 2. Check to see if we have already wrote in the right data (to avoid unecessary hyperdb update)
-            if(indexData[buyerEthAddress] && indexData[buyerEthAddress].signature == indexDataRow.signature) {
-                debug('This transaction is already recorded')
-                request.respond({ success: true })
-                return
-            } else if(indexData[buyerEthAddress]) {
-                debug(`Looks like we've already sold ${content.title} to ${buyerEthAddress}, going to overwrite the entry`)
+            const existingIndexDataForBuyer = indexData[buyerEthAddress]
+            if ( existingIndexDataForBuyer && existingIndexDataForBuyer.signature && existingIndexDataForBuyer.decryptionKey ) {
+                // We have already wrote the signature/decryption keys for the given user, lets not overwrite
+                debug(`Decryption key handoff already exists for content ${content.title} and buyer ${buyerEthAddress}`)
+                request.respond({ success: true, alreadyExists: true })
+                return null;
             }
+            // if (existingIndexDataForBuyer && existingIndexDataForBuyer.signature == indexDataRow.signature) {
+            //     debug('This transaction is already recorded')
+            //     request.respond({ success: true })
+            //     return
+            // } else if (existingIndexDataForBuyer) {
+            //     debug(`Looks like we've already sold ${content.title} to ${buyerEthAddress}, going to overwrite the entry with new signature ${indexDataRow.signature}.`)
+            //     debug(`Previous signature: ${existingIndexDataForBuyer.signature}`)
+            //     debug(`Overwriting signature: ${indexDataRow.signature}`)
+            // }
 
             // 3. Add row to indexData
             indexData[buyerEthAddress] = indexDataRow
-            
 
             // 4. Let's write this thing into hyperdb
             this.hyperdb.insert(nodeRoute, indexData).then(() => {
                 debug('Wrote in sold decryption key')
-                request.respond({ success: true })
+                request.respond({ success: true, alreadyExists: false })
             }).catch(e => {
                 request.reject(e)
             })

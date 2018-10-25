@@ -236,6 +236,7 @@ export default class AOUserSession {
                         contentRequesterPublicKey: buyContentEvent.publicKey,
                         contentOwnersPrivateKey: this.identity.privateKey,
                     }
+                    debug(contentDecryptParams)
                     const { encryptedDecryptionKey, encryptedDecryptionKeySignature } = await AOCrypto.generateContentEncryptionKeyForUser(contentDecryptParams)
                     // 3. Handoff to discovery
                     const sendDecryptionKeyMessage: AOP2P_Write_Decryption_Key_Data = {
@@ -245,15 +246,21 @@ export default class AOUserSession {
                         encryptedKeySignature: encryptedDecryptionKeySignature
                     }
                     this.router.send('/p2p/soldKey', sendDecryptionKeyMessage).then((response: IAORouterMessage) => {
-                        if (response.data && response.data.success) {
-                            debug(`Succesfully handled content purchase with: contentHostId[${buyContentEvent.contentHostId}], purchaseId[${buyContentEvent.purchaseId}]`)                            
+                        if (response.data.alreadyExists) {
+                            debug(`Incoming purchase already handled, content[${userContent.id}]->buyer[${buyContentEvent.buyer}]`)
+                        } else if (response.data.success) {
+                            debug(`Succesfully handled content purchase with: contentHostId[${buyContentEvent.contentHostId}], purchaseId[${buyContentEvent.purchaseId}]`)
+                            this.router.send('/db/logs/insert', {
+                                message: `Sold ${userContent.title} to user ${buyContentEvent.buyer}, decryption key handoff successful`, 
+                                userId: this.ethAddress,
+                            })
                         } else {
                             debug(`Failed to handle content purhcase, writing to discovery resolved without success`)
-                        }
-                        this.router.send('/db/logs/insert', {
-                            message: `Sold ${userContent.title} to user ${buyContentEvent.buyer}, decryption key handoff ${response.data && response.data.success ? 'successful' : 'unsuccessful'}`, 
-                            userId: this.ethAddress,
-                        })
+                            this.router.send('/db/logs/insert', {
+                                message: `Sold ${userContent.title} to user ${buyContentEvent.buyer}, decryption key handoff unsuccessful`, 
+                                userId: this.ethAddress,
+                            })
+                        }                        
                         resolve()
                     }).catch(error => {
                         debug(`Failed to handle content purhcase`, error)
