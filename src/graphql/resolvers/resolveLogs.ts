@@ -1,12 +1,15 @@
 import { IGraphqlResolverContext } from '../../http';
+import { AODB_LogsGet_Data } from '../../modules/db/db';
 
 export default (obj: any, args: any, context: IGraphqlResolverContext, info: any) => {
     return new Promise((resolve, reject) => {
-        context.router.send('/db/logs/get', {ignoreLogging: true}).then(response => {
+        const logsQuery: AODB_LogsGet_Data = {
+            query: {
+                userId: context.userSession.ethAddress
+            }
+        }
+        context.router.send('/db/logs/get', logsQuery, {ignoreLogging: true}).then(response => {
             let logs = response.data || []
-            logs.sort((a, b) => {
-                return new Date(parseInt(b.createdAt)).getTime() - new Date(parseInt(a.createdAt)).getTime();
-            })
             resolve(logs)
         }).catch(reject)
     })

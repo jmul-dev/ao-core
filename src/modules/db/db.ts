@@ -21,6 +21,7 @@ export interface AODB_LogsGet_Data {
 export interface AODB_LogsInsert_Data {
     message: string;
     createdAt?: Date;
+    userId?: string;
 }
 /**
  * Settings
@@ -371,7 +372,7 @@ export default class AODB extends AORouterInterface {
     private _logsGet(request: IAORouterRequest) {
         const requestData: AODB_LogsGet_Data = request.data
         let query = requestData.query || {}
-        this.db.logs.find(query).sort({ createdAt: 1 }).exec((error, results) => {
+        this.db.logs.find(query).sort({createdAt: -1}).exec((error, results) => {
             if (error) {
                 request.reject(error)
             } else {
