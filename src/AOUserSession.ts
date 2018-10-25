@@ -215,7 +215,6 @@ export default class AOUserSession {
      */
     private _handleIncomingContentPurchase(buyContentEvent: BuyContentEvent) {
         return new Promise((resolve,reject) => {
-            debug('Buy Content Event: ')
             // 1. Get the corresponding content entry in user db (make sure it is not )
             const contentQuery: AODB_UserContentGet_Data = {
                 query: { 
@@ -247,10 +246,14 @@ export default class AOUserSession {
                     }
                     this.router.send('/p2p/soldKey', sendDecryptionKeyMessage).then((response: IAORouterMessage) => {
                         if (response.data && response.data.success) {
-                            debug(`Succesfully handled content purchase with: contentHostId[${buyContentEvent.contentHostId}], purchaseId[${buyContentEvent.purchaseId}]`)
+                            debug(`Succesfully handled content purchase with: contentHostId[${buyContentEvent.contentHostId}], purchaseId[${buyContentEvent.purchaseId}]`)                            
                         } else {
                             debug(`Failed to handle content purhcase, writing to discovery resolved without success`)
                         }
+                        this.router.send('/db/logs/insert', {
+                            message: `Sold ${userContent.title} to user ${buyContentEvent.buyer}, decryption key handoff ${response.data && response.data.success ? 'successful' : 'unsuccessful'}`, 
+                            userId: this.ethAddress,
+                        })
                         resolve()
                     }).catch(error => {
                         debug(`Failed to handle content purhcase`, error)
@@ -294,7 +297,7 @@ export default class AOUserSession {
             }
             this.router.send('/db/network/content/update', networkContentUpdate).catch(error => {
                 debug(`Error updating network content lastSeenContentHost: ${error.message}`, error)
-            })
+            })            
             // 3. Attempt to download the content from ONE of the nodes above (we may not even find someone who is hosting this content)
             const encryptedDownloadData: AODat_Encrypted_Download_Data = { nodes: potentialNodes }
             this.router.send('/dat/encryptedFileDownload', encryptedDownloadData).then((downloadResponse: IAORouterMessage) => {
@@ -315,6 +318,10 @@ export default class AOUserSession {
                     this.processContent(updatedContent)
                 }).catch(error => {
                     debug(`Error updating user content: ${error.message}`)
+                })
+                this.router.send('/db/logs/insert', {
+                    message: `Downloading encrypted content [${content.title}] from host [${downloadResponse.data.contentHostId}]. See dat://${downloadResponse.data.datEntry.key}`, 
+                    userId: this.ethAddress,
                 })
             }).catch(error => {
                 debug(`Unable to download content from any host: ${error.message}`)
@@ -431,6 +438,10 @@ export default class AOUserSession {
             this.router.send('/db/user/content/update', contentUpdateAfterTx).then((response: IAORouterMessage) => {
                 let updatedContent: AOContent = AOContent.fromObject(response.data)
                 if (updatedContent.state === AOContentState.PURCHASED) {
+                    this.router.send('/db/logs/insert', {
+                        message: `Purchased content [${content.title}], see tx/${content.transactions.purchaseTx}`,
+                        userId: this.ethAddress,
+                    })
                     // Content succesfully purchased, begin next step in process (listen for decryption key)
                     this.processContent(updatedContent)
                 }
@@ -465,6 +476,12 @@ export default class AOUserSession {
         }
         debug(p2pWatchKeyRequest)
         this.router.send('/p2p/watchAndGetIndexData', p2pWatchKeyRequest).then((response: IAORouterMessage) => {
+            if ( response.ethAddress !== this.ethAddress ) {
+                // TODO: we currently do not have a method of stopping /p2p/watchAndGetIndexData. There is a chance
+                // that the user has changed within this time frame and we dont want 
+                debug(`Warning, user has changed we are skipping content update to state DECRYPTION_KEY_RECEIVED`)
+                return null
+            }
             const indexData: AOP2P_IndexDataRow = response.data
             if (indexData) {
                 let contentUpdateQuery: AODB_UserContentUpdate_Data = {
@@ -480,6 +497,10 @@ export default class AOUserSession {
                     debug(`Succesfully received decryption key for purchased content with id[${content.id}]`)
                     const updatedContent: AOContent = AOContent.fromObject(contentUpdateResponse.data)
                     this.processContent(updatedContent)
+                    this.router.send('/db/logs/insert', {
+                        message: `Decryption key received for content [${content.title}]`,
+                        userId: this.ethAddress,
+                    })
                 }).catch(debug)
             } else {
                 debug(`Error listening for decryption key, no index data returned`)
@@ -515,6 +536,10 @@ export default class AOUserSession {
                     nextContentState = AOContentState.VERIFICATION_FAILED
                     debug(`Checksum of decrypted file does not match the purchased content's checksum`)
                 }
+                this.router.send('/db/logs/insert', {
+                    message: nextContentState === AOContentState.VERIFIED ? `Decrypted content verified [${content.title}]` : `Decrypted content failed the verification step, checksum did not match the original content [${content.title}]`,
+                    userId: this.ethAddress,
+                })
                 // 4. Update the content with verification state
                 let contentUpdateQuery: AODB_UserContentUpdate_Data = {
                     id: content.id,
@@ -607,6 +632,10 @@ export default class AOUserSession {
                             // Handoff to next state handler
                             this.processContent(updatedContent)
                         }).catch(debug) // Content State update to Encrypted
+                        this.router.send('/db/logs/insert', {
+                            message: `Content succesfully encrypted [${content.title}]`,
+                            userId: this.ethAddress,
+                        })
                     }).catch(debug)
                 }).catch((error: Error) => {
                     debug(`Error re-encrypting file: ${error.message}`)
@@ -690,7 +719,7 @@ export default class AOUserSession {
                 update: {}
             }
             // 2. Update the Content State based on status
-            if (response.data.status) {
+            if (response.data.status) {                
                 // 2a. Stake succesfull
                 const hostContentEvent: HostContentEvent = response.data.hostContentEvent
                 contentUpdateQuery.update = {
@@ -711,13 +740,19 @@ export default class AOUserSession {
             this.router.send('/db/user/content/update', contentUpdateQuery).then((contentUpdateResponse: IAORouterMessage) => {
                 const updatedContent: AOContent = AOContent.fromObject(contentUpdateResponse.data)
                 // 3. Another side-effect is that we are storing the stakeId within the metadata dat repo, so we update that here                
-                const contentWriteData: IAOFS_Write_Data = {
-                    writePath: `${updatedContent.getMetadataFolderPath()}/content.json`,
-                    data: JSON.stringify(updatedContent.toMetadataJson())
+                if ( updatedContent.stakeId ) {
+                    const contentWriteData: IAOFS_Write_Data = {
+                        writePath: `${updatedContent.getMetadataFolderPath()}/content.json`,
+                        data: JSON.stringify(updatedContent.toMetadataJson())
+                    }
+                    this.router.send('/fs/write', contentWriteData)
+                    this.router.send('/db/logs/insert', {
+                        message: `${isStake ? 'Staked' : 'Hosted'} content [${content.title}], see tx:${transactionHash}`,
+                        userId: this.ethAddress,
+                    })
                 }
-                this.router.send('/fs/write', contentWriteData)
                 // Handoff to next state handler
-                this.processContent(updatedContent)
+                this.processContent(updatedContent)                
             }).catch(debug)
         }).catch(error => {
             debug(error)
@@ -789,6 +824,10 @@ export default class AOUserSession {
                             // Handoff to next state handler
                             this.processContent(updatedContent)
                         }).catch(debug)
+                        this.router.send('/db/logs/insert', {
+                            message: `Content [${content.title}] is now discoverable within the AO network!`,
+                            userId: this.ethAddress,
+                        })
                     } else {
                         debug(`Error, failed to add content to discovery`)
                     }

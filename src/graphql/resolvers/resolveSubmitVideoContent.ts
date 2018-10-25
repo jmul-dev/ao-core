@@ -160,6 +160,10 @@ export default (obj: any, args: ISubmitVideoContent_Args, context: IGraphqlResol
                         ]
                         Promise.all(folderMovePromises).then(() => {
                             resolve(contentJson)
+                            context.router.send('/db/logs/insert', {
+                                message: `[${contentJson.title}] has been uploaded locally, waiting for content stake transaction before this content becomes part of the AO network`,
+                                userId: this.ethAddress,
+                            })
                         }).catch(reject)
                     }).catch((error: Error) => {
                         // We either failed to write contentJson to disk or db, lets cleanup to 
