@@ -112,9 +112,9 @@ const routerArgs: AORouterArgs = {
 
 export default class AOP2P extends AORouterInterface {
     private dbPath: string;
-    private dbKeyMainNet: string = 'c26bf6279991f001cede1fe451cf2367a97e349cbbcbf8c740a5c162a5107a3c'
-    private dbKeyRinkeby: string = '7fa866717f66a54fd51d481f7dd04bd7a508e3bd878553ec39c12021b2cb4deb';
-    private dbKeyRopsten: string = '5c1d0b40e9b17afb2488ad99c9755899a51fd7c4745c0df853e0237b101b8f74'
+    private dbKeyMainNet: string = 'c26bf6279991f001cede1fe451cf2367a97e349cbbcbf8c740a5c162a5107a3c';
+    private dbKeyRinkeby: string = 'b9b874b28cc2792b0becdf2c40c9254f874be3efa1a48cd61903fb62e883f271';//New key as of 10/29/18
+    private dbKeyRopsten: string = '07a817f6e1317aba10b3231b2c1a61a2d8312914c5276d0d2f5258311ab82bcc';//New key as of 10/29/18
     private dbKey: string;
     private networkId: string;
 
