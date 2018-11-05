@@ -79,6 +79,7 @@ export default class AOEth extends AORouterInterface {
     private rpcMainnet: string;
     private rpcRopsten: string;
     private rpcRinkeby: string;    
+    private providerReconnectDebounce: number = 100;
 
     private contracts: { // sry no type checking on these bad boys!
         aoToken: any;
@@ -165,10 +166,15 @@ export default class AOEth extends AORouterInterface {
         provider.on('end', (error?) => {
             debug('Web3 Provider END', error)
             // Attempt to reconnect
-            this.setNetworkProvider(rpcEndpoint)
+            setTimeout(() => {
+                this.providerReconnectDebounce *= 2
+                this.setNetworkProvider(rpcEndpoint)                
+            }, this.providerReconnectDebounce)
+            
         });
         provider.on('connect', () => {
             debug('Web3 Provider Connected')
+
         });
         if ( this.web3 )
             this.web3.setProvider(provider)

@@ -10,6 +10,10 @@ interface ILocalNode_Hosted_Content_Args {
 // TODO: obj is of type NodeIdentity (sorry still no types outside of graphql)
 export default (obj: any, args: ILocalNode_Hosted_Content_Args, context: IGraphqlResolverContext, info: any) => {
     return new Promise((resolve, reject) => {
+        if ( !context.userSession.ethAddress ) {
+            resolve([])
+            return null;
+        }
         let contentQueryParams: AODB_UserContentGet_Data = {
             userId: obj.ethAddress,
             query: {

@@ -321,12 +321,12 @@ export default class AODB extends AORouterInterface {
         const requestData: AODB_UserContentGet_Data = request.data
         let query = requestData.query || {}
         let userId = requestData.userId ? requestData.userId : request.ethAddress
-        const userDbs = this.userDbs[userId]
-        if (!userDbs) {
+        const userDb = this.userDbs[userId]
+        if (!userDb) {
             request.reject(new Error(`User db not found for ${userId}`))
             return;
         }
-        userDbs.content.find(query).exec((error: Error, docs) => {
+        userDb.content.find(query).exec((error: Error, docs) => {
             if (error) {
                 request.reject(error)
             } else {

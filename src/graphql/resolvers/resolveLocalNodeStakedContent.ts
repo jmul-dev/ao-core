@@ -6,6 +6,10 @@ import AOContent from '../../models/AOContent';
 // TODO: obj is of type NodeIdentity (sorry still no types outside of graphql)
 export default (obj: any, args: any, context: IGraphqlResolverContext, info: any) => {
     return new Promise((resolve, reject) => {
+        if ( !context.userSession.ethAddress ) {
+            resolve([])
+            return null;
+        }
         const contentQueryParams: AODB_UserContentGet_Data = {
             userId: obj.ethAddress,
             query: {
