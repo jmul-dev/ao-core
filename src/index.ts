@@ -40,7 +40,7 @@ export interface AOCore_NetworkIdMismatch_Data {
 export default class Core extends EventEmitter {
     public static DEFAULT_OPTIONS = {
         ethAddress: '',
-        networkId: '1',//TODO: Make this 1 on production
+        networkId: '1',
         disableHttpInterface: false,
         corePort: 3003,
         coreOrigin: 'http://localhost',

@@ -259,7 +259,6 @@ export default class AODat extends AORouterInterface {
             request.reject(new Error(`Dat instance not found`))
             return;
         }
-        debug(`Fetching dat stats for dat://${requestData.key}`)
         this._getDatEntry(requestData.key).then((datEntry: DatEntry) => {
             const datInstance = this.dats[requestData.key]
             if (!datInstance) {
@@ -368,7 +367,6 @@ export default class AODat extends AORouterInterface {
     private async _handleEncryptedFileDownload(request: IAORouterRequest) {
         const requestData: AODat_Encrypted_Download_Data = request.data
         const nodes: Array<NetworkContentHostEntry> = requestData.nodes
-        debug(nodes)
         for (let i = 0; i < nodes.length; i++) {
             const nodeEntry: NetworkContentHostEntry = nodes[i];
             try {
@@ -436,9 +434,7 @@ export default class AODat extends AORouterInterface {
                             dat.joinNetwork((err) => {
                                 if (err) {
                                     debug(`[${key}] Failed to join network`, err)
-                                    
                                     this.removeDat(key)
-                                    
                                     reject(err)
                                     return;
                                 } else if (!(dat.network.connected + dat.network.connecting) && !catchStupidDat) {
@@ -453,23 +449,17 @@ export default class AODat extends AORouterInterface {
                                     const datKey = dat.key.toString('hex');
                                     dat.AO_joinedNetwork = true
                                     this.dats[datKey] = dat;
-                                    //Dat node is a shitty library.  We have an internal race condition we have to be aware of.
-                                    this._getDatEntry(datKey).then((datEntry: DatEntry) => {
-                                        if (!datEntry) {
-                                            const newDatEntry: DatEntry = {
-                                                key: datKey,
-                                                complete: false,
-                                                updatedAt: new Date(),
-                                                createdAt: new Date(),
-                                            }
-                                            this._updateDatEntry(newDatEntry)
-                                            if (!resolveOnDownloadCompletion) {
-                                                resolve(newDatEntry)
-                                            }
-                                        } else {
-                                            resolve(datEntry)
-                                        }
-                                    }).catch(debug)
+                                    // Assuming we do not have an existing dat db entry
+                                    const newDatEntry: DatEntry = {
+                                        key: datKey,
+                                        complete: false,
+                                        updatedAt: new Date(),
+                                        createdAt: new Date(),
+                                    }
+                                    this._updateDatEntry(newDatEntry)
+                                    if (!resolveOnDownloadCompletion) {
+                                        resolve(newDatEntry)
+                                    }
                                 }
                             })
     
