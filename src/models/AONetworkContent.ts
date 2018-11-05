@@ -7,5 +7,7 @@ export interface AONetworkContent {
     status: 'imported' | 'failed';
     content?: AOContent;
     lastSeenContentHost?: NetworkContentHostEntry;
+    totalHosts?: number;
+    recentlySeenHostsCount?: number;
 }
 export default AONetworkContent

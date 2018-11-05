@@ -7,7 +7,7 @@ import { AODat_Create_Data, AODat_Encrypted_Download_Data, AODat_GetDatStats_Dat
 import { AODB_UserContentGet_Data, AODB_UserContentUpdate_Data, AODB_UserInsert_Data, AODB_NetworkContentUpdate_Data } from "./modules/db/db";
 import { BuyContentEvent, HostContentEvent, IAOEth_BuyContentEvent_Data } from "./modules/eth/eth";
 import { IAOFS_DecryptCheck_Data, IAOFS_Mkdir_Data, IAOFS_Move_Data, IAOFS_Reencrypt_Data, IAOFS_Unlink_Data, IAOFS_Write_Data } from "./modules/fs/fs";
-import { AOP2P_Add_Discovery_Data, AOP2P_Get_File_Node_Data, AOP2P_IndexDataRow, AOP2P_Watch_AND_Get_IndexData_Data, AOP2P_Write_Decryption_Key_Data, NetworkContentHostEntry, AOP2P_Update_Node_Timestamp_Data } from "./modules/p2p/p2p";
+import { AOP2P_Add_Discovery_Data, AOP2P_GetContentHosts_Data, AOP2P_IndexDataRow, AOP2P_Watch_AND_Get_IndexData_Data, AOP2P_Write_Decryption_Key_Data, NetworkContentHostEntry, AOP2P_Update_Node_Timestamp_Data } from "./modules/p2p/p2p";
 import { IAORouterMessage } from "./router/AORouter";
 import { AORouterInterface, IAORouterRequest } from "./router/AORouterInterface";
 const AOContentContract = require('ao-contracts/build/contracts/AOContent.json');
@@ -284,7 +284,7 @@ export default class AOUserSession {
      */
     private _handleContentHostDiscovery(content: AOContent) {
         // 1. Grab all nodes/contentHostId's for this piece of content
-        const findEncryptedNodeData: AOP2P_Get_File_Node_Data = { content }
+        const findEncryptedNodeData: AOP2P_GetContentHosts_Data = { content }
         this.router.send('/p2p/content/getContentHosts', findEncryptedNodeData).then((fileNodesResponse: IAORouterMessage) => {            
             const potentialNodes: Array<NetworkContentHostEntry> = fileNodesResponse.data
             if ( !potentialNodes || potentialNodes.length === 0 ) {

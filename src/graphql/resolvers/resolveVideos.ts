@@ -24,6 +24,8 @@ export default (obj: any, args: IVideos_Args, context: IGraphqlResolverContext, 
                 let aoContent: AOContent = AOContent.fromObject(networkContent.content)
                 aoContent.lastSeenContentHost = networkContent.lastSeenContentHost
                 aoContent.isNetworkContent = true
+                aoContent.recentlySeenHostsCount = networkContent.recentlySeenHostsCount || 0
+                aoContent.totalHosts = networkContent.totalHosts || 0
                 return aoContent
             }).filter(content => {
                 // Filter out current user's content from this feed (so they dont see their own content

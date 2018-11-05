@@ -6,6 +6,7 @@ import { AO_Hyper_Options, HDB_ListValueRow } from "../../router/AOHyperDB";
 import AORouterInterface, { AORouterArgs, IAORouterRequest } from "../../router/AORouterInterface";
 import AOContentIngestion from './AOContentIngestion';
 import { IAOFS_Mkdir_Data } from '../fs/fs';
+import AOContentHostsUpdater from './AOContentHostsUpdater';
 const debug = Debug('ao:p2p');
 
 
@@ -58,7 +59,7 @@ export interface AOP2P_Update_Node_Timestamp_Data {
     content: AOContent;
 }
 
-export interface AOP2P_Get_File_Node_Data {
+export interface AOP2P_GetContentHosts_Data {
     content: AOContent;
 }
 
@@ -122,6 +123,7 @@ export default class AOP2P extends AORouterInterface {
     private storageLocation: string;
     private contentWatchKey: string;
     private contentIngestion: AOContentIngestion;
+    private contentHostsUpdater: AOContentHostsUpdater;
 
     constructor(args: AOP2P_Args) {
         super(routerArgs)
@@ -132,6 +134,7 @@ export default class AOP2P extends AORouterInterface {
 
         //New Content upload
         this.contentIngestion = new AOContentIngestion(this.router)
+        this.contentHostsUpdater = new AOContentHostsUpdater(this.router)
 
         this.router.on('/p2p/beginDiscovery', this._handleStartDiscovery.bind(this))
         this.router.on('/p2p/newContent', this._handleNewContent.bind(this))
@@ -209,9 +212,12 @@ export default class AOP2P extends AORouterInterface {
             contentCompare.push(this.hyperdb.list(this.contentWatchKey))
             contentCompare.push(this.router.send('/db/network/content/get', { query: { projection: { _id: 1 } } }))  // Only return _ids = metadataDatKey
             Promise.all(contentCompare).then((results) => {
+                // We match content keys found in the network (hyperdb) with the keys we have already seen before.
+                // Any new keys will go through a content ingestion process. Any existing keys will go through an
+                // updater.
                 const contentInNetworkDb = results[0]
                 const contentInLocalNetworkDb: Array<AONetworkContent> = results[1].data
-                //Find appropriate hyperDB datkeys
+                // Find network content keys
                 let metadataDatKeysInNetworkDb: Array<string> = []
                 for (const content of contentInNetworkDb) {
                     const newKey = content[2]
@@ -219,7 +225,7 @@ export default class AOP2P extends AORouterInterface {
                         metadataDatKeysInNetworkDb.indexOf(newKey) === -1 ? metadataDatKeysInNetworkDb.push(newKey) : null
                     }
                 }
-                //Find appropriate existing datkeys
+                // Find local content keys
                 let metadataDatKeysInLocalNetworkDb: Array<string> = []
                 for (const content of contentInLocalNetworkDb) {
                     const newKey = content._id
@@ -227,19 +233,30 @@ export default class AOP2P extends AORouterInterface {
                         metadataDatKeysInLocalNetworkDb.indexOf(newKey) === -1 ? metadataDatKeysInLocalNetworkDb.push(newKey) : null
                     }
                 }
-                //Run a comparater
-                const newMetadataDatKeys: Array<string> = metadataDatKeysInNetworkDb.filter((el) => {
-                    return metadataDatKeysInLocalNetworkDb.indexOf(el) < 0;
-                });
-                //debug(newMetadataDatKeys)
-                //Add to content ingestion helper
-                if (newMetadataDatKeys.length) {
-                    for (let i = 0; i < newMetadataDatKeys.length; i++) {
-                        const datKey = newMetadataDatKeys[i];
+                // Sort network content keys into new/existing buckets
+                let newContentKeys: Array<string> = [];
+                let existingContentKeys: Array<string> = [];
+                for (let i = 0; i < metadataDatKeysInNetworkDb.length; i++) {
+                    const key = metadataDatKeysInNetworkDb[i];
+                    if (metadataDatKeysInLocalNetworkDb.indexOf(key) < 0) {
+                        newContentKeys.push(key)
+                    } else {
+                        existingContentKeys.push(key)
+                    }
+                }
+                // Add new content keys to content ingestion
+                if (newContentKeys.length) {
+                    for (let i = 0; i < newContentKeys.length; i++) {
+                        const datKey = newContentKeys[i];
                         this.contentIngestion.addDiscoveredMetadataDatKeyToQueue(datKey)
                     }
-                } else {
-                    debug('No new meta dat keys found')
+                }
+                // Add existing content keys to content hosts updater
+                if (existingContentKeys.length) {
+                    for (let i = 0; i < existingContentKeys.length; i++) {
+                        const datKey = existingContentKeys[i];
+                        this.contentHostsUpdater.addContentKeyToQueue(datKey)
+                    }
                 }
                 resolve()
             }).catch((err) => {
@@ -371,52 +388,58 @@ export default class AOP2P extends AORouterInterface {
     /**
      * Get all potential hosts for a given piece of content. 
      * 
-     * hyperdb: /AOSpace/{contentType}/metadataDatKey/nodes/*
+     * hyperdb: /AOSpace/{contentType}/{metadataDatKey}/nodes/*
      * 
      * @returns {Array<NetworkContentHostEntry>} response.data
      */
     private _handleGetContentHosts(request: IAORouterRequest) {
-        const { content }: AOP2P_Get_File_Node_Data = request.data
-        const fineNodeRoute = AOP2P.routeBaseRegistrationPrefix({
-            nameSpace: this.dbPrefix,
-            contentType: content.contentType,
-            metaDatKey: content.metadataDatKey
-        })
-        this.hyperdb.listValue(fineNodeRoute).then((results: Array<HDB_ListValueRow>) => {
-            /**
-             * Results needs quite a bit of formatting
-             */
-            // 1. Convert entry value data to json
-            let jsonResults = results.map(entry => {
-                try {
-                    let entryValue = JSON.parse(entry.value)
-                    return {
-                        contentDatKey: entryValue.contentDatKey,
-                        contentHostId: entryValue.contentHostId,
-                        nodeId: entry.splitKey[4], //node that holds the content
-                        timestamp: entryValue.timestamp,
-                    }
-                } catch (error) {
-                    // Instead of letting a single malformed entry ruin the show, we just ignore it
-                    debug('Malformatted timestamp/contentHostId for ' + entry.key)
-                    return null
-                }
-                // 2. Filter any malformed entries or entries without the correct values
-            }).filter((entry: NetworkContentHostEntry) => {
-                if (entry === null)
-                    return false
-                if (!entry.timestamp || !entry.contentHostId || !entry.contentDatKey)
-                    return false
-                return true
-                // 3. Sort by timestamps
-            }).sort((a: NetworkContentHostEntry, b: NetworkContentHostEntry) => {
-                const timestampA = parseInt(a.timestamp)
-                const timestampB = parseInt(b.timestamp)
-                return timestampA > timestampB ? -1 : timestampA < timestampB ? 1 : 0;
+        const { content }: AOP2P_GetContentHosts_Data = request.data
+        this._getContentHostsFormatted(content).then(request.respond).catch(request.reject);
+    }
+
+    private _getContentHostsFormatted(content: AOContent): Promise<Array<NetworkContentHostEntry>> {
+        return new Promise((resolve, reject) => {
+            const contentHostsRoute = AOP2P.routeBaseRegistrationPrefix({
+                nameSpace: this.dbPrefix,
+                contentType: content.contentType,
+                metaDatKey: content.metadataDatKey
             })
-            debug(`${jsonResults.length} potential hosts for content: ${content.title}`)
-            request.respond(jsonResults)
-        }).catch(request.reject)
+            this.hyperdb.listValue(contentHostsRoute).then((results: Array<HDB_ListValueRow>) => {
+                /**
+                 * Results needs quite a bit of formatting
+                 */
+                // 1. Convert entry value data to json
+                let jsonResults = results.map(entry => {
+                    try {
+                        let entryValue = JSON.parse(entry.value)
+                        return {
+                            contentDatKey: entryValue.contentDatKey,
+                            contentHostId: entryValue.contentHostId,
+                            nodeId: entry.splitKey[4], //node that holds the content
+                            timestamp: entryValue.timestamp,
+                        }
+                    } catch (error) {
+                        // Instead of letting a single malformed entry ruin the show, we just ignore it
+                        debug('Malformatted timestamp/contentHostId for ' + entry.key)
+                        return null
+                    }
+                    // 2. Filter any malformed entries or entries without the correct values
+                }).filter((entry: NetworkContentHostEntry) => {
+                    if (entry === null)
+                        return false
+                    if (!entry.timestamp || !entry.contentHostId || !entry.contentDatKey)
+                        return false
+                    return true
+                    // 3. Sort by timestamps
+                }).sort((a: NetworkContentHostEntry, b: NetworkContentHostEntry) => {
+                    const timestampA = parseInt(a.timestamp)
+                    const timestampB = parseInt(b.timestamp)
+                    return timestampA > timestampB ? -1 : timestampA < timestampB ? 1 : 0;
+                })
+                debug(`${jsonResults.length} potential hosts for content: ${content.title}`)
+                resolve(jsonResults)
+            }).catch(reject)
+        })
     }
 
     private _handleSellDecryptionKey(request: IAORouterRequest) {
@@ -452,7 +475,7 @@ export default class AOP2P extends AORouterInterface {
 
             // 2. Check to see if we have already wrote in the right data (to avoid unecessary hyperdb update)
             const existingIndexDataForBuyer = indexData[buyerEthAddress]
-            if ( existingIndexDataForBuyer && existingIndexDataForBuyer.signature && existingIndexDataForBuyer.decryptionKey ) {
+            if (existingIndexDataForBuyer && existingIndexDataForBuyer.signature && existingIndexDataForBuyer.decryptionKey) {
                 // We have already wrote the signature/decryption keys for the given user, lets not overwrite
                 debug(`Decryption key handoff already exists for content ${content.title} and buyer ${buyerEthAddress}`)
                 request.respond({ success: true, alreadyExists: true })

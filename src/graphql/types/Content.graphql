@@ -103,6 +103,8 @@ interface IContent {
     transactions: ContentTransactions
     purchaseId: String
     lastSeenContentHost: NetworkContentHostEntry
+    totalHosts: Int
+    recentlySeenHostsCount: Int
     isNetworkContent: Boolean
 }
 
@@ -139,6 +141,8 @@ type VideoContent implements IContent {
     transactions: ContentTransactions
     purchaseId: String
     lastSeenContentHost: NetworkContentHostEntry
+    totalHosts: Int
+    recentlySeenHostsCount: Int
     isNetworkContent: Boolean
     # VideoContent
     teaserUrl: String
