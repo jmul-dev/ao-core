@@ -19,6 +19,7 @@ import resolveContentUploadStakeTransaction from './resolveContentUploadStakeTra
 import resolveSignatureVrs from './resolveSignatureVrs';
 import resolveContentRetryHostDiscovery from './resolveContentRetryHostDiscovery';
 import resolveExportData from './resolveExportData';
+import resolveNodeStatistics from './resolveNodeStatistics';
 
 
 export default {
@@ -32,6 +33,7 @@ export default {
     resolveLogs,
     resolveSettings,
     resolveState,
+    resolveNodeStatistics,
     // Mutation resolvers
     resolveSubmitVideoContent,
     resolveSetNetwork,

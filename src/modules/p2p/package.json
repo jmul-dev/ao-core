@@ -16,7 +16,8 @@
             "/p2p/addDiscovery",
             "/p2p/soldKey",
             "/p2p/updateNode",
-            "/p2p/content/getContentHosts"
+            "/p2p/content/getContentHosts",
+            "/p2p/stats"
         ],
         "activationEvents": [
             

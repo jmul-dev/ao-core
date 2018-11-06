@@ -2,6 +2,7 @@ import AORouterInterface, { IAORouterRequest } from "../../router/AORouterInterf
 import Web3 from 'web3';
 import SolidityEvent from 'web3-legacy/lib/web3/event.js';
 import Debug from '../../AODebug'
+import { IAOStatus } from "../../models/AOStatus";
 const AOContent = require('ao-contracts/build/contracts/AOContent.json');
 const AOToken = require('ao-contracts/build/contracts/AOToken.json');
 const debug = Debug('ao:eth');
@@ -13,15 +14,16 @@ export interface AOEth_Args {
     rpcRopsten: string;
     rpcRinkeby: string;    
 }
-
+export interface IAOETH_Stats {
+    connectionStatus: IAOStatus;
+    networkId: string;
+}
 export interface IAOEth_NetworkChange_Data {
     networkId: '1' | '3' | '4'
 }
-
 export interface IAOEth_TX_Data {
     transactionHash: string;
 }
-
 export interface IAOEth_StakeContentEvent_Data {
     transactionHash: string;
 }
@@ -80,6 +82,7 @@ export default class AOEth extends AORouterInterface {
     private rpcRopsten: string;
     private rpcRinkeby: string;    
     private providerReconnectDebounce: number = 100;
+    private connectionStatus: IAOStatus = "DISCONNECTED";
 
     private contracts: { // sry no type checking on these bad boys!
         aoToken: any;
@@ -98,6 +101,7 @@ export default class AOEth extends AORouterInterface {
         this.events = {
             BuyContent: undefined
         }
+        this.router.on('/eth/stats', this._handleStats.bind(this))
         this.router.on('/eth/network/set', this._handleNetworkChange.bind(this))
         this.router.on('/eth/network/get', this._handleNetworkGet.bind(this))
         this.router.on('/eth/tx', this._handleTx.bind(this))
@@ -116,11 +120,13 @@ export default class AOEth extends AORouterInterface {
      * 
      * @param networkId 
      */
-    private connectToNetwork(networkId: string): Promise<any> {
+    private connectToNetwork(networkId: string): Promise<any> {        
         return new Promise((resolve, reject) => {
+            this.connectionStatus = "CONNECTING"
             if (['1', '3', '4'].indexOf(networkId) < 0) {
+                this.connectionStatus = "ERROR"
                 debug(`Network currently not supported: ${networkId}`)
-                reject(new Error(`Network currently not supported: ${networkId}`))
+                reject(new Error(`Network currently not supported: ${networkId}`))                
                 return;
             }
             let rpcEndpoint = this.rpcMainnet
@@ -133,11 +139,13 @@ export default class AOEth extends AORouterInterface {
             if ( rpcEndpoint.indexOf('wss://') !== 0 ) {
                 debug(`Eth module currently requires web socket rpc endpoint in order to support filters`)
                 reject(new Error(`Invalid eth network rpc, requires websocket connection.`))
+                this.connectionStatus = "ERROR"
                 return;
             }
             this.setNetworkProvider(rpcEndpoint)
             this.web3.eth.net.getId().then(networkId => {
                 debug(`Connected to network with id [${networkId}]`)
+                this.connectionStatus = "CONNECTED"
                 this.networkId = `${networkId}`
                 // Setup contracts
                 try {
@@ -151,6 +159,7 @@ export default class AOEth extends AORouterInterface {
                 }
             }).catch(error => {
                 debug('Error getting network:', error)
+                this.connectionStatus = "ERROR"
                 setTimeout(() => {
                     this.connectToNetwork(networkId).then(resolve).catch(reject)
                 }, 3000)
@@ -165,6 +174,7 @@ export default class AOEth extends AORouterInterface {
         });
         provider.on('end', (error?) => {
             debug('Web3 Provider END', error)
+            this.connectionStatus = "DISCONNECTED"
             // Attempt to reconnect
             setTimeout(() => {
                 this.providerReconnectDebounce *= 2
@@ -174,12 +184,20 @@ export default class AOEth extends AORouterInterface {
         });
         provider.on('connect', () => {
             debug('Web3 Provider Connected')
-
+            this.connectionStatus = "CONNECTED"
         });
         if ( this.web3 )
             this.web3.setProvider(provider)
         else
             this.web3 = new Web3(provider)
+    }
+
+    _handleStats(request: IAORouterRequest) {
+        const stats: IAOETH_Stats = {
+            connectionStatus: this.connectionStatus,
+            networkId: this.networkId,
+        }
+        request.respond(stats)
     }
 
     _handleNetworkChange(request: IAORouterRequest) {

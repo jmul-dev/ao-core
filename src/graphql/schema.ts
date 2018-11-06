@@ -42,6 +42,7 @@ export default function () {
                 settings: resolvers.resolveSettings,
                 videos: resolvers.resolveVideos,
                 video: resolvers.resolveVideo,
+                statistics: resolvers.resolveNodeStatistics,
             },
             Mutation: {
                 setNetwork: resolvers.resolveSetNetwork,

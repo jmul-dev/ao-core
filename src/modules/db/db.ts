@@ -193,6 +193,13 @@ export default class AODB extends AORouterInterface {
                 onload: (error: Error) => {
                     if (error) {
                         this._handleCoreDbLoadError(error)
+                    } else {
+                        debug(`HELP, attempting to reset recentlySeenHostsCount`)
+                        // We are resetting all recentlySeenHostsCount back to 0!
+                        this.db.networkContent.update({}, { $set: { recentlySeenHostsCount: 0 } }, { multi: true }, (error) => {
+                            debug(`HELP, ran the update method ${error ? error.message : 'with no error'}`)
+                            this.db.networkContent.persistence.compactDatafile()
+                        })
                     }
                 }
             })

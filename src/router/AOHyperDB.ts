@@ -2,6 +2,7 @@ import hyperdb from 'hyperdb'
 import discovery from 'discovery-swarm'
 import swarmDefaults from 'dat-swarm-defaults'
 import Debug from '../AODebug'
+import { IAOStatus } from '../models/AOStatus';
 const debug = Debug('ao:hyperdb');
 
 export interface AO_Hyper_Options {
@@ -11,42 +12,41 @@ export interface AO_Hyper_Options {
 }
 
 export interface HDB_ListValueRow {
-    key: string, 
-    splitKey: Array<string>, 
+    key: string,
+    splitKey: Array<string>,
     value: any
 }
 
 export default class AOHyperDB {
-    private db:hyperdb
-    private dbKey:string
-    private dbPath:string
+    private db: hyperdb
+    private dbKey: string
+    private dbPath: string
     private autoAuth: boolean
     private swarm: discovery
-
-    constructor() {
-    }
+    public connectionStatus: IAOStatus = "DISCONNECTED";
 
     //Init is separate from the constructor since we don't know all use cases until other modules are fully loaded (say web3/eth address)
-    public init( hyperOptions:AO_Hyper_Options ) {
-        return new Promise((resolve,reject) => {
+    public init(hyperOptions: AO_Hyper_Options) {
+        this.connectionStatus = "CONNECTING"
+        return new Promise((resolve, reject) => {
             this.dbKey = hyperOptions.dbKey
             this.dbPath = hyperOptions.dbPath
             this.autoAuth = hyperOptions.autoAuth
-            
-            this.db = hyperdb(this.dbPath, this.dbKey, { valueEncoding: 'utf-8' } )
+
+            this.db = hyperdb(this.dbPath, this.dbKey, { valueEncoding: 'utf-8' })
             this.db.on('ready', () => {
+                this.connectionStatus = "CONNECTED"
                 this.swarm = discovery(
                     swarmDefaults({
                         id: this.dbKey,
                         stream: (peer) => {
                             return this.db.replicate({
-                                live:true,
+                                live: true,
                                 userData: this.db.local.key
                             })
                         }
                     })
                 )
-
                 this.swarm.join(this.dbKey)
                 this.swarm.on('connection', (peer) => {
                     //TODO: Get rid of this debug when we're all done.
@@ -61,13 +61,13 @@ export default class AOHyperDB {
                     }
 
                     let remotePeerKey
-                    try { 
-                        remotePeerKey = Buffer.from(peer.remoteUserData) 
-                    } catch (err) { 
-                        console.error(err); 
-                        return 
+                    try {
+                        remotePeerKey = Buffer.from(peer.remoteUserData)
+                    } catch (err) {
+                        console.error(err);
+                        return
                     }
-            
+
                     this.db.authorized(remotePeerKey, (err, auth) => {
                         debug(remotePeerKey.toString("hex"), "authorized? " + auth)
                         if (err) {
@@ -87,15 +87,19 @@ export default class AOHyperDB {
             })
         })
     }
-    
+
+    public peersConnected() {
+        return this.swarm ? this.swarm.connected : 0
+    }
+
     public insert(key, value) {
-        return new Promise( (resolve, reject) => {
+        return new Promise((resolve, reject) => {
             let insertValue = value
-            if(typeof value == "object") {
+            if (typeof value == "object") {
                 insertValue = JSON.stringify(value)
             }
             this.db.put(key, insertValue, (err) => {
-                if(err) {
+                if (err) {
                     reject(err)
                 } else {
                     resolve()
@@ -105,12 +109,12 @@ export default class AOHyperDB {
     }
 
     public query(key) {
-        return new Promise( (resolve,reject) => {
+        return new Promise((resolve, reject) => {
             this.db.get(key, (err, nodes) => {
-                if(err) {
+                if (err) {
                     reject(err)
                 } else {
-                    if(nodes.length) {
+                    if (nodes.length) {
                         resolve(nodes[0].value)
                     } else {
                         debug('No such record')
@@ -122,13 +126,13 @@ export default class AOHyperDB {
     }
 
     public exists(key) {
-        return new Promise( (resolve,reject) => {
+        return new Promise((resolve, reject) => {
             this.db.get(key, (err, nodes) => {
-                if(err) {
+                if (err) {
                     debug(err)
                     resolve(false)
                 } else {
-                    if(nodes.length) {
+                    if (nodes.length) {
                         resolve(true)
                     } else {
                         resolve(false)
@@ -139,12 +143,12 @@ export default class AOHyperDB {
     }
 
     public list(key) {
-        return new Promise((resolve,reject) => {
+        return new Promise((resolve, reject) => {
             this.db.list(key, (err, nodes) => {
-                if(err) {
+                if (err) {
                     reject(err)
                 } else {
-                    if(nodes.length) {
+                    if (nodes.length) {
                         //Result is the key paths in an array format split by / for easy perusing
                         let result = []
                         for (let i = 0; i < nodes.length; i++) {
@@ -163,14 +167,14 @@ export default class AOHyperDB {
     }
 
     public listValue(key) {
-        return new Promise((resolve,reject) => {
+        return new Promise((resolve, reject) => {
             this.db.list(key, (err, nodes) => {
-                if(err) {
+                if (err) {
                     reject(err)
                 } else {
-                    if(nodes.length) {
+                    if (nodes.length) {
                         //Result is the key paths in an array format split by / for easy perusing
-                        let result:Array<HDB_ListValueRow> = []
+                        let result: Array<HDB_ListValueRow> = []
                         for (let i = 0; i < nodes.length; i++) {
                             const node = nodes[i];
                             const split_key = node[0].key.split("/")
@@ -191,7 +195,7 @@ export default class AOHyperDB {
     }
 
     public watch(key) {
-        return new Promise((resolve,reject) => {
+        return new Promise((resolve, reject) => {
             let watcher = this.db.watch(key, () => {
             })
             watcher.on('watching', () => {
@@ -206,9 +210,9 @@ export default class AOHyperDB {
     }
 
     public delete(key) {
-        return new Promise((resolve,reject) => {
+        return new Promise((resolve, reject) => {
             this.db.del(key, (err) => {
-                if(err) {
+                if (err) {
                     reject(err)
                 } else {
                     resolve()

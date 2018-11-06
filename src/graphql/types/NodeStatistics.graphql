@@ -1,11 +1,23 @@
+enum Status {
+    CONNECTING,
+    CONNECTED,
+    FAILED_TO_CONNECT,
+    DISCONNECTED,
+}
+
 type NodeStatistics {
-    status: String!
-    uptime: Float!
-    peersConnected: Int!
-    videosAvailable: Int!
-    videosSeeding: Int!
-    videosStreaming: Int!
-    storageUsed: Float!
-    bandwidthUp: Float
-    bandwidthDown: Float
+    status: Status!
+    p2pStatus: Status!
+    p2pPeersConnected: Int!
+    p2pRecentlySeenHostsCount: Int!
+    ethNetworkStatus: Status!
+    ethNetworkId: Int!
+    # uptime: Float!
+    # peersConnected: Int!
+    # videosAvailable: Int!
+    # videosSeeding: Int!
+    # videosStreaming: Int!
+    # storageUsed: Float!
+    # bandwidthUp: Float
+    # bandwidthDown: Float
 }

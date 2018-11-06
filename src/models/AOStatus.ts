@@ -1,0 +1,10 @@
+export type IAOStatus = 'CONNECTING' | 'CONNECTED' | 'FAILED_TO_CONNECT' | 'DISCONNECTED' | 'ERROR'
+
+const AOStatus = Object.freeze({
+    CONNECTING: 'CONNECTING',
+    CONNECTED: 'CONNECTED',
+    FAILED_TO_CONNECT: 'FAILED_TO_CONNECT',
+    DISCONNECTED: 'DISCONNECTED',
+    ERROR: 'ERROR',
+})
+export default AOStatus

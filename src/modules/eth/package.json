@@ -8,6 +8,7 @@
     "bin": "eth.bin.js",
     "AO": {
         "events": [
+            "/eth/stats",
             "/eth/network/set",
             "/eth/network/get",
             "/eth/tx",

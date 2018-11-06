@@ -8,6 +8,8 @@ import AOContentIngestion from './AOContentIngestion';
 import { IAOFS_Mkdir_Data } from '../fs/fs';
 import AOContentHostsUpdater from './AOContentHostsUpdater';
 import { AODB_NetworkContentGet_Data } from '../db/db';
+import { IAORouterMessage } from '../../router/AORouter';
+import { IAOStatus } from '../../models/AOStatus';
 const debug = Debug('ao:p2p');
 
 
@@ -99,6 +101,12 @@ export interface AOP2P_NodeUpdateRoute {
     ethAddress: string;
 }
 
+export interface AOP2P_PeerStats {
+    p2pStatus: IAOStatus;
+    peersConnected: number;
+    recentlySeenContentHosts: number;
+}
+
 export interface NetworkContentHostEntry {
     contentDatKey: string;
     contentHostId: string;
@@ -146,6 +154,7 @@ export default class AOP2P extends AORouterInterface {
         this.router.on('/p2p/soldKey', this._handleSellDecryptionKey.bind(this))
         this.router.on('/p2p/updateNode', this._handleNodeUpdate.bind(this))
         this.router.on('/p2p/content/getContentHosts', this._handleGetContentHosts.bind(this))
+        this.router.on('/p2p/stats', this._handleStats.bind(this))
 
         this.init().then(() => {
             debug('started')
@@ -166,7 +175,6 @@ export default class AOP2P extends AORouterInterface {
                     break;
             }
             const ensureP2PPathData: IAOFS_Mkdir_Data = { dirPath: this.dbPath }
-            debug(ensureP2PPathData)
             this.router.send('/fs/mkdir', ensureP2PPathData).then(() => {
                 const hyperDBOptions: AO_Hyper_Options = {
                     dbKey: this.dbKey,
@@ -323,7 +331,6 @@ export default class AOP2P extends AORouterInterface {
             })
     }
 
-
     private _handleWatchAndGetIndexData(request: IAORouterRequest) {
         const { key, ethAddress }: AOP2P_Watch_AND_Get_IndexData_Data = request.data
         debug(`[${request.id}] _handleWatchAndGetIndexData`)
@@ -388,6 +395,51 @@ export default class AOP2P extends AORouterInterface {
                 request.respond({ success: true })
             }).catch(request.reject)
         }).catch(request.reject)
+    }
+
+    /**
+     * Get the following stats:
+     * 1. Estimate of the number of content hosts currently online (based on
+     *    recently updated host timestamps)
+     * 2. Number of peers connected to the p2p network (hyperdb), but not 
+     *    neccesarily hosting content.
+     * 3. Number of content hosts ever seen.
+     * 
+     * @param {IAORouterRequest} request
+     * @returns {AOP2P_PeerStats} response.data
+     */
+    private _handleStats(request: IAORouterRequest) {
+        const peersCurrentlyConnected = this.hyperdb.peersConnected()
+        const networkContentQuery: AODB_NetworkContentGet_Data = {
+            query: {
+                recentlySeenHostsCount: {
+                    $gt: 0
+                }
+            },
+            projection: { recentlySeenHostsCount: 1 }
+        }
+        this.router.send('/db/network/content/get', networkContentQuery).then((networkContentResults: IAORouterMessage) => {
+            // NOTE: hosts count for each content may technically be overlaping (one host
+            // for multiple pieces of content). Ideally we would add up unique host ids
+            // but this info was not currently available.
+            let networkContent: Array<{recentlySeenHostsCount: number}> = networkContentResults.data
+            const totalRecentlySeenHostsCount = networkContent.reduce(function(accumulator: number, networkContent: {recentlySeenHostsCount: number}) {
+                return accumulator + networkContent.recentlySeenHostsCount
+            }, 0)
+            const stats: AOP2P_PeerStats = {
+                p2pStatus: this.hyperdb.connectionStatus,
+                peersConnected: peersCurrentlyConnected,
+                recentlySeenContentHosts: totalRecentlySeenHostsCount,
+            }
+            request.respond(stats)
+        }).catch(error => {
+            const stats: AOP2P_PeerStats = {
+                p2pStatus: this.hyperdb.connectionStatus,
+                peersConnected: peersCurrentlyConnected,
+                recentlySeenContentHosts: 0,
+            }
+            request.respond(stats)
+        })
     }
 
     /**
