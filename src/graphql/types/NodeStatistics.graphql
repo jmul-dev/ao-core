@@ -7,6 +7,7 @@ enum Status {
 
 type NodeStatistics {
     status: Status!
+    coreVersion: String!
     p2pStatus: Status!
     p2pPeersConnected: Int!
     p2pRecentlySeenHostsCount: Int!

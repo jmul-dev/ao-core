@@ -3,6 +3,7 @@ import { IAORouterMessage } from "../../router/AORouter";
 import AOContent from '../../models/AOContent';
 import { AOP2P_PeerStats } from '../../modules/p2p/p2p';
 import { IAOETH_Stats } from '../../modules/eth/eth';
+const packageJson = require('../../../package.json');
 
 
 export default (obj: AOContent, args: any, context: IGraphqlResolverContext, info: any) => {
@@ -14,11 +15,12 @@ export default (obj: AOContent, args: any, context: IGraphqlResolverContext, inf
             const ethStats: IAOETH_Stats = results[1].data
             resolve({
                 status: 'CONNECTED',
+                coreVersion: packageJson.version,
                 p2pStatus: p2pStats.p2pStatus,
                 p2pPeersConnected: p2pStats.peersConnected,
                 p2pRecentlySeenHostsCount: p2pStats.recentlySeenContentHosts,
                 ethNetworkStatus: ethStats.connectionStatus,
-                ethNetworkId: ethStats.networkId,
+                ethNetworkId: ethStats.networkId || context.options.networkId,
                 totalContentHosts: ethStats.totalContentHosts,
             })  
         }).catch(reject)
