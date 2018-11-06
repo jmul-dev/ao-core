@@ -7,6 +7,7 @@ import AORouterInterface, { AORouterArgs, IAORouterRequest } from "../../router/
 import AOContentIngestion from './AOContentIngestion';
 import { IAOFS_Mkdir_Data } from '../fs/fs';
 import AOContentHostsUpdater from './AOContentHostsUpdater';
+import { AODB_NetworkContentGet_Data } from '../db/db';
 const debug = Debug('ao:p2p');
 
 
@@ -134,7 +135,7 @@ export default class AOP2P extends AORouterInterface {
 
         //New Content upload
         this.contentIngestion = new AOContentIngestion(this.router)
-        this.contentHostsUpdater = new AOContentHostsUpdater(this.router)
+        this.contentHostsUpdater = new AOContentHostsUpdater(this.router, this._getContentHostsFormatted.bind(this))
 
         this.router.on('/p2p/beginDiscovery', this._handleStartDiscovery.bind(this))
         this.router.on('/p2p/newContent', this._handleNewContent.bind(this))
@@ -210,7 +211,10 @@ export default class AOP2P extends AORouterInterface {
         return new Promise((resolve, reject) => {
             let contentCompare = []
             contentCompare.push(this.hyperdb.list(this.contentWatchKey))
-            contentCompare.push(this.router.send('/db/network/content/get', { query: { projection: { _id: 1 } } }))  // Only return _ids = metadataDatKey
+            const networkContentQuery: AODB_NetworkContentGet_Data = {
+                projection: { _id: 1 }
+            }
+            contentCompare.push(this.router.send('/db/network/content/get', networkContentQuery))  // Only return _ids = metadataDatKey
             Promise.all(contentCompare).then((results) => {
                 // We match content keys found in the network (hyperdb) with the keys we have already seen before.
                 // Any new keys will go through a content ingestion process. Any existing keys will go through an
@@ -244,6 +248,7 @@ export default class AOP2P extends AORouterInterface {
                         existingContentKeys.push(key)
                     }
                 }
+                debug(`[${newContentKeys.length}] pieces of content being added to discovery queue, [${existingContentKeys.length}] added to hosts updater queue`)
                 // Add new content keys to content ingestion
                 if (newContentKeys.length) {
                     for (let i = 0; i < newContentKeys.length; i++) {

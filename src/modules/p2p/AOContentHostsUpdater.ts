@@ -5,7 +5,7 @@ import AONetworkContent from '../../models/AONetworkContent';
 import { IAORouterMessage } from "../../router/AORouter";
 import { AORouterInterface } from "../../router/AORouterInterface";
 import { AODB_NetworkContentGet_Data, AODB_NetworkContentUpdate_Data } from "../db/db";
-import { AOP2P_GetContentHosts_Data, NetworkContentHostEntry } from './p2p';
+import { NetworkContentHostEntry } from './p2p';
 const debug = Debug('ao:p2p:contentHostsUpdater')
 
 
@@ -17,11 +17,15 @@ const debug = Debug('ao:p2p:contentHostsUpdater')
  */
 export default class AOContentHostsUpdater {
     private router: AORouterInterface;
+    private getContentHostsFormatted: Function;
     private processingQueue: IQueue;
-    private datKeysInQueue: Array<string> = [];
+    private datKeysInQueue: {
+        [key: string]: boolean
+    } = {};
 
-    constructor(router: AORouterInterface) {
+    constructor(router: AORouterInterface, getContentHostsFormatted: Function) {
         this.router = router
+        this.getContentHostsFormatted = getContentHostsFormatted
         // @ts-ignore Types not up to date
         this.processingQueue = queue({
             concurrency: 2,
@@ -30,14 +34,18 @@ export default class AOContentHostsUpdater {
     }
 
     public addContentKeyToQueue(metadataDatKey: string) {
-        if (this.datKeysInQueue.indexOf(metadataDatKey) === -1) {
+        if (this.datKeysInQueue[metadataDatKey] !== true) {
             this.processingQueue.push(this._queueHandler.bind(this, metadataDatKey))
-            this.datKeysInQueue.push(metadataDatKey)
+            this.datKeysInQueue[metadataDatKey] = true            
         }
     }
 
     private _queueHandler(metadataDatKey: string) {
         return new Promise((resolve, reject) => {
+            const resolver = () => {
+                this.datKeysInQueue[metadataDatKey] = false
+                resolve()
+            }
             // 1. Fetch existing piece of content from the local network content db
             const networkContentQuery: AODB_NetworkContentGet_Data = {
                 query: { _id: metadataDatKey }
@@ -45,12 +53,7 @@ export default class AOContentHostsUpdater {
             this.router.send('/db/network/content/get', networkContentQuery).then((contentResponse: IAORouterMessage) => {
                 if (contentResponse.data && contentResponse.data[0]) {
                     const existingNetworkContent: AONetworkContent = contentResponse.data[0]
-                    // 2. Fetch hosts info from the AO network (hyperdb)
-                    const contentHostsQuery: AOP2P_GetContentHosts_Data = {
-                        content: existingNetworkContent.content,
-                    }                    
-                    this.router.send('/p2p/content/getContentHosts', contentHostsQuery).then((hostsResponse: IAORouterMessage) => {
-                        const contentHosts: Array<NetworkContentHostEntry> = hostsResponse.data
+                    this.getContentHostsFormatted(existingNetworkContent.content).then((contentHosts: Array<NetworkContentHostEntry>) => {
                         // 3. Parse the content hosts and update stats
                         const now = new Date();
                         const recentlySeenHosts = contentHosts.filter((host: NetworkContentHostEntry) => {
@@ -68,21 +71,21 @@ export default class AOContentHostsUpdater {
                             }
                         }
                         this.router.send('/db/network/content/update', networkContentUpdate).then(() => {
-                            resolve()
+                            resolver()
                         }).catch(error => {
                             debug(`Error updating network content hosts information: ${error.message}`)
-                            resolve()
+                            resolver()
                         })
                     }).catch(error => {
                         debug(`${metadataDatKey} Error grabbing content hosts: ${error.message}`)
-                        resolve()
+                        resolver()
                     })
                 } else {
                     debug(`${metadataDatKey} Content not found, unable to update host stats...`)
-                    resolve()
+                    resolver()
                 }
             }).catch(error => {
-                resolve()
+                resolver()
             })
         })
     }
