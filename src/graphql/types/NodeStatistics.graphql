@@ -12,6 +12,7 @@ type NodeStatistics {
     p2pRecentlySeenHostsCount: Int!
     ethNetworkStatus: Status!
     ethNetworkId: Int!
+    totalContentHosts: Int
     # uptime: Float!
     # peersConnected: Int!
     # videosAvailable: Int!

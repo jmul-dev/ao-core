@@ -19,6 +19,7 @@ export default (obj: AOContent, args: any, context: IGraphqlResolverContext, inf
                 p2pRecentlySeenHostsCount: p2pStats.recentlySeenContentHosts,
                 ethNetworkStatus: ethStats.connectionStatus,
                 ethNetworkId: ethStats.networkId,
+                totalContentHosts: ethStats.totalContentHosts,
             })  
         }).catch(reject)
     })

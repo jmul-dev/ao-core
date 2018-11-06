@@ -17,6 +17,7 @@ export interface AOEth_Args {
 export interface IAOETH_Stats {
     connectionStatus: IAOStatus;
     networkId: string;
+    totalContentHosts?: number;
 }
 export interface IAOEth_NetworkChange_Data {
     networkId: '1' | '3' | '4'
@@ -144,8 +145,7 @@ export default class AOEth extends AORouterInterface {
             }
             this.setNetworkProvider(rpcEndpoint)
             this.web3.eth.net.getId().then(networkId => {
-                debug(`Connected to network with id [${networkId}]`)
-                this.connectionStatus = "CONNECTED"
+                debug(`Connected to network with id [${networkId}]`)                
                 this.networkId = `${networkId}`
                 // Setup contracts
                 try {
@@ -153,8 +153,10 @@ export default class AOEth extends AORouterInterface {
                         aoContent: new this.web3.eth.Contract(AOContent.abi, AOContent.networks[this.networkId].address), //.at(AOContent.networks[this.networkId].address),
                         aoToken: new this.web3.eth.Contract(AOToken.abi, AOToken.networks[this.networkId].address), //.at(AOToken.networks[this.networkId].address)
                     }
+                    this.connectionStatus = "CONNECTED"
                     resolve({ networkId: this.networkId })
                 } catch (error) {
+                    this.connectionStatus = "ERROR"
                     reject(new Error(`Error initializing contracts for network: ${networkId}. ${error.message}`))
                 }
             }).catch(error => {
@@ -193,11 +195,23 @@ export default class AOEth extends AORouterInterface {
     }
 
     _handleStats(request: IAORouterRequest) {
-        const stats: IAOETH_Stats = {
-            connectionStatus: this.connectionStatus,
-            networkId: this.networkId,
+        if ( this.connectionStatus === "CONNECTED" && typeof this.contracts !== 'undefined') {
+            this.contracts.aoContent.methods.totalContentHosts().call().then((totalContentHosts) => {
+                let stats: IAOETH_Stats = {
+                    connectionStatus: this.connectionStatus,
+                    networkId: this.networkId,
+                    totalContentHosts: parseInt(totalContentHosts),
+                }
+                request.respond(stats)
+            }).catch(request.reject)
+        } else {
+            let stats: IAOETH_Stats = {
+                connectionStatus: this.connectionStatus,
+                networkId: this.networkId,
+                totalContentHosts: undefined,
+            }
+            request.respond(stats)
         }
-        request.respond(stats)
     }
 
     _handleNetworkChange(request: IAORouterRequest) {
