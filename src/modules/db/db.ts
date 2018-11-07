@@ -99,7 +99,7 @@ export default class AODB extends AORouterInterface {
         maxPeerConnections: -1,
         runInBackground: false,
         runOnStartup: false,
-        checkForUpdates: true,
+        checkForUpdates: false,
     }
     private storageLocation: string;
     private networkId: string;
