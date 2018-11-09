@@ -15,6 +15,7 @@
     "test": "mocha -r ts-node/register src/**/*.spec.ts",
     "test-module": "mocha -r ts-node/register src/modules/${MODULE:-**}/*.spec.ts",
     "test-module-eth": "MODULE=eth npm run test-module",
+    "test-module-dat": "MODULE=dat npm run test-module",
     "test-ao-crypto": "mocha -r ts-node/register src/AOCrypto.spec.ts",
     "list-native-deps": "node ./node_modules/node-has-native-dependencies/index.js"
   },

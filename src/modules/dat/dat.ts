@@ -431,6 +431,8 @@ export default class AODat extends AORouterInterface {
                         //Dat is super stupid and will exit with its own recommended code when in fact its all okay: https://github.com/datproject/dat-node#downloading-files
                         let catchStupidDat = false
                         try {
+                            const datKey = dat.key.toString('hex');
+                            this.dats[datKey] = dat;
                             dat.joinNetwork((err) => {
                                 if (err) {
                                     debug(`[${key}] Failed to join network`, err)
@@ -445,10 +447,8 @@ export default class AODat extends AORouterInterface {
                                     reject(new Error('No users are hosting the requested content'))
                                     return;
                                 } else {
-                                    debug(`[${key}] Succesfully joined network and began downloading!`)
-                                    const datKey = dat.key.toString('hex');
-                                    dat.AO_joinedNetwork = true
-                                    this.dats[datKey] = dat;
+                                    debug(`[${key}] Succesfully joined network and began downloading!`)                                    
+                                    dat.AO_joinedNetwork = true                                    
                                     // Assuming we do not have an existing dat db entry
                                     const newDatEntry: DatEntry = {
                                         key: datKey,
