@@ -2,6 +2,7 @@ const webpack = require('webpack');
 const path = require('path');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const PermissionsOutputPlugin = require('webpack-permissions-plugin');
+const ReplaceInFileWebpackPlugin = require('replace-in-file-webpack-plugin');
 
 console.log(__dirname + '/nodebin')
 
@@ -79,13 +80,39 @@ module.exports = {
                 use: [
                     devMode ? developmentLoader : productionLoader
                 ],
+            },
+            //UTP
+            {
+                test: /index\.js$/,
+                include: [
+                    path.resolve(__dirname, "node_modules", "utp-native")
+                ],
+                loader: 'string-replace-loader',
+                options: {
+                  search: "require('node-gyp-build')(__dirname)",
+                  replace: "require('node-gyp-build')(__dirname+'"+path.sep+path.join('utp-prebuilds')+"')"
+                }
+            },
+            //Sodium Native
+            {
+                test: /index\.js$/,
+                include: [
+                    path.resolve(__dirname, "node_modules", "sodium-native")
+                ],
+                loader: 'string-replace-loader',
+                options: {
+                  search: "require('node-gyp-build')(__dirname)",
+                  replace: "require('node-gyp-build')(__dirname+'"+path.sep+path.join('sodium-prebuilds')+"')"
+                }
             }
         ]
     },
     plugins: [
         new webpack.BannerPlugin({banner: '#!/usr/bin/env node', raw: true}),
         new CopyWebpackPlugin([
-            { from: 'node_modules/ffprobe-static/bin', to: 'bin' }
+            { from: 'node_modules/ffprobe-static/bin', to: 'bin' },
+            { from: 'node_modules/utp-native/prebuilds', to: 'modules/utp-prebuilds/prebuilds' },
+            { from: 'node_modules/sodium-native/prebuilds', to: 'modules/sodium-prebuilds/prebuilds' }
         ]),
         new PermissionsOutputPlugin({
             // buildFolders: [
@@ -105,6 +132,20 @@ module.exports = {
                     fileMode: '755'
                 }
             ]
-        })
+        }),
+        new ReplaceInFileWebpackPlugin([
+            {
+                dir: 'dist/modules',
+                files: [
+                    'dat.bin.js'
+                ],
+                rules: [
+                    {
+                        search: '__webpack_require__("./node_modules/node-gyp-build sync recursive")',
+                        replace: 'require'
+                    }
+                ]
+            }
+        ])
     ]
 };
