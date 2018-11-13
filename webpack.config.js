@@ -54,7 +54,7 @@ var config = {
     optimization: {
         minimize: process.env.NODE_ENV === 'production' ? true : false, // <---- disables uglify.
         minimizer: [new UglifyJsPlugin({
-            exclude: /modules\/*.bin.js/, // Need to exclude for string replacement to happen post compile.
+            exclude: /modules/, // Need to exclude for string replacement to happen post compile.
             parallel: true
         })], //if you want to customize it.
         namedModules: true, //enabled for string replacement
