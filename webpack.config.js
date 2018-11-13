@@ -50,6 +50,10 @@ module.exports = {
         library: "[name]",
         libraryTarget: "commonjs",
     },
+    optimization:{
+        minimize: false, // <---- disables uglify.
+        // minimizer: [new UglifyJsPlugin()] if you want to customize it.
+    },
     resolve: {
         // Add `.ts` and `.tsx` as a resolvable extension.
         extensions: [".ts", ".tsx", ".mjs", ".js", ".graphql", ".json", ".node"]
