@@ -155,7 +155,7 @@ export default class AODat extends AORouterInterface {
                 return;
             }
             const datDir = path.join(this.datDir, datEntry.key)
-            debug(`Resuming dat: ${datDir}`)
+            debug(`Resuming ${datEntry.complete ? 'complete' : 'incomplete'} dat: ${datDir}`)
             Dat(datDir, (err: Error, dat: Dat) => {
                 if (err || !dat) {
                     if (dat) {
@@ -174,6 +174,14 @@ export default class AODat extends AORouterInterface {
                 dat.joinNetwork((err) => {
                     if (err) {
                         debug(`Error joining network for dat://${datEntry.key}: ${err.emssage}`)
+                    } else if ( !datEntry.complete && dat.archive._latestVersion > 0 ) {
+                        debug(`Resumed dat is now fully download dat://${datEntry.key}`)
+                        const updatedDatEntry: DatEntry = {
+                            key: datEntry.key,
+                            complete: true,
+                            updatedAt: new Date(),
+                        }
+                        this._updateDatEntry(updatedDatEntry)
                     }
                 })
                 dat.AO_joinedNetwork = true
@@ -183,6 +191,7 @@ export default class AODat extends AORouterInterface {
                 // Finally, if the datEntry is not complete, listen for completion and update our
                 // db.
                 if (!datEntry.complete) {
+                    debug(`Resuming incomplete dat://${datEntry.key}`)
                     dat.archive.on('sync', () => {
                         debug(`Resumed dat is now fully download dat://${datEntry.key}`)
                         const updatedDatEntry: DatEntry = {
@@ -429,7 +438,7 @@ export default class AODat extends AORouterInterface {
                             return;
                         }
                         //Dat is super stupid and will exit with its own recommended code when in fact its all okay: https://github.com/datproject/dat-node#downloading-files
-                        let catchStupidDat = false
+                        let datDownloadComplete = false
                         try {
                             const datKey = dat.key.toString('hex');
                             this.dats[datKey] = dat;
@@ -439,7 +448,7 @@ export default class AODat extends AORouterInterface {
                                     this.removeDat(key)
                                     reject(err)
                                     return;
-                                } else if (!(dat.network.connected + dat.network.connecting) && !catchStupidDat) {
+                                } else if (!(dat.network.connected + dat.network.connecting) && !datDownloadComplete) {
                                     debug(`[${key}] Failed to download, no one is hosting`)
                                     debug(`network connected: ${dat.network.connected}`)
                                     debug(`network connecting: ${dat.network.connecting}`)
@@ -452,7 +461,7 @@ export default class AODat extends AORouterInterface {
                                     // Assuming we do not have an existing dat db entry
                                     const newDatEntry: DatEntry = {
                                         key: datKey,
-                                        complete: false,
+                                        complete: datDownloadComplete,
                                         updatedAt: new Date(),
                                         createdAt: new Date(),
                                     }
@@ -477,13 +486,14 @@ export default class AODat extends AORouterInterface {
                             }
                             
                             dat.archive.on('sync', () => {
-                                if (!catchStupidDat) {
-                                    catchStupidDat = true
+                                if (!datDownloadComplete) {
+                                    // NOTE: this may actually run before the joinNetwork callback is hit!
                                     debug(`[${key}] Fully downloaded the goods!`)
+                                    datDownloadComplete = true                                    
                                     const currentDate = new Date()
                                     let updatedDatEntry: DatEntry = {
                                         key: key,
-                                        complete: true,
+                                        complete: datDownloadComplete,
                                         updatedAt: currentDate
                                     }
                                     //Yaay!  Dat node sux
