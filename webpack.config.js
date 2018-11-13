@@ -53,6 +53,7 @@ module.exports = {
     optimization:{
         minimize: false, // <---- disables uglify.
         // minimizer: [new UglifyJsPlugin()] if you want to customize it.
+        namedModules: true, //enabled for string replacement
     },
     resolve: {
         // Add `.ts` and `.tsx` as a resolvable extension.
