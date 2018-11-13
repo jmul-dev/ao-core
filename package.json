@@ -10,7 +10,7 @@
     "start": "DEBUG=ao:* node dist/bin.js --networkId 4",
     "start-prod": "DEBUG=ao:* node dist/bin.js --networkId 1",
     "build": "npm run clean && cross-env NODE_ENV=development webpack",
-    "build-prod": "npm run clean && cross-env NODE_ENV=production webpack -p --progress",
+    "build-prod": "npm run clean && cross-env NODE_ENV=production webpack --progress",
     "clean": "rimraf dist",
     "test": "mocha -r ts-node/register src/**/*.spec.ts",
     "test-module": "mocha -r ts-node/register src/modules/${MODULE:-**}/*.spec.ts",
