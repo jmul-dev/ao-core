@@ -9,12 +9,12 @@ console.log(__dirname + '/nodebin')
 
 const devMode = process.env.NODE_ENV !== 'production'
 
-console.log('Are we in development mode?', devMode ? 'yes':'no')
+console.log('Are we in development mode?', devMode ? 'yes' : 'no')
 
 const productionLoader = {
     loader: 'awesome-node-loader',
     options: {
-        rewritePath: path.join('..','..','..','ao-core','dist'),
+        rewritePath: path.join('..', '..', '..', 'ao-core', 'dist'),
         useDirname: false // This uses the node binary location 
     }
 }
@@ -26,7 +26,7 @@ const developmentLoader = {
     }
 }
 
-module.exports = {
+var config = {
     mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
     target: "node",
     node: {
@@ -46,15 +46,15 @@ module.exports = {
     output: {
         path: path.resolve(__dirname, 'dist'),
         filename: (chunkData) => {
-            return chunkData.chunk.name === 'main' || chunkData.chunk.name === 'bin' ? '[name].js': 'modules/[name].bin.js';
+            return chunkData.chunk.name === 'main' || chunkData.chunk.name === 'bin' ? '[name].js' : 'modules/[name].bin.js';
         },
         library: "[name]",
         libraryTarget: "commonjs",
     },
-    optimization:{
+    optimization: {
         minimize: process.env.NODE_ENV === 'production' ? true : false, // <---- disables uglify.
         minimizer: [new UglifyJsPlugin({
-            exclude: /dat\.bin\.js/, //Need to exclude for string replacement to happen post compile.
+            exclude: /modules\/*.bin.js/, // Need to exclude for string replacement to happen post compile.
             parallel: true
         })], //if you want to customize it.
         namedModules: true, //enabled for string replacement
@@ -98,8 +98,8 @@ module.exports = {
                 ],
                 loader: 'string-replace-loader',
                 options: {
-                  search: "require('node-gyp-build')(__dirname)",
-                  replace: "require('node-gyp-build')(__dirname+'"+path.sep+path.join('utp-prebuilds')+"')"
+                    search: "require('node-gyp-build')(__dirname)",
+                    replace: "require('node-gyp-build')(__dirname+'" + path.sep + path.join('utp-prebuilds') + "')"
                 }
             },
             //Sodium Native
@@ -110,14 +110,14 @@ module.exports = {
                 ],
                 loader: 'string-replace-loader',
                 options: {
-                  search: "require('node-gyp-build')(__dirname)",
-                  replace: "require('node-gyp-build')(__dirname+'"+path.sep+path.join('sodium-prebuilds')+"')"
+                    search: "require('node-gyp-build')(__dirname)",
+                    replace: "require('node-gyp-build')(__dirname+'" + path.sep + path.join('sodium-prebuilds') + "')"
                 }
             }
         ]
     },
     plugins: [
-        new webpack.BannerPlugin({banner: '#!/usr/bin/env node', raw: true}),
+        new webpack.BannerPlugin({ banner: '#!/usr/bin/env node', raw: true }),
         new CopyWebpackPlugin([
             { from: 'node_modules/ffprobe-static/bin', to: 'bin' },
             { from: 'node_modules/utp-native/prebuilds', to: 'modules/utp-prebuilds/prebuilds' },
@@ -145,9 +145,7 @@ module.exports = {
         new ReplaceInFileWebpackPlugin([
             {
                 dir: 'dist/modules',
-                files: [
-                    'dat.bin.js'
-                ],
+                test: /\.js$/,
                 rules: [
                     {
                         search: '__webpack_require__("./node_modules/node-gyp-build sync recursive")',
@@ -158,3 +156,5 @@ module.exports = {
         ])
     ]
 };
+
+module.exports = config
