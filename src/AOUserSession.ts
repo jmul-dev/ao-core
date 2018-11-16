@@ -222,9 +222,9 @@ export default class AOUserSession {
                 }
             }
             this.router.send('/db/user/content/get', contentQuery).then(async (response: IAORouterMessage) => {
-                if (!response.data || response.data.length !== 1) {
+                if (!response.data || response.data.length < 1) {
                     // NOTE: this is most likely a BuyContent event for another user's content / host
-                    debug(`Attempt to handle incoming purchase but did not find matching content in user db.`)
+                    debug(`[BuyContent][contentHostId=${buyContentEvent.contentHostId}] Skip, user is not a host.`)
                     return;
                 }
                 const userContent: AOContent = AOContent.fromObject(response.data[0])
