@@ -1,5 +1,6 @@
 const webpack = require('webpack');
 const path = require('path');
+const fs = require('fs');
 const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const PermissionsOutputPlugin = require('webpack-permissions-plugin');
@@ -10,6 +11,8 @@ console.log(__dirname + '/nodebin')
 const devMode = process.env.NODE_ENV !== 'production'
 
 console.log('Are we in development mode?', devMode ? 'yes' : 'no')
+
+fs.mkdirSync(path.resolve(__dirname, 'dist'));
 
 const productionLoader = {
     loader: 'awesome-node-loader',
@@ -123,25 +126,6 @@ var config = {
             { from: 'node_modules/utp-native/prebuilds', to: 'modules/utp-prebuilds/prebuilds' },
             { from: 'node_modules/sodium-native/prebuilds', to: 'modules/sodium-prebuilds/prebuilds' }
         ]),
-        new PermissionsOutputPlugin({
-            // buildFolders: [
-            //     path.resolve(__dirname, 'dist/bin')
-            // ]
-            buildFiles: [
-                {
-                    path: path.resolve(__dirname, 'dist/bin/darwin/x64/ffprobe'),
-                    fileMode: '755'
-                },
-                {
-                    path: path.resolve(__dirname, 'dist/bin/win32/x64/ffprobe.exe'),
-                    fileMode: '755'
-                },
-                {
-                    path: path.resolve(__dirname, 'dist/bin/linux/x64/ffprobe'),
-                    fileMode: '755'
-                }
-            ]
-        }),
         new ReplaceInFileWebpackPlugin([
             {
                 dir: 'dist/modules',
@@ -156,5 +140,24 @@ var config = {
         ])
     ]
 };
+
+
+// For some reason ffprobe static binary coppies with non-executable permissions :/
+var ffprobeBinaryLocation = path.resolve(__dirname, 'dist/bin/darwin/x64/ffprobe');
+if ( process.platform === 'win32' ) {
+    ffprobeBinaryLocation = path.resolve(__dirname, 'dist/bin/win32/x64/ffprobe.exe')
+} else if ( process.platform === 'linux' ) {
+    ffprobeBinaryLocation = path.resolve(__dirname, 'dist/bin/linux/x64/ffprobe');
+}
+if ( process.platform !== 'win32' ) {
+    config.plugins.push(new PermissionsOutputPlugin({
+        buildFiles: [
+            {
+                path: ffprobeBinaryLocation,
+                fileMode: '755'
+            },
+        ]
+    }));
+}
 
 module.exports = config

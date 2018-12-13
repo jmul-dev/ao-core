@@ -262,9 +262,9 @@ export default class AORouter extends AORouterCoreProcessInterface {
                 })
             }
             const startTime = Date.now()  
-            if ( !incomingMessage.routerParams.ignoreLogging ) {
+            if ( !incomingMessage.routerParams.ignoreLogging && process.env.NODE_ENV !== 'production' ) {
                 debug(`routing event    [${message.routerMessageId}][${event}]: ${from.name} -> ${receivingRegistryEntry.name} ${messageHasStream ? '(with stream)' : ''}`)
-            }            
+            }
             // 5. Send the request out 
             receivingProcess.send(message, (error?: Error) => {
                 if (error) {
@@ -279,7 +279,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
                     if (message.routerMessageId === response.routerMessageId) {
                         const responseTime = Date.now() - startTime
                         const responseTimeFormated = (responseTime / 1000).toFixed(2)
-                        if ( !incomingMessage.routerParams.ignoreLogging ) {
+                        if ( !incomingMessage.routerParams.ignoreLogging && process.env.NODE_ENV !== 'production' ) {
                             debug(`routing response [${message.routerMessageId}][${event}]: ${from.name} <- ${receivingRegistryEntry.name}, duration[${responseTimeFormated}s] ${response.error ? ', rejecting with error' : ''}`)
                         }
                         if (response.error) {
