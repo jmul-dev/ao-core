@@ -3,6 +3,7 @@ import Web3 from 'web3';
 import SolidityEvent from 'web3-legacy/lib/web3/event.js';
 import Debug from '../../AODebug'
 import { IAOStatus } from "../../models/AOStatus";
+import { AOP2P_Init_Data } from "../p2p/p2p";
 const AOContent = require('ao-contracts/build/contracts/AOContent.json');
 const AOToken = require('ao-contracts/build/contracts/AOToken.json');
 const debug = Debug('ao:eth');
@@ -157,12 +158,21 @@ export default class AOEth extends AORouterInterface {
                         aoContent: new this.web3.eth.Contract(AOContent.abi, AOContent.networks[this.networkId].address), //.at(AOContent.networks[this.networkId].address),
                         aoToken: new this.web3.eth.Contract(AOToken.abi, AOToken.networks[this.networkId].address), //.at(AOToken.networks[this.networkId].address)
                     }
-                    this.connectionStatus = "CONNECTED"
-                    resolve({ networkId: this.networkId })
+                    this.connectionStatus = "CONNECTED"                    
                 } catch (error) {
                     this.connectionStatus = "ERROR"
                     reject(new Error(`Error initializing contracts for network: ${networkId}. ${error.message}`))
                 }
+                this._initP2P().then((dbKey:string) => {
+                    const p2pInitData : AOP2P_Init_Data = {dbKey:dbKey}
+                    this.router.send('/p2p/init',p2pInitData).then(() => {
+                        // Start p2p discovery
+                        this.router.send('/p2p/beginDiscovery').then(() => {
+                            resolve({ networkId: this.networkId })
+                        }).catch(debug)
+                    }).catch(debug)
+                }).catch(debug)
+
             }).catch(error => {
                 debug('Error getting network:', error)
                 this.connectionStatus = "ERROR"
@@ -196,6 +206,25 @@ export default class AOEth extends AORouterInterface {
             this.web3.setProvider(provider)
         else
             this.web3 = new Web3(provider)
+    }
+
+    //TODO: Replace below with a contract settings lookup code.
+    private _initP2P() {
+        return new Promise((resolve,reject) => {
+            let dbKey:string;
+            switch (this.networkId) {
+                case '1':
+                    dbKey = 'c26bf6279991f001cede1fe451cf2367a97e349cbbcbf8c740a5c162a5107a3c'
+                    break;
+                case '3':
+                    dbKey = '07a817f6e1317aba10b3231b2c1a61a2d8312914c5276d0d2f5258311ab82bcc'
+                    break;
+                case '4':
+                    dbKey = 'b9b874b28cc2792b0becdf2c40c9254f874be3efa1a48cd61903fb62e883f271'
+                    break;
+            }
+            resolve(dbKey)
+        })
     }
 
     _handleStats(request: IAORouterRequest) {
