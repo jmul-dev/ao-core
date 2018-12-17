@@ -46,7 +46,6 @@ export interface BuyContentEvent {
     publicAddress: string;
     createdOnTimestamp: number;
 }
-
 export interface StakeContentEvent {
     stakeOwner: string;
     stakeId: string;
@@ -57,13 +56,18 @@ export interface StakeContentEvent {
     profitPercentage: number;
     createdOnTimestamp: number;
 }
-
 export interface HostContentEvent {
     host: string;
     contentHostId: string;
     stakeId: string;
     contentDatKey: string;
     metadataDatKey: string;
+}
+export interface StoreContentEvent {
+    creator: string;
+    contentId: string;
+    fileSize: number;
+    contentUsageType: string;
 }
 
 interface Subscription {
@@ -358,19 +362,24 @@ export default class AOEth extends AORouterInterface {
      * 
      * 
      * @param request.transactionHash
-     * @returns {status, hostContentEvent, stakeContentEvent} 
+     * @returns {status, hostContentEvent, stakeContentEvent, storeContentEvent} 
      */
     _getStakeContentEventForTransaction(request: IAORouterRequest) {
         const requestData: IAOEth_StakeContentEvent_Data = request.data
         this._listenForTransactionStatus(requestData.transactionHash).then(({ status, receipt }) => {
             if (status && receipt) {
                 const logs = this.receiptLogParser(receipt.logs, AOContent.abi)
-                const stakeContentEvent: StakeContentEvent = logs.find(log => log.event === 'StakeContent').args;
+                const stakeContentEvent: StakeContentEvent = logs.find(log => log.event === 'StakeContent').args;                
                 const hostContentEvent: HostContentEvent = logs.find(log => log.event === 'HostContent').args;
+                let storeContentEvent: StoreContentEvent = logs.find(log => log.event === 'StoreContent').args;
+                if ( storeContentEvent && storeContentEvent.contentUsageType ) {
+                    storeContentEvent.contentUsageType = this.web3.utils.hexToAscii(storeContentEvent.contentUsageType)
+                }
                 request.respond({
                     status,
                     stakeContentEvent,
                     hostContentEvent,
+                    storeContentEvent,
                 })
             } else {
                 // Transaction failed
