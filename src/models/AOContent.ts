@@ -3,6 +3,7 @@ import { AOP2P_IndexDataRow, NetworkContentHostEntry } from "../modules/p2p/p2p"
 
 
 export type AOContentType = "VOD" | 'STREAM' | 'FILE' | 'APP'
+export type AOContentLicense = "AO" | "TAO" | "CC"
 
 // NOTE: match graphql/types/content.graphql -> ContentState enum
 export const AOContentState = Object.freeze({
@@ -83,7 +84,9 @@ export default abstract class AOContent {
     public purchaseId: string
     public nodeId: string
     public creatorId: string
-    public contentType: AOContentType;
+    public contentType: AOContentType
+    public contentLicense: AOContentLicense
+    public contentAttribution: string
     public isFolder: boolean
     public isMutable: boolean
     public fileName: string
@@ -170,6 +173,8 @@ export default abstract class AOContent {
             'stakeId',
             'creatorId',
             'contentType',
+            'contentLicense',
+            'contentAttribution',
             'isFolder',
             'isMutable',
             'fileName',
@@ -178,8 +183,8 @@ export default abstract class AOContent {
             'fileChecksum',
             'title',
             'description',
-            'stake',            
             'fileSize',
+            'stake',  // TODO: stake, stakePrimordialPercentage, profitSplitPercentage may change over time and should be removed from the somewhat static metadata json file
             'stakePrimordialPercentage',
             'profitSplitPercentage',
             'adSupport',
