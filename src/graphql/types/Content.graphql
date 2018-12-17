@@ -5,6 +5,12 @@ enum ContentType {
     APP
 }
 
+enum ContentLicense {
+    AO
+    TAO
+    CC    
+}
+
 # Keep in sync with `src/models/AOContent.ts`
 enum ContentState {
     DISCOVERED
@@ -78,6 +84,7 @@ interface IContent {
     nodeId: ID!
     creatorId: ID!
     contentType: ContentType!
+    contentLicense: ContentLicense!
     isFolder: Boolean!
     isMutable: Boolean!
     fileName: String
@@ -116,6 +123,7 @@ type VideoContent implements IContent {
     nodeId: ID!
     creatorId: ID!
     contentType: ContentType!
+    contentLicense: ContentLicense!
     isFolder: Boolean!
     isMutable: Boolean!
     fileName: String
@@ -160,4 +168,5 @@ input VideoContentSubmissionInputs {
     stake: Float!
     stakePrimordialPercentage: Float
     profitSplitPercentage: Float!
+    contentLicense: ContentLicense!
 }

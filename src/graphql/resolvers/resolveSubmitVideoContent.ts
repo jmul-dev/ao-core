@@ -20,6 +20,7 @@ export interface ISubmitVideoContent_Args {
         stake: number,
         profitSplitPercentage: number,
         stakePrimordialPercentage: number,
+        contentLicense: string,
     }
 }
 
@@ -112,6 +113,7 @@ export default (obj: any, args: ISubmitVideoContent_Args, context: IGraphqlResol
                         creatorId: ethAddress,
                         metadataDatKey: metadataDatKey,
                         contentType: 'VOD',
+                        contentLicense: args.inputs.contentLicense,
                         isFolder: false, // TODO: determine if args.inputs.video is a folder
                         isMutable: false,
                         title: args.inputs.title,
