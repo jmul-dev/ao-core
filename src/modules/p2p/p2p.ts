@@ -138,7 +138,6 @@ export default class AOP2P extends AORouterInterface {
         super(routerArgs)
         this.storageLocation = args.storageLocation
         this.networkId = String(args.networkId) //Apparently, numbers preferentially gets treated as such
-        this.dbPath = path.join(this.storageLocation, 'p2p', this.networkId)
         this.dbPrefix = args.dbNameSpace ? args.dbNameSpace : '/AOSpace/' //Also known as App ID
 
         //New Content upload
@@ -174,6 +173,7 @@ export default class AOP2P extends AORouterInterface {
                     this.dbKey = this.dbKeyRinkeby
                     break;
             }
+            this.dbPath = path.join(this.storageLocation, 'p2p', this.dbKey)
             const ensureP2PPathData: IAOFS_Mkdir_Data = { dirPath: this.dbPath }
             this.router.send('/fs/mkdir', ensureP2PPathData).then(() => {
                 const hyperDBOptions: AO_Hyper_Options = {
