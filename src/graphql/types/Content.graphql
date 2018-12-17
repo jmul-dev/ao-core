@@ -85,6 +85,7 @@ interface IContent {
     creatorId: ID!
     contentType: ContentType!
     contentLicense: ContentLicense!
+    contentAttribution: String
     isFolder: Boolean!
     isMutable: Boolean!
     fileName: String
@@ -124,6 +125,7 @@ type VideoContent implements IContent {
     creatorId: ID!
     contentType: ContentType!
     contentLicense: ContentLicense!
+    contentAttribution: String
     isFolder: Boolean!
     isMutable: Boolean!
     fileName: String
@@ -169,4 +171,5 @@ input VideoContentSubmissionInputs {
     stakePrimordialPercentage: Float
     profitSplitPercentage: Float!
     contentLicense: ContentLicense!
+    contentAttribution: String
 }

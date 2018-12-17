@@ -84,8 +84,9 @@ export default abstract class AOContent {
     public purchaseId: string
     public nodeId: string
     public creatorId: string
-    public contentType: AOContentType;
-    public contentLicense: AOContentLicense;
+    public contentType: AOContentType
+    public contentLicense: AOContentLicense
+    public contentAttribution: string
     public isFolder: boolean
     public isMutable: boolean
     public fileName: string
@@ -172,7 +173,8 @@ export default abstract class AOContent {
             'stakeId',
             'creatorId',
             'contentType',
-            "contentLicense",
+            'contentLicense',
+            'contentAttribution',
             'isFolder',
             'isMutable',
             'fileName',
