@@ -108,10 +108,7 @@ export default class AODat extends AORouterInterface {
                 }
                 this.router.send('/fs/mkdir', fsMakeContentDirData).then(() => {
                     this._resumeAll().then(() => {
-                        debug(`Resumed all dats`)
-                        // Start p2p discovery
-                        this.router.send('/p2p/beginDiscovery').then(() => {
-                        }).catch(debug)
+                        debug(`Resumed all dats`)                        
                     }).catch((error: Error) => {
                         debug(`Error resuming all dats: ${error.message}`)
                     })

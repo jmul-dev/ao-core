@@ -8,6 +8,7 @@
     "bin":  "p2p.bin.js",
     "AO": {
         "events": [
+            "/p2p/init",
             "/p2p/beginDiscovery",
             "/p2p/newContent",
             "/p2p/watchKey",

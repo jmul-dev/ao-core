@@ -16,7 +16,10 @@ const debug = Debug('ao:p2p');
 export interface AOP2P_Args {
     storageLocation: string;
     dbNameSpace: string;
-    networkId: string;
+}
+
+export interface AOP2P_Init_Data {
+    dbKey: string;
 }
 
 export interface AOP2P_New_Content_Data {
@@ -121,12 +124,8 @@ const routerArgs: AORouterArgs = {
 }
 
 export default class AOP2P extends AORouterInterface {
-    private dbPath: string;
-    private dbKeyMainNet: string = 'c26bf6279991f001cede1fe451cf2367a97e349cbbcbf8c740a5c162a5107a3c';
-    private dbKeyRinkeby: string = 'b9b874b28cc2792b0becdf2c40c9254f874be3efa1a48cd61903fb62e883f271';//New key as of 10/29/18
-    private dbKeyRopsten: string = '07a817f6e1317aba10b3231b2c1a61a2d8312914c5276d0d2f5258311ab82bcc';//New key as of 10/29/18
+    private dbPath: string;    
     private dbKey: string;
-    private networkId: string;
 
     private dbPrefix: string;
     private storageLocation: string;
@@ -137,13 +136,13 @@ export default class AOP2P extends AORouterInterface {
     constructor(args: AOP2P_Args) {
         super(routerArgs)
         this.storageLocation = args.storageLocation
-        this.networkId = String(args.networkId) //Apparently, numbers preferentially gets treated as such
         this.dbPrefix = args.dbNameSpace ? args.dbNameSpace : '/AOSpace/' //Also known as App ID
 
         //New Content upload
         this.contentIngestion = new AOContentIngestion(this.router)
         this.contentHostsUpdater = new AOContentHostsUpdater(this.router, this._getContentHostsFormatted.bind(this))
 
+        this.router.on('/p2p/init', this._init.bind(this))
         this.router.on('/p2p/beginDiscovery', this._handleStartDiscovery.bind(this))
         this.router.on('/p2p/newContent', this._handleNewContent.bind(this))
         this.router.on('/p2p/watchKey', this._handleWatchKey.bind(this))
@@ -155,39 +154,25 @@ export default class AOP2P extends AORouterInterface {
         this.router.on('/p2p/content/getContentHosts', this._handleGetContentHosts.bind(this))
         this.router.on('/p2p/stats', this._handleStats.bind(this))
 
-        this.init().then(() => {
-            debug('started')
-        }).catch(debug)
     }
 
-    private init() {
-        return new Promise((resolve, reject) => {
-            switch (this.networkId) {
-                case '1':
-                    this.dbKey = this.dbKeyMainNet
-                    break;
-                case '3':
-                    this.dbKey = this.dbKeyRopsten
-                    break;
-                case '4':
-                    this.dbKey = this.dbKeyRinkeby
-                    break;
+    private _init(request: IAORouterRequest) {
+        const {dbKey}: AOP2P_Init_Data = request.data
+        this.dbKey = dbKey
+        this.dbPath = path.join(this.storageLocation, 'p2p', this.dbKey)
+        const ensureP2PPathData: IAOFS_Mkdir_Data = { dirPath: this.dbPath }
+        this.router.send('/fs/mkdir', ensureP2PPathData).then(() => {
+            const hyperDBOptions: AO_Hyper_Options = {
+                dbKey: this.dbKey,
+                dbPath: this.dbPath,
+                autoAuth: true
             }
-            this.dbPath = path.join(this.storageLocation, 'p2p', this.dbKey)
-            const ensureP2PPathData: IAOFS_Mkdir_Data = { dirPath: this.dbPath }
-            this.router.send('/fs/mkdir', ensureP2PPathData).then(() => {
-                const hyperDBOptions: AO_Hyper_Options = {
-                    dbKey: this.dbKey,
-                    dbPath: this.dbPath,
-                    autoAuth: true
-                }
-                this.hyperdb.init(hyperDBOptions).then(() => {
-                    resolve({ success: true })
-                }).catch(e => {
-                    reject(e)
-                })
+            this.hyperdb.init(hyperDBOptions).then(() => {
+                request.respond({data:'great success!'})
+            }).catch(e => {
+                debug('init failed')
+                request.reject(e)
             })
-
         })
     }
 

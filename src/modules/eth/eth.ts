@@ -3,8 +3,10 @@ import Web3 from 'web3';
 import SolidityEvent from 'web3-legacy/lib/web3/event.js';
 import Debug from '../../AODebug'
 import { IAOStatus } from "../../models/AOStatus";
+import { AOP2P_Init_Data } from "../p2p/p2p";
 const AOContent = require('ao-contracts/build/contracts/AOContent.json');
 const AOToken = require('ao-contracts/build/contracts/AOToken.json');
+const AOSetting = require('ao-contracts/build/contracts/AOSetting.json');
 const debug = Debug('ao:eth');
 
 
@@ -92,6 +94,7 @@ export default class AOEth extends AORouterInterface {
     private contracts: { // sry no type checking on these bad boys!
         aoToken: any;
         aoContent: any;
+        aoSetting: any;
     };
 
     private events: {
@@ -156,13 +159,23 @@ export default class AOEth extends AORouterInterface {
                     this.contracts = {
                         aoContent: new this.web3.eth.Contract(AOContent.abi, AOContent.networks[this.networkId].address), //.at(AOContent.networks[this.networkId].address),
                         aoToken: new this.web3.eth.Contract(AOToken.abi, AOToken.networks[this.networkId].address), //.at(AOToken.networks[this.networkId].address)
+                        aoSetting: new this.web3.eth.Contract(AOSetting.abi, AOSetting.networks[this.networkId].address),
                     }
-                    this.connectionStatus = "CONNECTED"
-                    resolve({ networkId: this.networkId })
+                    this.connectionStatus = "CONNECTED"                    
                 } catch (error) {
                     this.connectionStatus = "ERROR"
                     reject(new Error(`Error initializing contracts for network: ${networkId}. ${error.message}`))
                 }
+                
+                this._getTaoDBKey().then((dbKey:string) => {
+                    const p2pInitData : AOP2P_Init_Data = {dbKey:dbKey}                    
+                    this.router.send('/p2p/init',p2pInitData).then(() => {
+                        this.router.send('/p2p/beginDiscovery').then(() => {
+                            resolve({ networkId: this.networkId })
+                        }).catch(debug)
+                    }).catch(debug)
+                }).catch(debug)
+
             }).catch(error => {
                 debug('Error getting network:', error)
                 this.connectionStatus = "ERROR"
@@ -196,6 +209,35 @@ export default class AOEth extends AORouterInterface {
             this.web3.setProvider(provider)
         else
             this.web3 = new Web3(provider)
+    }
+
+    private _getTaoDBKey() {
+        return new Promise((resolve,reject) => {
+            this.contracts.aoSetting.methods.getSettingValuesByThoughtName('0x939b070c66152b3e7efb52ec631d680270ce14c4','taoDbKey').call()
+            .then((data)=> {
+                if(data[4].length == 64) {
+                    resolve(data[4])
+                } else {
+                    reject()
+                }
+            }).catch(e => {
+                debug(e)
+                reject(e)
+            })
+            // Kept below for records for now incase you need to load any of them
+            // let dbKey:string;
+            // switch (this.networkId) {
+            //     case '1':
+            //         dbKey = 'c26bf6279991f001cede1fe451cf2367a97e349cbbcbf8c740a5c162a5107a3c'
+            //         break;
+            //     case '3':
+            //         dbKey = '07a817f6e1317aba10b3231b2c1a61a2d8312914c5276d0d2f5258311ab82bcc'
+            //         break;
+            //     case '4':
+            //         dbKey = 'b9b874b28cc2792b0becdf2c40c9254f874be3efa1a48cd61903fb62e883f271'
+            //         break;
+            // }
+        })
     }
 
     _handleStats(request: IAORouterRequest) {
