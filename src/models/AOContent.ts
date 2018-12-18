@@ -84,6 +84,7 @@ export default abstract class AOContent {
     public purchaseId: string
     public nodeId: string
     public creatorId: string
+    public taoId: string
     public contentType: AOContentType
     public contentLicense: AOContentLicense
     public contentAttribution: string
@@ -172,6 +173,7 @@ export default abstract class AOContent {
             "metadataDatKey",
             'stakeId',
             'creatorId',
+            'taoId',
             'contentType',
             'contentLicense',
             'contentAttribution',

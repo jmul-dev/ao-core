@@ -22,6 +22,7 @@ export interface ISubmitVideoContent_Args {
         stakePrimordialPercentage: number,
         contentLicense: string,
         contentAttribution: string,
+        taoId: string,
     }
 }
 
@@ -111,8 +112,8 @@ export default (obj: any, args: ISubmitVideoContent_Args, context: IGraphqlResol
                     let contentJson: AOContent = AOContent.fromObject({
                         id: metadataDatKey,
                         nodeId: ethAddress,
-                        creatorId: ethAddress,
-                        metadataDatKey: metadataDatKey,
+                        creatorId: ethAddress,         
+                        taoId: args.inputs.taoId,                        
                         contentType: 'VOD',
                         contentLicense: args.inputs.contentLicense,
                         contentAttribution: args.inputs.contentAttribution,
@@ -124,6 +125,7 @@ export default (obj: any, args: ISubmitVideoContent_Args, context: IGraphqlResol
                         profitSplitPercentage: args.inputs.profitSplitPercentage,
                         stakePrimordialPercentage: args.inputs.stakePrimordialPercentage,
                         createdAt: Date.now().toString(),
+                        metadataDatKey: metadataDatKey,
                         fileUrl: `${contentFileNames[0]}`,
                         fileDatKey: contentDatKey,
                         fileName: contentFileNames[0],

@@ -83,6 +83,7 @@ interface IContent {
     stakeId: ID
     nodeId: ID!
     creatorId: ID!
+    taoId: ID
     contentType: ContentType!
     contentLicense: ContentLicense!
     contentAttribution: String
@@ -123,6 +124,7 @@ type VideoContent implements IContent {
     stakeId: ID
     nodeId: ID!
     creatorId: ID!
+    taoId: ID
     contentType: ContentType!
     contentLicense: ContentLicense!
     contentAttribution: String
@@ -172,4 +174,5 @@ input VideoContentSubmissionInputs {
     profitSplitPercentage: Float!
     contentLicense: ContentLicense!
     contentAttribution: String
+    taoId: String
 }
