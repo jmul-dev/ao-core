@@ -86,7 +86,7 @@ export default abstract class AOContent {
     public creatorId: string
     public taoId: string
     public contentType: AOContentType
-    public contentLicense: AOContentLicense
+    public contentLicense: AOContentLicense = "AO"
     public contentAttribution: string
     public isFolder: boolean
     public isMutable: boolean
