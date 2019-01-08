@@ -168,11 +168,23 @@ export default class Core extends EventEmitter {
         }
     }
 
+    /**
+     * Core is split into several sub-processes that are managed by the AORouter.
+     * There is a bit of dependency flow here, so once the processes are running
+     * we will chain a few calls before things are good to go.
+     */
     private coreRouterInitializer() {
         this.coreRouter = new AORouter(this.options);
         this.coreRouter
-            .init()
+            .start()
             .then(() => {
+                // TODO:
+                // 1. pull user settings from db
+                // 2. connect to eth network (based on default rpc or user settings override)
+                // 3. connect to hyperdb based on ethereum contract setting OR user setting override?
+
+                this.coreRouter.router.send("/eth/init", () => {}).then();
+
                 // Core router event handlers
                 this.coreRouter.router.on(
                     "/core/log",
