@@ -8,6 +8,8 @@
     "bin": "eth.bin.js",
     "AO": {
         "events": [
+            "/eth/init",
+            "/eth/settings/taoDbKey",
             "/eth/stats",
             "/eth/network/set",
             "/eth/network/get",
