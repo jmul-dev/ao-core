@@ -1,17 +1,20 @@
 #!/usr/local/bin/node
-'use strict';
+"use strict";
 
-import AODB, { AODB_Args } from './db'
-import minimist = require('minimist')
-import path from 'path'
+import AODB from "./db";
+import minimist = require("minimist");
+import path from "path";
+import { AORouterSubprocessArgs } from "../../router/AORouterInterface";
 
-var argv: AODB_Args = minimist<AODB_Args>(process.argv.slice(2), {
-    default: {
-        storageLocation: path.resolve(__dirname, '../..', 'data'),
-        networkId: '1'
+var argv: AORouterSubprocessArgs = minimist<AORouterSubprocessArgs>(
+    process.argv.slice(2),
+    {
+        default: {
+            storageLocation: path.resolve(__dirname, "../..", "data")
+        }
     }
-});
+);
 
 if (require.main === module) {
-    new AODB(argv)
+    new AODB(argv);
 }

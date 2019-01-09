@@ -1,6 +1,6 @@
 "use strict";
 import { EVENT_LOG, NETWORK_CHANGE, DATA, DATA_TYPES } from "./constants";
-import AORouter from "./router/AORouter";
+import AORouter, { IAORouterMessage } from "./router/AORouter";
 import { IAORouterRequest } from "./router/AORouterInterface";
 import Http, { IGraphqlResolverContext } from "./http";
 import { EventEmitter } from "events";
@@ -17,13 +17,17 @@ import registerResolver, {
 } from "./graphql/resolvers/resolveRegister";
 import fsExtra from "fs-extra";
 import Debug, { debugLogFile } from "./AODebug";
+import { IAOETH_Init_Data } from "./modules/eth/eth";
+import { AOP2P_Init_Data } from "./modules/p2p/p2p";
 
 const debugLog = Debug("ao:core");
 const errorLog = Debug("ao:core:error");
+const initializationStateLog = Debug("ao:initialization");
 
 export interface ICoreOptions {
     ethAddress: string;
-    networkId: string;
+    ethNetworkId: string;
+    ethNetworkRpc: string;
     disableHttpInterface: boolean;
     corePort: number;
     coreOrigin: string;
@@ -48,6 +52,14 @@ export const AOCoreState = Object.freeze({
     LOGS_INTIALIZED: "LOGS_INTIALIZED",
     ROUTER_INITIALIZING: "ROUTER_INITIALIZING",
     ROUTER_INITIALIZED: "ROUTER_INITIALIZED",
+    CORE_DBS_INITIALIZING: "CORE_DBS_INITIALIZING",
+    CORE_DBS_INITIALIZED: "CORE_DBS_INITIALIZED",
+    ETH_MODULE_INITIALIZING: "ETH_MODULE_INITIALIZING",
+    ETH_MODULE_INITIALIZED: "ETH_MODULE_INITIALIZED",
+    P2P_MODULE_INITIALIZING: "P2P_MODULE_INITIALIZING",
+    P2P_MODULE_INITIALIZED: "P2P_MODULE_INITIALIZED",
+    DISCOVERY_INITIALIZING: "DISCOVERY_INITIALIZING",
+    DISCOVERY_INITIALIZED: "DISCOVERY_INITIALIZED",
     HTTP_INITIALIZING: "HTTP_INITIALIZING",
     HTTP_INITIALIZED: "HTTP_INITIALIZED",
     SESSION_INITIALIZED: "SESSION_INITIALIZED",
@@ -64,7 +76,7 @@ export default class Core extends EventEmitter {
     private state: String;
     public static DEFAULT_OPTIONS = {
         ethAddress: "",
-        networkId: "1",
+        ethNetworkId: "1",
         disableHttpInterface: false,
         corePort: 3003,
         coreOrigin: "http://localhost",
@@ -76,7 +88,7 @@ export default class Core extends EventEmitter {
         importData: "" // Takes a path to the zip file
     };
 
-    constructor(args: ICoreOptions = Core.DEFAULT_OPTIONS) {
+    constructor(args: ICoreOptions) {
         super();
         this.options = Object.assign({}, Core.DEFAULT_OPTIONS, args);
         debugLog(`Starting core with options:`);
@@ -98,11 +110,18 @@ export default class Core extends EventEmitter {
     /**
      * The core initialization process is handled through this state machine. Each
      * part of the init process will trigger an additional call to `stateChangeHandler`.
+     * The switch statement is in chronilogical order and should be pretty easy to follow.
      *
      * @param nextState
+     * @param error
      * @param errorMessage
      */
-    private stateChangeHandler(nextState, errorMessage?) {
+    private stateChangeHandler(
+        nextState: string,
+        error?: Error,
+        errorMessage?: string
+    ) {
+        initializationStateLog(nextState);
         this.state = nextState;
         switch (nextState) {
             case AOCoreState.INITIAL_STATE:
@@ -113,6 +132,19 @@ export default class Core extends EventEmitter {
                 this.coreRouterInitializer();
                 break;
             case AOCoreState.ROUTER_INITIALIZED:
+                this.bindCoreRouterEventHandlers();
+                this.coreDbInitializer();
+                break;
+            case AOCoreState.CORE_DBS_INITIALIZED:
+                this.ethereumNetworkInitializer();
+                break;
+            case AOCoreState.ETH_MODULE_INITIALIZED:
+                this.p2pNetworkInitializer();
+                break;
+            case AOCoreState.P2P_MODULE_INITIALIZED:
+                this.contentDiscoveryInitializer();
+                break;
+            case AOCoreState.DISCOVERY_INITIALIZED:
                 this.sessionInitializer();
                 break;
             case AOCoreState.SESSION_INITIALIZED:
@@ -130,7 +162,8 @@ export default class Core extends EventEmitter {
                 break;
             case AOCoreState.INITIALIZATION_FAILED:
             case AOCoreState.SHUTDOWN_ERROR:
-                // TODO: shutdown?
+                errorLog(errorMessage);
+                errorLog(error);
                 this.handleShutdown(errorMessage);
                 break;
             default:
@@ -140,7 +173,7 @@ export default class Core extends EventEmitter {
     }
 
     private logsInitializer() {
-        this.state = AOCoreState.LOGS_INTIALIZING;
+        this.stateChangeHandler(AOCoreState.LOGS_INTIALIZING);
         if (process.platform === "win32") {
             //Windows has a hard time dealing with filesystem stuff, can't delete something we're writing into.
             this.stateChangeHandler(AOCoreState.LOGS_INTIALIZED);
@@ -157,11 +190,11 @@ export default class Core extends EventEmitter {
                 })
                 .catch(error => {
                     errorLog(
-                        `Error removing previous log file at: ${logFilePath}.`,
-                        error
+                        `Error removing previous log file at: ${logFilePath}.`
                     );
                     this.stateChangeHandler(
                         AOCoreState.INITIALIZATION_FAILED,
+                        error,
                         `Unable to locate log file`
                     );
                 });
@@ -174,33 +207,142 @@ export default class Core extends EventEmitter {
      * we will chain a few calls before things are good to go.
      */
     private coreRouterInitializer() {
+        this.stateChangeHandler(AOCoreState.ROUTER_INITIALIZING);
         this.coreRouter = new AORouter(this.options);
         this.coreRouter
             .start()
             .then(() => {
-                // TODO:
-                // 1. pull user settings from db
-                // 2. connect to eth network (based on default rpc or user settings override)
-                // 3. connect to hyperdb based on ethereum contract setting OR user setting override?
-
-                this.coreRouter.router.send("/eth/init", () => {}).then();
-
-                // Core router event handlers
-                this.coreRouter.router.on(
-                    "/core/log",
-                    this._handleLog.bind(this)
-                );
-                this.coreRouter.router.on(
-                    "/core/networkIdMismatch",
-                    this._handleNetworkIdMismatch.bind(this)
-                );
                 this.stateChangeHandler(AOCoreState.ROUTER_INITIALIZED);
             })
             .catch(error => {
-                errorLog(`Error initializing core router:`, error);
                 this.stateChangeHandler(
                     AOCoreState.INITIALIZATION_FAILED,
+                    error,
                     `Unable to start core router`
+                );
+            });
+    }
+
+    private bindCoreRouterEventHandlers() {
+        this.coreRouter.router.on("/core/log", this._handleLog.bind(this));
+        this.coreRouter.router.on(
+            "/core/networkIdMismatch",
+            this._handleNetworkIdMismatch.bind(this)
+        );
+    }
+
+    private coreDbInitializer() {
+        this.stateChangeHandler(AOCoreState.CORE_DBS_INITIALIZING);
+        this.coreRouter.router
+            .send("/db/init")
+            .then(() => {
+                this.stateChangeHandler(AOCoreState.CORE_DBS_INITIALIZED);
+            })
+            .catch((error: Error) => {
+                this.stateChangeHandler(
+                    AOCoreState.INITIALIZATION_FAILED,
+                    error,
+                    `Unable to load core databases`
+                );
+            });
+        // TODO:
+        // 1. pull user settings from db
+        // 2. connect to eth network (based on default rpc or user settings override)
+        // 3. connect to hyperdb based on ethereum contract setting OR user setting override?
+
+        // this.coreRouter.router.send("/eth/init", {rpcEndpoint: }).then();
+    }
+
+    private ethereumNetworkInitializer() {
+        // NOTE: eth network initialization depends on information from the core settings db,
+        // which should be ensured by the state machine ie: CORE_DBS_INITIALIZED
+        this.stateChangeHandler(AOCoreState.ETH_MODULE_INITIALIZING);
+        let ethNetworkRpc = undefined;
+        this.coreRouter.router
+            .send("/db/settings/get")
+            .then((response: IAORouterMessage) => {
+                if (response.data.ethNetworkRpc) {
+                    // User defined RPC overrides default
+                    ethNetworkRpc = response.data.ethNetworkRpc;
+                } else if (this.options.ethNetworkRpc) {
+                    // command line argument
+                    ethNetworkRpc = this.options.ethNetworkRpc;
+                }
+                const ethInitParams: IAOETH_Init_Data = { ethNetworkRpc };
+                this.coreRouter.router
+                    .send("/eth/init", ethInitParams)
+                    .then((response: IAORouterMessage) => {
+                        this.stateChangeHandler(
+                            AOCoreState.ETH_MODULE_INITIALIZED
+                        );
+                    })
+                    .catch((error: Error) => {
+                        this.stateChangeHandler(
+                            AOCoreState.INITIALIZATION_FAILED,
+                            error,
+                            `An error occured while attempting to connect to the Ethereum network`
+                        );
+                    });
+            })
+            .catch((error: Error) => {
+                this.stateChangeHandler(
+                    AOCoreState.INITIALIZATION_FAILED,
+                    error,
+                    `Unable to read user settings`
+                );
+            });
+    }
+
+    /**
+     * Initialization of the P2P network (taodb)
+     */
+    private p2pNetworkInitializer() {
+        this.stateChangeHandler(AOCoreState.P2P_MODULE_INITIALIZING);
+        // 1. We need to pull the taodb key from the settings contract
+        this.coreRouter.router
+            .send("/eth/settings/taoDbKey")
+            .then((response: IAORouterMessage) => {
+                const taoDbKey = response.data.taoDbKey;
+                // 2. Spin up p2p module with the fetched taoDbKey
+                const p2pInitData: AOP2P_Init_Data = {
+                    dbKey: taoDbKey
+                };
+                this.coreRouter.router
+                    .send("/p2p/init", p2pInitData)
+                    .then(() => {
+                        this.stateChangeHandler(
+                            AOCoreState.P2P_MODULE_INITIALIZED
+                        );
+                    })
+                    .catch((error: Error) => {
+                        this.stateChangeHandler(
+                            AOCoreState.INITIALIZATION_FAILED,
+                            error,
+                            `Unable to initialize AO's peer network`
+                        );
+                    });
+            })
+            .catch((error: Error) => {
+                this.stateChangeHandler(
+                    AOCoreState.INITIALIZATION_FAILED,
+                    error,
+                    `Unable to reach the AO network settings`
+                );
+            });
+    }
+
+    private contentDiscoveryInitializer() {
+        this.stateChangeHandler(AOCoreState.DISCOVERY_INITIALIZING);
+        this.coreRouter.router
+            .send("/p2p/beginDiscovery")
+            .then(() => {
+                this.stateChangeHandler(AOCoreState.DISCOVERY_INITIALIZED);
+            })
+            .catch((error: Error) => {
+                this.stateChangeHandler(
+                    AOCoreState.INITIALIZATION_FAILED,
+                    error,
+                    `Unable to start AO's peer network discovery`
                 );
             });
     }
@@ -224,7 +366,7 @@ export default class Core extends EventEmitter {
     }
 
     private processCommandLineArgs(args: ICoreOptions) {
-        const { exportData, importData, ethAddress, networkId } = args;
+        const { exportData, importData, ethAddress, ethNetworkId } = args;
         const context: IGraphqlResolverContext = {
             router: this.coreRouter.router,
             options: this.options,
@@ -232,17 +374,17 @@ export default class Core extends EventEmitter {
         };
         const empty: object = {}; //Need an empty object?
 
-        if (ethAddress.length && networkId) {
+        if (ethAddress.length && ethNetworkId) {
             const registerArgs: IRegister_Args = {
                 inputs: {
                     ethAddress: ethAddress,
-                    networkId: networkId
+                    networkId: ethNetworkId
                 }
             };
             registerResolver(empty, registerArgs, context, empty)
                 .then(() => {
                     debugLog(
-                        `ethAddress set as ${ethAddress} and networkId is ${networkId}`
+                        `ethAddress set as ${ethAddress} and networkId is ${ethNetworkId}`
                     );
                 })
                 .catch(error => {
@@ -326,6 +468,7 @@ export default class Core extends EventEmitter {
             //Self kill if network id change happens
             this.stateChangeHandler(
                 AOCoreState.SHUTDOWN_ERROR,
+                new Error(`Ethereum network id mismatch`),
                 `Core shutting down due to Ethereum network id mismatch. This is likely a result of switching Ethereum networks.`
             );
         }

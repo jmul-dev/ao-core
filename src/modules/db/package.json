@@ -5,13 +5,14 @@
     "displayName": "AO DB",
     "description": "AO - DB package",
     "main": "db/db.js",
-    "bin":  "db.bin.js",
+    "bin": "db.bin.js",
     "AO": {
         "events": [
+            "/db/init",
             "/db/logs/get",
             "/db/logs/insert",
             "/db/settings/get",
-            "/db/settings/update",            
+            "/db/settings/update",
             "/db/user/init",
             "/db/user/getIdentity",
             "/db/user/get",
@@ -23,8 +24,6 @@
             "/db/network/content/insert",
             "/db/network/content/update"
         ],
-        "activationEvents": [
-            
-        ]        
+        "activationEvents": []
     }
-  }
+}

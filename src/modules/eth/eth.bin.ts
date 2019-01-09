@@ -1,18 +1,25 @@
 #!/usr/local/bin/node
-'use strict';
+"use strict";
 
-import AOEth, { AOEth_Args } from './eth'
-import minimist = require('minimist')
+import AOEth, { AOEthProcessArgs } from "./eth";
+import minimist = require("minimist");
 
-var argv: AOEth_Args = minimist<AOEth_Args>(process.argv.slice(2), {
+const defaultRPCEndpoints = {
+    "1": "wss://mainnet.infura.io/ws",
+    "3": "wss://ropsten.infura.io/ws",
+    "4": "wss://rinkeby.infura.io/ws"
+};
+
+var argv: AOEthProcessArgs = minimist<AOEthProcessArgs>(process.argv.slice(2), {
     default: {
-        network: '4',
-        rpcMainnet: 'wss://mainnet.infura.io/ws', // 'https://mainnet.infura.io/',
-        rpcRopsten: 'wss://ropsten.infura.io/ws', // 'https://rinkeby.infura.io/',
-        rpcRinkeby: 'wss://rinkeby.infura.io/ws', // 'https://rinkeby.infura.io/',
+        ethNetworkId: "4"
     }
 });
 
+if (!argv.rpcEndpoint) {
+    argv.rpcEndpoint = defaultRPCEndpoints[argv.ethNetworkId];
+}
+
 if (require.main === module) {
-    new AOEth(argv)
+    new AOEth(argv);
 }

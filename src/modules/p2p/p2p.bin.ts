@@ -1,18 +1,14 @@
 #!/usr/local/bin/node
-'use strict';
+"use strict";
 
-import AOP2P, { AOP2P_Args } from './p2p'
-import minimist = require('minimist')
+import AOP2P from "./p2p";
+import minimist = require("minimist");
+import { AORouterSubprocessArgs } from "../../router/AORouterInterface";
 
-var argv: AOP2P_Args = minimist<AOP2P_Args>(process.argv.slice(2), {
-    default: {
-        networkId: '1'
-    }
-});
+var argv: AORouterSubprocessArgs = minimist<AORouterSubprocessArgs>(
+    process.argv.slice(2)
+);
 
 if (require.main === module) {
-    new AOP2P(argv)
+    new AOP2P(argv);
 }
-
-
-

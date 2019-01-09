@@ -5,7 +5,10 @@ import { ReadStream, WriteStream } from "fs";
 import fs from "fs";
 import ffprobeStatic from "ffprobe-static";
 import AORouterCoreProcessPretender from "./AORouterCoreProcessPretender";
-import { AORouterCoreProcessInterface } from "./AORouterInterface";
+import {
+    AORouterCoreProcessInterface,
+    AORouterSubprocessArgs
+} from "./AORouterInterface";
 import { ICoreOptions } from "../index";
 const debug = Debug("ao:router");
 const packageJson = require("../../package.json");
@@ -487,22 +490,24 @@ export default class AORouter extends AORouterCoreProcessInterface {
                     entry.name
                 } at: ${processLocation}`
             );
-            const processArgs = [
-                processLocation,
-                "--storageLocation",
-                this.args.storageLocation,
-                "--httpOrigin",
-                this.args.httpOrigin,
-                "--coreOrigin",
-                this.args.coreOrigin,
-                "--corePort",
-                `${this.args.corePort}`,
-                "--ffprobeBin",
-                ffprobeStatic.path,
-                "--networkId",
-                this.args.networkId,
-                "--ao-core"
-            ];
+            const subprocessArgs: AORouterSubprocessArgs = {
+                storageLocation: this.args.storageLocation,
+                httpOrigin: this.args.httpOrigin,
+                coreOrigin: this.args.coreOrigin,
+                corePort: this.args.corePort,
+                ffprobeBin: ffprobeStatic.path,
+                ethNetworkId: this.args.ethNetworkId
+            };
+            let processArgs = [processLocation];
+            // Went this route for type checking
+            for (const key in subprocessArgs) {
+                if (subprocessArgs.hasOwnProperty(key)) {
+                    const value = subprocessArgs[key];
+                    processArgs.push(`--${key}`);
+                    processArgs.push(value);
+                }
+            }
+            processArgs.push("--ao-core");
             let entryProcess: ChildProcess = spawn(
                 this.args.nodeBin,
                 processArgs,

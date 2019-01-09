@@ -75,6 +75,12 @@ export class AOSubprocessRouter extends EventEmitter
             // the other event listener handle that
             return;
         }
+        if (this.listenerCount(message.event) < 1) {
+            console.warn(
+                `No event listeners found for incoming event: ${message.event}`
+            );
+            return;
+        }
         if (message.data && message.data.stream) {
             console.log("Subprocess - attempt to create readStream on fd4");
             message.data.stream = fs.createReadStream(null, { fd: 4 });
@@ -284,22 +290,29 @@ export class AOCoreProcessRouter extends EventEmitter
     }
 }
 
+// These arguments are passed to each subprocess when spawned by the AORouter
+export interface AORouterSubprocessArgs {
+    storageLocation: string;
+    httpOrigin: string;
+    coreOrigin: string;
+    corePort: number;
+    ffprobeBin: string;
+    ethNetworkId: string;
+    // optional arg
+    enableHyperDB?: Boolean;
+}
+
 /**
  * AORouterInterface
  *
  * Simple wrapper around the process router for now, but
  * will extend to handle lifecycle events as well.
  */
-
-export interface AORouterArgs {
-    enableHyperDB?: Boolean;
-}
-
 export default abstract class AORouterSubprocessInterface {
     router: AOSubprocessRouter;
     hyperdb: AOHyperDB;
 
-    constructor(routerArgs?: AORouterArgs) {
+    constructor(routerArgs: AORouterSubprocessArgs) {
         this.router = new AOSubprocessRouter();
         if (routerArgs) {
             if (routerArgs.enableHyperDB) {
