@@ -291,42 +291,25 @@ export default class AOEth extends AORouterInterface {
     }
 
     private _handleGetTaoDbKey(request: IAORouterRequest) {
-        // TODO: see #133
-        this.contracts.aoSetting.methods
-            .getSettingValuesByThoughtName(
-                "0x939b070c66152b3e7efb52ec631d680270ce14c4",
-                "taoDbKey"
-            )
+        this.contracts.aoToken.methods
+            .settingTAOId()
             .call()
-            .then(transactionData => {
-                request.respond({ taoDbKey: transactionData[4] });
+            .then((settingTaoId: string) => {
+                this.contracts.aoSetting.methods
+                    .getSettingValuesByTAOName(settingTaoId, "taoDbKey")
+                    .call()
+                    .then(transactionData => {
+                        request.respond({ taoDbKey: transactionData[4] });
+                    })
+                    .catch((error: Error) => {
+                        debug(`Error fetching taoDbKey`, error);
+                        request.reject(error);
+                    });
             })
-            .catch(e => {
-                debug(`Error fetching taoDbKey`, e);
-                request.reject(e);
+            .catch((error: Error) => {
+                debug(`Error fetching taoDbKey`, error);
+                request.reject(error);
             });
-    }
-
-    private _getTaoDBKey() {
-        return new Promise((resolve, reject) => {
-            this.contracts.aoSetting.methods
-                .getSettingValuesByThoughtName(
-                    "0x939b070c66152b3e7efb52ec631d680270ce14c4",
-                    "taoDbKey"
-                )
-                .call()
-                .then(data => {
-                    if (data[4].length == 64) {
-                        resolve(data[4]);
-                    } else {
-                        reject();
-                    }
-                })
-                .catch(e => {
-                    debug(e);
-                    reject(e);
-                });
-        });
     }
 
     _handleStats(request: IAORouterRequest) {

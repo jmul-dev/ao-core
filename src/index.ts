@@ -99,7 +99,12 @@ export default class Core extends EventEmitter {
     private coreRouter: AORouter;
     private http: Http;
     private userSession: AOUserSession;
+    // current state of the core
     private state: String;
+    // status of each state
+    private states: {
+        [key: string]: boolean;
+    } = {};
     public static DEFAULT_OPTIONS = {
         ethAddress: "",
         ethNetworkId: "1",
@@ -158,25 +163,32 @@ export default class Core extends EventEmitter {
                 this.coreRouterInitializer();
                 break;
             case AOCoreState.ROUTER_INITIALIZED:
+                this.states[AOCoreState.ROUTER_INITIALIZED] = true;
                 this.bindCoreRouterEventHandlers();
                 this.coreDbInitializer();
                 break;
             case AOCoreState.CORE_DBS_INITIALIZED:
+                this.states[AOCoreState.CORE_DBS_INITIALIZED] = true;
                 this.ethereumNetworkInitializer();
                 break;
             case AOCoreState.ETH_MODULE_INITIALIZED:
+                this.states[AOCoreState.ETH_MODULE_INITIALIZED] = true;
                 this.p2pNetworkInitializer();
                 break;
             case AOCoreState.P2P_MODULE_INITIALIZED:
+                this.states[AOCoreState.P2P_MODULE_INITIALIZED] = true;
                 this.datModuleInitializer();
                 break;
             case AOCoreState.DAT_MODULE_INITIALIZED:
+                this.states[AOCoreState.DAT_MODULE_INITIALIZED] = true;
                 this.contentDiscoveryInitializer();
                 break;
             case AOCoreState.DISCOVERY_INITIALIZED:
+                this.states[AOCoreState.DISCOVERY_INITIALIZED] = true;
                 this.sessionInitializer();
                 break;
             case AOCoreState.SESSION_INITIALIZED:
+                this.states[AOCoreState.SESSION_INITIALIZED] = true;
                 if (!this.options.disableHttpInterface) {
                     this.httpInitializer();
                 } else {
@@ -184,9 +196,11 @@ export default class Core extends EventEmitter {
                 }
                 break;
             case AOCoreState.HTTP_INITIALIZED:
+                this.states[AOCoreState.HTTP_INITIALIZED] = true;
                 this.stateChangeHandler(AOCoreState.STARTED);
                 break;
             case AOCoreState.STARTED:
+                this.states[AOCoreState.STARTED] = true;
                 this.postInitializationWork();
                 break;
             case AOCoreState.INITIALIZATION_FAILED:
@@ -521,8 +535,12 @@ export default class Core extends EventEmitter {
             // all of the logs up.
             process.send({ event: EVENT_LOG, message });
         }
-        if (this.listenerCount("log") > 0) {
-            this.emit("log", { message });
+        if (this.listenerCount(EVENT_LOG) > 0) {
+            this.emit(EVENT_LOG, { message });
+        }
+        if (!this.states[AOCoreState.CORE_DBS_INITIALIZED]) {
+            // coreRouter/logs db has not been setup yet
+            return Promise.resolve();
         }
         return this.coreRouter.router.send("/db/logs/insert", {
             message,
