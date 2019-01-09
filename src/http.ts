@@ -36,6 +36,8 @@ export default class Http {
     private express: Express;
     private server: Server;
     private router: AOCoreProcessRouter;
+    public corePort: number;
+    public httpOrigin: string;
 
     constructor(
         router: AOCoreProcessRouter,
@@ -43,6 +45,8 @@ export default class Http {
         userSession: AOUserSession
     ) {
         this.router = router;
+        this.corePort = options.corePort;
+        this.httpOrigin = options.httpOrigin;
         this.express = express();
         const graphqlSchema = schema();
         this.express.use(
@@ -92,17 +96,31 @@ export default class Http {
         //staticAssetPath = staticAssetPath.replace('app.asar', 'app.asar.unpacked')
         debug("Static asset path: ", staticAssetPath);
         this.express.use("/assets", express.static(staticAssetPath));
-        this.server = this.express.listen(options.corePort, () => {
-            const address: AddressInfo = <AddressInfo>this.server.address();
-            debug("Express server running on port: " + address.port);
-            this.router.send("/core/log", {
-                message: `[AO Http] server running on port ${
-                    address.port
-                } with cors ${options.httpOrigin}`
+    }
+
+    public start(): Promise<any> {
+        let promiseHandled = false;
+        return new Promise((resolve, reject) => {
+            this.server = this.express.listen(this.corePort, () => {
+                const address: AddressInfo = <AddressInfo>this.server.address();
+                debug("Express server running on port: " + address.port);
+                this.router.send("/core/log", {
+                    message: `AO http interface running on port ${
+                        address.port
+                    }, accesible from origin ${this.httpOrigin}`
+                });
+                debug(`started`);
+                promiseHandled = true;
+                resolve();
             });
-            debug(`started`);
+            this.server.on("error", (error: Error) => {
+                this.shutdown(error);
+                if (!promiseHandled) {
+                    promiseHandled = true;
+                    reject();
+                }
+            });
         });
-        this.server.on("error", this.shutdown.bind(this));
     }
 
     private _streamFile(request, response) {

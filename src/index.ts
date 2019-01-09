@@ -403,7 +403,18 @@ export default class Core extends EventEmitter {
             this.options,
             this.userSession
         );
-        this.stateChangeHandler(AOCoreState.HTTP_INITIALIZED);
+        this.http
+            .start()
+            .then(() => {
+                this.stateChangeHandler(AOCoreState.HTTP_INITIALIZED);
+            })
+            .catch((error: Error) => {
+                this.stateChangeHandler(
+                    AOCoreState.INITIALIZATION_FAILED,
+                    error,
+                    `Unable to start AO's http interface`
+                );
+            });
     }
 
     private postInitializationWork() {
