@@ -596,7 +596,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
     }
 
     public shutdown(): void {
-        // TODO: attempt to kill all subprocesses
+        // Attempt to kill all subprocesses
         Object.keys(this.registry).forEach((entryName: string) => {
             const instances = this.registryEntryNameToProcessInstances[
                 entryName

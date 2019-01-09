@@ -199,12 +199,9 @@ export default class Core extends EventEmitter {
                 break;
         }
         // Emit state change (pass back up to electron/parent process)
-        if (process.send) {
-            process.send({
-                event: EVENT_LOG,
-                message: AOCoreStateReadableMessages[nextState]
-            });
-        }
+        this.emitLog(AOCoreStateReadableMessages[nextState]).catch(error => {
+            errorLog(`Error emitting log`, error);
+        });
     }
 
     private logsInitializer() {
@@ -496,21 +493,9 @@ export default class Core extends EventEmitter {
 
     _handleLog(request: IAORouterRequest) {
         const data: AOCore_Log_Data = request.data;
-        if (process.send) {
-            // If there is a parent process (running within app) we relay
-            // all of the logs up.
-            process.send({ event: EVENT_LOG, message: data.message });
-        } else {
-            // TODO: append to a temp log somewhere (make this configurable via command line)
-        }
-        this.coreRouter.router
-            .send("/db/logs/insert", {
-                message: data.message,
-                createdAt: Date.now()
-            })
+        this.emitLog(data.message)
             .then(request.respond)
             .catch(request.reject);
-        this.emit("log", { message: data.message });
     }
 
     _handleNetworkIdMismatch(request: IAORouterRequest) {
@@ -528,5 +513,20 @@ export default class Core extends EventEmitter {
                 `Core shutting down due to Ethereum network id mismatch. This is likely a result of switching Ethereum networks.`
             );
         }
+    }
+
+    private emitLog(message): Promise<any> {
+        if (process.send) {
+            // If there is a parent process (running within app) we relay
+            // all of the logs up.
+            process.send({ event: EVENT_LOG, message });
+        }
+        if (this.listenerCount("log") > 0) {
+            this.emit("log", { message });
+        }
+        return this.coreRouter.router.send("/db/logs/insert", {
+            message,
+            createdAt: Date.now()
+        });
     }
 }
