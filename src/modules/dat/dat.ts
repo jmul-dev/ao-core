@@ -79,7 +79,7 @@ export default class AODat extends AORouterInterface {
         this.storageLocation = args.storageLocation;
         this.networkId = String(args.ethNetworkId);
         this.datDir = path.resolve(this.storageLocation, "content");
-        this.router.on("/dat/resumeAll", this._handleResumeAll.bind(this));
+        this.router.on("/dat/init", this._handleInit.bind(this));
         this.router.on(
             "/dat/resumeSingle",
             this._handleResumeSingle.bind(this)
@@ -103,40 +103,46 @@ export default class AODat extends AORouterInterface {
                 this.storageLocation,
                 `dats-${this.networkId}.db.json`
             ),
-            autoload: true,
-            onload: (error?: Error) => {
-                if (error) {
-                    debug("Error loading dats database", error);
-                    this.router.send("/core/log", {
-                        message: "Error loading dats database"
-                    });
-                }
-                const fsMakeContentDirData: IAOFS_Mkdir_Data = {
-                    dirPath: path.join("content")
-                };
-                this.router
-                    .send("/fs/mkdir", fsMakeContentDirData)
-                    .then(() => {
-                        this._resumeAll()
-                            .then(() => {
-                                debug(`Resumed all dats`);
-                            })
-                            .catch((error: Error) => {
-                                debug(
-                                    `Error resuming all dats: ${error.message}`
-                                );
-                            });
-                    })
-                    .catch((error: Error) => {
-                        debug("Error making dat content directory", error);
-                    });
-            }
+            autoload: false
         });
         this.datsDb.ensureIndex({
             fieldName: "key",
             unique: true
         });
         debug(`started`);
+    }
+
+    private _handleInit(request: IAORouterRequest) {
+        // 1. Load db
+        this.datsDb.loadDatabase((error?: Error) => {
+            if (error) {
+                request.reject(error);
+                return;
+            }
+            // 2. Ensure the content directory exists
+            const fsMakeContentDirData: IAOFS_Mkdir_Data = {
+                dirPath: path.join("content")
+            };
+            this.router
+                .send("/fs/mkdir", fsMakeContentDirData)
+                .then(() => {
+                    // NOTE: resolving early for now in case resumeAll fails
+                    // I think it is possible a single dat can become fucked.
+                    request.respond({});
+                    // 3. Resume dats
+                    this._resumeAll()
+                        .then(() => {
+                            debug(`All dats resumed.`);
+                        })
+                        .catch((error: Error) => {
+                            debug(`Error resuming all dats: ${error.message}`);
+                        });
+                })
+                .catch((error: Error) => {
+                    debug("Error making dat content directory", error);
+                    request.reject(error);
+                });
+        });
     }
 
     private _resumeAll(): Promise<any> {

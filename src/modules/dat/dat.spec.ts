@@ -39,14 +39,4 @@ describe("AO Dat module", () => {
     //         reject: done,
     //     })
     // })
-
-    it("should resume all dats", done => {
-        aoDat.router.emit("/dat/resumeAll", {
-            data: {},
-            respond: () => {
-                done();
-            },
-            reject: done
-        });
-    });
 });

@@ -58,6 +58,8 @@ export const AOCoreState = Object.freeze({
     ETH_MODULE_INITIALIZED: "ETH_MODULE_INITIALIZED",
     P2P_MODULE_INITIALIZING: "P2P_MODULE_INITIALIZING",
     P2P_MODULE_INITIALIZED: "P2P_MODULE_INITIALIZED",
+    DAT_MODULE_INITIALIZING: "DAT_MODULE_INITIALIZING",
+    DAT_MODULE_INITIALIZED: "DAT_MODULE_INITIALIZED",
     DISCOVERY_INITIALIZING: "DISCOVERY_INITIALIZING",
     DISCOVERY_INITIALIZED: "DISCOVERY_INITIALIZED",
     HTTP_INITIALIZING: "HTTP_INITIALIZING",
@@ -67,6 +69,30 @@ export const AOCoreState = Object.freeze({
     SHUTDOWN_ERROR: "SHUTDOWN_ERROR",
     STARTED: "STARTED"
 });
+
+const AOCoreStateReadableMessages = {
+    INITIAL_STATE: "Starting core...",
+    LOGS_INTIALIZING: "Setting up logs...",
+    LOGS_INTIALIZED: "Log ready",
+    ROUTER_INITIALIZING: "Setting up core router...",
+    ROUTER_INITIALIZED: "Core router ready",
+    CORE_DBS_INITIALIZING: "Setting up core databases...",
+    CORE_DBS_INITIALIZED: "Core databases ready",
+    ETH_MODULE_INITIALIZING: "Setting up ethereum interface...",
+    ETH_MODULE_INITIALIZED: "Ethereum interface ready",
+    P2P_MODULE_INITIALIZING: "Connecting to AO's peer network...",
+    P2P_MODULE_INITIALIZED: "AO's peer network connected",
+    DAT_MODULE_INITIALIZING: "Setting up AO's file sharing interface...",
+    DAT_MODULE_INITIALIZED: "AO's file sharing interface ready",
+    DISCOVERY_INITIALIZING: "Begining network discovery...",
+    DISCOVERY_INITIALIZED: "Network discovery started",
+    HTTP_INITIALIZING: "Spinning up core http interface...",
+    HTTP_INITIALIZED: "Core http interface ready",
+    SESSION_INITIALIZED: "Session created",
+    INITIALIZATION_FAILED: "Core initialization failed",
+    SHUTDOWN_ERROR: "AO shutting down...",
+    STARTED: "AO ready to moon"
+};
 
 export default class Core extends EventEmitter {
     public options: ICoreOptions;
@@ -142,6 +168,9 @@ export default class Core extends EventEmitter {
                 this.p2pNetworkInitializer();
                 break;
             case AOCoreState.P2P_MODULE_INITIALIZED:
+                this.datModuleInitializer();
+                break;
+            case AOCoreState.DAT_MODULE_INITIALIZED:
                 this.contentDiscoveryInitializer();
                 break;
             case AOCoreState.DISCOVERY_INITIALIZED:
@@ -169,7 +198,13 @@ export default class Core extends EventEmitter {
             default:
                 break;
         }
-        // TODO: emit state change (pass back up to electron/parent process)
+        // Emit state change (pass back up to electron/parent process)
+        if (process.send) {
+            process.send({
+                event: EVENT_LOG,
+                message: AOCoreStateReadableMessages[nextState]
+            });
+        }
     }
 
     private logsInitializer() {
@@ -245,12 +280,6 @@ export default class Core extends EventEmitter {
                     `Unable to load core databases`
                 );
             });
-        // TODO:
-        // 1. pull user settings from db
-        // 2. connect to eth network (based on default rpc or user settings override)
-        // 3. connect to hyperdb based on ethereum contract setting OR user setting override?
-
-        // this.coreRouter.router.send("/eth/init", {rpcEndpoint: }).then();
     }
 
     private ethereumNetworkInitializer() {
@@ -327,6 +356,22 @@ export default class Core extends EventEmitter {
                     AOCoreState.INITIALIZATION_FAILED,
                     error,
                     `Unable to reach the AO network settings`
+                );
+            });
+    }
+
+    private datModuleInitializer() {
+        this.stateChangeHandler(AOCoreState.DAT_MODULE_INITIALIZING);
+        this.coreRouter.router
+            .send("/dat/init")
+            .then((response: IAORouterMessage) => {
+                this.stateChangeHandler(AOCoreState.DAT_MODULE_INITIALIZED);
+            })
+            .catch((error: Error) => {
+                this.stateChangeHandler(
+                    AOCoreState.INITIALIZATION_FAILED,
+                    error,
+                    `Unable to initialize the AO file sharing protocol`
                 );
             });
     }
