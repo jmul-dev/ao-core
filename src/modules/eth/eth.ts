@@ -158,23 +158,18 @@ export default class AOEth extends AORouterInterface {
         if (ethNetworkRpc) {
             this.rpcEndpoint = ethNetworkRpc;
         }
-        const ethRpcEndpoint = this.rpcEndpoint;
-        const deployedNetworks = Object.keys(AOSetting.networks);
-        if (deployedNetworks.indexOf(`${ethNetworkId}`) === -1) {
-            return request.reject(
-                new Error(
-                    `AO contracts have not been deployed to the desired network [${ethNetworkId}], contracts are deployed to networks [${deployedNetworks.join(
-                        ","
-                    )}]`
-                )
-            );
-        }
+        // 1. Setup web3 instance
+        this.web3 = new Web3();
+        // 2. Create the provider
+
         this.connectToNetwork(ethNetworkId)
             .then(networkId => {
                 if (`${networkId}` !== `${ethNetworkId}`) {
                     return request.reject(
                         new Error(
-                            `Ethereum network id mismatch. The rpc provided [${ethRpcEndpoint}] returned a network id of [${networkId}], expected [${ethNetworkId}]`
+                            `Ethereum network id mismatch. The rpc provided [${
+                                this.rpcEndpoint
+                            }] returned a network id of [${networkId}], expected [${ethNetworkId}]`
                         )
                     );
                 }
@@ -183,6 +178,68 @@ export default class AOEth extends AORouterInterface {
             .catch(error => {
                 request.reject(error);
             });
+    }
+
+    /**
+     * Get and returns a valid Eth Provider. This method waits for the succesfull
+     * connection before resolving.
+     *
+     * @param rpcEndpoint
+     */
+    private getEthereumProvider(rpcEndpoint): Promise<any> {
+        return new Promise((resolve, reject) => {
+            try {
+                let wasConnected = false;
+                let hasResolved = false;
+                const provider = new Web3.providers.WebsocketProvider(
+                    rpcEndpoint
+                );
+                this.web3.setProvider(provider);
+                provider.on("end", (error?: Error) => {
+                    debug("web3 provider connection end", error);
+                    this.connectionStatus = "DISCONNECTED";
+                    if (!hasResolved && !wasConnected) {
+                        debug(
+                            `web3 provider connection ended before it was able to connect, likely invalid rpc url or websocket failure`
+                        );
+                        hasResolved = true;
+                        reject(
+                            new Error(
+                                `Web3 provider failed to establish connection`
+                            )
+                        );
+                        return;
+                    }
+                    // TODO: Attempt to reconnect
+                    // setTimeout(() => {
+                    //     this.providerReconnectDebounce = Math.min(
+                    //         this.providerReconnectDebounce * 2,
+                    //         1000 * 60
+                    //     ); // maximum 1 minute retry period
+                    //     this.setNetworkProvider(rpcEndpoint);
+                    // }, this.providerReconnectDebounce);
+                });
+                provider.on("connect", () => {
+                    debug(`web provider connected to ${rpcEndpoint}`);
+                    this.providerReconnectDebounce = 100; // reset timeout for future disconnects
+                    this.connectionStatus = "CONNECTED";
+                    hasResolved = true;
+                    wasConnected = true;
+                    resolve(provider);
+                });
+                provider.on("error", (error?: Error) => {
+                    // NOTE: this makes the assumption that a critical error will also emit the "end" event.
+                    debug("Web3 Provider Error", error);
+                });
+            } catch (error) {
+                if (error.name === "TypeError [ERR_INVALID_URL]") {
+                    // Failure: invalid url
+                    reject(new Error(`Invalid ethereum rpc url`));
+                } else {
+                    reject(error);
+                }
+            }
+        });
     }
 
     /**
@@ -197,11 +254,15 @@ export default class AOEth extends AORouterInterface {
             this.connectionStatus = "CONNECTING";
             const rpcEndpoint = this.rpcEndpoint;
             const deployedNetworks = Object.keys(AOSetting.networks);
-            if (deployedNetworks.indexOf(`${networkId}`) < 0) {
+            if (deployedNetworks.indexOf(`${networkId}`) === -1) {
                 this.connectionStatus = "ERROR";
                 debug(`Network currently not supported: ${networkId}`);
                 reject(
-                    new Error(`Network currently not supported: ${networkId}`)
+                    new Error(
+                        `AO contracts have not been deployed to the desired network [${networkId}], contracts are deployed to networks [${deployedNetworks.join(
+                            ","
+                        )}]`
+                    )
                 );
                 return;
             }
