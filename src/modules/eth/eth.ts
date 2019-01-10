@@ -11,6 +11,7 @@ const AOContent = require("ao-contracts/build/contracts/AOContent.json");
 const AOToken = require("ao-contracts/build/contracts/AOToken.json");
 const AOSetting = require("ao-contracts/build/contracts/AOSetting.json");
 const debug = Debug("ao:eth");
+const errorLog = Debug("ao:eth:error");
 
 export interface IAOETH_Init_Data {
     ethNetworkRpc: string;
@@ -78,6 +79,25 @@ export interface AOEthProcessArgs extends AORouterSubprocessArgs {
     rpcEndpoint: string;
 }
 
+export enum ErrorCode {
+    INVALID_URL, // could not be parsed
+    INVALID_WS_URL, // was not a valid websocket url
+    INVALID_RPC, // was a valid url, but possibly not an rpc
+    NETWORK_ID_MISMATCH,
+    UNSUPPORTED_NETWORK,
+    INVALID_CONTRACTS,
+    UNKOWN
+}
+export class EthereumNetworkError extends Error {
+    public static readonly ErrorCodes = ErrorCode;
+    public readonly code: ErrorCode;
+    constructor(m: string, code?: ErrorCode) {
+        super(m);
+        Object.setPrototypeOf(this, EthereumNetworkError.prototype);
+        this.code = code || ErrorCode.UNKOWN;
+    }
+}
+
 /**
  * AOEth
  *
@@ -115,10 +135,6 @@ export default class AOEth extends AORouterInterface {
             this._handleGetTaoDbKey.bind(this)
         );
         this.router.on("/eth/stats", this._handleStats.bind(this));
-        this.router.on(
-            "/eth/network/set",
-            this._handleNetworkChange.bind(this)
-        );
         this.router.on("/eth/network/get", this._handleNetworkGet.bind(this));
         this.router.on("/eth/tx", this._handleTx.bind(this));
         this.router.on(
@@ -158,22 +174,106 @@ export default class AOEth extends AORouterInterface {
         if (ethNetworkRpc) {
             this.rpcEndpoint = ethNetworkRpc;
         }
+        // 0. Sanity check, make sure contracts have been deployed to desired network
+        const deployedNetworks = Object.keys(AOSetting.networks);
+        if (deployedNetworks.indexOf(`${ethNetworkId}`) === -1) {
+            this.connectionStatus = "ERROR";
+            debug(`Network currently not supported: ${ethNetworkId}`);
+            request.reject(
+                new EthereumNetworkError(
+                    `AO contracts have not been deployed to the desired network [${ethNetworkId}], contracts are deployed to networks [${deployedNetworks.join(
+                        ","
+                    )}]`,
+                    ErrorCode.UNSUPPORTED_NETWORK
+                )
+            );
+            return;
+        }
+        // 0. Sanity check, make sure the user provided a websocket url
+        if (
+            this.rpcEndpoint.indexOf("wss://") !== 0 &&
+            this.rpcEndpoint.indexOf("ws://")
+        ) {
+            request.reject(
+                new EthereumNetworkError(
+                    `AO currently only supports websocket rpc providers`,
+                    ErrorCode.INVALID_WS_URL
+                )
+            );
+            return;
+        }
+        const rejectWithError = (web3, provider, error) => {
+            this.connectionStatus = "ERROR";
+            if (web3) web3.setProvider(null);
+            if (provider) provider.disconnect();
+            request.reject(error);
+        };
         // 1. Setup web3 instance
         this.web3 = new Web3();
-        // 2. Create the provider
-
-        this.connectToNetwork(ethNetworkId)
-            .then(networkId => {
-                if (`${networkId}` !== `${ethNetworkId}`) {
-                    return request.reject(
-                        new Error(
-                            `Ethereum network id mismatch. The rpc provided [${
+        // 2. Get the provider
+        this.getEthereumProvider(this.rpcEndpoint)
+            .then(provider => {
+                this.web3.setProvider(provider);
+                // 3. Attempt to fetch the network id. This will tell us if the rpc
+                // connection is valid.
+                this.web3.eth.net
+                    .getId()
+                    .then(networkId => {
+                        // 4. We are succefully connected to ethereum network
+                        debug(
+                            `connected to ethereum network, id[${networkId}], rpc[${
                                 this.rpcEndpoint
-                            }] returned a network id of [${networkId}], expected [${ethNetworkId}]`
-                        )
-                    );
-                }
-                request.respond({});
+                            }]`
+                        );
+                        if (`${networkId}` !== `${ethNetworkId}`) {
+                            debug(
+                                `Ethereum rpc did not match the desired network id`
+                            );
+                            rejectWithError(
+                                this.web3,
+                                provider,
+                                new EthereumNetworkError(
+                                    `Ethereum network id mismatch. The rpc provided [${
+                                        this.rpcEndpoint
+                                    }] returned a network id of [${networkId}], expected [${ethNetworkId}]`,
+                                    ErrorCode.NETWORK_ID_MISMATCH
+                                )
+                            );
+                            return;
+                        } else {
+                            // 5. Setup contracts
+                            const contractsInitialized = this.initializeEthereumContracts();
+                            if (!contractsInitialized) {
+                                rejectWithError(
+                                    this.web3,
+                                    provider,
+                                    new EthereumNetworkError(
+                                        `Error initializing contracts, this may be a result of an invalid ABI`,
+                                        ErrorCode.INVALID_CONTRACTS
+                                    )
+                                );
+                                return;
+                            } else {
+                                request.respond({ networkId: `${networkId}` });
+                                provider.on("end", (error?: Error) => {
+                                    this.providerReconnectDebounce = 100; // reset the debounce
+                                    this.reconnectEthereumProvider(
+                                        this.rpcEndpoint
+                                    );
+                                });
+                            }
+                        }
+                    })
+                    .catch(networkError => {
+                        // Failure location 2, ws endpoint is likely an invalid RPC endpoint
+                        // even thought the WS connection was established
+                        let error = new EthereumNetworkError(
+                            `Error fetching network id, likely due to an invalid rpc endpoint`,
+                            ErrorCode.INVALID_RPC
+                        );
+                        errorLog(`Error fetching network id:`, error);
+                        rejectWithError(this.web3, provider, error);
+                    });
             })
             .catch(error => {
                 request.reject(error);
@@ -186,55 +286,56 @@ export default class AOEth extends AORouterInterface {
      *
      * @param rpcEndpoint
      */
-    private getEthereumProvider(rpcEndpoint): Promise<any> {
+    private getEthereumProvider(rpcEndpoint: string): Promise<any> {
         return new Promise((resolve, reject) => {
             try {
-                let wasConnected = false;
-                let hasResolved = false;
                 const provider = new Web3.providers.WebsocketProvider(
                     rpcEndpoint
                 );
-                this.web3.setProvider(provider);
+                let resolveAndRemoveListeners = provider => {
+                    provider.removeAllListeners("connect");
+                    provider.removeAllListeners("error");
+                    provider.removeAllListeners("end");
+                    resolve(provider);
+                };
+                let rejectAndRemoveListeners = (provider, error) => {
+                    provider.removeAllListeners("connect");
+                    provider.removeAllListeners("error");
+                    provider.removeAllListeners("end");
+                    reject(error);
+                };
                 provider.on("end", (error?: Error) => {
+                    // NOTE: we will not hit this callback if the provider
+                    // has already connected (since we remove listener on connect)
+                    // so it is safe to assume this "end" event was triggered
+                    // by an error/failure to connect
                     debug("web3 provider connection end", error);
                     this.connectionStatus = "DISCONNECTED";
-                    if (!hasResolved && !wasConnected) {
-                        debug(
-                            `web3 provider connection ended before it was able to connect, likely invalid rpc url or websocket failure`
-                        );
-                        hasResolved = true;
-                        reject(
-                            new Error(
-                                `Web3 provider failed to establish connection`
-                            )
-                        );
-                        return;
-                    }
-                    // TODO: Attempt to reconnect
-                    // setTimeout(() => {
-                    //     this.providerReconnectDebounce = Math.min(
-                    //         this.providerReconnectDebounce * 2,
-                    //         1000 * 60
-                    //     ); // maximum 1 minute retry period
-                    //     this.setNetworkProvider(rpcEndpoint);
-                    // }, this.providerReconnectDebounce);
+                    rejectAndRemoveListeners(
+                        provider,
+                        new Error(
+                            `Web3 provider failed to establish connection`
+                        )
+                    );
                 });
                 provider.on("connect", () => {
                     debug(`web provider connected to ${rpcEndpoint}`);
-                    this.providerReconnectDebounce = 100; // reset timeout for future disconnects
                     this.connectionStatus = "CONNECTED";
-                    hasResolved = true;
-                    wasConnected = true;
-                    resolve(provider);
+                    resolveAndRemoveListeners(provider);
                 });
                 provider.on("error", (error?: Error) => {
                     // NOTE: this makes the assumption that a critical error will also emit the "end" event.
-                    debug("Web3 Provider Error", error);
+                    debug("web3 provider error:", error);
                 });
             } catch (error) {
                 if (error.name === "TypeError [ERR_INVALID_URL]") {
                     // Failure: invalid url
-                    reject(new Error(`Invalid ethereum rpc url`));
+                    reject(
+                        new EthereumNetworkError(
+                            `Invalid ethereum rpc url`,
+                            ErrorCode.INVALID_URL
+                        )
+                    );
                 } else {
                     reject(error);
                 }
@@ -242,113 +343,51 @@ export default class AOEth extends AORouterInterface {
         });
     }
 
-    /**
-     * NOTE: this method attempts to connect to the given network via web3.
-     * If the connection fails, it will continue to retry until it makes a
-     * connection.
-     *
-     * @param networkId
-     */
-    private connectToNetwork(networkId: string): Promise<string> {
-        return new Promise((resolve, reject) => {
-            this.connectionStatus = "CONNECTING";
-            const rpcEndpoint = this.rpcEndpoint;
-            const deployedNetworks = Object.keys(AOSetting.networks);
-            if (deployedNetworks.indexOf(`${networkId}`) === -1) {
-                this.connectionStatus = "ERROR";
-                debug(`Network currently not supported: ${networkId}`);
-                reject(
-                    new Error(
-                        `AO contracts have not been deployed to the desired network [${networkId}], contracts are deployed to networks [${deployedNetworks.join(
-                            ","
-                        )}]`
-                    )
-                );
-                return;
-            }
-            if (rpcEndpoint.indexOf("wss://") !== 0) {
-                debug(
-                    `Eth module currently requires web socket rpc endpoint in order to support filters`
-                );
-                reject(
-                    new Error(
-                        `Invalid eth network rpc, requires websocket connection.`
-                    )
-                );
-                this.connectionStatus = "ERROR";
-                return;
-            }
-            this.setNetworkProvider(rpcEndpoint);
-            this.web3.eth.net
-                .getId()
-                .then(networkId => {
-                    debug(`Connected to network with id [${networkId}]`);
-                    this.networkId = `${networkId}`;
-                    // Setup contracts
-                    try {
-                        this.contracts = {
-                            aoContent: new this.web3.eth.Contract(
-                                AOContent.abi,
-                                AOContent.networks[this.networkId].address
-                            ), //.at(AOContent.networks[this.networkId].address),
-                            aoToken: new this.web3.eth.Contract(
-                                AOToken.abi,
-                                AOToken.networks[this.networkId].address
-                            ), //.at(AOToken.networks[this.networkId].address)
-                            aoSetting: new this.web3.eth.Contract(
-                                AOSetting.abi,
-                                AOSetting.networks[this.networkId].address
-                            )
-                        };
-                        this.connectionStatus = "CONNECTED";
-                        resolve(this.networkId);
-                    } catch (error) {
-                        this.connectionStatus = "ERROR";
-                        return reject(
-                            new Error(
-                                `Error initializing contracts for network: ${networkId}. ${
-                                    error.message
-                                }`
-                            )
-                        );
-                    }
-                })
-                .catch(error => {
-                    debug("Error getting network:", error);
-                    this.connectionStatus = "ERROR";
-                    // TODO: may need to rethink this retry mechanism now that rpc endpoint is overridable
-                    setTimeout(() => {
-                        this.connectToNetwork(networkId)
-                            .then(resolve)
-                            .catch(reject);
-                    }, 3000);
-                });
-        });
+    private reconnectEthereumProvider(rpcEndpoint: string) {
+        debug(`attempting to reconnect ethereum provider...`);
+        this.getEthereumProvider(rpcEndpoint)
+            .then(provider => {
+                this.web3.setProvider(provider);
+                // Restart any watch events
+                this.unsubscribeBuyContentEvents();
+                this.listenForBuyContentEvents();
+            })
+            .catch(error => {
+                // Failed to connect
+                setTimeout(() => {
+                    this.providerReconnectDebounce = Math.min(
+                        this.providerReconnectDebounce * 2,
+                        1000 * 60
+                    ); // maximum 1 minute retry period
+                    this.reconnectEthereumProvider(rpcEndpoint);
+                }, this.providerReconnectDebounce);
+            });
     }
 
-    private setNetworkProvider(rpcEndpoint: string) {
-        const provider = new Web3.providers.WebsocketProvider(rpcEndpoint);
-        provider.on("error", (error?) => {
-            debug("Web3 Provider Error", error);
-        });
-        provider.on("end", (error?) => {
-            debug("Web3 Provider END", error);
-            this.connectionStatus = "DISCONNECTED";
-            // Attempt to reconnect
-            setTimeout(() => {
-                this.providerReconnectDebounce = Math.min(
-                    this.providerReconnectDebounce * 2,
-                    1000 * 60
-                ); // maximum 1 minute retry period
-                this.setNetworkProvider(rpcEndpoint);
-            }, this.providerReconnectDebounce);
-        });
-        provider.on("connect", () => {
-            debug("Web3 Provider Connected");
-            this.connectionStatus = "CONNECTED";
-        });
-        if (this.web3) this.web3.setProvider(provider);
-        else this.web3 = new Web3(provider);
+    private initializeEthereumContracts(): boolean {
+        try {
+            this.contracts = {
+                aoContent: new this.web3.eth.Contract(
+                    AOContent.abi,
+                    AOContent.networks[this.networkId].address
+                ),
+                aoToken: new this.web3.eth.Contract(
+                    AOToken.abi,
+                    AOToken.networks[this.networkId].address
+                ),
+                aoSetting: new this.web3.eth.Contract(
+                    AOSetting.abi,
+                    AOSetting.networks[this.networkId].address
+                )
+            };
+            return true;
+        } catch (error) {
+            errorLog(
+                `error initializing contracts for network ${this.networkId}:`,
+                error
+            );
+            return false;
+        }
     }
 
     private _handleGetTaoDbKey(request: IAORouterRequest) {
@@ -400,26 +439,6 @@ export default class AOEth extends AORouterInterface {
         }
     }
 
-    _handleNetworkChange(request: IAORouterRequest) {
-        const requestData: IAOEth_NetworkChange_Data = request.data;
-        // Check if we are already connected (to avoid uneccesarilly reconnecting)
-        if (this.web3) {
-            this.web3.eth.net.getId().then(networkId => {
-                if (`${networkId}` === `${requestData.networkId}`) {
-                    request.respond({ networkId });
-                } else {
-                    this.connectToNetwork(requestData.networkId)
-                        .then(request.respond)
-                        .catch(request.reject);
-                }
-            });
-        } else {
-            this.connectToNetwork(requestData.networkId)
-                .then(request.respond)
-                .catch(request.reject);
-        }
-    }
-
     _handleNetworkGet(request: IAORouterRequest) {
         if (this.networkId) {
             request.respond({ networkId: this.networkId });
@@ -434,7 +453,6 @@ export default class AOEth extends AORouterInterface {
      * route: /eth/events/BuyContent/subscribe
      */
     _listenForBuyContentEvents(request: IAORouterRequest) {
-        const requestData: IAOEth_Events_BuyContent_Data = request.data;
         debug(
             `Attempting to listen for BuyContent events on network[${
                 this.networkId
@@ -444,7 +462,18 @@ export default class AOEth extends AORouterInterface {
             debug(`Warning, already subscribed to BuyContent events`);
             request.respond({ subscribed: true });
         } else {
-            let responded = false;
+            this.listenForBuyContentEvents()
+                .then(() => {
+                    request.respond({ subscribed: true });
+                })
+                .catch(error => {
+                    request.reject(error);
+                });
+        }
+    }
+
+    private listenForBuyContentEvents(): Promise<any> {
+        return new Promise((resolve, reject) => {
             try {
                 let subscription = this.contracts.aoContent.events
                     .BuyContent(
@@ -465,56 +494,45 @@ export default class AOEth extends AORouterInterface {
                     .on("data", event => {
                         const buyContentEvent: BuyContentEvent =
                             event.returnValues;
-                        // Disregard BuyContent events from the current user
-                        if (
-                            buyContentEvent.buyer &&
-                            buyContentEvent.buyer.toLowerCase() !==
-                                request.ethAddress.toLowerCase()
-                        ) {
-                            this.router
-                                .send(
-                                    "/core/content/incomingPurchase",
-                                    buyContentEvent
-                                )
-                                .then(() => {})
-                                .catch(debug);
-                        }
+                        this.router
+                            .send(
+                                "/core/content/incomingPurchase",
+                                buyContentEvent
+                            )
+                            .then(() => {})
+                            .catch(debug);
                     })
                     .on("error", error => {
                         debug(
                             `BuyContent subscription error: ${error.message}`
                         );
-                        if (!responded) {
-                            request.reject(error);
-                            responded = true;
-                        }
                     });
                 this.events.BuyContent = subscription;
-                request.respond({ subscribed: true });
-                responded = true;
+                resolve();
             } catch (error) {
                 debug(
                     `Caught error while trying to subscribe to BuyContent events: ${
                         error.message
                     }`
                 );
-                request.reject(error);
-                responded = true;
+                reject(error);
             }
-        }
+        });
     }
 
     /**
      * route: /eth/events/BuyContent/unsubscribe
      */
     _unsubscribeBuyContentEvents(request: IAORouterRequest) {
-        let subscriptionsCancelled = 0;
+        this.unsubscribeBuyContentEvents();
+        request.respond({ success: true });
+    }
+
+    private unsubscribeBuyContentEvents() {
         if (this.events.BuyContent) {
             this.events.BuyContent.unsubscribe();
             delete this.events.BuyContent;
-            subscriptionsCancelled++;
         }
-        request.respond({ success: true, subscriptionsCancelled });
     }
 
     /**
