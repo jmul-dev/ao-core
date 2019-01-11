@@ -42,7 +42,6 @@ var config = {
             : "inline-cheap-source-map",
     entry: {
         main: "./src/index.ts",
-        constants: "./src/constants.js",
         bin: "./src/bin.ts",
         dat: "./src/modules/dat/dat.bin.ts",
         db: "./src/modules/db/db.bin.ts",
@@ -54,7 +53,6 @@ var config = {
         path: path.resolve(__dirname, "dist"),
         filename: chunkData => {
             return chunkData.chunk.name === "main" ||
-                chunkData.chunk.name === "constants" ||
                 chunkData.chunk.name === "bin"
                 ? "[name].js"
                 : "modules/[name].bin.js";
