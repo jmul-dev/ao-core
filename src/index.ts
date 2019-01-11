@@ -1,5 +1,5 @@
 "use strict";
-import * as AO_CONSTANTS from "./constants";
+import { AO_CONSTANTS } from "ao-library";
 import AORouter, { IAORouterMessage } from "./router/AORouter";
 import { IAORouterRequest } from "./router/AORouterInterface";
 import Http, { IGraphqlResolverContext } from "./http";
@@ -161,6 +161,10 @@ export default class Core extends EventEmitter {
         additionalData?: any
     ) {
         initializationStateLog(nextState);
+        // Emit state change (pass back up to electron/parent process)
+        this.emitLog(AOCoreStateReadableMessages[nextState]).catch(error => {
+            errorLog(`Error emitting log`, error);
+        });
         this.state = nextState;
         switch (nextState) {
             case AOCoreState.INITIAL_STATE:
@@ -227,10 +231,6 @@ export default class Core extends EventEmitter {
             default:
                 break;
         }
-        // Emit state change (pass back up to electron/parent process)
-        this.emitLog(AOCoreStateReadableMessages[nextState]).catch(error => {
-            errorLog(`Error emitting log`, error);
-        });
     }
 
     private logsInitializer() {
@@ -399,12 +399,14 @@ export default class Core extends EventEmitter {
             const onMessageHandler = ({ event, data }) => {
                 if (event === AO_CONSTANTS.IPC.AO_ETH_RPC_PROMPT_RESPONSE) {
                     process.off("message", onMessageHandler);
-                    // TODO: overwrite rpc endpoint in settings db then attempt to reconnect
                     debugLog(`AO_ETH_RPC_PROMPT_RESPONSE`, data);
                     this.updateSettingsAndRetryEthInitializer(data);
                 }
             };
-            process.send({ event: AO_CONSTANTS.IPC.AO_ETH_RPC_PROMPT });
+            process.send({
+                event: AO_CONSTANTS.IPC.AO_ETH_RPC_PROMPT,
+                data: { lastUsedRpcEndpoint }
+            });
             process.on("message", onMessageHandler);
         } else {
             const rl = readline.createInterface({
