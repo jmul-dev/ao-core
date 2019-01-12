@@ -25,6 +25,7 @@
     ],
     "dependencies": {
         "ao-contracts": "git+ssh://git@git.y-designs.com:ao/ao-contracts.git#v1.0.10",
+        "ao-library": "git+ssh://git@git.y-designs.com:ao/ao-library.git",
         "apollo-server-express": "^1.3.6",
         "apollo-upload-server": "^5.0.0",
         "archiver": "^3.0.0",

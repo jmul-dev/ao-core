@@ -1,7 +1,0 @@
-export const EVENT_LOG = 'EVENT_LOG';
-export const NETWORK_CHANGE = 'NETWORK_CHANGE'
-export const DATA = 'DATA';
-export const DATA_TYPES = {
-    PEER_CONNECTED: 'PEER_CONNECTED',
-    PEER_DISCONNECTED: 'PEER_DISCONNECTED',
-};
