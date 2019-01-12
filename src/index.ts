@@ -398,7 +398,7 @@ export default class Core extends EventEmitter {
         if (this.runningUnderElectron) {
             const onMessageHandler = ({ event, data }) => {
                 if (event === AO_CONSTANTS.IPC.AO_ETH_RPC_PROMPT_RESPONSE) {
-                    process.off("message", onMessageHandler);
+                    process.removeListener("message", onMessageHandler);
                     debugLog(`AO_ETH_RPC_PROMPT_RESPONSE`, data);
                     this.updateSettingsAndRetryEthInitializer(data);
                 }
