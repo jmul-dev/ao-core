@@ -340,6 +340,9 @@ export default class Core extends EventEmitter {
                 this.coreRouter.router
                     .send("/eth/init", ethInitParams)
                     .then((ethInitResponse: IAORouterMessage) => {
+                        // TODO: make sure the network id is being propogated to all the right places
+                        this.options.ethNetworkId =
+                            ethInitResponse.data.ethNetworkId;
                         this.stateChangeHandler(
                             AOCoreState.ETH_MODULE_INITIALIZED
                         );
@@ -510,7 +513,7 @@ export default class Core extends EventEmitter {
     private datModuleInitializer() {
         this.stateChangeHandler(AOCoreState.DAT_MODULE_INITIALIZING);
         this.coreRouter.router
-            .send("/dat/init")
+            .send("/dat/init", { ethNetworkId: this.options.ethNetworkId })
             .then((response: IAORouterMessage) => {
                 this.stateChangeHandler(AOCoreState.DAT_MODULE_INITIALIZED);
             })

@@ -30,8 +30,7 @@ export default (
                     p2pRecentlySeenHostsCount:
                         p2pStats.recentlySeenContentHosts,
                     ethNetworkStatus: ethStats.connectionStatus,
-                    ethNetworkId:
-                        ethStats.networkId || context.options.ethNetworkId,
+                    ethNetworkId: ethStats.networkId,
                     totalContentHosts: ethStats.totalContentHosts
                 });
             })
