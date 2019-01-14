@@ -2,11 +2,10 @@
 "use strict";
 import Core, { ICoreOptions } from "./index";
 import fsExtra from "fs-extra";
+const packageJson = require("../package.json");
 
 const argv = require("yargs")
-    .version(function() {
-        return require("../package").version;
-    })
+    .version(packageJson.version)
     .option("ethAddress", {
         description: "Run with a specific ethAddress",
         type: "string"

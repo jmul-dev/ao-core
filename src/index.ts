@@ -144,6 +144,9 @@ export default class Core extends EventEmitter {
         process.on("SIGINT", () => {
             process.exit();
         });
+        process.on("warning", function(w) {
+            console.log(w.stack || w);
+        });
         this.state = AOCoreState.INITIAL_STATE;
         this.stateChangeHandler(AOCoreState.INITIAL_STATE); // TODO: change back
     }
