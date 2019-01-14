@@ -15,7 +15,8 @@ import {
     AODB_NetworkContentUpdate_Data,
     AODB_UserContentGet_Data,
     AODB_UserContentUpdate_Data,
-    AODB_UserInsert_Data
+    AODB_UserInsert_Data,
+    AODB_UserInit_Data
 } from "./modules/db/db";
 import {
     BuyContentEvent,
@@ -85,8 +86,11 @@ export default class AOUserSession {
                 .send("/fs/mkdir", fsMakeEthDirData)
                 .then(() => {
                     // 2. Make sure user db has been setup for this user
+                    const userDbInitData: AODB_UserInit_Data = {
+                        ethAddress
+                    };
                     this.router
-                        .send("/db/user/init", { ethAddress })
+                        .send("/db/user/init", userDbInitData)
                         .then(() => {
                             this.router.send("/core/log", {
                                 message: `[AO Core] Registered as user ${ethAddress}`

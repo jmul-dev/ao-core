@@ -99,13 +99,4 @@ const argv = require("yargs")
     })
     .default(Core.DEFAULT_OPTIONS).argv;
 
-if (!argv.ethNetworkRpc) {
-    const defaultRPCEndpoints = {
-        "1": "wss://mainnet.infura.io/ws",
-        "3": "wss://ropsten.infura.io/ws",
-        "4": "wss://rinkeby.infura.io/ws"
-    };
-    argv.ethNetworkRpc = defaultRPCEndpoints[`${argv.ethNetworkId}`];
-}
-
 const core = new Core(argv);

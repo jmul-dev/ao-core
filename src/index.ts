@@ -28,7 +28,6 @@ const initializationStateLog = Debug("ao:initialization");
 export interface ICoreOptions {
     ethAddress: string;
     ethNetworkRpc: string;
-    ethNetworkId: string; // NOTE: this is derived from ethNetworkRpc
     disableHttpInterface: boolean;
     corePort: number;
     coreOrigin: string;
@@ -58,6 +57,8 @@ export const AOCoreState = Object.freeze({
     ETH_MODULE_INITIALIZING: "ETH_MODULE_INITIALIZING",
     PENDING_ETH_RPC_INPUT: "PENDING_ETH_RPC_INPUT",
     ETH_MODULE_INITIALIZED: "ETH_MODULE_INITIALIZED",
+    NETWORK_DB_INITIALIZING: "NETWORK_DB_INITIALIZING",
+    NETWORK_DB_INITIALIZED: "NETWORK_DB_INITIALIZED",
     P2P_MODULE_INITIALIZING: "P2P_MODULE_INITIALIZING",
     P2P_MODULE_INITIALIZED: "P2P_MODULE_INITIALIZED",
     DAT_MODULE_INITIALIZING: "DAT_MODULE_INITIALIZING",
@@ -83,6 +84,8 @@ const AOCoreStateReadableMessages = {
     ETH_MODULE_INITIALIZING: "Setting up ethereum interface...",
     PENDING_ETH_RPC_INPUT: "Waiting for ethereum recovery option...",
     ETH_MODULE_INITIALIZED: "Ethereum interface ready",
+    NETWORK_DB_INITIALIZING: "Setting up network content database...",
+    NETWORK_DB_INITIALIZED: "Network content database ready",
     P2P_MODULE_INITIALIZING: "Connecting to AO's peer network...",
     P2P_MODULE_INITIALIZED: "AO's peer network connected",
     DAT_MODULE_INITIALIZING: "Setting up AO's file sharing interface...",
@@ -99,6 +102,7 @@ const AOCoreStateReadableMessages = {
 
 export default class Core extends EventEmitter {
     public options: ICoreOptions;
+    private ethNetworkId: string; // NOTE: this is derived from ethNetworkRpc during /eth/init
     private coreRouter: AORouter;
     private http: Http;
     private userSession: AOUserSession;
@@ -191,6 +195,10 @@ export default class Core extends EventEmitter {
                 break;
             case AOCoreState.ETH_MODULE_INITIALIZED:
                 this.states[AOCoreState.ETH_MODULE_INITIALIZED] = true;
+                this.networkContentDbInitializer();
+                break;
+            case AOCoreState.NETWORK_DB_INITIALIZED:
+                this.states[AOCoreState.NETWORK_DB_INITIALIZED] = true;
                 this.p2pNetworkInitializer();
                 break;
             case AOCoreState.P2P_MODULE_INITIALIZED:
@@ -341,8 +349,7 @@ export default class Core extends EventEmitter {
                     .send("/eth/init", ethInitParams)
                     .then((ethInitResponse: IAORouterMessage) => {
                         // TODO: make sure the network id is being propogated to all the right places
-                        this.options.ethNetworkId =
-                            ethInitResponse.data.ethNetworkId;
+                        this.ethNetworkId = ethInitResponse.data.ethNetworkId;
                         this.stateChangeHandler(
                             AOCoreState.ETH_MODULE_INITIALIZED
                         );
@@ -369,6 +376,22 @@ export default class Core extends EventEmitter {
                     AOCoreState.INITIALIZATION_FAILED,
                     error,
                     `Unable to read user settings`
+                );
+            });
+    }
+
+    private networkContentDbInitializer() {
+        this.stateChangeHandler(AOCoreState.NETWORK_DB_INITIALIZING);
+        this.coreRouter.router
+            .send("/db/network/init")
+            .then(() => {
+                this.stateChangeHandler(AOCoreState.NETWORK_DB_INITIALIZED);
+            })
+            .catch((error: Error) => {
+                this.stateChangeHandler(
+                    AOCoreState.INITIALIZATION_FAILED,
+                    error,
+                    `Unable to load network content database`
                 );
             });
     }
@@ -513,7 +536,7 @@ export default class Core extends EventEmitter {
     private datModuleInitializer() {
         this.stateChangeHandler(AOCoreState.DAT_MODULE_INITIALIZING);
         this.coreRouter.router
-            .send("/dat/init", { ethNetworkId: this.options.ethNetworkId })
+            .send("/dat/init", { ethNetworkId: this.ethNetworkId })
             .then((response: IAORouterMessage) => {
                 this.stateChangeHandler(AOCoreState.DAT_MODULE_INITIALIZED);
             })

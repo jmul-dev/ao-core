@@ -74,10 +74,6 @@ interface Subscription {
     unsubscribe(callBack?: (Error, boolean) => void): void | boolean;
 }
 
-export interface AOEthProcessArgs extends AORouterSubprocessArgs {
-    rpcEndpoint: string;
-}
-
 export enum ErrorCode {
     INVALID_URL, // could not be parsed
     INVALID_WS_URL, // was not a valid websocket url
@@ -120,9 +116,9 @@ export default class AOEth extends AORouterInterface {
         BuyContent: Subscription;
     };
 
-    constructor(args: AOEthProcessArgs) {
+    constructor(args: AORouterSubprocessArgs) {
         super(args);
-        this.rpcEndpoint = args.rpcEndpoint;
+        this.rpcEndpoint = args.ethNetworkRpc;
         this.events = {
             BuyContent: undefined
         };
@@ -154,7 +150,7 @@ export default class AOEth extends AORouterInterface {
             "/eth/events/BuyContent/unsubscribe",
             this._unsubscribeBuyContentEvents.bind(this)
         );
-        debug(`started with ethereum rpc: ${args.rpcEndpoint}`);
+        debug(`started with ethereum rpc: ${args.ethNetworkRpc}`);
     }
 
     /**
