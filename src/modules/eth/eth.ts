@@ -6,7 +6,6 @@ import Web3 from "web3";
 import SolidityEvent from "web3-legacy/lib/web3/event.js";
 import Debug from "../../AODebug";
 import { IAOStatus } from "../../models/AOStatus";
-import { AOP2P_Init_Data } from "../p2p/p2p";
 const AOContent = require("ao-contracts/build/contracts/AOContent.json");
 const AOToken = require("ao-contracts/build/contracts/AOToken.json");
 const AOSetting = require("ao-contracts/build/contracts/AOSetting.json");
@@ -254,7 +253,10 @@ export default class AOEth extends AORouterInterface {
                                 );
                                 return;
                             } else {
-                                request.respond({ networkId: `${networkId}` });
+                                request.respond({
+                                    ethNetworkId: `${networkId}`,
+                                    ethNetworkRpc
+                                });
                                 provider.on("end", (error?: Error) => {
                                     this.providerReconnectDebounce = 100; // reset the debounce
                                     this.reconnectEthereumProvider(

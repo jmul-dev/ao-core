@@ -11,15 +11,16 @@ const argv = require("yargs")
         description: "Run with a specific ethAddress",
         type: "string"
     })
-    .option("ethNetworkId", {
-        description: "The ethereum network id you would like to connect to",
-        type: "string"
-    })
     .option("ethNetworkRpc", {
         description:
             "Override the default ethereum network rpc endpoint. At this time, the rpc endpoint must support the ws interface.",
-        type: "string"
+        type: "string",
+        default:
+            process.env.NODE_ENV === "production"
+                ? "wss://mainnet.infura.io/ws"
+                : "wss://rinkeby.infura.io/ws"
     })
+    .required("ethNetworkRpc")
     .option("disableHttpInterface", {
         description: "Disables the HTTP interface",
         type: "boolean"

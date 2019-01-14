@@ -27,8 +27,8 @@ const initializationStateLog = Debug("ao:initialization");
 
 export interface ICoreOptions {
     ethAddress: string;
-    ethNetworkId: string;
     ethNetworkRpc: string;
+    ethNetworkId: string; // NOTE: this is derived from ethNetworkRpc
     disableHttpInterface: boolean;
     corePort: number;
     coreOrigin: string;
@@ -111,7 +111,6 @@ export default class Core extends EventEmitter {
     private runningUnderElectron: boolean;
     public static DEFAULT_OPTIONS = {
         ethAddress: "",
-        ethNetworkId: "1",
         disableHttpInterface: false,
         corePort: 3003,
         coreOrigin: "http://localhost",
@@ -570,7 +569,7 @@ export default class Core extends EventEmitter {
     }
 
     private processCommandLineArgs(args: ICoreOptions) {
-        const { exportData, importData, ethAddress, ethNetworkId } = args;
+        const { exportData, importData, ethAddress } = args;
         const context: IGraphqlResolverContext = {
             router: this.coreRouter.router,
             options: this.options,
@@ -578,18 +577,15 @@ export default class Core extends EventEmitter {
         };
         const empty: object = {}; //Need an empty object?
 
-        if (ethAddress.length && ethNetworkId) {
+        if (ethAddress.length) {
             const registerArgs: IRegister_Args = {
                 inputs: {
-                    ethAddress: ethAddress,
-                    networkId: ethNetworkId
+                    ethAddress: ethAddress
                 }
             };
             registerResolver(empty, registerArgs, context, empty)
                 .then(() => {
-                    debugLog(
-                        `ethAddress set as ${ethAddress} and networkId is ${ethNetworkId}`
-                    );
+                    debugLog(`ethAddress set: ${ethAddress}`);
                 })
                 .catch(error => {
                     errorLog(error);
