@@ -19,7 +19,6 @@ export interface Http_Args {
     httpOrigin: string;
     coreOrigin: string;
     corePort: number;
-    ethNetworkId: string;
     storageLocation: string;
     desktopLocation?: string;
 }

@@ -6,7 +6,6 @@ import Web3 from "web3";
 import SolidityEvent from "web3-legacy/lib/web3/event.js";
 import Debug from "../../AODebug";
 import { IAOStatus } from "../../models/AOStatus";
-import { AOP2P_Init_Data } from "../p2p/p2p";
 const AOContent = require("ao-contracts/build/contracts/AOContent.json");
 const AOToken = require("ao-contracts/build/contracts/AOToken.json");
 const AOSetting = require("ao-contracts/build/contracts/AOSetting.json");
@@ -75,15 +74,10 @@ interface Subscription {
     unsubscribe(callBack?: (Error, boolean) => void): void | boolean;
 }
 
-export interface AOEthProcessArgs extends AORouterSubprocessArgs {
-    rpcEndpoint: string;
-}
-
 export enum ErrorCode {
     INVALID_URL, // could not be parsed
     INVALID_WS_URL, // was not a valid websocket url
     INVALID_RPC, // was a valid url, but possibly not an rpc
-    NETWORK_ID_MISMATCH,
     UNSUPPORTED_NETWORK,
     INVALID_CONTRACTS,
     UNKOWN
@@ -122,10 +116,9 @@ export default class AOEth extends AORouterInterface {
         BuyContent: Subscription;
     };
 
-    constructor(args: AOEthProcessArgs) {
+    constructor(args: AORouterSubprocessArgs) {
         super(args);
-        this.networkId = `${args.ethNetworkId}`;
-        this.rpcEndpoint = args.rpcEndpoint;
+        this.rpcEndpoint = args.ethNetworkRpc;
         this.events = {
             BuyContent: undefined
         };
@@ -157,7 +150,7 @@ export default class AOEth extends AORouterInterface {
             "/eth/events/BuyContent/unsubscribe",
             this._unsubscribeBuyContentEvents.bind(this)
         );
-        debug(`started with network id: ${args.ethNetworkId}`);
+        debug(`started with ethereum rpc: ${args.ethNetworkRpc}`);
     }
 
     /**
@@ -170,24 +163,8 @@ export default class AOEth extends AORouterInterface {
      */
     private _handleInit(request: IAORouterRequest) {
         const { ethNetworkRpc }: IAOETH_Init_Data = request.data;
-        const ethNetworkId = this.networkId;
         if (ethNetworkRpc) {
             this.rpcEndpoint = ethNetworkRpc;
-        }
-        // 0. Sanity check, make sure contracts have been deployed to desired network
-        const deployedNetworks = Object.keys(AOSetting.networks);
-        if (deployedNetworks.indexOf(`${ethNetworkId}`) === -1) {
-            this.connectionStatus = "ERROR";
-            debug(`Network currently not supported: ${ethNetworkId}`);
-            request.reject(
-                new EthereumNetworkError(
-                    `AO contracts have not been deployed to the desired network [${ethNetworkId}], contracts are deployed to networks [${deployedNetworks.join(
-                        ","
-                    )}]`,
-                    ErrorCode.UNSUPPORTED_NETWORK
-                )
-            );
-            return;
         }
         // 0. Sanity check, make sure the user provided a websocket url
         if (
@@ -219,49 +196,60 @@ export default class AOEth extends AORouterInterface {
                 this.web3.eth.net
                     .getId()
                     .then(networkId => {
-                        // 4. We are succefully connected to ethereum network
+                        this.networkId = `${networkId}`;
+                        // We are succefully connected to ethereum network!
                         debug(
                             `connected to ethereum network, id[${networkId}], rpc[${
                                 this.rpcEndpoint
                             }]`
                         );
-                        if (`${networkId}` !== `${ethNetworkId}`) {
+                        // 4.a Sanity check, make sure contracts have been deployed to desired network
+                        const deployedNetworks = Object.keys(
+                            AOSetting.networks
+                        );
+                        if (deployedNetworks.indexOf(this.networkId) === -1) {
                             debug(
-                                `Ethereum rpc did not match the desired network id`
+                                `Contracts not deployed to target network: ${
+                                    this.networkId
+                                }`
                             );
                             rejectWithError(
                                 this.web3,
                                 provider,
                                 new EthereumNetworkError(
-                                    `Ethereum network id mismatch. The rpc provided [${
-                                        this.rpcEndpoint
-                                    }] returned a network id of [${networkId}], expected [${ethNetworkId}]`,
-                                    ErrorCode.NETWORK_ID_MISMATCH
+                                    `AO contracts have not been deployed to the desired network [${
+                                        this.networkId
+                                    }], contracts are deployed to networks [${deployedNetworks.join(
+                                        ","
+                                    )}]`,
+                                    ErrorCode.UNSUPPORTED_NETWORK
+                                )
+                            );
+                            return;
+                        }
+                        // 5. Setup contracts
+                        const contractsInitialized = this.initializeEthereumContracts();
+                        if (!contractsInitialized) {
+                            rejectWithError(
+                                this.web3,
+                                provider,
+                                new EthereumNetworkError(
+                                    `Error initializing contracts, this may be a result of an invalid ABI`,
+                                    ErrorCode.INVALID_CONTRACTS
                                 )
                             );
                             return;
                         } else {
-                            // 5. Setup contracts
-                            const contractsInitialized = this.initializeEthereumContracts();
-                            if (!contractsInitialized) {
-                                rejectWithError(
-                                    this.web3,
-                                    provider,
-                                    new EthereumNetworkError(
-                                        `Error initializing contracts, this may be a result of an invalid ABI`,
-                                        ErrorCode.INVALID_CONTRACTS
-                                    )
+                            request.respond({
+                                ethNetworkId: `${networkId}`,
+                                ethNetworkRpc
+                            });
+                            provider.on("end", (error?: Error) => {
+                                this.providerReconnectDebounce = 100; // reset the debounce
+                                this.reconnectEthereumProvider(
+                                    this.rpcEndpoint
                                 );
-                                return;
-                            } else {
-                                request.respond({ networkId: `${networkId}` });
-                                provider.on("end", (error?: Error) => {
-                                    this.providerReconnectDebounce = 100; // reset the debounce
-                                    this.reconnectEthereumProvider(
-                                        this.rpcEndpoint
-                                    );
-                                });
-                            }
+                            });
                         }
                     })
                     .catch(networkError => {

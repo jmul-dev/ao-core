@@ -496,7 +496,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
                 coreOrigin: this.args.coreOrigin,
                 corePort: this.args.corePort,
                 ffprobeBin: ffprobeStatic.path,
-                ethNetworkId: this.args.ethNetworkId
+                ethNetworkRpc: this.args.ethNetworkRpc
             };
             let processArgs = [processLocation];
             // Went this route for type checking

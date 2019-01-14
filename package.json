@@ -7,8 +7,8 @@
         "ao-core": "bin/bin.js"
     },
     "scripts": {
-        "start": "cross-env DEBUG=ao:initialization node dist/bin.js --ethNetworkId 4",
-        "start:mainnet": "cross-env DEBUG=ao:* node dist/bin.js --ethNetworkId 1",
+        "start": "cross-env DEBUG=ao:* node dist/bin.js --ethNetworkRpc wss://rinkeby.infura.io/ws",
+        "start:mainnet": "cross-env DEBUG=ao:* node dist/bin.js --ethNetworkRpc wss://mainnet.infura.io/ws",
         "build": "npm run clean && cross-env NODE_ENV=development webpack",
         "build-prod": "npm run clean && cross-env NODE_ENV=production webpack --progress",
         "clean": "rimraf dist",

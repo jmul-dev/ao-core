@@ -14,12 +14,12 @@ describe("AO Dat module", () => {
         process.send = () => {};
         aoDat = new AODat({
             storageLocation: datStorageLocation,
-            ethNetworkId: "4",
             // unused args, making typescript happy
             httpOrigin: "string",
             coreOrigin: "string",
             corePort: 9999,
-            ffprobeBin: "string"
+            ffprobeBin: "string",
+            ethNetworkRpc: ""
         });
         // Faking the router send method
         aoDat.router.send = (route, message) => {

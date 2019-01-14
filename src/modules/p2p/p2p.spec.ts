@@ -62,7 +62,7 @@ describe("AO P2P module", () => {
                 aoP2P = new AOP2P({
                     storageLocation: storageLocation,
                     // unused args, making typescript happy
-                    ethNetworkId: "4",
+                    ethNetworkRpc: "",
                     httpOrigin: "string",
                     coreOrigin: "string",
                     corePort: 9999,

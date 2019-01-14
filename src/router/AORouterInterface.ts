@@ -57,7 +57,11 @@ export class AOSubprocessRouter extends EventEmitter
             .toString(36)
             .substring(5);
         this.process = process;
+        this.process.setMaxListeners(16);
         this.process.on("message", this._routeMessage.bind(this));
+        this.process.on("warning", function(w) {
+            console.log(w.stack || w);
+        });
         const initMessage = { event: "ready" };
         this.process.send(initMessage);
     }
@@ -163,15 +167,20 @@ export class AOSubprocessRouter extends EventEmitter
                     // TODO data.stream.unpipe(this.process.stdio[3])
                     return reject(error);
                 }
-                this.process.on("message", (message: any) => {
+                const messageResponseListener = (message: any) => {
                     if (message.requestId === request.requestId) {
+                        this.process.removeListener(
+                            "message",
+                            messageResponseListener
+                        );
                         if (message.error) {
                             reject(message.error);
                         } else {
                             resolve(message);
                         }
                     }
-                });
+                };
+                this.process.addListener("message", messageResponseListener);
             });
         });
     }
@@ -297,7 +306,7 @@ export interface AORouterSubprocessArgs {
     coreOrigin: string;
     corePort: number;
     ffprobeBin: string;
-    ethNetworkId: string;
+    ethNetworkRpc: string;
     // optional arg
     enableHyperDB?: Boolean;
 }

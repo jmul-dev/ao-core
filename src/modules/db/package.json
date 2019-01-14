@@ -20,6 +20,7 @@
             "/db/user/content/get",
             "/db/user/content/insert",
             "/db/user/content/update",
+            "/db/network/init",
             "/db/network/content/get",
             "/db/network/content/insert",
             "/db/network/content/update"

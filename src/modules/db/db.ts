@@ -10,6 +10,9 @@ import AORouterInterface, {
 const debug = Debug("ao:db");
 const errorLog = Debug("ao:db:error");
 
+export interface AODB_Init_data {
+    ethNetworkId: string;
+}
 /**
  * Logs
  */
@@ -73,6 +76,9 @@ export interface AODB_UserContentUpdate_Data {
 /**
  * Network Content
  */
+export interface AODB_NetworkInit_Data {
+    ethNetworkId: string;
+}
 export interface AODB_NetworkContentGet_Data {
     query?: Object;
     fuzzyQuery?: string;
@@ -99,7 +105,7 @@ export default class AODB extends AORouterInterface {
         checkForUpdates: false
     };
     private storageLocation: string;
-    private networkId: string;
+    private ethNetworkId: string;
     private db: {
         logs: Datastore;
         settings: Datastore;
@@ -115,7 +121,6 @@ export default class AODB extends AORouterInterface {
     constructor(args: AORouterSubprocessArgs) {
         super(args);
         this.storageLocation = args.storageLocation;
-        this.networkId = String(args.ethNetworkId);
         this.router.on("/db/init", this._init.bind(this));
         this.router.on("/db/logs/get", this._logsGet.bind(this));
         this.router.on("/db/logs/insert", this._logsInsert.bind(this));
@@ -140,7 +145,10 @@ export default class AODB extends AORouterInterface {
             "/db/user/content/update",
             this._userContentUpdate.bind(this)
         );
-
+        this.router.on(
+            "/db/network/init",
+            this._setupNetworkDependentDbs.bind(this)
+        );
         this.router.on(
             "/db/network/content/get",
             this._getNetworkContent.bind(this)
@@ -168,10 +176,7 @@ export default class AODB extends AORouterInterface {
      * @param request
      */
     private _init(request: IAORouterRequest): void {
-        const networkContentDBPath = path.resolve(
-            this.storageLocation,
-            `networkContent-${this.networkId}.db.json`
-        );
+        const { ethNetworkId }: AODB_Init_data = request.data;
         this.db = {
             logs: null,
             settings: null,
@@ -262,35 +267,6 @@ export default class AODB extends AORouterInterface {
                 });
             })
         );
-        // Network Content DB
-        dbLoadPromises.push(
-            new Promise((resolve, reject) => {
-                this.db.networkContent = new Datastore({
-                    filename: networkContentDBPath,
-                    autoload: false
-                });
-                this.db.networkContent.loadDatabase((error?: Error) => {
-                    if (error) {
-                        errorLog(
-                            `[Core:db:networkContent]: Error loading database`
-                        );
-                        reject(error);
-                    } else {
-                        debug(`[Core:db:networkContent]: database loaded`);
-                        // Reset the number of recently seen hosts from previous session
-                        this.db.networkContent.update(
-                            {},
-                            { $set: { recentlySeenHostsCount: 0 } },
-                            { multi: true },
-                            error => {
-                                this.db.networkContent.persistence.compactDatafile();
-                            }
-                        );
-                        resolve();
-                    }
-                });
-            })
-        );
         Promise.all(dbLoadPromises)
             .then(() => {
                 request.respond({});
@@ -300,10 +276,49 @@ export default class AODB extends AORouterInterface {
             });
     }
 
+    private _setupNetworkDependentDbs(request: IAORouterRequest) {
+        const { ethNetworkId }: AODB_NetworkInit_Data = request.data;
+        this.ethNetworkId = ethNetworkId;
+        const networkContentDBPath = path.resolve(
+            this.storageLocation,
+            `networkContent-${ethNetworkId}.db.json`
+        );
+        this.db.networkContent = new Datastore({
+            filename: networkContentDBPath,
+            autoload: false
+        });
+        this.db.networkContent.loadDatabase((error?: Error) => {
+            if (error) {
+                errorLog(`[core:db:networkContent]: Error loading database`);
+                request.reject(error);
+            } else {
+                debug(`[core:db:networkContent]: database loaded`);
+                // Reset the number of recently seen hosts from previous session
+                this.db.networkContent.update(
+                    {},
+                    { $set: { recentlySeenHostsCount: 0 } },
+                    { multi: true },
+                    error => {
+                        this.db.networkContent.persistence.compactDatafile();
+                    }
+                );
+                request.respond({});
+            }
+        });
+    }
+
     private _setupUserDbs(request: IAORouterRequest): void {
-        const requestData: AODB_UserInit_Data = request.data;
-        if (!request.ethAddress) {
+        const { ethAddress }: AODB_UserInit_Data = request.data;
+        if (!ethAddress) {
             request.reject(new Error("user db init requires eth address"));
+            return;
+        }
+        if (!this.ethNetworkId) {
+            request.reject(
+                new Error(
+                    "ethereum network must be set before creating user db"
+                )
+            );
             return;
         }
         if (this.userDbs[request.ethAddress]) {
@@ -321,7 +336,7 @@ export default class AODB extends AORouterInterface {
                     this.storageLocation,
                     "users",
                     request.ethAddress,
-                    `content-${this.networkId}.db.json`
+                    `content-${this.ethNetworkId}.db.json`
                 ),
                 autoload: false
             }),

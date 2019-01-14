@@ -2,45 +2,46 @@
 "use strict";
 import Core, { ICoreOptions } from "./index";
 import fsExtra from "fs-extra";
+const packageJson = require("../package.json");
 
 const argv = require("yargs")
-    .version(function() {
-        return require("../package").version;
-    })
+    .version(packageJson.version)
     .option("ethAddress", {
-        description: "Run with a specific ethAddress",
-        type: "string"
-    })
-    .option("ethNetworkId", {
-        description: "The ethereum network id you would like to connect to",
+        description: "Ethereum account you would like to run ao-core under",
         type: "string"
     })
     .option("ethNetworkRpc", {
         description:
             "Override the default ethereum network rpc endpoint. At this time, the rpc endpoint must support the ws interface.",
-        type: "string"
+        type: "string",
+        default:
+            process.env.NODE_ENV === "production"
+                ? "wss://mainnet.infura.io/ws"
+                : "wss://rinkeby.infura.io/ws"
     })
+    .required("ethNetworkRpc")
     .option("disableHttpInterface", {
         description: "Disables the HTTP interface",
         type: "boolean"
     })
     .option("corePort", {
         alias: "port",
-        description: "Port that Core runs on",
+        description: "Port that ao-core will run on",
         type: "number"
     })
     .option("coreOrigin", {
-        description: "Domain that Core runs on",
+        description: "Domain that ao-core will run on",
         type: "string"
         //Add coerce to validate as URL.
     })
     .option("httpOrigin", {
-        description: "CORS allowed origin",
+        description:
+            "Origin that will be accessing ao-core's http interface from (CORS)",
         type: "string"
     })
     .option("storageLocation", {
         alias: "s",
-        description: "Where your data be stored",
+        description: "Directory that ao-core will use for storage",
         type: "string",
         coerce: arg => {
             //If you use coerce, the default options don't get passed as it goes through this.
@@ -75,9 +76,9 @@ const argv = require("yargs")
             if (fsExtra.pathExistsSync(arg)) {
                 return arg;
             } else {
-                console.log(
-                    "Path does not exist for export. Please specify a path that exists"
-                );
+                // console.log(
+                //     "Path does not exist for export. Please specify a path that exists"
+                // );
                 return "";
             }
         }
@@ -89,22 +90,13 @@ const argv = require("yargs")
             if (fsExtra.pathExistsSync(arg)) {
                 return arg;
             } else {
-                console.log(
-                    "File does not exist for import. Please specify a File that exists"
-                );
+                // console.log(
+                //     "File does not exist for import. Please specify a File that exists"
+                // );
                 return "";
             }
         }
     })
     .default(Core.DEFAULT_OPTIONS).argv;
-
-if (!argv.ethNetworkRpc) {
-    const defaultRPCEndpoints = {
-        "1": "wss://mainnet.infura.io/ws",
-        "3": "wss://ropsten.infura.io/ws",
-        "4": "wss://rinkeby.infura.io/ws"
-    };
-    argv.ethNetworkRpc = defaultRPCEndpoints[`${argv.ethNetworkId}`];
-}
 
 const core = new Core(argv);

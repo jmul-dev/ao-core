@@ -10,6 +10,10 @@ import { IAOFS_Unlink_Data, IAOFS_Mkdir_Data } from "../fs/fs";
 import { NetworkContentHostEntry } from "../p2p/p2p";
 const debug = Debug("ao:dat");
 
+export interface AODat_Init_Data {
+    ethNetworkId: string;
+}
+
 export interface AODat_ResumeAll_Data {}
 
 export interface AODat_ResumeSingle_Data {
@@ -67,7 +71,6 @@ export interface DatStats {
 
 export default class AODat extends AORouterInterface {
     private storageLocation: string;
-    private networkId: string;
     private datDir: string;
     private dats: {
         [key: string]: Dat;
@@ -77,7 +80,6 @@ export default class AODat extends AORouterInterface {
     constructor(args: AORouterSubprocessArgs) {
         super(args);
         this.storageLocation = args.storageLocation;
-        this.networkId = String(args.ethNetworkId);
         this.datDir = path.resolve(this.storageLocation, "content");
         this.router.on("/dat/init", this._handleInit.bind(this));
         this.router.on(
@@ -98,10 +100,16 @@ export default class AODat extends AORouterInterface {
         this.router.on("/dat/exists", this._handleDatExists.bind(this));
         this.router.on("/dat/stats", this._handleGetDatStats.bind(this));
         this.dats = {};
+        debug(`started`);
+    }
+
+    private _handleInit(request: IAORouterRequest) {
+        const { ethNetworkId }: AODat_Init_Data = request.data;
+        // 1. Setup & load db (note the db is namespaced based on the current network we are on)
         this.datsDb = new Datastore({
             filename: path.resolve(
                 this.storageLocation,
-                `dats-${this.networkId}.db.json`
+                `dats-${ethNetworkId}.db.json`
             ),
             autoload: false
         });
@@ -109,11 +117,6 @@ export default class AODat extends AORouterInterface {
             fieldName: "key",
             unique: true
         });
-        debug(`started`);
-    }
-
-    private _handleInit(request: IAORouterRequest) {
-        // 1. Load db
         this.datsDb.loadDatabase((error?: Error) => {
             if (error) {
                 request.reject(error);

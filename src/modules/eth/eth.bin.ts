@@ -1,8 +1,9 @@
 #!/usr/local/bin/node
 "use strict";
 
-import AOEth, { AOEthProcessArgs } from "./eth";
+import AOEth from "./eth";
 import minimist = require("minimist");
+import { AORouterSubprocessArgs } from "../../router/AORouterInterface";
 
 const defaultRPCEndpoints = {
     "1": "wss://mainnet.infura.io/ws",
@@ -10,15 +11,17 @@ const defaultRPCEndpoints = {
     "4": "wss://rinkeby.infura.io/ws"
 };
 
-var argv: AOEthProcessArgs = minimist<AOEthProcessArgs>(process.argv.slice(2), {
-    default: {
-        ethNetworkId: "4"
+var argv: AORouterSubprocessArgs = minimist<AORouterSubprocessArgs>(
+    process.argv.slice(2),
+    {
+        default: {
+            ethNetworkRpc:
+                defaultRPCEndpoints[
+                    process.env.NODE_ENV === "production" ? "1" : "4"
+                ]
+        }
     }
-});
-
-if (!argv.rpcEndpoint) {
-    argv.rpcEndpoint = defaultRPCEndpoints[argv.ethNetworkId];
-}
+);
 
 if (require.main === module) {
     new AOEth(argv);
