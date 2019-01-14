@@ -297,7 +297,6 @@ export interface AORouterSubprocessArgs {
     coreOrigin: string;
     corePort: number;
     ffprobeBin: string;
-    ethNetworkId: string;
     // optional arg
     enableHyperDB?: Boolean;
 }

@@ -12,13 +12,12 @@ const defaultRPCEndpoints = {
 
 var argv: AOEthProcessArgs = minimist<AOEthProcessArgs>(process.argv.slice(2), {
     default: {
-        ethNetworkId: "4"
+        rpcEndpoint:
+            defaultRPCEndpoints[
+                process.env.NODE_ENV === "production" ? "1" : "4"
+            ]
     }
 });
-
-if (!argv.rpcEndpoint) {
-    argv.rpcEndpoint = defaultRPCEndpoints[argv.ethNetworkId];
-}
 
 if (require.main === module) {
     new AOEth(argv);

@@ -13,7 +13,6 @@ describe("Ethereum connection behavior", () => {
     const getEthModuleInstance = args => {
         let instance = new AOEth({
             rpcEndpoint: "",
-            ethNetworkId: "4",
             storageLocation: "string",
             httpOrigin: "string",
             coreOrigin: "string",
@@ -72,34 +71,9 @@ describe("Ethereum connection behavior", () => {
         });
     }).timeout(4000);
 
-    it("should fail when the network id does not match that of the rpc: NETWORK_ID_MISMATCH", function(done) {
-        const aoEth = getEthModuleInstance({
-            rpcEndpoint: "wss://ropsten.infura.io/ws",
-            ethNetworkId: "4"
-        });
-        aoEth.router.emit("/eth/init", {
-            data: {},
-            respond: ({ networkId }) => {
-                done(
-                    new Error(
-                        "should have failed due to network id and rpc network mismatch"
-                    )
-                );
-            },
-            reject: err => {
-                expect(err).to.be.instanceOf(EthereumNetworkError);
-                expect(err.code).to.equal(
-                    EthereumNetworkError.ErrorCodes.NETWORK_ID_MISMATCH
-                );
-                done();
-            }
-        });
-    }).timeout(4000);
-
     it("should fail as a result of an unsupported network: UNSUPPORTED_NETWORK", function(done) {
         const aoEth = getEthModuleInstance({
-            rpcEndpoint: "wss://ropsten.infura.io/ws",
-            ethNetworkId: "999"
+            rpcEndpoint: "wss://ropsten.infura.io/ws"
         });
         aoEth.router.emit("/eth/init", {
             data: {},
@@ -122,8 +96,7 @@ describe("Ethereum connection behavior", () => {
 
     it("should succesfully connect to the rinkeby network", function(done) {
         const aoEth = getEthModuleInstance({
-            rpcEndpoint: "wss://rinkeby.infura.io/ws",
-            ethNetworkId: "4"
+            rpcEndpoint: "wss://rinkeby.infura.io/ws"
         });
         aoEth.router.emit("/eth/init", {
             data: {},
