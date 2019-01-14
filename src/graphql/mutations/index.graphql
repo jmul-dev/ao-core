@@ -1,13 +1,16 @@
 # import * from "../types/index.graphql"
 
 type Mutation {
-    setNetwork(inputs: SetNetworkInputs): Boolean
     register(inputs: RegisterInputs): NodeIdentity
     updateSettings(inputs: SettingsInputs): Settings
     submitVideoContent(inputs: VideoContentSubmissionInputs): VideoContent
     contentRequest(metadataDatKey: ID!): IContent
-    contentPurchaseTransaction(inputs: ContentPurchaseTransactionInputs): IContent
-    contentUploadStakeTransaction(inputs: ContentUploadStakeTransactionInputs): IContent
+    contentPurchaseTransaction(
+        inputs: ContentPurchaseTransactionInputs
+    ): IContent
+    contentUploadStakeTransaction(
+        inputs: ContentUploadStakeTransactionInputs
+    ): IContent
     contentBecomeHostTransaction(inputs: ContentHostTransactionInputs): IContent
     contentRetryHostDiscovery(id: ID!): IContent
     export(inputs: ExportInputs): String
@@ -17,7 +20,7 @@ input ContentHostTransactionInputs {
     contentId: String
     transactionHash: String
 }
- 
+
 input ContentUploadStakeTransactionInputs {
     transactionHash: String
     contentId: String
