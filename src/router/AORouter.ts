@@ -27,11 +27,7 @@ const corePackageJson = {
     bin: undefined,
     AO: {
         runUnderCore: true,
-        events: [
-            "/core/log",
-            "/core/networkIdMismatch",
-            "/core/content/incomingPurchase"
-        ]
+        events: ["/core/log", "/core/content/incomingPurchase"]
     }
 };
 

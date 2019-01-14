@@ -296,10 +296,6 @@ export default class Core extends EventEmitter {
 
     private bindCoreRouterEventHandlers() {
         this.coreRouter.router.on("/core/log", this._handleLog.bind(this));
-        this.coreRouter.router.on(
-            "/core/networkIdMismatch",
-            this._handleNetworkIdMismatch.bind(this)
-        );
     }
 
     private coreDbInitializer() {
@@ -672,23 +668,6 @@ export default class Core extends EventEmitter {
         this.emitLog(data.message)
             .then(request.respond)
             .catch(request.reject);
-    }
-
-    _handleNetworkIdMismatch(request: IAORouterRequest) {
-        const { newNetworkId } = request.data;
-        if (process.send) {
-            process.send({
-                event: AO_CONSTANTS.IPC.NETWORK_CHANGE,
-                newNetworkId: newNetworkId
-            });
-        } else {
-            //Self kill if network id change happens
-            this.stateChangeHandler(
-                AOCoreState.SHUTDOWN_ERROR,
-                new Error(`Ethereum network id mismatch`),
-                `Core shutting down due to Ethereum network id mismatch. This is likely a result of switching Ethereum networks.`
-            );
-        }
     }
 
     private emitLog(message): Promise<any> {
