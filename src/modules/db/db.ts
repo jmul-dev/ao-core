@@ -161,11 +161,7 @@ export default class AODB extends AORouterInterface {
             "/db/network/content/update",
             this._networkContentUpdate.bind(this)
         );
-
         debug(`started`);
-        this.router.send("/core/log", {
-            message: `[AO DB] Core database initialized`
-        });
     }
 
     /**
@@ -363,7 +359,7 @@ export default class AODB extends AORouterInterface {
         Promise.all(dbLoadPromises)
             .then(() => {
                 this.router.send("/core/log", {
-                    message: `[AO DB] User database initialized for ${
+                    message: `User database initialized for ${
                         request.ethAddress
                     }`
                 });

@@ -329,20 +329,6 @@ export default class Core extends EventEmitter {
                     // command line argument
                     ethNetworkRpc = this.options.ethNetworkRpc;
                 }
-
-                // this.stateChangeHandler(
-                //     AOCoreState.PENDING_ETH_RPC_INPUT,
-                //     null,
-                //     "",
-                //     {
-                //         lastUsedRpcEndpoint: ethNetworkRpc,
-                //         settingsRpcEndpoint:
-                //             settingsResponse.data.ethNetworkRpc,
-                //         commandLineRpcEndpoint: this.options.ethNetworkRpc
-                //     }
-                // );
-                // return;
-
                 const ethInitParams: IAOETH_Init_Data = { ethNetworkRpc };
                 this.coreRouter.router
                     .send("/eth/init", ethInitParams)
