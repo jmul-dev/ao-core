@@ -20,6 +20,7 @@ import fsExtra from "fs-extra";
 import Debug, { debugLogFile } from "./AODebug";
 import { IAOETH_Init_Data } from "./modules/eth/eth";
 import { AOP2P_Init_Data } from "./modules/p2p/p2p";
+import { AODB_NetworkInit_Data } from "./modules/db/db";
 
 const debugLog = Debug("ao:core");
 const errorLog = Debug("ao:core:error");
@@ -148,7 +149,7 @@ export default class Core extends EventEmitter {
             console.log(w.stack || w);
         });
         this.state = AOCoreState.INITIAL_STATE;
-        this.stateChangeHandler(AOCoreState.INITIAL_STATE); // TODO: change back
+        this.stateChangeHandler(AOCoreState.INITIAL_STATE);
     }
 
     /**
@@ -333,7 +334,6 @@ export default class Core extends EventEmitter {
                 this.coreRouter.router
                     .send("/eth/init", ethInitParams)
                     .then((ethInitResponse: IAORouterMessage) => {
-                        // TODO: make sure the network id is being propogated to all the right places
                         this.ethNetworkId = ethInitResponse.data.ethNetworkId;
                         this.stateChangeHandler(
                             AOCoreState.ETH_MODULE_INITIALIZED
@@ -367,8 +367,11 @@ export default class Core extends EventEmitter {
 
     private networkContentDbInitializer() {
         this.stateChangeHandler(AOCoreState.NETWORK_DB_INITIALIZING);
+        const networkInitParams: AODB_NetworkInit_Data = {
+            ethNetworkId: this.ethNetworkId
+        };
         this.coreRouter.router
-            .send("/db/network/init")
+            .send("/db/network/init", networkInitParams)
             .then(() => {
                 this.stateChangeHandler(AOCoreState.NETWORK_DB_INITIALIZED);
             })
