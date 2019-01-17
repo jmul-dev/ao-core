@@ -70,31 +70,21 @@ export default class Http {
         this.express.get(
             `/${Http.RESOURCES_ENDPOINT}/:key/:filename`,
             async (request, response: Response, next) => {
-                try {
-                    this._streamFile(request, response);
-                } catch (e) {
-                    debug(e);
-                    next(e);
-                }
+                this._streamFile(request, response).catch(error => {
+                    debug(error);
+                    next(error);
+                });
             }
         );
         this.express.get(
             `/${Http.ENCRYPTED_RESOURCES_ENDPOINT}/:key/:filename`,
             async (request, response: Response, next) => {
-                try {
-                    this._streamEncryptedFile(request, response);
-                } catch (e) {
-                    debug(e);
-                    next(e);
-                }
+                this._streamEncryptedFile(request, response).catch(error => {
+                    debug(error);
+                    next(error);
+                });
             }
         );
-        // NOTE: this file is compiled down to 'dist/main.js' so referencing assets folder within dist
-        // TODO: remove when ready
-        let staticAssetPath = path.join(__dirname, "./assets");
-        //staticAssetPath = staticAssetPath.replace('app.asar', 'app.asar.unpacked')
-        debug("Static asset path: ", staticAssetPath);
-        this.express.use("/assets", express.static(staticAssetPath));
     }
 
     public start(): Promise<any> {
@@ -149,7 +139,6 @@ export default class Http {
                                 "Content-Length": fileSize
                             };
                             response.writeHead(200, head200);
-
                             const readFileData: IAOFS_ReadStream_Data = {
                                 stream: response,
                                 streamDirection: "read",

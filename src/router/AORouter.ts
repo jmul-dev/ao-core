@@ -228,8 +228,14 @@ export default class AORouter extends AORouterCoreProcessInterface {
                 receivingRegistryEntry.AO.activationEvents.indexOf(event) > -1
             ) {
                 try {
+                    debug(
+                        `spinning up instance of ${
+                            receivingRegistryEntry.name
+                        } for activation event ${event}`
+                    );
                     receivingProcess = await this.spawnProcessForEntry(
-                        receivingRegistryEntry
+                        receivingRegistryEntry,
+                        { isActivationEvent: true }
                     );
                 } catch (e) {
                     debug(e);
@@ -298,7 +304,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
                     }
                 }
                 readStream.pipe(writeStream).on("error", err => {
-                    debug(err);
+                    debug(`Error piping stream:`, err);
                 });
             }
             const startTime = Date.now();
@@ -413,7 +419,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
         }
     }
 
-    private spawnCoreProcesses() {
+    private spawnCoreProcesses(): Promise<any> {
         return new Promise((resolve, reject) => {
             let spawns = [];
             Object.keys(this.registry).forEach((entryName: string) => {
@@ -476,7 +482,8 @@ export default class AORouter extends AORouterCoreProcessInterface {
     }
 
     private spawnProcessForEntry(
-        entry: IRegistryEntry
+        entry: IRegistryEntry,
+        options?: { isActivationEvent: boolean }
     ): Promise<ChildProcess | null> {
         return new Promise((resolve, reject) => {
             let processLocation = path.join(__dirname, "modules", entry.bin);
@@ -518,22 +525,17 @@ export default class AORouter extends AORouterCoreProcessInterface {
             entryProcess.on("exit", (code?: number) => {
                 debug(`[${entry.name}] process: exit`);
                 // Currently, if any of the major modules die, our entire system is set to shutdown.
-                this.shutdown();
-                process.exit(); //Kill core process on entryProcess exit
-                //this.removeProcessInstanceFromEntry(entry.name, entryProcess)
-                // TODO: cleanup references to this instance, notify anyone if necessary
+                if (!options.isActivationEvent) {
+                    debug(`core subprocess died, killing ao-core...`);
+                    this.shutdown();
+                    process.exit(); //Kill core process on entryProcess exit
+                } else {
+                    this.removeProcessInstanceFromEntry(
+                        entry.name,
+                        entryProcess
+                    );
+                }
             });
-            //Catch on this main process getting killed by Ctrl+C
-            process.on("SIGINT", () => {
-                entryProcess.kill();
-                resolve(null);
-            });
-            //Catch on this main process exiting
-            process.on("SIGTERM", () => {
-                entryProcess.kill();
-                resolve(null);
-            });
-
             entryProcess.on("message", (message: IAORouterMessage) => {
                 if (message.event == "ready") {
                     resolve(entryProcess);
@@ -579,9 +581,10 @@ export default class AORouter extends AORouterCoreProcessInterface {
                     `[${entryName}] removing process instance, instances remaining: ${existingProcesses.length -
                         1}`
                 );
-                this.registryEntryNameToProcessInstances[
-                    entryName
-                ] = existingProcesses.splice(i, 1);
+                this.registryEntryNameToProcessInstances[entryName].splice(
+                    i,
+                    1
+                );
                 break;
             }
         }

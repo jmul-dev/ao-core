@@ -302,6 +302,8 @@ export default class AOFS extends AORouterInterface {
                                                                                     encryptedChecksum: encryptedhash
                                                                                 }
                                                                             );
+                                                                            // Single use event, kill process when done
+                                                                            process.exit();
                                                                         }
                                                                     }
                                                                 ); //encrypted checksum end.
@@ -381,10 +383,12 @@ export default class AOFS extends AORouterInterface {
 
         readStream.on("error", err => {
             request.reject(err);
+            // single use process, lets exit
+            process.exit();
         });
 
+        var receiver = fs.createWriteStream(null, { fd: 4 });
         readStream.on("open", () => {
-            var receiver = fs.createWriteStream(null, { fd: 4 });
             if (requestData.key) {
                 const decrypt = crypto.createDecipher(
                     this.encryptionAlgorithm,
@@ -396,6 +400,12 @@ export default class AOFS extends AORouterInterface {
             }
             //TODO: What message do we send??
             request.respond({});
+        });
+
+        readStream.on("close", err => {
+            // single use process, lets exit
+            receiver.close();
+            process.exit();
         });
     }
 
@@ -454,6 +464,7 @@ export default class AOFS extends AORouterInterface {
     _handleFileStat(request: IAORouterRequest) {
         const requestData: IAOFS_FileStat_data = request.data;
         const filePath = path.resolve(this.storageLocation, requestData.path);
+        debug(`Attempt to stat: ${filePath}`);
         try {
             const fileStats = fs.statSync(filePath);
             request.respond(fileStats);
@@ -488,6 +499,8 @@ export default class AOFS extends AORouterInterface {
                 request.respond({
                     checksum: hash.read()
                 });
+                // Single use event, kill process when done
+                process.exit();
             });
         });
     }
@@ -531,11 +544,15 @@ export default class AOFS extends AORouterInterface {
                                 encryptedChecksum: encryptedHash
                             });
                         }
+                        // Single use event, kill process when done
+                        process.exit();
                     }
                 );
             })
             .on("error", err => {
                 debug(err);
+                // single use process, lets exit
+                process.exit();
             });
     }
 
@@ -556,6 +573,8 @@ export default class AOFS extends AORouterInterface {
             debug(archive.pointer() + " total bytes zipped");
             debug("Data export complete");
             request.respond({ exportPath: exportFullPath });
+            // single use process, lets exit
+            process.exit();
         });
         output.on("end", () => {
             debug("Export data fully fed");
@@ -573,6 +592,8 @@ export default class AOFS extends AORouterInterface {
         });
         archive.on("error", err => {
             request.reject(err);
+            // single use process, lets exit
+            process.exit();
         });
 
         //Feed the data through
@@ -596,13 +617,19 @@ export default class AOFS extends AORouterInterface {
             input.on("error", error => {
                 debug("Unzip input error: ", error);
                 request.reject(error);
+                // single use process, lets exit
+                process.exit();
             });
             unzipper.on("close", () => {
                 request.respond({});
+                // single use process, lets exit
+                process.exit();
             });
             unzipper.on("error", error => {
                 debug("Unzip error: ", error);
                 request.reject(error);
+                // single use process, lets exit
+                process.exit();
             });
         });
     }

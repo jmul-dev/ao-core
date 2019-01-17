@@ -145,6 +145,9 @@ export default class Core extends EventEmitter {
         process.on("SIGINT", () => {
             process.exit();
         });
+        process.on("SIGTERM", () => {
+            process.exit();
+        });
         process.on("warning", function(w) {
             console.log(w.stack || w);
         });
