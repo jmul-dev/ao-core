@@ -159,7 +159,7 @@ export default class AOFS extends AORouterInterface {
         const destinationStream = fs.createWriteStream(writePath, {
             autoClose: true
         });
-        let readStream;
+        let readStream: ReadStream;
         try {
             readStream = fs.createReadStream(null, { fd: 3, autoClose: true });
         } catch (e) {
@@ -398,13 +398,12 @@ export default class AOFS extends AORouterInterface {
             } else {
                 readStream.pipe(receiver);
             }
-            //TODO: What message do we send??
-            request.respond({});
         });
 
         readStream.on("close", err => {
             // single use process, lets exit
-            receiver.close();
+            receiver.end();
+            request.respond({});
             process.exit();
         });
     }

@@ -303,9 +303,19 @@ export default class AORouter extends AORouterCoreProcessInterface {
                         message.data.stream = true; // cannot send the stream object to subprocess
                     }
                 }
-                readStream.pipe(writeStream).on("error", err => {
-                    debug(`Error piping stream:`, err);
-                });
+                readStream
+                    .on("error", err => {
+                        debug(
+                            `Error piping stream, closing WriteableStream:`,
+                            err
+                        );
+                        writeStream.end();
+                    })
+                    .on("close", () => {
+                        // Placeholder, could potentially send response at this point or
+                        // trigger a callback to the caller
+                    })
+                    .pipe(writeStream);
             }
             const startTime = Date.now();
             if (

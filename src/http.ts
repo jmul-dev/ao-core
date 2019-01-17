@@ -63,26 +63,36 @@ export default class Http {
                 }
             })
         );
-        this.express.get(
-            "/graphiql",
-            graphiqlExpress({ endpointURL: "/graphql" })
-        ); // TODO: enable based on process.env.NODE_ENV
+        if (process.env.NODE_ENV !== "production") {
+            this.express.get(
+                "/graphiql",
+                graphiqlExpress({ endpointURL: "/graphql" })
+            );
+        }
         this.express.get(
             `/${Http.RESOURCES_ENDPOINT}/:key/:filename`,
             async (request, response: Response, next) => {
-                this._streamFile(request, response).catch(error => {
-                    debug(error);
-                    next(error);
-                });
+                this._streamFile(request, response)
+                    .then(({ data }) => {
+                        // response.end();
+                    })
+                    .catch(error => {
+                        debug(error);
+                        next(error);
+                    });
             }
         );
         this.express.get(
             `/${Http.ENCRYPTED_RESOURCES_ENDPOINT}/:key/:filename`,
             async (request, response: Response, next) => {
-                this._streamEncryptedFile(request, response).catch(error => {
-                    debug(error);
-                    next(error);
-                });
+                this._streamEncryptedFile(request, response)
+                    .then(() => {
+                        // response.end();
+                    })
+                    .catch(error => {
+                        debug(error);
+                        next(error);
+                    });
             }
         );
     }
@@ -138,6 +148,9 @@ export default class Http {
                                 "Accept-Ranges": "bytes",
                                 "Content-Length": fileSize
                             };
+                            debug(
+                                `/${datKey}/${filename}: Content-Length: ${fileSize}`
+                            );
                             response.writeHead(200, head200);
                             const readFileData: IAOFS_ReadStream_Data = {
                                 stream: response,
@@ -147,9 +160,7 @@ export default class Http {
                             };
                             this.router
                                 .send("/fs/readStream", readFileData)
-                                .then(() => {
-                                    resolve();
-                                })
+                                .then(resolve)
                                 .catch(reject);
                         })
                         .catch(reject);
@@ -203,10 +214,7 @@ export default class Http {
                                 };
                                 this.router
                                     .send("/fs/readStream", readFileData)
-                                    .then(() => {
-                                        debug("got past readFile");
-                                        resolve();
-                                    })
+                                    .then(resolve)
                                     .catch(reject);
                             } else {
                                 reject(new Error("No such datKey"));
