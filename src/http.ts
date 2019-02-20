@@ -63,38 +63,38 @@ export default class Http {
                 }
             })
         );
-        this.express.get(
-            "/graphiql",
-            graphiqlExpress({ endpointURL: "/graphql" })
-        ); // TODO: enable based on process.env.NODE_ENV
+        if (process.env.NODE_ENV !== "production") {
+            this.express.get(
+                "/graphiql",
+                graphiqlExpress({ endpointURL: "/graphql" })
+            );
+        }
         this.express.get(
             `/${Http.RESOURCES_ENDPOINT}/:key/:filename`,
             async (request, response: Response, next) => {
-                try {
-                    this._streamFile(request, response);
-                } catch (e) {
-                    debug(e);
-                    next(e);
-                }
+                this._streamFile(request, response)
+                    .then(({ data }) => {
+                        // response.end();
+                    })
+                    .catch(error => {
+                        debug(error);
+                        next(error);
+                    });
             }
         );
         this.express.get(
             `/${Http.ENCRYPTED_RESOURCES_ENDPOINT}/:key/:filename`,
             async (request, response: Response, next) => {
-                try {
-                    this._streamEncryptedFile(request, response);
-                } catch (e) {
-                    debug(e);
-                    next(e);
-                }
+                this._streamEncryptedFile(request, response)
+                    .then(() => {
+                        // response.end();
+                    })
+                    .catch(error => {
+                        debug(error);
+                        next(error);
+                    });
             }
         );
-        // NOTE: this file is compiled down to 'dist/main.js' so referencing assets folder within dist
-        // TODO: remove when ready
-        let staticAssetPath = path.join(__dirname, "./assets");
-        //staticAssetPath = staticAssetPath.replace('app.asar', 'app.asar.unpacked')
-        debug("Static asset path: ", staticAssetPath);
-        this.express.use("/assets", express.static(staticAssetPath));
     }
 
     public start(): Promise<any> {
@@ -148,8 +148,10 @@ export default class Http {
                                 "Accept-Ranges": "bytes",
                                 "Content-Length": fileSize
                             };
+                            debug(
+                                `/${datKey}/${filename}: Content-Length: ${fileSize}`
+                            );
                             response.writeHead(200, head200);
-
                             const readFileData: IAOFS_ReadStream_Data = {
                                 stream: response,
                                 streamDirection: "read",
@@ -158,9 +160,7 @@ export default class Http {
                             };
                             this.router
                                 .send("/fs/readStream", readFileData)
-                                .then(() => {
-                                    resolve();
-                                })
+                                .then(resolve)
                                 .catch(reject);
                         })
                         .catch(reject);
@@ -214,10 +214,7 @@ export default class Http {
                                 };
                                 this.router
                                     .send("/fs/readStream", readFileData)
-                                    .then(() => {
-                                        debug("got past readFile");
-                                        resolve();
-                                    })
+                                    .then(resolve)
                                     .catch(reject);
                             } else {
                                 reject(new Error("No such datKey"));
