@@ -1,18 +1,19 @@
-import express, { Express, Response } from "express";
-import schema from "./graphql/schema";
-import { Server, AddressInfo } from "net";
-import cors from "cors";
-import path from "path";
-import { json } from "body-parser";
-import { graphqlExpress, graphiqlExpress } from "apollo-server-express";
+import { graphiqlExpress, graphqlExpress } from "apollo-server-express";
 import { apolloUploadExpress } from "apollo-upload-server";
+import { json } from "body-parser";
+import cors from "cors";
+import express, { Express, Response } from "express";
+import { AddressInfo, Server } from "net";
+import path from "path";
 import Debug from "./AODebug";
-import { AOCoreProcessRouter } from "./router/AORouterInterface";
-import { AODat_Check_Data } from "./modules/dat/dat";
-import { IAOFS_ReadStream_Data, IAOFS_FileStat_data } from "./modules/fs/fs";
-import { AODB_UserContentGet_Data } from "./modules/db/db";
 import AOUserSession from "./AOUserSession";
+import schema from "./graphql/schema";
 import AOContent from "./models/AOContent";
+import { AODat_Check_Data } from "./modules/dat/dat";
+import { AODB_UserContentGet_Data } from "./modules/db/db";
+import { IAOFS_FileStat_data, IAOFS_ReadStream_Data } from "./modules/fs/fs";
+import { AOCoreProcessRouter } from "./router/AORouterInterface";
+import rangeParser, { Ranges, Result } from "range-parser";
 const debug = Debug("ao:http");
 
 export interface Http_Args {
@@ -173,48 +174,90 @@ export default class Http {
         return new Promise((resolve, reject) => {
             const datKey = request.params.key;
             const filename = request.params.filename;
-
-            //make sure dat exists
+            const filePath = path.join("content", datKey, filename);
+            // 1. Make sure dat exists
             const datCheckData: AODat_Check_Data = {
                 key: datKey
             };
             this.router
                 .send("/dat/exists", datCheckData)
                 .then(() => {
-                    //get the decryption key
+                    // 2. Get corresponding user content (for decryption key)
                     const userContentData: AODB_UserContentGet_Data = {
                         query: { fileDatKey: datKey }
                     };
                     this.router
                         .send("/db/user/content/get", userContentData)
-                        .then(doc => {
-                            if (doc.data.length) {
-                                let docData: AOContent = AOContent.fromObject(
-                                    doc.data[0]
+                        .then(userContentResponse => {
+                            if (userContentResponse.data.length) {
+                                const content: AOContent = AOContent.fromObject(
+                                    userContentResponse.data[0]
                                 );
-                                let total = docData.fileSize;
-                                let streamOptions: Object = {};
-                                let head200 = {
-                                    "Accept-Ranges": "bytes",
-                                    "Content-Length": total
-                                };
-                                response.writeHead(200, head200);
-
-                                //Stream the freaken file
-                                const readFileData: IAOFS_ReadStream_Data = {
-                                    stream: response,
-                                    streamDirection: "read",
-                                    streamOptions: streamOptions,
-                                    readPath: path.join(
-                                        "content",
-                                        datKey,
-                                        filename
-                                    ),
-                                    key: docData.decryptionKey
+                                // 3. File stat (for content length)
+                                const statFileData: IAOFS_FileStat_data = {
+                                    path: filePath
                                 };
                                 this.router
-                                    .send("/fs/readStream", readFileData)
-                                    .then(resolve)
+                                    .send("/fs/stats", statFileData)
+                                    .then(fileStats => {
+                                        const fileSize = fileStats.data.size;
+                                        const range:
+                                            | Ranges
+                                            | Result = rangeParser(
+                                            fileSize,
+                                            request.headers.range
+                                        );
+                                        let streamOptions: Object = {};
+                                        debug(
+                                            `/${datKey}/${filename}: Content-Length: ${fileSize}`
+                                        );
+                                        // Handle the stream response
+                                        if (range instanceof Array) {
+                                            // 4a. Subsequent requests for range (206 with byte range)
+                                            const contentRange = range[0]; // NOTE: assuming single content range (it is possible for multiple ranges to be specified by request)
+                                            streamOptions = {
+                                                start: contentRange.start,
+                                                end: contentRange.end
+                                            };
+                                            const head = {
+                                                "Accept-Ranges": "bytes",
+                                                "Content-Range": `bytes ${
+                                                    contentRange.start
+                                                }-${
+                                                    contentRange.end
+                                                }/${fileSize}`,
+                                                "Content-Length":
+                                                    contentRange.end -
+                                                    contentRange.start +
+                                                    1
+                                            };
+                                            response.writeHead(206, head);
+                                        } else {
+                                            // 4b. Initial request for content (200 with content length)
+                                            let head = {
+                                                "Accept-Ranges": "bytes",
+                                                "Content-Length": fileSize
+                                            };
+                                            response.writeHead(200, head);
+                                            response.end();
+                                            return resolve();
+                                        }
+                                        // 5. Finally, open up read stream and pipe to response
+                                        const readFileData: IAOFS_ReadStream_Data = {
+                                            stream: response,
+                                            streamDirection: "read",
+                                            streamOptions: streamOptions,
+                                            readPath: filePath,
+                                            key: content.decryptionKey
+                                        };
+                                        this.router
+                                            .send(
+                                                "/fs/readStream",
+                                                readFileData
+                                            )
+                                            .then(resolve)
+                                            .catch(reject);
+                                    })
                                     .catch(reject);
                             } else {
                                 reject(new Error("No such datKey"));
