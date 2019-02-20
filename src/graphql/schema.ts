@@ -3,6 +3,7 @@ import { GraphQLUpload } from "apollo-upload-server";
 import Debug from "../AODebug";
 import { makeExecutableSchema } from "graphql-tools";
 import resolvers from "./resolvers/resolvers";
+import AOContent from "../models/AOContent";
 const debug = Debug("ao:graphql");
 const graphqlSchema = require("./schema.graphql");
 const packageJson = require("../../package.json");
@@ -18,9 +19,18 @@ export default function() {
             IContent: {
                 __resolveType(data, ctx, info) {
                     // NOTE: data.__typename is specifically used by mocks
-                    return info.schema.getType(
-                        data.__typename || "VideoContent"
-                    ); // TODO: resolve type based off of data.contentType
+                    let typename = data.__typename;
+                    if (!typename) {
+                        switch (data.contentType) {
+                            case AOContent.Types.VOD:
+                                typename = "VideoContent";
+                                break;
+                            case AOContent.Types.DAPP:
+                                typename = "DappContent";
+                                break;
+                        }
+                    }
+                    return info.schema.getType(typename);
                 },
                 metadataDatStats: resolvers.resolveDatStats,
                 fileDatStats: resolvers.resolveDatStats,
@@ -41,8 +51,8 @@ export default function() {
                 node: resolvers.resolveLocalNode,
                 state: resolvers.resolveState,
                 settings: resolvers.resolveSettings,
-                videos: resolvers.resolveVideos,
-                video: resolvers.resolveVideo,
+                networkContent: resolvers.resolveNetworkContent,
+                userContent: resolvers.resolveUserContent,
                 statistics: resolvers.resolveNodeStatistics
             },
             Mutation: {

@@ -3,12 +3,12 @@ import resolveSubmitVideoContent from "./resolveSubmitVideoContent";
 import resolveDatStats from "./resolveDatStats";
 import resolveLocalNodeStakedContent from "./resolveLocalNodeStakedContent";
 import resolveLocalNodeHostedContent from "./resolveLocalNodeHostedContent";
-import resolveVideo from "./resolveVideo";
+import resolveUserContent from "./resolveUserContent";
 import resolveLogs from "./resolveLogs";
 import resolveSettings from "./resolveSettings";
 import resolveRegister from "./resolveRegister";
 import resolveUpdateSettings from "./resolveUpdateSettings";
-import resolveVideos from "./resolveVideos";
+import resolveNetworkContent from "./resolveNetworkContent";
 import resolveState from "./resolveState";
 import resolveUrl from "./resolveUrl";
 import resolveContentRequest from "./resolveContentRequest";
@@ -26,8 +26,8 @@ export default {
     resolveLocalNodeStakedContent,
     resolveLocalNodeHostedContent,
     resolveDatStats,
-    resolveVideo,
-    resolveVideos,
+    resolveUserContent,
+    resolveNetworkContent,
     resolveLogs,
     resolveSettings,
     resolveState,

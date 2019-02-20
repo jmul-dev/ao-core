@@ -2,13 +2,13 @@ enum ContentType {
     VOD
     STREAM
     FILE
-    APP
+    DAPP
 }
 
 enum ContentLicense {
     AO
     TAO
-    CC    
+    CC
 }
 
 # Keep in sync with `src/models/AOContent.ts`
@@ -117,6 +117,9 @@ interface IContent {
     isNetworkContent: Boolean
 }
 
+#
+# ContentType === VOD
+#
 type VideoContent implements IContent {
     id: ID!
     contentHostId: ID
@@ -159,12 +162,73 @@ type VideoContent implements IContent {
     # VideoContent
     teaserUrl: String
     featuredImageUrl: String
-    metadata: VideoMetadata    
+    metadata: VideoMetadata
 }
 
 input VideoContentSubmissionInputs {
     ethAddress: String!
     video: Upload
+    videoTeaser: Upload
+    featuredImage: Upload
+    title: String!
+    description: String!
+    stake: Float!
+    stakePrimordialPercentage: Float
+    profitSplitPercentage: Float!
+    contentLicense: ContentLicense!
+    contentAttribution: String
+    taoId: String
+}
+
+#
+# ContentType === DAPP
+#
+type DappContent implements IContent {
+    id: ID!
+    contentHostId: ID
+    state: ContentState!
+    stakeId: ID
+    nodeId: ID!
+    creatorId: ID!
+    taoId: ID
+    contentType: ContentType!
+    contentLicense: ContentLicense!
+    contentAttribution: String
+    isFolder: Boolean!
+    isMutable: Boolean!
+    fileName: String
+    fileDatKey: String
+    fileDatStats: DatStats
+    fileUrl: String
+    fileChecksum: String
+    baseChallenge: String
+    baseChallengeSignature: Signature
+    encChallenge: String
+    metadataDatKey: ID!
+    metadataDatStats: DatStats
+    title: String
+    description: String
+    # Econ
+    stake: Float
+    fileSize: Float
+    stakePrimordialPercentage: Float
+    profitSplitPercentage: Float
+    adSupport: Boolean
+    # Network
+    createdAt: String
+    transactions: ContentTransactions
+    purchaseId: String
+    lastSeenContentHost: NetworkContentHostEntry
+    totalHosts: Int
+    recentlySeenHostsCount: Int
+    isNetworkContent: Boolean
+    # DappContent
+    teaserUrl: String
+    featuredImageUrl: String
+}
+input DappContentSubmissionInputs {
+    ethAddress: String!
+    folder: Upload
     videoTeaser: Upload
     featuredImage: Upload
     title: String!
