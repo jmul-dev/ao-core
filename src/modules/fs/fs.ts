@@ -155,6 +155,11 @@ export default class AOFS extends AORouterInterface {
             this.storageLocation,
             requestData.writePath
         );
+        const rejectAndExit = (error: Error) => {
+            // TODO: this should really attempt to cleanup resource already written (or attempted to write)
+            request.reject(error);
+            process.exit();
+        };
         debug("writing stream to: " + writePath);
         const destinationStream = fs.createWriteStream(writePath, {
             autoClose: true
@@ -163,7 +168,9 @@ export default class AOFS extends AORouterInterface {
         try {
             readStream = fs.createReadStream(null, { fd: 3, autoClose: true });
         } catch (e) {
-            debug(e);
+            debug("Error opening ReadableStream", e);
+            rejectAndExit(e);
+            return;
         }
 
         readStream
@@ -192,9 +199,7 @@ export default class AOFS extends AORouterInterface {
             .pipe(destinationStream)
             .on("error", error => {
                 console.log("fs rejecting", error);
-                request.reject(error);
-                // TODO: 'error' event does not mean the stream is closed,
-                // should probably close up streams/cleanup
+                rejectAndExit(error);
             })
             .on("end", () => {
                 debug("pipe: End of file");
@@ -203,7 +208,7 @@ export default class AOFS extends AORouterInterface {
                 readStream.read(0);
             })
             .on("finish", () => {
-                debug("Finish is called");
+                debug("Finishing writing to disk");
                 readStream.close();
                 readStream.push(null);
                 readStream.read(0);
@@ -216,6 +221,7 @@ export default class AOFS extends AORouterInterface {
                                 filePath: writePath,
                                 videoStats: videoStats ? videoStats : false
                             });
+                            process.exit();
                         } else {
                             const key = this.newEncryptionKey();
                             const encrypt = crypto.createCipher(
@@ -237,7 +243,7 @@ export default class AOFS extends AORouterInterface {
                                 },
                                 (err, originalHash) => {
                                     if (err) {
-                                        request.reject(err);
+                                        rejectAndExit(err);
                                     } else {
                                         readFrom.on("error", error => {
                                             debug(
@@ -250,9 +256,10 @@ export default class AOFS extends AORouterInterface {
                                             .pipe(writeToEncrypted)
                                             .on("error", error => {
                                                 debug(
-                                                    "handle write stream re-encryption error: "
+                                                    "handle write stream re-encryption error: ",
+                                                    error
                                                 );
-                                                debug(error);
+                                                rejectAndExit(error);
                                             })
                                             .on("finish", () => {
                                                 //get stats for the encrypted file.
@@ -285,7 +292,7 @@ export default class AOFS extends AORouterInterface {
                                                                         if (
                                                                             err
                                                                         ) {
-                                                                            request.reject(
+                                                                            rejectAndExit(
                                                                                 err
                                                                             );
                                                                         } else {
@@ -309,10 +316,10 @@ export default class AOFS extends AORouterInterface {
                                                                 ); //encrypted checksum end.
                                                             })
                                                             .catch(
-                                                                request.reject
+                                                                rejectAndExit
                                                             ); //Move end
                                                     })
-                                                    .catch(request.reject); //Remove end
+                                                    .catch(rejectAndExit); //Remove end
                                             }); //Encryption finished
                                     }
                                 }
@@ -380,14 +387,8 @@ export default class AOFS extends AORouterInterface {
         );
         const streamOptions = requestData.streamOptions || {};
         const readStream = fs.createReadStream(readPath, streamOptions);
+        const receiver = fs.createWriteStream(null, { fd: 4 });
 
-        readStream.on("error", err => {
-            request.reject(err);
-            // single use process, lets exit
-            process.exit();
-        });
-
-        var receiver = fs.createWriteStream(null, { fd: 4 });
         readStream.on("open", () => {
             if (requestData.key) {
                 const decrypt = crypto.createDecipher(
@@ -399,11 +400,19 @@ export default class AOFS extends AORouterInterface {
                 readStream.pipe(receiver);
             }
         });
+        readStream.on("error", err => {
+            request.reject(err);
+            process.exit();
+        });
 
-        readStream.on("close", err => {
-            // single use process, lets exit
-            receiver.end();
+        receiver.on("finish", () => {
+            debug(`writeStream::close`);
             request.respond({});
+            process.exit();
+        });
+        receiver.on("error", (error: Error) => {
+            debug(`Error during write to fd WritableStream`, error);
+            request.reject(error);
             process.exit();
         });
     }

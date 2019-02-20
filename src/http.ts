@@ -201,53 +201,21 @@ export default class Http {
                                     .send("/fs/stats", statFileData)
                                     .then(fileStats => {
                                         const fileSize = fileStats.data.size;
-                                        const range:
-                                            | Ranges
-                                            | Result = rangeParser(
-                                            fileSize,
-                                            request.headers.range
-                                        );
                                         let streamOptions: Object = {};
-                                        debug(
-                                            `/${datKey}/${filename}: Content-Length: ${fileSize}`
-                                        );
-                                        // Handle the stream response
-                                        if (range instanceof Array) {
-                                            // 4a. Subsequent requests for range (206 with byte range)
-                                            const contentRange = range[0]; // NOTE: assuming single content range (it is possible for multiple ranges to be specified by request)
-                                            streamOptions = {
-                                                start: contentRange.start,
-                                                end: contentRange.end
-                                            };
-                                            const head = {
-                                                "Accept-Ranges": "bytes",
-                                                "Content-Range": `bytes ${
-                                                    contentRange.start
-                                                }-${
-                                                    contentRange.end
-                                                }/${fileSize}`,
-                                                "Content-Length":
-                                                    contentRange.end -
-                                                    contentRange.start +
-                                                    1
-                                            };
-                                            response.writeHead(206, head);
-                                        } else {
-                                            // 4b. Initial request for content (200 with content length)
-                                            let head = {
-                                                "Accept-Ranges": "bytes",
-                                                "Content-Length": fileSize
-                                            };
-                                            response.writeHead(200, head);
-                                            response.end();
-                                            return resolve();
-                                        }
-                                        // 5. Finally, open up read stream and pipe to response
+                                        let head200 = {
+                                            "Accept-Ranges": "bytes",
+                                            "Content-Length": fileSize
+                                        };
+                                        response.writeHead(200, head200);
                                         const readFileData: IAOFS_ReadStream_Data = {
                                             stream: response,
                                             streamDirection: "read",
                                             streamOptions: streamOptions,
-                                            readPath: filePath,
+                                            readPath: path.join(
+                                                "content",
+                                                datKey,
+                                                filename
+                                            ),
                                             key: content.decryptionKey
                                         };
                                         this.router
