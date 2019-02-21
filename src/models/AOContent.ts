@@ -108,7 +108,10 @@ export default abstract class AOContent {
     public baseChallenge: string;
     public baseChallengeSignature: string;
     public encChallenge: string;
+    public teaserUrl: string;
+    public featuredImageUrl: string;
     public metadataDatKey: string;
+    public metadata?: object;
     public title: string;
     public description: string;
     public stake: number;
@@ -233,8 +236,6 @@ export default abstract class AOContent {
 
 export class AOVideoContent extends AOContent {
     public contentType: AOContentType = "VOD";
-    public teaserUrl: string;
-    public featuredImageUrl: string;
     public metadata: {
         encoding: string;
         duration: number;

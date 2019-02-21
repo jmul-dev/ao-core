@@ -1,5 +1,5 @@
 import resolveLocalNode from "./resolveLocalNode";
-import resolveSubmitVideoContent from "./resolveSubmitVideoContent";
+import resolveSubmitContent from "./resolveSubmitContent";
 import resolveDatStats from "./resolveDatStats";
 import resolveLocalNodeStakedContent from "./resolveLocalNodeStakedContent";
 import resolveLocalNodeHostedContent from "./resolveLocalNodeHostedContent";
@@ -33,7 +33,7 @@ export default {
     resolveState,
     resolveNodeStatistics,
     // Mutation resolvers
-    resolveSubmitVideoContent,
+    resolveSubmitContent,
     resolveRegister,
     resolveUpdateSettings,
     resolveContentRequest,

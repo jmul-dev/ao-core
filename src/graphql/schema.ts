@@ -58,7 +58,7 @@ export default function() {
             Mutation: {
                 register: resolvers.resolveRegister,
                 updateSettings: resolvers.resolveUpdateSettings,
-                submitVideoContent: resolvers.resolveSubmitVideoContent,
+                submitContent: resolvers.resolveSubmitContent,
                 contentRequest: resolvers.resolveContentRequest,
                 contentPurchaseTransaction:
                     resolvers.resolveContentPurchaseTransaction,

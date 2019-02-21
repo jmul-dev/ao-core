@@ -101,6 +101,8 @@ interface IContent {
     metadataDatStats: DatStats
     title: String
     description: String
+    teaserUrl: String
+    featuredImageUrl: String
     # Econ
     stake: Float
     fileSize: Float
@@ -115,6 +117,22 @@ interface IContent {
     totalHosts: Int
     recentlySeenHostsCount: Int
     isNetworkContent: Boolean
+}
+
+input ContentSubmissionInputs {
+    ethAddress: String!
+    content: Upload!
+    contentType: ContentType!
+    videoTeaser: Upload
+    featuredImage: Upload!
+    title: String!
+    description: String!
+    stake: Float!
+    stakePrimordialPercentage: Float
+    profitSplitPercentage: Float!
+    contentLicense: ContentLicense!
+    contentAttribution: String
+    taoId: String
 }
 
 #
@@ -145,6 +163,8 @@ type VideoContent implements IContent {
     metadataDatStats: DatStats
     title: String
     description: String
+    teaserUrl: String
+    featuredImageUrl: String
     # Econ
     stake: Float
     fileSize: Float
@@ -160,24 +180,7 @@ type VideoContent implements IContent {
     recentlySeenHostsCount: Int
     isNetworkContent: Boolean
     # VideoContent
-    teaserUrl: String
-    featuredImageUrl: String
     metadata: VideoMetadata
-}
-
-input VideoContentSubmissionInputs {
-    ethAddress: String!
-    content: Upload!
-    videoTeaser: Upload!
-    featuredImage: Upload!
-    title: String!
-    description: String!
-    stake: Float!
-    stakePrimordialPercentage: Float
-    profitSplitPercentage: Float!
-    contentLicense: ContentLicense!
-    contentAttribution: String
-    taoId: String
 }
 
 #
@@ -208,6 +211,8 @@ type DappContent implements IContent {
     metadataDatStats: DatStats
     title: String
     description: String
+    teaserUrl: String
+    featuredImageUrl: String
     # Econ
     stake: Float
     fileSize: Float
@@ -223,20 +228,4 @@ type DappContent implements IContent {
     recentlySeenHostsCount: Int
     isNetworkContent: Boolean
     # DappContent
-    teaserUrl: String
-    featuredImageUrl: String
-}
-input DappContentSubmissionInputs {
-    ethAddress: String!
-    content: Upload!
-    videoTeaser: Upload
-    featuredImage: Upload!
-    title: String!
-    description: String!
-    stake: Float!
-    stakePrimordialPercentage: Float
-    profitSplitPercentage: Float!
-    contentLicense: ContentLicense!
-    contentAttribution: String
-    taoId: String
 }
