@@ -167,9 +167,9 @@ type VideoContent implements IContent {
 
 input VideoContentSubmissionInputs {
     ethAddress: String!
-    video: Upload
-    videoTeaser: Upload
-    featuredImage: Upload
+    content: Upload!
+    videoTeaser: Upload!
+    featuredImage: Upload!
     title: String!
     description: String!
     stake: Float!
@@ -228,9 +228,9 @@ type DappContent implements IContent {
 }
 input DappContentSubmissionInputs {
     ethAddress: String!
-    folder: Upload
+    content: Upload!
     videoTeaser: Upload
-    featuredImage: Upload
+    featuredImage: Upload!
     title: String!
     description: String!
     stake: Float!
