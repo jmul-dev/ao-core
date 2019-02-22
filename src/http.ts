@@ -1,5 +1,5 @@
 import { graphiqlExpress, graphqlExpress } from "apollo-server-express";
-import { apolloUploadExpress } from "apollo-upload-server";
+import { graphqlUploadExpress } from "graphql-upload";
 import { json } from "body-parser";
 import cors from "cors";
 import express, { Express, Response } from "express";
@@ -53,7 +53,7 @@ export default class Http {
             "/graphql",
             cors({ origin: options.httpOrigin }),
             json(),
-            apolloUploadExpress({ maxFieldSize: "1gb" }),
+            graphqlUploadExpress({ maxFieldSize: "1gb" }),
             graphqlExpress({
                 schema: graphqlSchema,
                 // context given to our graphql resolvers

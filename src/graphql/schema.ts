@@ -1,5 +1,5 @@
 "use strict";
-import { GraphQLUpload } from "apollo-upload-server";
+import { GraphQLUpload } from "graphql-upload";
 import Debug from "../AODebug";
 import { makeExecutableSchema } from "graphql-tools";
 import resolvers from "./resolvers/resolvers";

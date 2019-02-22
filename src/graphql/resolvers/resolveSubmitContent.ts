@@ -105,17 +105,29 @@ export default (
                             // safety check to make sure we have the upload
                             return acc;
                         }
+                        debug(inputUploadPromise);
                         acc.push(
                             new Promise((localResolve, localReject) => {
                                 inputUploadPromise
                                     .then(
                                         ({
-                                            stream,
                                             filename,
                                             mimetype,
-                                            encoding
+                                            createReadStream
                                         }) => {
+                                            const stream = createReadStream();
+                                            stream.on("error", error => {
+                                                debug(
+                                                    `${fieldName} read stream error:`,
+                                                    error
+                                                );
+                                            });
                                             // attaching the existing file extension if there is one
+                                            debug(
+                                                `inputUploadPromise: ${fieldName}, ${filename}, haveStream: ${
+                                                    !stream ? `false` : "true"
+                                                }, attempt to writeStream...`
+                                            );
                                             const fileName =
                                                 fieldName +
                                                 "." +
@@ -133,16 +145,10 @@ export default (
                                             const writeStreamData: IAOFS_WriteStream_Data = {
                                                 stream: stream,
                                                 streamDirection: "write",
-                                                writePath:
-                                                    fieldName == "content"
-                                                        ? path.join(
-                                                              contentTempPath,
-                                                              fileName
-                                                          )
-                                                        : path.join(
-                                                              metadataTempPath,
-                                                              fileName
-                                                          ),
+                                                writePath: path.join(
+                                                    metadataTempPath,
+                                                    fileName
+                                                ),
                                                 encrypt: false,
                                                 videoStats: false
                                             };
@@ -173,7 +179,8 @@ export default (
                 debug(`Attempting to encrypt and write content...`);
                 return new Promise((localResolve, localReject) => {
                     args.inputs.content
-                        .then(({ stream, filename, mimetype, encoding }) => {
+                        .then(({ filename, mimetype, createReadStream }) => {
+                            const stream = createReadStream();
                             // attaching the existing file extension if there is one
                             const fileName =
                                 "content." +
@@ -317,6 +324,7 @@ export default (
             )
             .catch((error: Error) => {
                 // TODO: This is a catch all for now, but we may want to do some resource cleanup at this stage!
+                debug(`Error occured during content upload: ${error.message}`);
                 reject(error);
             });
     });

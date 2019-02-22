@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import Debug from "../../AODebug";
 import ffprobe from "ffprobe";
-import fs, { ReadStream } from "fs";
+import fs, { ReadStream, WriteStream } from "fs";
 import fsExtra from "fs-extra";
 import archiver from "archiver";
 import checksum from "checksum";
@@ -161,51 +161,46 @@ export default class AOFS extends AORouterInterface {
             process.exit();
         };
         debug("writing stream to: " + writePath);
-        const destinationStream = fs.createWriteStream(writePath, {
-            autoClose: true
-        });
+        let writeStream: WriteStream;
         let readStream: ReadStream;
         try {
-            readStream = fs.createReadStream(null, { fd: 3, autoClose: true });
+            writeStream = fs.createWriteStream(writePath);
+            readStream = fs.createReadStream(null, { fd: 3 });
         } catch (e) {
-            debug("Error opening ReadableStream", e);
+            debug("Error opening ReadStream or WriteStream", e);
             rejectAndExit(e);
             return;
         }
 
-        readStream
-            .on("error", error => {
-                debug("hanle write stream original read error:");
-                debug(error);
-            })
-            .on("finish", () => {
-                readStream.close();
-                readStream.push(null);
-                readStream.read(0);
-            })
-            .on("close", () => {
-                readStream.close();
-                readStream.push(null);
-                readStream.read(0);
-            })
-            .on("end", () => {
-                debug("readStream: End of file");
-                readStream.close();
-                readStream.push(null);
-                readStream.read(0);
-            });
+        // readStream
+        //     .on("error", error => {
+        //         debug("hanle write stream original read error:");
+        //         debug(error);
+        //     })
+        //     .on("finish", () => {
+        //         debug("readStream: finish");
+        //         readStream.close();
+        //         readStream.push(null);
+        //         readStream.read(0);
+        //     })
+        //     .on("close", () => {
+        //         debug("readStream: close");
+        //         readStream.close();
+        //         readStream.push(null);
+        //         readStream.read(0);
+        //     })
+        //     .on("end", () => {
+        //         debug("readStream: end");
+        //         readStream.close();
+        //         readStream.push(null);
+        //         readStream.read(0);
+        //     });
 
         readStream
-            .pipe(destinationStream)
+            .pipe(writeStream)
             .on("error", error => {
                 console.log("fs rejecting", error);
                 rejectAndExit(error);
-            })
-            .on("end", () => {
-                debug("pipe: End of file");
-                readStream.close();
-                readStream.push(null);
-                readStream.read(0);
             })
             .on("finish", () => {
                 debug("Finishing writing to disk");

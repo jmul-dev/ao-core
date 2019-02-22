@@ -305,17 +305,18 @@ export default class AORouter extends AORouterCoreProcessInterface {
                 }
                 readStream
                     .on("error", err => {
-                        debug(
-                            `Error piping stream, closing WriteableStream:`,
-                            err
-                        );
+                        debug(`Error on read stream:`, err);
+                    })
+                    .pipe(writeStream)
+                    .on("error", err => {
+                        debug(`Error piping stream, closing WriteStream:`, err);
                         writeStream.end();
                     })
                     .on("close", () => {
                         // Placeholder, could potentially send response at this point or
                         // trigger a callback to the caller
-                    })
-                    .pipe(writeStream);
+                        debug(`stream closed`);
+                    });
             }
             const startTime = Date.now();
             if (
@@ -323,11 +324,9 @@ export default class AORouter extends AORouterCoreProcessInterface {
                 process.env.NODE_ENV !== "production"
             ) {
                 debug(
-                    `routing event    [${message.routerMessageId}][${event}]: ${
-                        from.name
-                    } -> ${receivingRegistryEntry.name} ${
-                        messageHasStream ? "(with stream)" : ""
-                    }`
+                    `[${message.routerMessageId}][${event}]: ${from.name} -> ${
+                        receivingRegistryEntry.name
+                    } ${messageHasStream ? "(with stream)" : ""}`
                 );
             }
             // 5. Send the request out
@@ -357,7 +356,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
                                 process.env.NODE_ENV !== "production"
                             ) {
                                 debug(
-                                    `routing response [${
+                                    `  [${
                                         message.routerMessageId
                                     }][${event}]: ${from.name} <- ${
                                         receivingRegistryEntry.name
