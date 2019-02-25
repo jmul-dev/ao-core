@@ -138,8 +138,17 @@ export default abstract class AOContent {
         switch (contentObject.contentType) {
             case "VOD":
                 instance = new AOVideoContent();
-            default:
                 break;
+            case "DAPP":
+                instance = new AODappContent();
+                break;
+            default:
+                console.warn(
+                    `Content type not yet implemented or failed to pass the content type: ${
+                        contentObject.contentType
+                    }`
+                );
+                return contentObject;
         }
         // assigning all value to the instance properties
         Object.assign(instance, contentObject);
@@ -246,4 +255,8 @@ export class AOVideoContent extends AOContent {
         bitRate: number;
         frameRate: number;
     };
+}
+
+export class AODappContent extends AOContent {
+    public contentType: AOContentType = "DAPP";
 }

@@ -15,6 +15,7 @@ import {
     IAOFS_Write_Data
 } from "../../modules/fs/fs";
 import { IAORouterMessage } from "../../router/AORouter";
+import { ReadStream } from "fs";
 const debug = Debug("ao:graphql:submitContent");
 
 export interface ISubmitContent_Args {
@@ -171,39 +172,80 @@ export default (
             )
             .then(([]: Array<IAORouterMessage>) => {
                 // 3. TODO Content processing based on contentType (if necessary)
-                debug(`Metadata file uploads written to temp directory`);
-                return Promise.resolve();
-            })
-            .then(() => {
-                // 4. Content storage
-                debug(`Attempting to encrypt and write content...`);
+                debug(
+                    `Additional processing based on content type: ${
+                        contentJson.contentType
+                    }...`
+                );
                 return new Promise((localResolve, localReject) => {
-                    args.inputs.content
-                        .then(({ filename, mimetype, createReadStream }) => {
+                    if (Array.isArray(args.inputs.content)) {
+                        localReject(
+                            new Error(
+                                `Multiple file uploads are not supported at this time. Expected 'content' field to be a single file.`
+                            )
+                        );
+                        return null;
+                    }
+                    args.inputs.content.then(
+                        ({ filename, mimetype, createReadStream }) => {
                             const stream = createReadStream();
-                            // attaching the existing file extension if there is one
-                            const fileName =
-                                "content." +
-                                filename.substr(filename.lastIndexOf(".") + 1);
-                            contentJson.fileName = fileName;
-                            contentJson.fileUrl = fileName;
-                            const writeStreamData: IAOFS_WriteStream_Data = {
-                                stream: stream,
-                                streamDirection: "write",
-                                writePath: path.join(contentTempPath, fileName),
-                                encrypt: true,
-                                videoStats:
-                                    args.inputs.contentType ===
-                                    AOContent.Types.VOD
-                            };
-                            context.router
-                                .send("/fs/writeStream", writeStreamData)
-                                .then(localResolve)
-                                .catch(localReject);
-                        })
-                        .catch(localReject);
+                            switch (contentJson.contentType) {
+                                case AOContent.Types.DAPP:
+                                    if (mimetype.indexOf("gzip") > -1) {
+                                        // Validate gzip and make sure there is an index.html file
+                                    } else if (mimetype.indexOf("html") > -1) {
+                                        // Gzip the html file into a folder to ensure consitent format/structure
+                                    } else {
+                                        localReject(
+                                            new Error(
+                                                `Invalid content mimetype, expecting html file or gzipped file, got ${mimetype}`
+                                            )
+                                        );
+                                    }
+                                    break;
+                                default:
+                                    localResolve({
+                                        contentReadStream: stream,
+                                        filename
+                                    });
+                                    return null;
+                            }
+                        }
+                    );
                 });
             })
+            .then(
+                ({
+                    contentReadStream,
+                    filename
+                }: {
+                    contentReadStream: ReadStream;
+                    filename: string;
+                }) => {
+                    // 4. Content storage
+                    debug(`Attempting to encrypt and write content...`);
+                    return new Promise((localResolve, localReject) => {
+                        // attaching the existing file extension if there is one
+                        const fileName =
+                            "content." +
+                            filename.substr(filename.lastIndexOf(".") + 1);
+                        contentJson.fileName = fileName;
+                        contentJson.fileUrl = fileName;
+                        const writeStreamData: IAOFS_WriteStream_Data = {
+                            stream: contentReadStream,
+                            streamDirection: "write",
+                            writePath: path.join(contentTempPath, fileName),
+                            encrypt: true,
+                            videoStats:
+                                args.inputs.contentType === AOContent.Types.VOD
+                        };
+                        context.router
+                            .send("/fs/writeStream", writeStreamData)
+                            .then(localResolve)
+                            .catch(localReject);
+                    });
+                }
+            )
             .then(
                 ({
                     data: {

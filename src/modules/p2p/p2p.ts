@@ -1,4 +1,4 @@
-import Debug from "../../AODebug";
+import Debug, { debugLogFile } from "../../AODebug";
 import path from "path";
 import AOContent from "../../models/AOContent";
 import AONetworkContent from "../../models/AONetworkContent";
@@ -303,6 +303,7 @@ export default class AOP2P extends AORouterInterface {
                     resolve();
                 })
                 .catch(err => {
+                    debug(`Error during _runDiscovery: ${err.message}`);
                     reject(err);
                 });
         });
