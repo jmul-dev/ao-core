@@ -11,6 +11,7 @@ import {
 } from "./AORouterInterface";
 import { ICoreOptions } from "../index";
 const debug = Debug("ao:router");
+const streamDebug = Debug("ao:stream");
 const packageJson = require("../../package.json");
 // Core modules
 const fsPackageJson: IRegistryEntry = require("../modules/fs/package.json");
@@ -303,20 +304,44 @@ export default class AORouter extends AORouterCoreProcessInterface {
                         message.data.stream = true; // cannot send the stream object to subprocess
                     }
                 }
-                readStream
-                    .on("error", err => {
-                        debug(`Error on read stream:`, err);
-                    })
-                    .pipe(writeStream)
-                    .on("error", err => {
-                        debug(`Error piping stream, closing WriteStream:`, err);
-                        writeStream.end();
-                    })
-                    .on("close", () => {
-                        // Placeholder, could potentially send response at this point or
-                        // trigger a callback to the caller
-                        debug(`stream closed`);
-                    });
+                readStream.on("error", error => {
+                    streamDebug(
+                        `[${
+                            message.data.writePath
+                        }] Error on read stream (AORouter), closing write stream:`,
+                        error
+                    );
+                });
+                readStream.on("close", () => {
+                    streamDebug(
+                        `[${
+                            message.data.writePath
+                        }] Read stream close (AORouter)`
+                    );
+                });
+                readStream.on("end", () => {
+                    streamDebug(
+                        `[${
+                            message.data.writePath
+                        }] Read stream end (AORouter), attempting to end writeStream...`
+                    );
+                });
+                writeStream.on("error", error => {
+                    streamDebug(
+                        `[${
+                            message.data.writePath
+                        }] Error on write stream (AORouter):`,
+                        error
+                    );
+                });
+                writeStream.on("close", () => {
+                    streamDebug(
+                        `[${
+                            message.data.writePath
+                        }] Write stream close (AORouter):`
+                    );
+                });
+                readStream.pipe(writeStream);
             }
             const startTime = Date.now();
             if (
@@ -333,6 +358,11 @@ export default class AORouter extends AORouterCoreProcessInterface {
             receivingProcess.send(message, (error?: Error) => {
                 if (error) {
                     if (messageHasStream) {
+                        streamDebug(
+                            `Error response to event [${
+                                message.event
+                            }], attempting to unpipe the stream...`
+                        );
                         readStream.unpipe(writeStream);
                     }
                     reject(error);

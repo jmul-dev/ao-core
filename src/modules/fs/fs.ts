@@ -157,174 +157,170 @@ export default class AOFS extends AORouterInterface {
         );
         const rejectAndExit = (error: Error) => {
             // TODO: this should really attempt to cleanup resource already written (or attempted to write)
+            debug(`rejectAndExit`, error);
             request.reject(error);
             process.exit();
         };
         debug("writing stream to: " + writePath);
+        let readStream: ReadStream = requestData.stream;
         let writeStream: WriteStream;
-        let readStream: ReadStream;
         try {
             writeStream = fs.createWriteStream(writePath);
-            readStream = fs.createReadStream(null, { fd: 3 });
         } catch (e) {
             debug("Error opening ReadStream or WriteStream", e);
             rejectAndExit(e);
             return;
         }
 
-        // readStream
-        //     .on("error", error => {
-        //         debug("hanle write stream original read error:");
-        //         debug(error);
-        //     })
-        //     .on("finish", () => {
-        //         debug("readStream: finish");
-        //         readStream.close();
-        //         readStream.push(null);
-        //         readStream.read(0);
-        //     })
-        //     .on("close", () => {
-        //         debug("readStream: close");
-        //         readStream.close();
-        //         readStream.push(null);
-        //         readStream.read(0);
-        //     })
-        //     .on("end", () => {
-        //         debug("readStream: end");
-        //         readStream.close();
-        //         readStream.push(null);
-        //         readStream.read(0);
-        //     });
+        const streamDebug = Debug("ao:stream");
+        readStream.on("error", error => {
+            streamDebug(
+                `[${
+                    requestData.writePath
+                }] Error on read stream (subprocess fd:3):`,
+                error
+            );
+        });
+        readStream.on("close", error => {
+            streamDebug(
+                `[${
+                    requestData.writePath
+                }] Read stream close (subprocess fd:3):`,
+                error
+            );
+        });
+        writeStream.on("error", error => {
+            streamDebug(
+                `[${
+                    requestData.writePath
+                }] Error on write stream (subprocess):`,
+                error
+            );
+            rejectAndExit(error);
+        });
+        writeStream.on("close", error => {
+            streamDebug(
+                `[${requestData.writePath}] Write stream close (subprocess):`,
+                error
+            );
+        });
 
-        readStream
-            .pipe(writeStream)
-            .on("error", error => {
-                console.log("fs rejecting", error);
-                rejectAndExit(error);
-            })
-            .on("finish", () => {
-                debug("Finishing writing to disk");
-                readStream.close();
-                readStream.push(null);
-                readStream.read(0);
-                const fileStats = fs.statSync(writePath);
-                this._getVideoData(writePath, requestData.videoStats)
-                    .then(videoStats => {
-                        if (!requestData.encrypt) {
-                            request.respond({
-                                fileSize: fileStats.size,
-                                filePath: writePath,
-                                videoStats: videoStats ? videoStats : false
-                            });
-                            process.exit();
-                        } else {
-                            const key = this.newEncryptionKey();
-                            const encrypt = crypto.createCipher(
-                                this.encryptionAlgorithm,
-                                key
-                            );
-                            const readFrom = fs.createReadStream(writePath);
-                            const encryptedPath = writePath + ".encrypted";
-                            const writeToEncrypted = fs.createWriteStream(
-                                encryptedPath
-                            );
+        readStream.pipe(writeStream).on("finish", () => {
+            debug("Finishing writing to disk");
+            const fileStats = fs.statSync(writePath);
+            this._getVideoData(writePath, requestData.videoStats)
+                .then(videoStats => {
+                    if (!requestData.encrypt) {
+                        request.respond({
+                            fileSize: fileStats.size,
+                            filePath: writePath,
+                            videoStats: videoStats ? videoStats : false
+                        });
+                        process.exit();
+                    } else {
+                        const key = this.newEncryptionKey();
+                        const encrypt = crypto.createCipher(
+                            this.encryptionAlgorithm,
+                            key
+                        );
+                        const readFrom = fs.createReadStream(writePath);
+                        const encryptedPath = writePath + ".encrypted";
+                        const writeToEncrypted = fs.createWriteStream(
+                            encryptedPath
+                        );
 
-                            //Grab the file checksum prior to encryption.
-                            checksum.file(
-                                writePath,
-                                {
-                                    algorithm: this.checksumAlgorithm,
-                                    encoding: this.checksumEncoding
-                                },
-                                (err, originalHash) => {
-                                    if (err) {
-                                        rejectAndExit(err);
-                                    } else {
-                                        readFrom.on("error", error => {
+                        //Grab the file checksum prior to encryption.
+                        checksum.file(
+                            writePath,
+                            {
+                                algorithm: this.checksumAlgorithm,
+                                encoding: this.checksumEncoding
+                            },
+                            (err, originalHash) => {
+                                if (err) {
+                                    rejectAndExit(err);
+                                } else {
+                                    readFrom.on("error", error => {
+                                        debug(
+                                            "handle write stream re-encryption read error: "
+                                        );
+                                        debug(error);
+                                    });
+                                    readFrom
+                                        .pipe(encrypt)
+                                        .pipe(writeToEncrypted)
+                                        .on("error", error => {
                                             debug(
-                                                "handle write stream re-encryption read error: "
+                                                "handle write stream re-encryption error: ",
+                                                error
                                             );
-                                            debug(error);
-                                        });
-                                        readFrom
-                                            .pipe(encrypt)
-                                            .pipe(writeToEncrypted)
-                                            .on("error", error => {
-                                                debug(
-                                                    "handle write stream re-encryption error: ",
-                                                    error
-                                                );
-                                                rejectAndExit(error);
-                                            })
-                                            .on("finish", () => {
-                                                //get stats for the encrypted file.
-                                                //const fileStats = fs.statSync( encryptedPath )
+                                            rejectAndExit(error);
+                                        })
+                                        .on("finish", () => {
+                                            //get stats for the encrypted file.
+                                            //const fileStats = fs.statSync( encryptedPath )
 
-                                                //remove the original file
-                                                fsExtra
-                                                    .remove(writePath)
-                                                    .then(() => {
-                                                        //finally move the encrypted file to the original path
-                                                        fsExtra
-                                                            .move(
-                                                                encryptedPath,
-                                                                writePath
-                                                            )
-                                                            .then(() => {
-                                                                //Get the encrypted checksum
-                                                                checksum.file(
-                                                                    writePath,
-                                                                    {
-                                                                        algorithm: this
-                                                                            .checksumAlgorithm,
-                                                                        encoding: this
-                                                                            .checksumEncoding
-                                                                    },
-                                                                    (
-                                                                        err,
-                                                                        encryptedhash
-                                                                    ) => {
-                                                                        if (
+                                            //remove the original file
+                                            fsExtra
+                                                .remove(writePath)
+                                                .then(() => {
+                                                    //finally move the encrypted file to the original path
+                                                    fsExtra
+                                                        .move(
+                                                            encryptedPath,
+                                                            writePath
+                                                        )
+                                                        .then(() => {
+                                                            //Get the encrypted checksum
+                                                            checksum.file(
+                                                                writePath,
+                                                                {
+                                                                    algorithm: this
+                                                                        .checksumAlgorithm,
+                                                                    encoding: this
+                                                                        .checksumEncoding
+                                                                },
+                                                                (
+                                                                    err,
+                                                                    encryptedhash
+                                                                ) => {
+                                                                    if (err) {
+                                                                        rejectAndExit(
                                                                             err
-                                                                        ) {
-                                                                            rejectAndExit(
-                                                                                err
-                                                                            );
-                                                                        } else {
-                                                                            request.respond(
-                                                                                {
-                                                                                    fileSize:
-                                                                                        fileStats.size,
-                                                                                    filePath: writePath,
-                                                                                    key: key,
-                                                                                    videoStats: videoStats
-                                                                                        ? videoStats
-                                                                                        : false,
-                                                                                    checksum: originalHash,
-                                                                                    encryptedChecksum: encryptedhash
-                                                                                }
-                                                                            );
-                                                                            // Single use event, kill process when done
-                                                                            process.exit();
-                                                                        }
+                                                                        );
+                                                                    } else {
+                                                                        request.respond(
+                                                                            {
+                                                                                fileSize:
+                                                                                    fileStats.size,
+                                                                                filePath: writePath,
+                                                                                key: key,
+                                                                                videoStats: videoStats
+                                                                                    ? videoStats
+                                                                                    : false,
+                                                                                checksum: originalHash,
+                                                                                encryptedChecksum: encryptedhash
+                                                                            }
+                                                                        );
+                                                                        // Single use event, kill process when done
+                                                                        process.exit();
                                                                     }
-                                                                ); //encrypted checksum end.
-                                                            })
-                                                            .catch(
-                                                                rejectAndExit
-                                                            ); //Move end
-                                                    })
-                                                    .catch(rejectAndExit); //Remove end
-                                            }); //Encryption finished
-                                    }
+                                                                }
+                                                            ); //encrypted checksum end.
+                                                        })
+                                                        .catch(rejectAndExit); //Move end
+                                                })
+                                                .catch(rejectAndExit); //Remove end
+                                        }); //Encryption finished
                                 }
-                            ); //checksum end
-                        }
-                    })
-                    .catch(e => {
-                        request.reject(e);
-                    });
-            });
+                            }
+                        ); //checksum end
+                    }
+                })
+                .catch(e => {
+                    request.reject(e);
+                });
+        });
     }
 
     //helper method for stream writes/reads.
