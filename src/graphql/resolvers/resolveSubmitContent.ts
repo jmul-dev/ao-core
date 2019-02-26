@@ -12,10 +12,14 @@ import {
     IAOFS_Mkdir_Data,
     IAOFS_Move_Data,
     IAOFS_WriteStream_Data,
-    IAOFS_Write_Data
+    IAOFS_Write_Data,
+    IAOFS_CheckZipFormIndex_Data
 } from "../../modules/fs/fs";
 import { IAORouterMessage } from "../../router/AORouter";
 import { ReadStream } from "fs";
+import archiver from "archiver";
+import os from "os";
+import fs from "fs";
 const debug = Debug("ao:graphql:submitContent");
 
 export interface ISubmitContent_Args {
@@ -191,10 +195,52 @@ export default (
                             const stream = createReadStream();
                             switch (contentJson.contentType) {
                                 case AOContent.Types.DAPP:
-                                    if (mimetype.indexOf("gzip") > -1) {
-                                        // Validate gzip and make sure there is an index.html file
+                                    if (mimetype.indexOf("zip") > -1) {
+                                        // Validate zip and make sure there is an index.html file
+                                        const checkForIndexArgs: IAOFS_CheckZipFormIndex_Data = {
+                                            stream: createReadStream() // NOTE: we are creating another instance of this read stream that will be consumed seperatly
+                                        };
+                                        context.router
+                                            .send(
+                                                "/fs/checkZipForIndexHtml",
+                                                checkForIndexArgs
+                                            )
+                                            .then(
+                                                (
+                                                    checkForIndexResponse: IAORouterMessage
+                                                ) => {
+                                                    if (
+                                                        checkForIndexResponse
+                                                            .data.indexFound ===
+                                                        true
+                                                    ) {
+                                                        localResolve({
+                                                            contentReadStream: stream,
+                                                            filename
+                                                        });
+                                                    } else {
+                                                        localReject(
+                                                            new Error(
+                                                                "The uploaded zip file does not contain an index.html file in its root"
+                                                            )
+                                                        );
+                                                    }
+                                                }
+                                            )
+                                            .catch(localReject);
                                     } else if (mimetype.indexOf("html") > -1) {
                                         // Gzip the html file into a folder to ensure consitent format/structure
+                                        dappHtmlFileUploadHandler(
+                                            stream,
+                                            contentTempId
+                                        )
+                                            .then(zippedContentStream => {
+                                                localResolve({
+                                                    contentReadStream: zippedContentStream,
+                                                    filename: filename + ".zip"
+                                                });
+                                            })
+                                            .catch(localReject);
                                     } else {
                                         localReject(
                                             new Error(
@@ -374,4 +420,35 @@ export default (
 
 function videoContentUploadHandler(): Promise<any> {
     return new Promise((resolve, reject) => {});
+}
+
+function dappHtmlFileUploadHandler(
+    indexFileStream,
+    contentTempId
+): Promise<ReadStream> {
+    return new Promise((resolve, reject) => {
+        const tmpZipLocation = path.resolve(
+            os.tmpdir(),
+            contentTempId + ".zip"
+        );
+        const zippedWriteStream = fs.createWriteStream(tmpZipLocation);
+        const archive = archiver("zip", {
+            zlib: { level: 9 }
+        });
+        archive.on("end", () => {
+            try {
+                resolve(fs.createReadStream(tmpZipLocation));
+            } catch (error) {
+                debug(`Error creating read stream on temp zip location`);
+                reject(error);
+            }
+        });
+        archive.on("error", function(err) {
+            debug(`Error archiving index.html file for content type DAPP`);
+            reject(err);
+        });
+        archive.pipe(zippedWriteStream);
+        archive.append(indexFileStream, { name: "index.html" });
+        archive.finalize();
+    });
 }

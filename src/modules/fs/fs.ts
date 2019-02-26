@@ -12,7 +12,7 @@ import AORouterInterface, {
     IAORouterRequest,
     AORouterSubprocessArgs
 } from "../../router/AORouterInterface";
-import unzip from "unzipper";
+import unzipper from "unzipper";
 const debug = Debug("ao:fs");
 
 export interface IAOFS_WriteStream_Data {
@@ -21,6 +21,10 @@ export interface IAOFS_WriteStream_Data {
     writePath: string;
     encrypt: boolean;
     videoStats: boolean;
+}
+
+export interface IAOFS_CheckZipFormIndex_Data {
+    stream: ReadStream;
 }
 
 export interface IAOFS_Write_Data {
@@ -81,6 +85,12 @@ export interface IAOFS_DataImport_Data {
     inputPath: string;
 }
 
+export interface IAOFS_ZipStream_Data {
+    stream: ReadStream;
+    writeStream: WriteStream;
+    filenameWithinZip: string;
+}
+
 /**
  * AOFS
  *
@@ -107,6 +117,11 @@ export default class AOFS extends AORouterInterface {
         this.router.on("/fs/move", this._handleMove.bind(this));
         this.router.on("/fs/unlink", this._handleUnlink.bind(this));
         this.router.on("/fs/stats", this._handleFileStat.bind(this));
+        this.router.on(
+            "/fs/checkZipForIndexHtml",
+            this._handleCheckZipForIndexHtml.bind(this)
+        );
+        this.router.on("/fs/zipStream", this._handleZipStream.bind(this));
 
         //Specific usecase methods
         this.router.on(
@@ -146,6 +161,61 @@ export default class AOFS extends AORouterInterface {
      */
     newEncryptionKey() {
         return md5(new Date().getSeconds() + Math.random());
+    }
+
+    _handleCheckZipForIndexHtml(request: IAORouterRequest) {
+        const requestData: IAOFS_CheckZipFormIndex_Data = request.data;
+        let readStream: ReadStream = requestData.stream;
+        let responded = false;
+        readStream
+            .pipe(unzipper.Parse())
+            .on("entry", function(entry) {
+                var fileName = entry.path;
+                var type = entry.type; // 'Directory' or 'File'
+                if (type === "File" && fileName === "index.html") {
+                    responded = true;
+                    request.respond({
+                        indexFound: true
+                    });
+                }
+                entry.autodrain();
+            })
+            .on("error", (error: Error) => {
+                if (!responded) {
+                    responded = true;
+                    request.reject(error);
+                }
+            })
+            .on("finish", () => {
+                if (!responded) {
+                    responded = true;
+                    request.respond({
+                        indexFound: false
+                    });
+                }
+            });
+    }
+
+    _handleZipStream(request: IAORouterRequest) {
+        const requestData: IAOFS_ZipStream_Data = request.data;
+        let readStream: ReadStream = requestData.stream;
+        let zippedWriteStream: WriteStream = requestData.writeStream;
+        const archive = archiver("zip", {
+            zlib: { level: 9 }
+        });
+        archive.on("end", () => {
+            request.respond({
+                success: true
+            });
+            process.exit();
+        });
+        archive.on("error", function(err) {
+            request.reject(err);
+            process.exit();
+        });
+        archive.pipe(zippedWriteStream);
+        archive.append(readStream, { name: requestData.filenameWithinZip });
+        archive.finalize();
     }
 
     _handleWriteStream(request: IAORouterRequest) {
@@ -610,21 +680,21 @@ export default class AOFS extends AORouterInterface {
                 request.reject(err);
                 return;
             }
-            const unzipper = unzip.Extract({ path: this.storageLocation });
+            const unzip = unzipper.Extract({ path: this.storageLocation });
             const input = fs.createReadStream(inputPath);
-            input.pipe(unzipper);
+            input.pipe(unzip);
             input.on("error", error => {
                 debug("Unzip input error: ", error);
                 request.reject(error);
                 // single use process, lets exit
                 process.exit();
             });
-            unzipper.on("close", () => {
+            unzip.on("close", () => {
                 request.respond({});
                 // single use process, lets exit
                 process.exit();
             });
-            unzipper.on("error", error => {
+            unzip.on("error", error => {
                 debug("Unzip error: ", error);
                 request.reject(error);
                 // single use process, lets exit
