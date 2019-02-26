@@ -175,7 +175,6 @@ export default (
                 }
             )
             .then(([]: Array<IAORouterMessage>) => {
-                // 3. TODO Content processing based on contentType (if necessary)
                 debug(
                     `Additional processing based on content type: ${
                         contentJson.contentType
@@ -283,7 +282,7 @@ export default (
                             writePath: path.join(contentTempPath, fileName),
                             encrypt: true,
                             videoStats:
-                                args.inputs.contentType === AOContent.Types.VOD
+                                args.inputs.contentType === AOContent.Types.VOD // TODO: videoStats should be pulled in the resolver above (switch based on content type)
                         };
                         context.router
                             .send("/fs/writeStream", writeStreamData)
@@ -417,10 +416,6 @@ export default (
             });
     });
 };
-
-function videoContentUploadHandler(): Promise<any> {
-    return new Promise((resolve, reject) => {});
-}
 
 function dappHtmlFileUploadHandler(
     indexFileStream,

@@ -4,7 +4,7 @@ import {
     NetworkContentHostEntry
 } from "../modules/p2p/p2p";
 
-export type AOContentType = "VOD" | "STREAM" | "FILE" | "DAPP";
+export type AOContentType = "VOD" | "PDF" | "DAPP";
 export type AOContentLicense = "AO" | "TAO" | "CC";
 
 // NOTE: match graphql/types/content.graphql -> ContentState enum
@@ -28,8 +28,7 @@ export const AOContentState = Object.freeze({
 // NOTE: match graphql/types/content.graphql -> ContentType enum
 export const AOContentTypes = Object.freeze({
     VOD: "VOD",
-    STREAM: "STREAM",
-    FILE: "FILE",
+    FILE: "PDF",
     DAPP: "DAPP"
 });
 

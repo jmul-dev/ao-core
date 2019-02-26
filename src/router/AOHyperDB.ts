@@ -151,9 +151,17 @@ export default class AOHyperDB {
         });
     }
 
-    public list(key) {
+    public list(
+        key,
+        options: { recursive?: boolean; reverse?: boolean; gt?: boolean } = {
+            recursive: true,
+            reverse: true,
+            gt: false
+        }
+    ) {
         return new Promise((resolve, reject) => {
-            this.db.list(key, (err, nodes) => {
+            debug(`list: ${key}`);
+            this.db.list(key, options, (err, nodes) => {
                 if (err) {
                     reject(err);
                 } else {
@@ -167,7 +175,6 @@ export default class AOHyperDB {
                         }
                         resolve(result);
                     } else {
-                        debug("Nothing found");
                         resolve([]);
                     }
                 }

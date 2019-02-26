@@ -730,14 +730,9 @@ export default class AOUserSession {
         //TODO: make sure the below key route gets made with the static method out of p2p.
         const p2pWatchKeyRequest: AOP2P_Watch_AND_Get_IndexData_Data = {
             // TODO: use AOP2P static methods to generate this path (or let AOP2P generate the path for us)
-            key:
-                "/AOSpace/VOD/" +
-                content.metadataDatKey +
-                "/nodes/" +
-                content.nodeId +
-                "/" +
-                content.fileDatKey +
-                "/indexData",
+            key: `/AOSpace/${content.contentType}/${
+                content.metadataDatKey
+            }/nodes/${content.nodeId}/${content.fileDatKey}/indexData`,
             ethAddress: this.ethAddress
         };
         debug(p2pWatchKeyRequest);

@@ -118,16 +118,15 @@ export default class AOP2P extends AORouterInterface {
     private dbPath: string;
     private dbKey: string;
 
-    private dbPrefix: string;
+    private taoDbRootDir: string;
     private storageLocation: string;
-    private contentWatchKey: string;
     private contentIngestion: AOContentIngestion;
     private contentHostsUpdater: AOContentHostsUpdater;
 
     constructor(args: AORouterSubprocessArgs) {
         super({ ...args, enableHyperDB: true });
         this.storageLocation = args.storageLocation;
-        this.dbPrefix = "/AOSpace/";
+        this.taoDbRootDir = "/AOSpace/";
 
         //New Content upload
         this.contentIngestion = new AOContentIngestion(this.router);
@@ -196,7 +195,6 @@ export default class AOP2P extends AORouterInterface {
      */
     private _handleStartDiscovery(request: IAORouterRequest) {
         debug(`hyperdb starting discovery...`);
-        this.contentWatchKey = this.dbPrefix + "VOD/"; // /AOSpace/VOD/*
         this._runDiscovery()
             .then(() => {
                 debug("Initial discovery ran");
@@ -209,9 +207,9 @@ export default class AOP2P extends AORouterInterface {
     //For the sake of clean recursive methods.
     private _watchDiscovery() {
         this.hyperdb
-            .watch(this.contentWatchKey)
+            .watch(this.taoDbRootDir)
             .then(() => {
-                debug("Something changed in " + this.contentWatchKey);
+                debug("Something changed in " + this.taoDbRootDir);
                 this._runDiscovery()
                     .then(() => {
                         this._watchDiscovery();
@@ -222,54 +220,78 @@ export default class AOP2P extends AORouterInterface {
     }
 
     private _runDiscovery() {
-        return new Promise((resolve, reject) => {
-            let contentCompare = [];
-            contentCompare.push(this.hyperdb.list(this.contentWatchKey));
-            const networkContentQuery: AODB_NetworkContentGet_Data = {
-                projection: { _id: 1 }
-            };
-            contentCompare.push(
-                this.router.send("/db/network/content/get", networkContentQuery)
-            ); // Only return _ids = metadataDatKey
-            Promise.all(contentCompare)
-                .then(results => {
-                    // We match content keys found in the network (hyperdb) with the keys we have already seen before.
-                    // Any new keys will go through a content ingestion process. Any existing keys will go through an
-                    // updater.
-                    const contentInNetworkDb = results[0];
-                    const contentInLocalNetworkDb: Array<AONetworkContent> =
-                        results[1].data;
-                    // Find network content keys
-                    let metadataDatKeysInNetworkDb: Array<string> = [];
-                    for (const content of contentInNetworkDb) {
-                        const newKey = content[2];
-                        if (newKey.length == 64) {
-                            metadataDatKeysInNetworkDb.indexOf(newKey) === -1
-                                ? metadataDatKeysInNetworkDb.push(newKey)
-                                : null;
+        debug(`Running discovery...`);
+        return Promise.resolve()
+            .then(() => {
+                // 1. List all content types
+                return this.hyperdb.list(this.taoDbRootDir, {
+                    recursive: false
+                });
+            })
+            .then((contentList: Array<Array<string>>) => {
+                const contentTypes = contentList.map(entry => {
+                    return entry[1]; // /AOSpace/{contentType}
+                });
+                debug(
+                    `Content types found in network db: ${contentTypes.join(
+                        ", "
+                    )}`
+                );
+                // 2. List all keys within each content type
+                const contentListPromises = contentTypes.map(contentType => {
+                    return this.hyperdb.list(
+                        `${this.taoDbRootDir}${contentType}/`
+                    );
+                });
+                return Promise.all(contentListPromises);
+            })
+            .then((contentLists: Array<Array<Array<string>>>) => {
+                // Lets merge all the content keys into a single array
+                let contentKeys: Array<string> = [];
+                contentLists.forEach(contentList => {
+                    contentList.forEach(entry => {
+                        // sanity check to make sure entry is a Dat key
+                        if (entry.length === 64) {
+                            contentKeys.push(entry[2]); // /AOSpace/{contentType}/{metadataDatKey}
                         }
-                    }
-                    // Find local content keys
-                    let metadataDatKeysInLocalNetworkDb: Array<string> = [];
-                    for (const content of contentInLocalNetworkDb) {
-                        const newKey = content._id;
-                        if (newKey.length == 64) {
-                            metadataDatKeysInLocalNetworkDb.indexOf(newKey) ===
-                            -1
-                                ? metadataDatKeysInLocalNetworkDb.push(newKey)
-                                : null;
-                        }
-                    }
+                    });
+                });
+                return Promise.resolve(contentKeys);
+            })
+            .then((networkContentKeys: Array<string>) => {
+                // 3. Pull all content keys found in the user's *local* network db (content already discovered)
+                return new Promise((localResolve, localReject) => {
+                    const networkContentQuery: AODB_NetworkContentGet_Data = {
+                        projection: { _id: 1 }
+                    }; // Only return _ids = metadataDatKey
+                    this.router
+                        .send("/db/network/content/get", networkContentQuery)
+                        .then((networkContentResponse: IAORouterMessage) => {
+                            localResolve({
+                                contentKeysAlreadyDiscovered:
+                                    networkContentResponse.data,
+                                contentKeysFoundInDiscovery: networkContentKeys
+                            });
+                        })
+                        .catch(localReject);
+                });
+            })
+            .then(
+                ({
+                    contentKeysAlreadyDiscovered,
+                    contentKeysFoundInDiscovery
+                }) => {
+                    // 4. Diff the contentKeys to figure out what we have not already discovered
                     // Sort network content keys into new/existing buckets
                     let newContentKeys: Array<string> = [];
                     let existingContentKeys: Array<string> = [];
                     for (
                         let i = 0;
-                        i < metadataDatKeysInNetworkDb.length;
+                        i < contentKeysFoundInDiscovery.length;
                         i++
                     ) {
-                        const key = metadataDatKeysInNetworkDb[i];
-                        if (metadataDatKeysInLocalNetworkDb.indexOf(key) < 0) {
+                        const key = contentKeysFoundInDiscovery[i];
+                        if (contentKeysAlreadyDiscovered.indexOf(key) < 0) {
                             newContentKeys.push(key);
                         } else {
                             existingContentKeys.push(key);
@@ -300,13 +322,9 @@ export default class AOP2P extends AORouterInterface {
                             );
                         }
                     }
-                    resolve();
-                })
-                .catch(err => {
-                    debug(`Error during _runDiscovery: ${err.message}`);
-                    reject(err);
-                });
-        });
+                    return Promise.resolve();
+                }
+            );
     }
 
     private _handleNewContent(request: IAORouterRequest) {
@@ -323,7 +341,7 @@ export default class AOP2P extends AORouterInterface {
 
         //Content Signature/Meta Data
         const contentRegistrationKey = AOP2P.routeContentRegistrtionPrefix({
-            nameSpace: this.dbPrefix,
+            nameSpace: this.taoDbRootDir,
             contentType,
             ethAddress,
             metaDatKey
@@ -340,13 +358,13 @@ export default class AOP2P extends AORouterInterface {
 
         //IndexData
         const selfRegistration = AOP2P.routeSelfRegistration({
-            nameSpace: this.dbPrefix,
+            nameSpace: this.taoDbRootDir,
             ethAddress,
             contentType,
             fileDatKey
         });
         const nodeRegistration = AOP2P.routeNodeRegistration({
-            nameSpace: this.dbPrefix,
+            nameSpace: this.taoDbRootDir,
             contentType,
             metaDatKey,
             ethAddress,
@@ -508,7 +526,7 @@ export default class AOP2P extends AORouterInterface {
             contentHostId
         }: AOP2P_Add_Discovery_Data = request.data;
         const nodeRoute = AOP2P.routeNodeRegistration({
-            nameSpace: this.dbPrefix,
+            nameSpace: this.taoDbRootDir,
             contentType,
             metaDatKey,
             ethAddress,
@@ -519,7 +537,7 @@ export default class AOP2P extends AORouterInterface {
             .then(() => {
                 debug("NODE INSERTED");
                 this.nodeTimestampUpdate({
-                    nameSpace: this.dbPrefix,
+                    nameSpace: this.taoDbRootDir,
                     contentType,
                     ethAddress,
                     metaDatKey,
@@ -611,7 +629,7 @@ export default class AOP2P extends AORouterInterface {
     ): Promise<Array<NetworkContentHostEntry>> {
         return new Promise((resolve, reject) => {
             const contentHostsRoute = AOP2P.routeBaseRegistrationPrefix({
-                nameSpace: this.dbPrefix,
+                nameSpace: this.taoDbRootDir,
                 contentType: content.contentType,
                 metaDatKey: content.metadataDatKey
             });
@@ -694,7 +712,7 @@ export default class AOP2P extends AORouterInterface {
         }
         // 1. Let's get the current indexData for this
         const nodeRouteArgs: AOP2P_NodeRegistrationRoute = {
-            nameSpace: this.dbPrefix,
+            nameSpace: this.taoDbRootDir,
             contentType: content.contentType,
             metaDatKey: content.metadataDatKey,
             ethAddress: sellerEthAddress,
@@ -770,7 +788,7 @@ export default class AOP2P extends AORouterInterface {
     private _handleNodeUpdate(request: IAORouterRequest) {
         const { content }: AOP2P_Update_Node_Timestamp_Data = request.data;
         this.nodeTimestampUpdate({
-            nameSpace: this.dbPrefix,
+            nameSpace: this.taoDbRootDir,
             contentType: content.contentType,
             metaDatKey: content.metadataDatKey,
             ethAddress: request.ethAddress,
