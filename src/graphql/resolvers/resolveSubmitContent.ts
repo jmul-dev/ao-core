@@ -110,7 +110,6 @@ export default (
                             // safety check to make sure we have the upload
                             return acc;
                         }
-                        debug(inputUploadPromise);
                         acc.push(
                             new Promise((localResolve, localReject) => {
                                 inputUploadPromise

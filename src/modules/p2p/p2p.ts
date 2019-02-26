@@ -251,7 +251,7 @@ export default class AOP2P extends AORouterInterface {
                 contentLists.forEach(contentList => {
                     contentList.forEach(entry => {
                         // sanity check to make sure entry is a Dat key
-                        if (entry.length === 64) {
+                        if (entry[2].length === 64) {
                             contentKeys.push(entry[2]); // /AOSpace/{contentType}/{metadataDatKey}
                         }
                     });
@@ -268,8 +268,9 @@ export default class AOP2P extends AORouterInterface {
                         .send("/db/network/content/get", networkContentQuery)
                         .then((networkContentResponse: IAORouterMessage) => {
                             localResolve({
-                                contentKeysAlreadyDiscovered:
-                                    networkContentResponse.data,
+                                contentKeysAlreadyDiscovered: networkContentResponse.data.map(
+                                    entry => entry._id
+                                ),
                                 contentKeysFoundInDiscovery: networkContentKeys
                             });
                         })
@@ -281,6 +282,11 @@ export default class AOP2P extends AORouterInterface {
                     contentKeysAlreadyDiscovered,
                     contentKeysFoundInDiscovery
                 }) => {
+                    debug(
+                        `[${contentKeysAlreadyDiscovered.length}/${
+                            contentKeysFoundInDiscovery.length
+                        }] keys discovered`
+                    );
                     // 4. Diff the contentKeys to figure out what we have not already discovered
                     // Sort network content keys into new/existing buckets
                     let newContentKeys: Array<string> = [];
