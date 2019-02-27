@@ -20,7 +20,10 @@
             "/fs/decryptChecksum",
             "/fs/reencrypt",
             "/fs/dataExport",
-            "/fs/dataImport"
+            "/fs/dataImport",
+            "/fs/checkZipForIndexHtml",
+            "/fs/zipStream",
+            "/fs/unzipFile"
         ],
         "activationEvents": [
             "/fs/readStream",

@@ -25,6 +25,7 @@ export interface IAOFS_WriteStream_Data {
 
 export interface IAOFS_CheckZipFormIndex_Data {
     stream: ReadStream;
+    streamDirection: string;
 }
 
 export interface IAOFS_Write_Data {
@@ -175,16 +176,15 @@ export default class AOFS extends AORouterInterface {
         let readStream: ReadStream = requestData.stream;
         let responded = false;
         readStream
-            .pipe(unzipper.Parse())
+            .pipe(unzipper.ParseOne(/index\.html?$/))
             .on("entry", function(entry) {
-                var fileName = entry.path;
-                var type = entry.type; // 'Directory' or 'File'
-                if (type === "File" && fileName === "index.html") {
-                    responded = true;
-                    request.respond({
-                        indexFound: true
-                    });
-                }
+                // First index.html file found will hit this (parseOne)
+                debug(`index.html entry path: ${entry.path}`);
+                responded = true;
+                request.respond({
+                    indexFound: true,
+                    indexPath: entry.path
+                });
                 entry.autodrain();
             })
             .on("error", (error: Error) => {

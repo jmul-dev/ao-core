@@ -221,7 +221,8 @@ export default abstract class AOContent {
             "teaserUrl",
             "featuredImageUrl",
             "metadata",
-            "baseChallenge"
+            "baseChallenge",
+            "dappIndexPath"
         ];
         let metadataJson = {};
         metadataJsonKeys.forEach(key => {
@@ -261,4 +262,6 @@ export class AOVideoContent extends AOContent {
 export class AODappContent extends AOContent {
     public contentType: AOContentType = "DAPP";
     public unpacked: boolean = false;
+    // dappIndexPath is the path within the content's zip folder to index.html
+    public dappIndexPath: string;
 }

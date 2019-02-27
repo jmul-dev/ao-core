@@ -125,7 +125,7 @@ describe("AO P2P module", () => {
         }
         let stringifiedEncrypted = EthCrypto.cipher.stringify(encrypted);
         const soldKeyData: AOP2P_Write_Decryption_Key_Data = {
-            content: content.toMetadataJson(),
+            content: content,
             buyerEthAddress: personB.address,
             sellerEthAddress: personA.address,
             encryptedDecryptionKey: stringifiedEncrypted,

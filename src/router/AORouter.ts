@@ -351,7 +351,11 @@ export default class AORouter extends AORouterCoreProcessInterface {
                 debug(
                     `[${message.routerMessageId}][${event}]: ${from.name} -> ${
                         receivingRegistryEntry.name
-                    } ${messageHasStream ? "(with stream)" : ""}`
+                    } ${
+                        messageHasStream ? "(with stream)" : ""
+                    } event listener count = ${receivingProcess.listenerCount(
+                        "message"
+                    ) + 1}`
                 );
             }
             // 5. Send the request out

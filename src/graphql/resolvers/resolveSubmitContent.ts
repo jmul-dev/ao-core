@@ -195,13 +195,11 @@ export default (
                             const stream = createReadStream();
                             switch (contentJson.contentType) {
                                 case AOContent.Types.DAPP:
-                                    let dappContentJson: AODappContent = contentJson as AODappContent;
-                                    dappContentJson.unpacked = false;
-                                    contentJson = dappContentJson;
                                     if (mimetype.indexOf("zip") > -1) {
                                         // Validate zip and make sure there is an index.html file
                                         const checkForIndexArgs: IAOFS_CheckZipFormIndex_Data = {
-                                            stream: createReadStream() // NOTE: we are creating another instance of this read stream that will be consumed seperatly
+                                            stream: createReadStream(), // NOTE: we are creating another instance of this read stream that will be consumed seperatly
+                                            streamDirection: "write"
                                         };
                                         context.router
                                             .send(
@@ -217,6 +215,11 @@ export default (
                                                             .data.indexFound ===
                                                         true
                                                     ) {
+                                                        let dappContentJson: AODappContent = contentJson as AODappContent;
+                                                        dappContentJson.dappIndexPath =
+                                                            checkForIndexResponse.data.indexPath;
+                                                        dappContentJson.unpacked = false;
+                                                        contentJson = dappContentJson;
                                                         localResolve({
                                                             contentReadStream: stream,
                                                             filename
@@ -238,6 +241,10 @@ export default (
                                             contentTempId
                                         )
                                             .then(zippedContentStream => {
+                                                let dappContentJson: AODappContent = contentJson as AODappContent;
+                                                dappContentJson.dappIndexPath = `index.html`;
+                                                dappContentJson.unpacked = false;
+                                                contentJson = dappContentJson;
                                                 localResolve({
                                                     contentReadStream: zippedContentStream,
                                                     filename: filename + ".zip"
@@ -405,6 +412,9 @@ export default (
                     // 10. We made it!
                     debug(`Content succesfully uploaded!`);
                     resolve(contentJson);
+                    // NOTE: processContent handles any side effects that take place after uploading content.
+                    // Currently this only involves unpacking a DAPP.
+                    context.userSession.processContent(contentJson);
                     context.router.send("/db/logs/insert", {
                         message: `[${
                             contentJson.title

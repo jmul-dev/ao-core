@@ -228,4 +228,6 @@ type DappContent implements IContent {
     recentlySeenHostsCount: Int
     isNetworkContent: Boolean
     # DappContent
+    unpacked: Boolean
+    dappIndexPath: String
 }
