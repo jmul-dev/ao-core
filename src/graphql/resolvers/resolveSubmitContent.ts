@@ -5,7 +5,8 @@ import { IGraphqlResolverContext } from "../../http";
 import AOContent, {
     AOContentState,
     AOContentType,
-    AOContentLicense
+    AOContentLicense,
+    AODappContent
 } from "../../models/AOContent";
 import { AODat_Create_Data } from "../../modules/dat/dat";
 import {
@@ -57,6 +58,7 @@ export default (
         const contentTempPath: string = path.join("content", contentTempId);
         const metadataTempPath: string = path.join("content", metadataTempId);
         const metadataFileFields = ["featuredImage", "videoTeaser"];
+
         let contentJson: AOContent = AOContent.fromObject({
             nodeId: ethAddress,
             creatorId: ethAddress,
@@ -193,6 +195,9 @@ export default (
                             const stream = createReadStream();
                             switch (contentJson.contentType) {
                                 case AOContent.Types.DAPP:
+                                    let dappContentJson: AODappContent = contentJson as AODappContent;
+                                    dappContentJson.unpacked = false;
+                                    contentJson = dappContentJson;
                                     if (mimetype.indexOf("zip") > -1) {
                                         // Validate zip and make sure there is an index.html file
                                         const checkForIndexArgs: IAOFS_CheckZipFormIndex_Data = {

@@ -2,7 +2,7 @@ import path from "path";
 import web3 from "web3";
 import * as AOCrypto from "./AOCrypto";
 import Debug from "./AODebug";
-import AOContent, { AOContentState } from "./models/AOContent";
+import AOContent, { AOContentState, AODappContent } from "./models/AOContent";
 import {
     AODat_Create_Data,
     AODat_Encrypted_Download_Data,
@@ -29,7 +29,9 @@ import {
     IAOFS_Move_Data,
     IAOFS_Reencrypt_Data,
     IAOFS_Unlink_Data,
-    IAOFS_Write_Data
+    IAOFS_Write_Data,
+    IAOFS_ReadStream_Data,
+    IAOFS_UnzipFile_Data
 } from "./modules/fs/fs";
 import {
     AOP2P_Add_Discovery_Data,
@@ -281,6 +283,10 @@ export default class AOUserSession {
                 break;
             case AOContentState.DAT_INITIALIZED:
                 // This state is pending user stake/becomeHost
+                if (content.contentType === AOContent.Types.DAPP) {
+                    // Slight side effect, we need to unpack the zipped dapp
+                    this._handleContentUnpacking(content as AODappContent);
+                }
                 break;
             case AOContentState.STAKING:
                 this._listenForContentStakingReceipt(content);
@@ -295,6 +301,57 @@ export default class AOUserSession {
             default:
                 break;
         }
+    }
+
+    /**
+     * Specific to DAPP content type, needs to be unzipped after decryption takes place.
+     *
+     * @param {AODappContent} content Dapp content specifically needs unpacking/unzipping
+     */
+    private _handleContentUnpacking(content: AODappContent) {
+        if (
+            content.contentType !== AOContent.Types.DAPP ||
+            content.unpacked === true
+        )
+            return null; // sanity check
+        // Read in the decrypted content
+        const unzipArgs: IAOFS_UnzipFile_Data = {
+            readPath: path.join(
+                "content",
+                content.fileDatKey,
+                content.fileName
+            ),
+            writePath: path.join("content", content.fileDatKey, "unpacked"),
+            key: content.decryptionKey
+        };
+        this.router
+            .send("/fs/unzipFile", unzipArgs)
+            .then(() => {
+                debug(`Succesfully unpacked DAPP [${content.title}]`);
+                let userContentUpdate: AODB_UserContentUpdate_Data = {
+                    id: content.id,
+                    update: {
+                        $set: {
+                            unpacked: true
+                        }
+                    }
+                };
+                this.router
+                    .send("/db/user/content/update", userContentUpdate)
+                    .then((userContentUpdateResponse: IAORouterMessage) => {
+                        // silent
+                    })
+                    .catch(error => {
+                        debug(`Error updating user content: ${error.message}`);
+                    });
+                this.router.send("/db/logs/insert", {
+                    message: `Succesfully unpacked DAPP [${content.title}]`,
+                    userId: this.ethAddress
+                });
+            })
+            .catch(error => {
+                debug(`Error unpacking DAPP [${content.title}]:`, error);
+            });
     }
 
     /**

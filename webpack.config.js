@@ -36,10 +36,7 @@ var config = {
         __dirname: false,
         __filename: false
     },
-    devtool:
-        process.env.NODE_ENV === "production"
-            ? undefined
-            : "inline-cheap-source-map",
+    devtool: devMode ? "source-map" : undefined,
     entry: {
         main: "./src/index.ts",
         bin: "./src/bin.ts",

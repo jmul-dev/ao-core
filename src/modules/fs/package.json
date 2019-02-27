@@ -30,7 +30,8 @@
             "/fs/dataExport",
             "/fs/dataImport",
             "/fs/checkZipForIndexHtml",
-            "/fs/zipStream"
+            "/fs/zipStream",
+            "/fs/unzipFile"
         ]
     }
 }

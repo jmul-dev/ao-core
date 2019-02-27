@@ -240,7 +240,8 @@ export default class AOP2P extends AORouterInterface {
                 // 2. List all keys within each content type
                 const contentListPromises = contentTypes.map(contentType => {
                     return this.hyperdb.list(
-                        `${this.taoDbRootDir}${contentType}/`
+                        `${this.taoDbRootDir}${contentType}/`,
+                        { recursive: false }
                     );
                 });
                 return Promise.all(contentListPromises);
@@ -251,8 +252,9 @@ export default class AOP2P extends AORouterInterface {
                 contentLists.forEach(contentList => {
                     contentList.forEach(entry => {
                         // sanity check to make sure entry is a Dat key
-                        if (entry[2].length === 64) {
-                            contentKeys.push(entry[2]); // /AOSpace/{contentType}/{metadataDatKey}
+                        const key = entry[2];
+                        if (key.length === 64) {
+                            contentKeys.push(key); // /AOSpace/{contentType}/{metadataDatKey}
                         }
                     });
                 });

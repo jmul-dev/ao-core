@@ -44,6 +44,12 @@ export interface IAOFS_ReadStream_Data {
     key?: string; //decrypt key
 }
 
+export interface IAOFS_UnzipFile_Data {
+    readPath: string;
+    writePath: string;
+    key: string;
+}
+
 export interface IAOFS_PathExists_Data {
     path: string;
 }
@@ -122,6 +128,7 @@ export default class AOFS extends AORouterInterface {
             this._handleCheckZipForIndexHtml.bind(this)
         );
         this.router.on("/fs/zipStream", this._handleZipStream.bind(this));
+        this.router.on("/fs/unzipFile", this._handleUnzipFile.bind(this));
 
         //Specific usecase methods
         this.router.on(
@@ -476,6 +483,50 @@ export default class AOFS extends AORouterInterface {
             request.reject(error);
             process.exit();
         });
+    }
+
+    _handleUnzipFile(request: IAORouterRequest) {
+        const requestData: IAOFS_UnzipFile_Data = request.data;
+        const readPath = path.resolve(
+            this.storageLocation,
+            requestData.readPath
+        );
+        const writePath = path.resolve(
+            this.storageLocation,
+            requestData.writePath
+        );
+        try {
+            const readStream = fs.createReadStream(readPath);
+            const writeStream = unzipper.Extract({ path: writePath });
+            readStream.on("open", () => {
+                if (requestData.key) {
+                    const decrypt = crypto.createDecipher(
+                        this.encryptionAlgorithm,
+                        requestData.key
+                    );
+                    readStream.pipe(decrypt).pipe(writeStream);
+                } else {
+                    readStream.pipe(writeStream);
+                }
+            });
+            readStream.on("error", err => {
+                request.reject(err);
+                process.exit();
+            });
+            writeStream.on("finish", () => {
+                debug(`writeStream::close`);
+                request.respond({});
+                process.exit();
+            });
+            writeStream.on("error", (error: Error) => {
+                debug(`Error during write to fd WritableStream`, error);
+                request.reject(error);
+                process.exit();
+            });
+        } catch (error) {
+            request.reject(error);
+            process.exit();
+        }
     }
 
     _handlePathExists(request: IAORouterRequest) {

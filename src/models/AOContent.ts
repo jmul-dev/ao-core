@@ -79,8 +79,10 @@ export function getListOfContentIncompleteStates() {
  * This class should closely reflect the structure of the IContent graphql type.
  * Ideally we would generate the graphql types from this (another time for another
  * time). Also note, graphql resolvers can resolve these class instances directly,
- * and even call instance methods to resolve fields. Also a todo, should probably wrap
- * object types in the AORouter (for cross-process communication).
+ * and even call instance methods to resolve fields.
+ *
+ * TODO: should probably wrap object types in the AORouter (for cross-process communication).
+ * TODO: should have used generics, ex: AOContent<AOVideoContent> or AOContent<AODappContent>.
  *
  * Main usage: const content: AOContent = AOContent.fromObject({})
  */
@@ -132,8 +134,8 @@ export default abstract class AOContent {
     public receivedIndexData: AOP2P_IndexDataRow;
     public decryptionKey: string;
 
-    static fromObject(contentObject) {
-        let instance;
+    static fromObject(contentObject): AOContent {
+        let instance: AOContent;
         switch (contentObject.contentType) {
             case "VOD":
                 instance = new AOVideoContent();
@@ -258,4 +260,5 @@ export class AOVideoContent extends AOContent {
 
 export class AODappContent extends AOContent {
     public contentType: AOContentType = "DAPP";
+    public unpacked: boolean = false;
 }

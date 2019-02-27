@@ -19,15 +19,15 @@
             "program": "${workspaceFolder}/dist/bin.js",
             "outFiles": ["${workspaceFolder}/dist/**/*.js"],
             "runtimeVersion": "8.4.0",
-	    "autoAttachChildProcesses": true
-        },
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "Launch Typescript",
-            "program": "${workspaceFolder}/src/bin.ts",
-            "outFiles": ["${workspaceFolder}/dist/**/*.js"],
-            "runtimeVersion": "8.4.0"
+            "autoAttachChildProcesses": true,
+            "sourceMaps": true,
+            "sourceMapPathOverrides": {
+                "webpack:///*": "${workspaceFolder}/*"
+            },
+            "runtimeArgs": ["--nolazy"],
+            "env": {
+                "DEBUG": "ao:*"
+            }
         }
     ]
 }
