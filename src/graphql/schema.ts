@@ -18,20 +18,22 @@ export default function() {
             Upload: GraphQLUpload,
             IContent: {
                 __resolveType(data, ctx, info) {
-                    // NOTE: data.__typename is specifically used by mocks
-                    let typename = data.__typename;
-                    if (!typename) {
-                        debug(data);
-                        switch (data.contentType) {
-                            case AOContent.Types.VOD:
-                                typename = "VideoContent";
-                                break;
-                            case AOContent.Types.DAPP:
-                                typename = "DappContent";
-                                break;
-                        }
+                    let typename;
+                    switch (data.contentType) {
+                        case AOContent.Types.VOD:
+                            typename = "VideoContent";
+                            break;
+                        case AOContent.Types.DAPP:
+                            typename = "DappContent";
+                            break;
+                        default:
+                            debug(
+                                `IContent type resolver, unkown contentType: ${
+                                    data.contentType
+                                }`
+                            );
+                            break;
                     }
-                    debug(`__resolveType: [${data.__typename}]->[${typename}]`);
                     return info.schema.getType(typename);
                 },
                 metadataDatStats: resolvers.resolveDatStats,
@@ -43,10 +45,7 @@ export default function() {
                 teaserUrl: resolvers.resolveUrl,
                 featuredImageUrl: resolvers.resolveUrl
             },
-            DappContent: {
-                teaserUrl: resolvers.resolveUrl,
-                featuredImageUrl: resolvers.resolveUrl
-            },
+            DappContent: {},
             NodeIdentity: {
                 stakedContent: resolvers.resolveLocalNodeStakedContent,
                 hostedContent: resolvers.resolveLocalNodeHostedContent
