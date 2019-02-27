@@ -353,7 +353,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
                         receivingRegistryEntry.name
                     } ${
                         messageHasStream ? "(with stream)" : ""
-                    } event listener count = ${receivingProcess.listenerCount(
+                    } \tlisteners = ${receivingProcess.listenerCount(
                         "message"
                     ) + 1}`
                 );
@@ -561,6 +561,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
                     stdio: ["ipc", "inherit", "inherit", "pipe", "pipe"]
                 }
             );
+            entryProcess.setMaxListeners(16); // default = 10
             entryProcess.on("error", err => {
                 debug(`[${entry.name}] process: error`, err.message);
                 // TODO: handle err, log or something
@@ -586,7 +587,6 @@ export default class AORouter extends AORouterCoreProcessInterface {
                     this.incomingMessageRouter(message, entry, entryProcess);
                 }
             });
-
             if (entryProcess.pid) {
                 this.addProcessIntanceToEntry(entry.name, entryProcess);
             } else {

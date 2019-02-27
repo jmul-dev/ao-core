@@ -21,6 +21,7 @@ export default function() {
                     // NOTE: data.__typename is specifically used by mocks
                     let typename = data.__typename;
                     if (!typename) {
+                        debug(data);
                         switch (data.contentType) {
                             case AOContent.Types.VOD:
                                 typename = "VideoContent";
@@ -30,6 +31,7 @@ export default function() {
                                 break;
                         }
                     }
+                    debug(`__resolveType: [${data.__typename}]->[${typename}]`);
                     return info.schema.getType(typename);
                 },
                 metadataDatStats: resolvers.resolveDatStats,
@@ -38,6 +40,10 @@ export default function() {
                 baseChallengeSignature: resolvers.resolveSignatureVrs
             },
             VideoContent: {
+                teaserUrl: resolvers.resolveUrl,
+                featuredImageUrl: resolvers.resolveUrl
+            },
+            DappContent: {
                 teaserUrl: resolvers.resolveUrl,
                 featuredImageUrl: resolvers.resolveUrl
             },

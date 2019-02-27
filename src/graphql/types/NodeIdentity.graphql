@@ -2,7 +2,7 @@
 
 type NodeIdentity {
     # Universal
-    id: ID    
+    id: ID
     publicKey: String
     publicAddress: String
     ethAddress: ID
@@ -12,9 +12,9 @@ type NodeIdentity {
     local: NodeIdentityLocal
     # Content specific
     # Staked content = uploaded/owned by user
-    stakedContent: [VideoContent]
+    stakedContent: [IContent]
     # Hosted content = downloaded/re-hosted by user
-    hostedContent(incomplete: Boolean): [VideoContent]
+    hostedContent(incomplete: Boolean): [IContent]
     # Advertiser specific
     # Channel Specific
 }

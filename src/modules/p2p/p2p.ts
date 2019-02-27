@@ -171,22 +171,22 @@ export default class AOP2P extends AORouterInterface {
         this.dbKey = dbKey;
         this.dbPath = path.join(this.storageLocation, "p2p", this.dbKey);
         const ensureP2PPathData: IAOFS_Mkdir_Data = { dirPath: this.dbPath };
-        this.router.send("/fs/mkdir", ensureP2PPathData).then(() => {
-            const hyperDBOptions: AO_Hyper_Options = {
-                dbKey: this.dbKey,
-                dbPath: this.dbPath,
-                autoAuth: true
-            };
-            this.hyperdb
-                .init(hyperDBOptions)
-                .then(() => {
-                    request.respond({ data: "great success!" });
-                })
-                .catch(e => {
-                    debug("init failed");
-                    request.reject(e);
-                });
-        });
+        this.router
+            .send("/fs/mkdir", ensureP2PPathData)
+            .then(() => {
+                const hyperDBOptions: AO_Hyper_Options = {
+                    dbKey: this.dbKey,
+                    dbPath: this.dbPath,
+                    autoAuth: true
+                };
+                this.hyperdb
+                    .init(hyperDBOptions)
+                    .then(() => {
+                        request.respond({ data: "great success!" });
+                    })
+                    .catch(request.reject);
+            })
+            .catch(request.reject);
     }
 
     /**
