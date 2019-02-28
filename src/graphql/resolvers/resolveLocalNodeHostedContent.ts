@@ -1,17 +1,28 @@
-import Http, { IGraphqlResolverContext } from '../../http';
+import { IGraphqlResolverContext } from "../../http";
 import { IAORouterMessage } from "../../router/AORouter";
-import { AODB_UserContentGet_Data } from '../../modules/db/db';
-import AOContent, { getListOfContentIncompleteStates } from '../../models/AOContent';
+import { AODB_UserContentGet_Data } from "../../modules/db/db";
+import AOContent, {
+    getListOfContentIncompleteStates,
+    AOContentType
+} from "../../models/AOContent";
 
-
-interface ILocalNode_Hosted_Content_Args {
-    incomplete: boolean
+export interface ILocalNode_ContentQuery_Inputs {
+    inputs: {
+        id: string;
+        incomplete: boolean;
+        contentType: AOContentType;
+    };
 }
 // TODO: obj is of type NodeIdentity (sorry still no types outside of graphql)
-export default (obj: any, args: ILocalNode_Hosted_Content_Args, context: IGraphqlResolverContext, info: any) => {
+export default (
+    obj: any,
+    args: ILocalNode_ContentQuery_Inputs,
+    context: IGraphqlResolverContext,
+    info: any
+) => {
     return new Promise((resolve, reject) => {
-        if ( !context.userSession.ethAddress ) {
-            resolve([])
+        if (!context.userSession.ethAddress) {
+            resolve([]);
             return null;
         }
         let contentQueryParams: AODB_UserContentGet_Data = {
@@ -20,23 +31,31 @@ export default (obj: any, args: ILocalNode_Hosted_Content_Args, context: IGraphq
                 creatorId: {
                     $ne: obj.ethAddress
                 },
-                state: args.incomplete ? {
-                    $in: getListOfContentIncompleteStates()
-                } : undefined
+                state: args.inputs.incomplete
+                    ? {
+                          $in: getListOfContentIncompleteStates()
+                      }
+                    : undefined,
+                contentType: args.inputs.contentType
             }
-        }
-        context.router.send('/db/user/content/get', contentQueryParams, {ignoreLogging: true}).then((response: IAORouterMessage) => {
-            let userContent: Array<AOContent> = new Array();
-            // ensures array in case response is single item
-            [].concat(response.data).forEach(content => {
-                userContent.push(AOContent.fromObject(content))
-            });
-            userContent = userContent.sort((a, b) => {
-                return parseInt(b.createdAt) - parseInt(a.createdAt)
+        };
+        context.router
+            .send("/db/user/content/get", contentQueryParams, {
+                ignoreLogging: true
             })
-            resolve(userContent)
-        }).catch(error => {
-            reject(error)
-        })
-    })
-}
+            .then((response: IAORouterMessage) => {
+                let userContent: Array<AOContent> = new Array();
+                // ensures array in case response is single item
+                [].concat(response.data).forEach(content => {
+                    userContent.push(AOContent.fromObject(content));
+                });
+                userContent = userContent.sort((a, b) => {
+                    return parseInt(b.createdAt) - parseInt(a.createdAt);
+                });
+                resolve(userContent);
+            })
+            .catch(error => {
+                reject(error);
+            });
+    });
+};

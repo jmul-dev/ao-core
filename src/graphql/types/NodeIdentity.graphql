@@ -1,5 +1,11 @@
 # import * from "Content.graphql"
 
+input UserContentInputs {
+    id: ID
+    incomplete: Boolean
+    contentType: ContentType
+}
+
 type NodeIdentity {
     # Universal
     id: ID
@@ -12,9 +18,9 @@ type NodeIdentity {
     local: NodeIdentityLocal
     # Content specific
     # Staked content = uploaded/owned by user
-    stakedContent: [IContent]
+    stakedContent(inputs: UserContentInputs): [IContent]
     # Hosted content = downloaded/re-hosted by user
-    hostedContent(incomplete: Boolean): [IContent]
+    hostedContent(inputs: UserContentInputs): [IContent]
     # Advertiser specific
     # Channel Specific
 }
