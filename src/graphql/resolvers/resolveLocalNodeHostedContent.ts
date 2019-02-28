@@ -8,15 +8,15 @@ import AOContent, {
 
 export interface ILocalNode_ContentQuery_Inputs {
     inputs: {
-        id: string;
-        incomplete: boolean;
-        contentType: AOContentType;
+        id?: string;
+        incomplete?: boolean;
+        contentType?: AOContentType;
     };
 }
 // TODO: obj is of type NodeIdentity (sorry still no types outside of graphql)
 export default (
     obj: any,
-    args: ILocalNode_ContentQuery_Inputs,
+    args: ILocalNode_ContentQuery_Inputs = { inputs: {} },
     context: IGraphqlResolverContext,
     info: any
 ) => {
