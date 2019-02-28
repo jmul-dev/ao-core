@@ -39,12 +39,11 @@ export default function() {
                 metadataDatStats: resolvers.resolveDatStats,
                 fileDatStats: resolvers.resolveDatStats,
                 fileUrl: resolvers.resolveUrl,
-                baseChallengeSignature: resolvers.resolveSignatureVrs
-            },
-            VideoContent: {
+                baseChallengeSignature: resolvers.resolveSignatureVrs,
                 teaserUrl: resolvers.resolveUrl,
                 featuredImageUrl: resolvers.resolveUrl
             },
+            VideoContent: {},
             DappContent: {},
             NodeIdentity: {
                 stakedContent: resolvers.resolveLocalNodeStakedContent,
