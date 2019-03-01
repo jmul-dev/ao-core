@@ -19,6 +19,7 @@ import resolveSignatureVrs from "./resolveSignatureVrs";
 import resolveContentRetryHostDiscovery from "./resolveContentRetryHostDiscovery";
 import resolveExportData from "./resolveExportData";
 import resolveNodeStatistics from "./resolveNodeStatistics";
+import resolveDappUrl from "./resolveDappUrl";
 
 export default {
     // Query resolvers
@@ -44,5 +45,6 @@ export default {
     resolveExportData,
     // Field resolvers
     resolveUrl,
+    resolveDappUrl,
     resolveSignatureVrs
 };

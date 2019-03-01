@@ -44,7 +44,9 @@ export default function() {
                 featuredImageUrl: resolvers.resolveUrl
             },
             VideoContent: {},
-            DappContent: {},
+            DappContent: {
+                fileUrl: resolvers.resolveDappUrl
+            },
             NodeIdentity: {
                 stakedContent: resolvers.resolveLocalNodeStakedContent,
                 hostedContent: resolvers.resolveLocalNodeHostedContent

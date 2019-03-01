@@ -83,6 +83,19 @@ export default class Http {
             }
         );
         this.express.get(
+            `/${Http.RESOURCES_ENDPOINT}/:key/:folder/*`,
+            async (request, response: Response, next) => {
+                this._streamDappContent(request, response)
+                    .then(({ data }) => {
+                        // response.end();
+                    })
+                    .catch(error => {
+                        debug(error);
+                        next(error);
+                    });
+            }
+        );
+        this.express.get(
             `/${Http.ENCRYPTED_RESOURCES_ENDPOINT}/:key/:filename`,
             async (request, response: Response, next) => {
                 this._streamEncryptedFile(request, response)
@@ -119,6 +132,55 @@ export default class Http {
                     reject();
                 }
             });
+        });
+    }
+
+    private _streamDappContent(request, response) {
+        return new Promise((resolve, reject) => {
+            const datKey = request.params.key;
+            const folder = request.params.folder;
+            let contentPath = request.path.substring(
+                request.path.indexOf(datKey)
+            );
+            //First check to make sure the file exists in the dat check
+            const datCheckData: AODat_Check_Data = {
+                key: datKey
+            };
+            this.router
+                .send("/dat/exists", datCheckData)
+                .then(() => {
+                    const filePath = path.join("content", contentPath);
+                    const statFileData: IAOFS_FileStat_data = {
+                        path: filePath
+                    };
+                    this.router
+                        .send("/fs/stats", statFileData)
+                        .then(fileStats => {
+                            const fileSize = fileStats.data.size;
+                            let streamOptions: Object = {};
+                            //Images and smaller files
+                            let head200 = {
+                                "Accept-Ranges": "bytes",
+                                "Content-Length": fileSize
+                            };
+                            debug(
+                                `/${datKey}/${contentPath}: Content-Length: ${fileSize}`
+                            );
+                            response.writeHead(200, head200);
+                            const readFileData: IAOFS_ReadStream_Data = {
+                                stream: response,
+                                streamDirection: "read",
+                                streamOptions: streamOptions,
+                                readPath: filePath
+                            };
+                            this.router
+                                .send("/fs/readStream", readFileData)
+                                .then(resolve)
+                                .catch(reject);
+                        })
+                        .catch(reject);
+                })
+                .catch(reject);
         });
     }
 
