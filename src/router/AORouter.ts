@@ -373,54 +373,66 @@ export default class AORouter extends AORouterCoreProcessInterface {
                     return;
                 }
                 // 6. Match incoming messages to the requestId, this will be our response
-                receivingProcess.on(
-                    "message",
-                    function receivingProcessResponseHandler(
-                        response: IAORouterMessage
-                    ) {
-                        if (
-                            message.routerMessageId === response.routerMessageId
-                        ) {
-                            const responseTime = Date.now() - startTime;
-                            const responseTimeFormated = (
-                                responseTime / 1000
-                            ).toFixed(2);
-                            if (
-                                !incomingMessage.routerParams.ignoreLogging &&
-                                process.env.NODE_ENV !== "production"
-                            ) {
-                                debug(
-                                    `  [${
+                receivingProcess.on("message", receivingProcessResponseHandler);
+                debug(
+                    `${
+                        receivingRegistryEntry.name
+                    } currently has ${receivingProcess.listenerCount(
+                        "message"
+                    )} message listeners attached...`
+                );
+                function receivingProcessResponseHandler(
+                    response: IAORouterMessage
+                ) {
+                    if (message.routerMessageId === response.routerMessageId) {
+                        const responseTime = Date.now() - startTime;
+                        const responseTimeFormated = (
+                            responseTime / 1000
+                        ).toFixed(2);
+                        if (responseTime / 1000 > 5) {
+                            process.emitWarning(
+                                new Error(
+                                    `Response time for the following request took ${responseTimeFormated} seconds: [${
                                         message.routerMessageId
-                                    }][${event}]: ${from.name} <- ${
-                                        receivingRegistryEntry.name
-                                    }, duration[${responseTimeFormated}s] ${
-                                        response.error
-                                            ? ", rejecting with error"
-                                            : ""
-                                    }`
-                                );
-                            }
-                            if (response.error) {
-                                reject(response.error);
-                            } else {
-                                //for certain scenarios, we need to re-attach a read/write stream back to core.
-                                if (
-                                    messageHasStream &&
-                                    from.name === "ao-core" &&
-                                    reattachStream
-                                ) {
-                                    response.data["stream"] = reattachStream;
-                                }
-                                resolve(response);
-                            }
-                            receivingProcess.removeListener(
-                                "message",
-                                receivingProcessResponseHandler
+                                    }][${event}]`
+                                )
                             );
                         }
+                        if (
+                            !incomingMessage.routerParams.ignoreLogging &&
+                            process.env.NODE_ENV !== "production"
+                        ) {
+                            debug(
+                                `  [${message.routerMessageId}][${event}]: ${
+                                    from.name
+                                } <- ${
+                                    receivingRegistryEntry.name
+                                }, duration[${responseTimeFormated}s] ${
+                                    response.error
+                                        ? ", rejecting with error"
+                                        : ""
+                                }`
+                            );
+                        }
+                        if (response.error) {
+                            reject(response.error);
+                        } else {
+                            //for certain scenarios, we need to re-attach a read/write stream back to core.
+                            if (
+                                messageHasStream &&
+                                from.name === "ao-core" &&
+                                reattachStream
+                            ) {
+                                response.data["stream"] = reattachStream;
+                            }
+                            resolve(response);
+                        }
+                        receivingProcess.removeListener(
+                            "message",
+                            receivingProcessResponseHandler
+                        );
                     }
-                );
+                }
             });
         });
     }
@@ -561,7 +573,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
                     stdio: ["ipc", "inherit", "inherit", "pipe", "pipe"]
                 }
             );
-            entryProcess.setMaxListeners(16); // default = 10
+            entryProcess.setMaxListeners(32); // default = 10
             entryProcess.on("error", err => {
                 debug(`[${entry.name}] process: error`, err.message);
                 // TODO: handle err, log or something
