@@ -3,7 +3,7 @@
 type Mutation {
     register(inputs: RegisterInputs): NodeIdentity
     updateSettings(inputs: SettingsInputs): Settings
-    submitVideoContent(inputs: VideoContentSubmissionInputs): VideoContent
+    submitContent(inputs: ContentSubmissionInputs): IContent
     contentRequest(metadataDatKey: ID!): IContent
     contentPurchaseTransaction(
         inputs: ContentPurchaseTransactionInputs

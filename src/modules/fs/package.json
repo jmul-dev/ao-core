@@ -5,7 +5,7 @@
     "displayName": "AO FS",
     "description": "AO - FS package",
     "main": "fs/fs.js",
-    "bin":  "fs.bin.js",
+    "bin": "fs.bin.js",
     "AO": {
         "events": [
             "/fs/read",
@@ -20,7 +20,10 @@
             "/fs/decryptChecksum",
             "/fs/reencrypt",
             "/fs/dataExport",
-            "/fs/dataImport"
+            "/fs/dataImport",
+            "/fs/checkZipForIndexHtml",
+            "/fs/zipStream",
+            "/fs/unzipFile"
         ],
         "activationEvents": [
             "/fs/readStream",
@@ -28,7 +31,10 @@
             "/fs/decryptChecksum",
             "/fs/reencrypt",
             "/fs/dataExport",
-            "/fs/dataImport"
+            "/fs/dataImport",
+            "/fs/checkZipForIndexHtml",
+            "/fs/zipStream",
+            "/fs/unzipFile"
         ]
     }
-  }
+}

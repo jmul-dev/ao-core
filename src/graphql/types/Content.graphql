@@ -2,13 +2,13 @@ enum ContentType {
     VOD
     STREAM
     FILE
-    APP
+    DAPP
 }
 
 enum ContentLicense {
     AO
     TAO
-    CC    
+    CC
 }
 
 # Keep in sync with `src/models/AOContent.ts`
@@ -101,6 +101,8 @@ interface IContent {
     metadataDatStats: DatStats
     title: String
     description: String
+    teaserUrl: String
+    featuredImageUrl: String
     # Econ
     stake: Float
     fileSize: Float
@@ -117,6 +119,25 @@ interface IContent {
     isNetworkContent: Boolean
 }
 
+input ContentSubmissionInputs {
+    ethAddress: String!
+    content: Upload!
+    contentType: ContentType!
+    videoTeaser: Upload
+    featuredImage: Upload!
+    title: String!
+    description: String!
+    stake: Float!
+    stakePrimordialPercentage: Float
+    profitSplitPercentage: Float!
+    contentLicense: ContentLicense!
+    contentAttribution: String
+    taoId: String
+}
+
+#
+# ContentType === VOD
+#
 type VideoContent implements IContent {
     id: ID!
     contentHostId: ID
@@ -142,6 +163,8 @@ type VideoContent implements IContent {
     metadataDatStats: DatStats
     title: String
     description: String
+    teaserUrl: String
+    featuredImageUrl: String
     # Econ
     stake: Float
     fileSize: Float
@@ -157,22 +180,54 @@ type VideoContent implements IContent {
     recentlySeenHostsCount: Int
     isNetworkContent: Boolean
     # VideoContent
-    teaserUrl: String
-    featuredImageUrl: String
-    metadata: VideoMetadata    
+    metadata: VideoMetadata
 }
 
-input VideoContentSubmissionInputs {
-    ethAddress: String!
-    video: Upload
-    videoTeaser: Upload
-    featuredImage: Upload
-    title: String!
-    description: String!
-    stake: Float!
-    stakePrimordialPercentage: Float
-    profitSplitPercentage: Float!
+#
+# ContentType === DAPP
+#
+type DappContent implements IContent {
+    id: ID!
+    contentHostId: ID
+    state: ContentState!
+    stakeId: ID
+    nodeId: ID!
+    creatorId: ID!
+    taoId: ID
+    contentType: ContentType!
     contentLicense: ContentLicense!
     contentAttribution: String
-    taoId: String
+    isFolder: Boolean!
+    isMutable: Boolean!
+    fileName: String
+    fileDatKey: String
+    fileDatStats: DatStats
+    fileUrl: String
+    fileChecksum: String
+    baseChallenge: String
+    baseChallengeSignature: Signature
+    encChallenge: String
+    metadataDatKey: ID!
+    metadataDatStats: DatStats
+    title: String
+    description: String
+    teaserUrl: String
+    featuredImageUrl: String
+    # Econ
+    stake: Float
+    fileSize: Float
+    stakePrimordialPercentage: Float
+    profitSplitPercentage: Float
+    adSupport: Boolean
+    # Network
+    createdAt: String
+    transactions: ContentTransactions
+    purchaseId: String
+    lastSeenContentHost: NetworkContentHostEntry
+    totalHosts: Int
+    recentlySeenHostsCount: Int
+    isNetworkContent: Boolean
+    # DappContent
+    unpacked: Boolean
+    dappIndexPath: String
 }

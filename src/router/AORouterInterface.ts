@@ -86,8 +86,7 @@ export class AOSubprocessRouter extends EventEmitter
             return;
         }
         if (message.data && message.data.stream) {
-            console.log("Subprocess - attempt to create readStream on fd4");
-            message.data.stream = fs.createReadStream(null, { fd: 4 });
+            message.data.stream = fs.createReadStream(null, { fd: 3 });
         }
         const incomingRequest: IAORouterRequest = {
             id: message.requestId,

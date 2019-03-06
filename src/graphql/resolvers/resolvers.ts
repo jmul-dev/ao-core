@@ -1,14 +1,14 @@
 import resolveLocalNode from "./resolveLocalNode";
-import resolveSubmitVideoContent from "./resolveSubmitVideoContent";
+import resolveSubmitContent from "./resolveSubmitContent";
 import resolveDatStats from "./resolveDatStats";
 import resolveLocalNodeStakedContent from "./resolveLocalNodeStakedContent";
 import resolveLocalNodeHostedContent from "./resolveLocalNodeHostedContent";
-import resolveVideo from "./resolveVideo";
+import resolveUserContent from "./resolveUserContent";
 import resolveLogs from "./resolveLogs";
 import resolveSettings from "./resolveSettings";
 import resolveRegister from "./resolveRegister";
 import resolveUpdateSettings from "./resolveUpdateSettings";
-import resolveVideos from "./resolveVideos";
+import resolveNetworkContent from "./resolveNetworkContent";
 import resolveState from "./resolveState";
 import resolveUrl from "./resolveUrl";
 import resolveContentRequest from "./resolveContentRequest";
@@ -19,6 +19,7 @@ import resolveSignatureVrs from "./resolveSignatureVrs";
 import resolveContentRetryHostDiscovery from "./resolveContentRetryHostDiscovery";
 import resolveExportData from "./resolveExportData";
 import resolveNodeStatistics from "./resolveNodeStatistics";
+import resolveDappUrl from "./resolveDappUrl";
 
 export default {
     // Query resolvers
@@ -26,14 +27,14 @@ export default {
     resolveLocalNodeStakedContent,
     resolveLocalNodeHostedContent,
     resolveDatStats,
-    resolveVideo,
-    resolveVideos,
+    resolveUserContent,
+    resolveNetworkContent,
     resolveLogs,
     resolveSettings,
     resolveState,
     resolveNodeStatistics,
     // Mutation resolvers
-    resolveSubmitVideoContent,
+    resolveSubmitContent,
     resolveRegister,
     resolveUpdateSettings,
     resolveContentRequest,
@@ -44,5 +45,6 @@ export default {
     resolveExportData,
     // Field resolvers
     resolveUrl,
+    resolveDappUrl,
     resolveSignatureVrs
 };

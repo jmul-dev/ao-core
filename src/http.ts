@@ -1,18 +1,18 @@
-import express, { Express, Response } from "express";
-import schema from "./graphql/schema";
-import { Server, AddressInfo } from "net";
-import cors from "cors";
-import path from "path";
+import { graphiqlExpress, graphqlExpress } from "apollo-server-express";
+import { graphqlUploadExpress } from "graphql-upload";
 import { json } from "body-parser";
-import { graphqlExpress, graphiqlExpress } from "apollo-server-express";
-import { apolloUploadExpress } from "apollo-upload-server";
+import cors from "cors";
+import express, { Express, Response } from "express";
+import { AddressInfo, Server } from "net";
+import path from "path";
 import Debug from "./AODebug";
-import { AOCoreProcessRouter } from "./router/AORouterInterface";
-import { AODat_Check_Data } from "./modules/dat/dat";
-import { IAOFS_ReadStream_Data, IAOFS_FileStat_data } from "./modules/fs/fs";
-import { AODB_UserContentGet_Data } from "./modules/db/db";
 import AOUserSession from "./AOUserSession";
+import schema from "./graphql/schema";
 import AOContent from "./models/AOContent";
+import { AODat_Check_Data } from "./modules/dat/dat";
+import { AODB_UserContentGet_Data } from "./modules/db/db";
+import { IAOFS_FileStat_data, IAOFS_ReadStream_Data } from "./modules/fs/fs";
+import { AOCoreProcessRouter } from "./router/AORouterInterface";
 const debug = Debug("ao:http");
 
 export interface Http_Args {
@@ -52,7 +52,7 @@ export default class Http {
             "/graphql",
             cors({ origin: options.httpOrigin }),
             json(),
-            apolloUploadExpress({ maxFieldSize: "1gb" }),
+            graphqlUploadExpress({ maxFieldSize: "1gb" }),
             graphqlExpress({
                 schema: graphqlSchema,
                 // context given to our graphql resolvers
@@ -73,6 +73,19 @@ export default class Http {
             `/${Http.RESOURCES_ENDPOINT}/:key/:filename`,
             async (request, response: Response, next) => {
                 this._streamFile(request, response)
+                    .then(({ data }) => {
+                        // response.end();
+                    })
+                    .catch(error => {
+                        debug(error);
+                        next(error);
+                    });
+            }
+        );
+        this.express.get(
+            `/${Http.RESOURCES_ENDPOINT}/:key/:folder/*`,
+            async (request, response: Response, next) => {
+                this._streamDappContent(request, response)
                     .then(({ data }) => {
                         // response.end();
                     })
@@ -119,6 +132,55 @@ export default class Http {
                     reject();
                 }
             });
+        });
+    }
+
+    private _streamDappContent(request, response) {
+        return new Promise((resolve, reject) => {
+            const datKey = request.params.key;
+            const folder = request.params.folder;
+            let contentPath = request.path.substring(
+                request.path.indexOf(datKey)
+            );
+            //First check to make sure the file exists in the dat check
+            const datCheckData: AODat_Check_Data = {
+                key: datKey
+            };
+            this.router
+                .send("/dat/exists", datCheckData)
+                .then(() => {
+                    const filePath = path.join("content", contentPath);
+                    const statFileData: IAOFS_FileStat_data = {
+                        path: filePath
+                    };
+                    this.router
+                        .send("/fs/stats", statFileData)
+                        .then(fileStats => {
+                            const fileSize = fileStats.data.size;
+                            let streamOptions: Object = {};
+                            //Images and smaller files
+                            let head200 = {
+                                "Accept-Ranges": "bytes",
+                                "Content-Length": fileSize
+                            };
+                            debug(
+                                `/${datKey}/${contentPath}: Content-Length: ${fileSize}`
+                            );
+                            response.writeHead(200, head200);
+                            const readFileData: IAOFS_ReadStream_Data = {
+                                stream: response,
+                                streamDirection: "read",
+                                streamOptions: streamOptions,
+                                readPath: filePath
+                            };
+                            this.router
+                                .send("/fs/readStream", readFileData)
+                                .then(resolve)
+                                .catch(reject);
+                        })
+                        .catch(reject);
+                })
+                .catch(reject);
         });
     }
 
@@ -173,48 +235,58 @@ export default class Http {
         return new Promise((resolve, reject) => {
             const datKey = request.params.key;
             const filename = request.params.filename;
-
-            //make sure dat exists
+            const filePath = path.join("content", datKey, filename);
+            // 1. Make sure dat exists
             const datCheckData: AODat_Check_Data = {
                 key: datKey
             };
             this.router
                 .send("/dat/exists", datCheckData)
                 .then(() => {
-                    //get the decryption key
+                    // 2. Get corresponding user content (for decryption key)
                     const userContentData: AODB_UserContentGet_Data = {
                         query: { fileDatKey: datKey }
                     };
                     this.router
                         .send("/db/user/content/get", userContentData)
-                        .then(doc => {
-                            if (doc.data.length) {
-                                let docData: AOContent = AOContent.fromObject(
-                                    doc.data[0]
+                        .then(userContentResponse => {
+                            if (userContentResponse.data.length) {
+                                const content: AOContent = AOContent.fromObject(
+                                    userContentResponse.data[0]
                                 );
-                                let total = docData.fileSize;
-                                let streamOptions: Object = {};
-                                let head200 = {
-                                    "Accept-Ranges": "bytes",
-                                    "Content-Length": total
-                                };
-                                response.writeHead(200, head200);
-
-                                //Stream the freaken file
-                                const readFileData: IAOFS_ReadStream_Data = {
-                                    stream: response,
-                                    streamDirection: "read",
-                                    streamOptions: streamOptions,
-                                    readPath: path.join(
-                                        "content",
-                                        datKey,
-                                        filename
-                                    ),
-                                    key: docData.decryptionKey
+                                // 3. File stat (for content length)
+                                const statFileData: IAOFS_FileStat_data = {
+                                    path: filePath
                                 };
                                 this.router
-                                    .send("/fs/readStream", readFileData)
-                                    .then(resolve)
+                                    .send("/fs/stats", statFileData)
+                                    .then(fileStats => {
+                                        const fileSize = fileStats.data.size;
+                                        let streamOptions: Object = {};
+                                        let head200 = {
+                                            "Accept-Ranges": "bytes",
+                                            "Content-Length": fileSize
+                                        };
+                                        response.writeHead(200, head200);
+                                        const readFileData: IAOFS_ReadStream_Data = {
+                                            stream: response,
+                                            streamDirection: "read",
+                                            streamOptions: streamOptions,
+                                            readPath: path.join(
+                                                "content",
+                                                datKey,
+                                                filename
+                                            ),
+                                            key: content.decryptionKey
+                                        };
+                                        this.router
+                                            .send(
+                                                "/fs/readStream",
+                                                readFileData
+                                            )
+                                            .then(resolve)
+                                            .catch(reject);
+                                    })
                                     .catch(reject);
                             } else {
                                 reject(new Error("No such datKey"));

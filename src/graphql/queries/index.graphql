@@ -3,7 +3,7 @@
 enum CoreState {
     LOADING
     LOADING_CORE_SERVER
-    LOADING_CORE_STORAGE    
+    LOADING_CORE_STORAGE
     READY
     ERROR
 }
@@ -15,7 +15,7 @@ type Query {
     node: NodeIdentity
     statistics: NodeStatistics
     wallet: Wallet
-    videos(query: String): [VideoContent]
-    video(id: ID!): VideoContent
+    networkContent(query: String, contentType: ContentType!): [IContent]
+    userContent(id: ID!): IContent
     settings: Settings!
 }

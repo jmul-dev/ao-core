@@ -11,6 +11,7 @@ import {
 } from "./AORouterInterface";
 import { ICoreOptions } from "../index";
 const debug = Debug("ao:router");
+const streamDebug = Debug("ao:stream");
 const packageJson = require("../../package.json");
 // Core modules
 const fsPackageJson: IRegistryEntry = require("../modules/fs/package.json");
@@ -303,19 +304,44 @@ export default class AORouter extends AORouterCoreProcessInterface {
                         message.data.stream = true; // cannot send the stream object to subprocess
                     }
                 }
-                readStream
-                    .on("error", err => {
-                        debug(
-                            `Error piping stream, closing WriteableStream:`,
-                            err
-                        );
-                        writeStream.end();
-                    })
-                    .on("close", () => {
-                        // Placeholder, could potentially send response at this point or
-                        // trigger a callback to the caller
-                    })
-                    .pipe(writeStream);
+                readStream.on("error", error => {
+                    streamDebug(
+                        `[${
+                            message.data.writePath
+                        }] Error on read stream (AORouter), closing write stream:`,
+                        error
+                    );
+                });
+                readStream.on("close", () => {
+                    streamDebug(
+                        `[${
+                            message.data.writePath
+                        }] Read stream close (AORouter)`
+                    );
+                });
+                readStream.on("end", () => {
+                    streamDebug(
+                        `[${
+                            message.data.writePath
+                        }] Read stream end (AORouter), attempting to end writeStream...`
+                    );
+                });
+                writeStream.on("error", error => {
+                    streamDebug(
+                        `[${
+                            message.data.writePath
+                        }] Error on write stream (AORouter):`,
+                        error
+                    );
+                });
+                writeStream.on("close", () => {
+                    streamDebug(
+                        `[${
+                            message.data.writePath
+                        }] Write stream close (AORouter):`
+                    );
+                });
+                readStream.pipe(writeStream);
             }
             const startTime = Date.now();
             if (
@@ -323,71 +349,90 @@ export default class AORouter extends AORouterCoreProcessInterface {
                 process.env.NODE_ENV !== "production"
             ) {
                 debug(
-                    `routing event    [${message.routerMessageId}][${event}]: ${
-                        from.name
-                    } -> ${receivingRegistryEntry.name} ${
+                    `[${message.routerMessageId}][${event}]: ${from.name} -> ${
+                        receivingRegistryEntry.name
+                    } ${
                         messageHasStream ? "(with stream)" : ""
-                    }`
+                    } \tlisteners = ${receivingProcess.listenerCount(
+                        "message"
+                    ) + 1}`
                 );
             }
             // 5. Send the request out
             receivingProcess.send(message, (error?: Error) => {
                 if (error) {
                     if (messageHasStream) {
+                        streamDebug(
+                            `Error response to event [${
+                                message.event
+                            }], attempting to unpipe the stream...`
+                        );
                         readStream.unpipe(writeStream);
                     }
                     reject(error);
                     return;
                 }
                 // 6. Match incoming messages to the requestId, this will be our response
-                receivingProcess.on(
-                    "message",
-                    function receivingProcessResponseHandler(
-                        response: IAORouterMessage
-                    ) {
-                        if (
-                            message.routerMessageId === response.routerMessageId
-                        ) {
-                            const responseTime = Date.now() - startTime;
-                            const responseTimeFormated = (
-                                responseTime / 1000
-                            ).toFixed(2);
-                            if (
-                                !incomingMessage.routerParams.ignoreLogging &&
-                                process.env.NODE_ENV !== "production"
-                            ) {
-                                debug(
-                                    `routing response [${
+                receivingProcess.on("message", receivingProcessResponseHandler);
+                debug(
+                    `${
+                        receivingRegistryEntry.name
+                    } currently has ${receivingProcess.listenerCount(
+                        "message"
+                    )} message listeners attached...`
+                );
+                function receivingProcessResponseHandler(
+                    response: IAORouterMessage
+                ) {
+                    if (message.routerMessageId === response.routerMessageId) {
+                        const responseTime = Date.now() - startTime;
+                        const responseTimeFormated = (
+                            responseTime / 1000
+                        ).toFixed(2);
+                        if (responseTime / 1000 > 5) {
+                            process.emitWarning(
+                                new Error(
+                                    `Response time for the following request took ${responseTimeFormated} seconds: [${
                                         message.routerMessageId
-                                    }][${event}]: ${from.name} <- ${
-                                        receivingRegistryEntry.name
-                                    }, duration[${responseTimeFormated}s] ${
-                                        response.error
-                                            ? ", rejecting with error"
-                                            : ""
-                                    }`
-                                );
-                            }
-                            if (response.error) {
-                                reject(response.error);
-                            } else {
-                                //for certain scenarios, we need to re-attach a read/write stream back to core.
-                                if (
-                                    messageHasStream &&
-                                    from.name === "ao-core" &&
-                                    reattachStream
-                                ) {
-                                    response.data["stream"] = reattachStream;
-                                }
-                                resolve(response);
-                            }
-                            receivingProcess.removeListener(
-                                "message",
-                                receivingProcessResponseHandler
+                                    }][${event}]`
+                                )
                             );
                         }
+                        if (
+                            !incomingMessage.routerParams.ignoreLogging &&
+                            process.env.NODE_ENV !== "production"
+                        ) {
+                            debug(
+                                `  [${message.routerMessageId}][${event}]: ${
+                                    from.name
+                                } <- ${
+                                    receivingRegistryEntry.name
+                                }, duration[${responseTimeFormated}s] ${
+                                    response.error
+                                        ? ", rejecting with error"
+                                        : ""
+                                }`
+                            );
+                        }
+                        if (response.error) {
+                            reject(response.error);
+                        } else {
+                            //for certain scenarios, we need to re-attach a read/write stream back to core.
+                            if (
+                                messageHasStream &&
+                                from.name === "ao-core" &&
+                                reattachStream
+                            ) {
+                                response.data["stream"] = reattachStream;
+                            }
+                            resolve(response);
+                        }
+                        receivingProcess.removeListener(
+                            "message",
+                            receivingProcessResponseHandler
+                        );
                     }
-                );
+                }
             });
         });
     }
@@ -528,6 +573,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
                     stdio: ["ipc", "inherit", "inherit", "pipe", "pipe"]
                 }
             );
+            entryProcess.setMaxListeners(32); // default = 10
             entryProcess.on("error", err => {
                 debug(`[${entry.name}] process: error`, err.message);
                 // TODO: handle err, log or something
@@ -553,7 +599,6 @@ export default class AORouter extends AORouterCoreProcessInterface {
                     this.incomingMessageRouter(message, entry, entryProcess);
                 }
             });
-
             if (entryProcess.pid) {
                 this.addProcessIntanceToEntry(entry.name, entryProcess);
             } else {
