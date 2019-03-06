@@ -244,12 +244,26 @@ export default class AOEth extends AORouterInterface {
                                 ethNetworkId: `${networkId}`,
                                 ethNetworkRpc
                             });
-                            provider.on("end", (error?: Error) => {
-                                this.providerReconnectDebounce = 100; // reset the debounce
-                                this.reconnectEthereumProvider(
-                                    this.rpcEndpoint
-                                );
-                            });
+                            let recconectAttempted = false;
+                            const reconnectAttempt = (error?: Error) => {
+                                if (error) {
+                                    errorLog(
+                                        `Ethereum provider on:error`,
+                                        error
+                                    );
+                                } else {
+                                    debug(`Ethereum provider on:end`);
+                                }
+                                if (!recconectAttempted) {
+                                    recconectAttempted = true;
+                                    this.providerReconnectDebounce = 100; // reset the debounce
+                                    this.reconnectEthereumProvider(
+                                        this.rpcEndpoint
+                                    );
+                                }
+                            };
+                            provider.on("end", reconnectAttempt);
+                            provider.once("error", reconnectAttempt);
                         }
                     })
                     .catch(networkError => {
@@ -264,6 +278,7 @@ export default class AOEth extends AORouterInterface {
                     });
             })
             .catch(error => {
+                errorLog(error);
                 request.reject(error);
             });
     }
@@ -332,7 +347,7 @@ export default class AOEth extends AORouterInterface {
     }
 
     private reconnectEthereumProvider(rpcEndpoint: string) {
-        debug(`attempting to reconnect ethereum provider...`);
+        debug(`Attempting to reconnect ethereum provider...`);
         this.getEthereumProvider(rpcEndpoint)
             .then(provider => {
                 this.web3.setProvider(provider);
@@ -518,6 +533,9 @@ export default class AOEth extends AORouterInterface {
 
     private unsubscribeBuyContentEvents() {
         if (this.events.BuyContent) {
+            debug(
+                `Attempting to unsubscribe from BuyContent event listener...`
+            );
             this.events.BuyContent.unsubscribe();
             delete this.events.BuyContent;
         }
