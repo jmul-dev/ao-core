@@ -544,17 +544,11 @@ export default class AODat extends AORouterInterface {
                                         !datDownloadComplete
                                     ) {
                                         debug(
-                                            `[${key}] Failed to download, no one is hosting`
-                                        );
-                                        debug(
-                                            `network connected: ${
+                                            `[${key}] Failed to download, no one is hosting. connected[${
                                                 dat.network.connected
-                                            }`
-                                        );
-                                        debug(
-                                            `network connecting: ${
+                                            }] connecting[${
                                                 dat.network.connecting
-                                            }`
+                                            }].`
                                         );
                                         this.removeDat(key);
                                         reject(

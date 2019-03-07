@@ -263,17 +263,18 @@ export default class AOEth extends AORouterInterface {
                                 }
                             };
                             provider.on("end", reconnectAttempt);
-                            provider.once("error", reconnectAttempt);
+                            provider.on("error", reconnectAttempt);
                         }
                     })
                     .catch(networkError => {
+                        errorLog(networkError);
                         // Failure location 2, ws endpoint is likely an invalid RPC endpoint
                         // even thought the WS connection was established
                         let error = new EthereumNetworkError(
                             `Error fetching network id, likely due to an invalid rpc endpoint`,
                             ErrorCode.INVALID_RPC
                         );
-                        errorLog(`Error fetching network id:`, error);
+                        errorLog(error);
                         rejectWithError(this.web3, provider, error);
                     });
             })
