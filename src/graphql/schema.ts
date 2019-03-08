@@ -50,6 +50,7 @@ export default function() {
             DappContent: {
                 fileUrl: resolvers.resolveDappUrl
             },
+            PdfContent: {},
             NodeIdentity: {
                 stakedContent: resolvers.resolveLocalNodeStakedContent,
                 hostedContent: resolvers.resolveLocalNodeHostedContent
