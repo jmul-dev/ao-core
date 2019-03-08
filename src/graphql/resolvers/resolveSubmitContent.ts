@@ -219,6 +219,8 @@ export default (
                                                         dappContentJson.dappIndexPath =
                                                             checkForIndexResponse.data.indexPath;
                                                         dappContentJson.unpacked = false;
+                                                        dappContentJson.mimetype =
+                                                            "text/html";
                                                         contentJson = dappContentJson;
                                                         localResolve({
                                                             contentReadStream: stream,
@@ -244,6 +246,8 @@ export default (
                                                 let dappContentJson: AODappContent = contentJson as AODappContent;
                                                 dappContentJson.dappIndexPath = `index.html`;
                                                 dappContentJson.unpacked = false;
+                                                dappContentJson.mimetype =
+                                                    "text/html";
                                                 contentJson = dappContentJson;
                                                 localResolve({
                                                     contentReadStream: zippedContentStream,
@@ -260,6 +264,7 @@ export default (
                                     }
                                     break;
                                 default:
+                                    contentJson.mimetype = mimetype;
                                     localResolve({
                                         contentReadStream: stream,
                                         filename

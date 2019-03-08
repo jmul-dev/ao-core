@@ -1,7 +1,6 @@
 enum ContentType {
     VOD
-    STREAM
-    FILE
+    PDF
     DAPP
 }
 
@@ -85,6 +84,7 @@ interface IContent {
     creatorId: ID!
     taoId: ID
     contentType: ContentType!
+    mimetype: String!
     contentLicense: ContentLicense!
     contentAttribution: String
     isFolder: Boolean!
@@ -147,6 +147,7 @@ type VideoContent implements IContent {
     creatorId: ID!
     taoId: ID
     contentType: ContentType!
+    mimetype: String!
     contentLicense: ContentLicense!
     contentAttribution: String
     isFolder: Boolean!
@@ -195,6 +196,7 @@ type DappContent implements IContent {
     creatorId: ID!
     taoId: ID
     contentType: ContentType!
+    mimetype: String!
     contentLicense: ContentLicense!
     contentAttribution: String
     isFolder: Boolean!
