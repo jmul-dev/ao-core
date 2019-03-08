@@ -138,11 +138,14 @@ export default abstract class AOContent {
     static fromObject(contentObject): AOContent {
         let instance: AOContent;
         switch (contentObject.contentType) {
-            case "VOD":
+            case AOContentTypes.VOD:
                 instance = new AOVideoContent();
                 break;
-            case "DAPP":
+            case AOContentTypes.DAPP:
                 instance = new AODappContent();
+                break;
+            case AOContentTypes.PDF:
+                instance = new AOPdfContent();
                 break;
             default:
                 console.warn(
@@ -203,6 +206,7 @@ export default abstract class AOContent {
             "creatorId",
             "taoId",
             "contentType",
+            "mimetype",
             "contentLicense",
             "contentAttribution",
             "isFolder",
