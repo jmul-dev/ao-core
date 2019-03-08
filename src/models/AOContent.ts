@@ -28,7 +28,7 @@ export const AOContentState = Object.freeze({
 // NOTE: match graphql/types/content.graphql -> ContentType enum
 export const AOContentTypes = Object.freeze({
     VOD: "VOD",
-    FILE: "PDF",
+    PDF: "PDF",
     DAPP: "DAPP"
 });
 
@@ -98,6 +98,7 @@ export default abstract class AOContent {
     public creatorId: string;
     public taoId: string;
     public contentType: AOContentType;
+    public mimetype: string;
     public contentLicense: AOContentLicense = "AO";
     public contentAttribution: string;
     public isFolder: boolean;
@@ -137,11 +138,14 @@ export default abstract class AOContent {
     static fromObject(contentObject): AOContent {
         let instance: AOContent;
         switch (contentObject.contentType) {
-            case "VOD":
+            case AOContentTypes.VOD:
                 instance = new AOVideoContent();
                 break;
-            case "DAPP":
+            case AOContentTypes.DAPP:
                 instance = new AODappContent();
+                break;
+            case AOContentTypes.PDF:
+                instance = new AOPdfContent();
                 break;
             default:
                 console.warn(
@@ -202,6 +206,7 @@ export default abstract class AOContent {
             "creatorId",
             "taoId",
             "contentType",
+            "mimetype",
             "contentLicense",
             "contentAttribution",
             "isFolder",
@@ -261,7 +266,13 @@ export class AOVideoContent extends AOContent {
 
 export class AODappContent extends AOContent {
     public contentType: AOContentType = "DAPP";
+    public mimetype: string = "text/html";
     public unpacked: boolean = false;
     // dappIndexPath is the path within the content's zip folder to index.html
     public dappIndexPath: string;
+}
+
+export class AOPdfContent extends AOContent {
+    public contentType: AOContentType = "PDF";
+    public mimetype: string = "application/pdf";
 }

@@ -1,7 +1,6 @@
 enum ContentType {
     VOD
-    STREAM
-    FILE
+    PDF
     DAPP
 }
 
@@ -85,6 +84,7 @@ interface IContent {
     creatorId: ID!
     taoId: ID
     contentType: ContentType!
+    mimetype: String!
     contentLicense: ContentLicense!
     contentAttribution: String
     isFolder: Boolean!
@@ -147,6 +147,7 @@ type VideoContent implements IContent {
     creatorId: ID!
     taoId: ID
     contentType: ContentType!
+    mimetype: String!
     contentLicense: ContentLicense!
     contentAttribution: String
     isFolder: Boolean!
@@ -195,6 +196,7 @@ type DappContent implements IContent {
     creatorId: ID!
     taoId: ID
     contentType: ContentType!
+    mimetype: String!
     contentLicense: ContentLicense!
     contentAttribution: String
     isFolder: Boolean!
@@ -230,4 +232,52 @@ type DappContent implements IContent {
     # DappContent
     unpacked: Boolean
     dappIndexPath: String
+}
+
+#
+# ContentType === DAPP
+#
+type PdfContent implements IContent {
+    id: ID!
+    contentHostId: ID
+    state: ContentState!
+    stakeId: ID
+    nodeId: ID!
+    creatorId: ID!
+    taoId: ID
+    contentType: ContentType!
+    mimetype: String!
+    contentLicense: ContentLicense!
+    contentAttribution: String
+    isFolder: Boolean!
+    isMutable: Boolean!
+    fileName: String
+    fileDatKey: String
+    fileDatStats: DatStats
+    fileUrl: String
+    fileChecksum: String
+    baseChallenge: String
+    baseChallengeSignature: Signature
+    encChallenge: String
+    metadataDatKey: ID!
+    metadataDatStats: DatStats
+    title: String
+    description: String
+    teaserUrl: String
+    featuredImageUrl: String
+    # Econ
+    stake: Float
+    fileSize: Float
+    stakePrimordialPercentage: Float
+    profitSplitPercentage: Float
+    adSupport: Boolean
+    # Network
+    createdAt: String
+    transactions: ContentTransactions
+    purchaseId: String
+    lastSeenContentHost: NetworkContentHostEntry
+    totalHosts: Int
+    recentlySeenHostsCount: Int
+    isNetworkContent: Boolean
+    # PdfContent
 }
