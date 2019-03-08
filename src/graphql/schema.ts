@@ -26,6 +26,9 @@ export default function() {
                         case AOContent.Types.DAPP:
                             typename = "DappContent";
                             break;
+                        case AOContent.Types.PDF:
+                            typename = "PdfContent";
+                            break;
                         default:
                             debug(
                                 `IContent type resolver, unkown contentType: ${
