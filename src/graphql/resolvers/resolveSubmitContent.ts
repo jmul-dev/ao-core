@@ -263,6 +263,15 @@ export default (
                                         );
                                     }
                                     break;
+                                case AOContent.Types.PDF:
+                                    if (mimetype.indexOf("pdf") < 0) {
+                                        localReject(
+                                            new Error(
+                                                `Invalid content mimetype, expecting pdf file, got ${mimetype}`
+                                            )
+                                        );
+                                        break;
+                                    }
                                 default:
                                     contentJson.mimetype = mimetype;
                                     localResolve({
