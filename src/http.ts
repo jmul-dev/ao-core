@@ -70,6 +70,19 @@ export default class Http {
             );
         }
         this.express.get(
+            `/${Http.ENCRYPTED_RESOURCES_ENDPOINT}/:key/:filename`,
+            async (request, response: Response, next) => {
+                this._streamEncryptedFile(request, response)
+                    .then(() => {
+                        // response.end();
+                    })
+                    .catch(error => {
+                        debug(error);
+                        next(error);
+                    });
+            }
+        );
+        this.express.get(
             `/${Http.RESOURCES_ENDPOINT}/:key/:filename`,
             async (request, response: Response, next) => {
                 this._streamFile(request, response)
@@ -87,19 +100,6 @@ export default class Http {
             async (request, response: Response, next) => {
                 this._streamDappContent(request, response)
                     .then(({ data }) => {
-                        // response.end();
-                    })
-                    .catch(error => {
-                        debug(error);
-                        next(error);
-                    });
-            }
-        );
-        this.express.get(
-            `/${Http.ENCRYPTED_RESOURCES_ENDPOINT}/:key/:filename`,
-            async (request, response: Response, next) => {
-                this._streamEncryptedFile(request, response)
-                    .then(() => {
                         // response.end();
                     })
                     .catch(error => {
