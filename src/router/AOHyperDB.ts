@@ -1,14 +1,13 @@
-import hyperdb from "hyperdb";
+import aodb from "aodb";
 import discovery from "discovery-swarm";
 import swarmDefaults from "dat-swarm-defaults";
 import Debug from "../AODebug";
 import { IAOStatus } from "../models/AOStatus";
-const debug = Debug("ao:hyperdb");
+const debug = Debug("ao:taodb");
 
 export interface AO_Hyper_Options {
     dbKey: string;
     dbPath: string;
-    autoAuth: boolean;
 }
 
 export interface HDB_ListValueRow {
@@ -18,10 +17,9 @@ export interface HDB_ListValueRow {
 }
 
 export default class AOHyperDB {
-    private db: hyperdb;
+    private aodb: aodb;
     private dbKey: string;
     private dbPath: string;
-    private autoAuth: boolean;
     private swarm: discovery;
     public connectionStatus: IAOStatus = "DISCONNECTED";
 
@@ -31,69 +29,66 @@ export default class AOHyperDB {
         return new Promise((resolve, reject) => {
             this.dbKey = hyperOptions.dbKey;
             this.dbPath = hyperOptions.dbPath;
-            this.autoAuth = hyperOptions.autoAuth;
-
-            this.db = hyperdb(this.dbPath, this.dbKey, {
-                valueEncoding: "utf-8"
+            this.aodb = aodb(this.dbPath, this.dbKey, {
+                valueEncoding: "json",
+                reduce: (a, b) => a
             });
-            this.db.on("ready", () => {
+            this.aodb.on("ready", () => {
                 debug(`connected`);
                 this.connectionStatus = "CONNECTED";
                 this.swarm = discovery(
                     swarmDefaults({
                         id: this.dbKey,
                         stream: peer => {
-                            return this.db.replicate({
-                                live: true,
-                                userData: this.db.local.key
-                            });
+                            return this.aodb.replicate();
                         }
                     })
                 );
                 this.swarm.join(this.dbKey);
-                this.swarm.on("connection", peer => {
-                    //TODO: Get rid of this debug when we're all done.
-                    debug("swarm peer connected: " + peer.id.toString("hex"));
-                    if (!this.autoAuth) {
-                        return;
-                    }
-
-                    if (!peer.remoteUserData) {
-                        debug("peer missing user data");
-                        return;
-                    }
-
-                    let remotePeerKey;
-                    try {
-                        remotePeerKey = Buffer.from(peer.remoteUserData);
-                    } catch (err) {
-                        console.error(err);
-                        return;
-                    }
-
-                    this.db.authorized(remotePeerKey, (err, auth) => {
-                        debug(
-                            remotePeerKey.toString("hex"),
-                            "authorized? " + auth
-                        );
-                        if (err) {
-                            return debug(err);
-                        }
-                        if (!auth) {
-                            this.db.authorize(remotePeerKey, err => {
-                                if (err) {
-                                    return debug(err);
-                                }
-                                debug(
-                                    remotePeerKey.toString("hex"),
-                                    "was just authorized!"
-                                );
-                            });
-                        }
-                    });
-                });
+                this.swarm.on("connection", this.onConnection.bind(this));
                 resolve();
             });
+        });
+    }
+
+    /**
+     * Auto-authorize new peers for write access
+     * @param peer
+     */
+    private onConnection(peer) {
+        debug("swarm peer connected: " + peer.id.toString("hex"));
+        if (!peer.remoteUserData) {
+            debug("peer missing user data");
+            return;
+        }
+
+        let remotePeerKey;
+        try {
+            remotePeerKey = Buffer.from(peer.remoteUserData);
+        } catch (err) {
+            debug(err);
+            return;
+        }
+
+        this.aodb.authorized(remotePeerKey, (err, auth) => {
+            if (err) {
+                debug(err);
+                return;
+            }
+            if (!auth) {
+                this.aodb.authorize(remotePeerKey, err => {
+                    if (err) {
+                        debug(`Failed to authorize remote peer:`, err);
+                        return;
+                    }
+                    debug(
+                        remotePeerKey.toString("hex"),
+                        "was just authorized!"
+                    );
+                });
+            } else {
+                debug(remotePeerKey.toString("hex"), "authorized");
+            }
         });
     }
 
@@ -101,58 +96,69 @@ export default class AOHyperDB {
         return this.swarm ? this.swarm.connected : 0;
     }
 
-    public insert(key, value) {
+    public insert({
+        key,
+        value,
+        writerSignature,
+        writerAddress,
+        schemaKey,
+        options = {}
+    }) {
         return new Promise((resolve, reject) => {
-            let insertValue = value;
-            if (typeof value == "object") {
-                insertValue = JSON.stringify(value);
+            try {
+                let optionsWithSchemaKey = {
+                    ...options,
+                    schemaKey
+                };
+                this.aodb.put(
+                    key,
+                    value,
+                    writerSignature,
+                    writerAddress,
+                    optionsWithSchemaKey,
+                    (err?: Error) => {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            resolve();
+                        }
+                    }
+                );
+            } catch (error) {
+                reject(error);
             }
-            this.db.put(key, insertValue, err => {
+        });
+    }
+
+    public query(key: string, options?: object) {
+        return new Promise((resolve, reject) => {
+            this.aodb.get(key, options, (err: Error, node) => {
                 if (err) {
                     reject(err);
                 } else {
-                    resolve();
+                    if (node) resolve(node.value);
+                    reject(new Error(`No value found for key: ${key}`));
                 }
             });
         });
     }
 
-    public query(key) {
+    public exists(key: string) {
         return new Promise((resolve, reject) => {
-            this.db.get(key, (err, nodes) => {
+            this.aodb.get(key, (err: Error, node) => {
                 if (err) {
-                    reject(err);
-                } else {
-                    if (nodes.length) {
-                        resolve(nodes[0].value);
-                    } else {
-                        debug("No such record");
-                        reject(null);
-                    }
-                }
-            });
-        });
-    }
-
-    public exists(key) {
-        return new Promise((resolve, reject) => {
-            this.db.get(key, (err, nodes) => {
-                if (err) {
-                    debug(err);
                     resolve(false);
+                } else if (node) {
+                    resolve(true);
                 } else {
-                    if (nodes.length) {
-                        resolve(true);
-                    } else {
-                        resolve(false);
-                    }
+                    resolve(false);
                 }
             });
         });
     }
 
     public list(
-        key,
+        key: string,
         options: { recursive?: boolean; reverse?: boolean; gt?: boolean } = {
             recursive: true,
             reverse: true,
@@ -160,13 +166,11 @@ export default class AOHyperDB {
         }
     ) {
         return new Promise((resolve, reject) => {
-            debug(`list: ${key}`);
-            this.db.list(key, options, (err, nodes) => {
+            this.aodb.list(key, options, (err: Error, nodes) => {
                 if (err) {
                     reject(err);
                 } else {
                     if (nodes.length) {
-                        //Result is the key paths in an array format split by / for easy perusing
                         let result = [];
                         for (let i = 0; i < nodes.length; i++) {
                             const node = nodes[i];
@@ -182,24 +186,22 @@ export default class AOHyperDB {
         });
     }
 
-    public listValue(key) {
+    public listValue(key: string, options?: object) {
         return new Promise((resolve, reject) => {
-            this.db.list(key, (err, nodes) => {
+            this.aodb.list(key, options, (err: Error, nodes) => {
                 if (err) {
                     reject(err);
                 } else {
                     if (nodes.length) {
-                        //Result is the key paths in an array format split by / for easy perusing
                         let result: Array<HDB_ListValueRow> = [];
                         for (let i = 0; i < nodes.length; i++) {
                             const node = nodes[i];
-                            const split_key = node[0].key.split("/");
-                            const node_repack = {
-                                key: split_key[0],
-                                splitKey: split_key,
-                                value: node[0].value
-                            };
-                            result.push(node_repack);
+                            const splitKey = node.key.split("/");
+                            result.push({
+                                key: node.key,
+                                splitKey,
+                                value: node.value
+                            });
                         }
                         resolve(result);
                     } else {
@@ -210,29 +212,44 @@ export default class AOHyperDB {
         });
     }
 
-    public watch(key) {
+    public watch(key: string) {
         return new Promise((resolve, reject) => {
-            let watcher = this.db.watch(key, () => {});
+            let watcher = this.aodb.watch(key, () => {});
             watcher.on("watching", () => {
                 debug("Watching for change on key: " + key);
             });
             watcher.on("change", () => {
                 debug("Detected change on key: " + key);
-                resolve();
                 watcher.destroy();
+                resolve();
             });
         });
     }
 
-    public delete(key) {
+    public delete({ key, writerSignature, writerAddress }) {
         return new Promise((resolve, reject) => {
-            this.db.del(key, err => {
+            this.aodb.del(key, writerSignature, writerAddress, (err: Error) => {
                 if (err) {
                     reject(err);
                 } else {
                     resolve();
                 }
             });
+        });
+    }
+
+    public addSchema({ key, value, writerSignature, writerAddress }) {
+        return new Promise((resolve, reject) => {
+            this.aodb.addSchema(
+                key,
+                value,
+                writerSignature,
+                writerAddress,
+                (err: Error) => {
+                    if (err) reject(err);
+                    resolve();
+                }
+            );
         });
     }
 }

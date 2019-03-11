@@ -1,7 +1,6 @@
 import Debug, { debugLogFile } from "../../AODebug";
 import path from "path";
 import AOContent from "../../models/AOContent";
-import AONetworkContent from "../../models/AONetworkContent";
 import { AO_Hyper_Options, HDB_ListValueRow } from "../../router/AOHyperDB";
 import AORouterInterface, {
     IAORouterRequest,
@@ -176,8 +175,7 @@ export default class AOP2P extends AORouterInterface {
             .then(() => {
                 const hyperDBOptions: AO_Hyper_Options = {
                     dbKey: this.dbKey,
-                    dbPath: this.dbPath,
-                    autoAuth: true
+                    dbPath: this.dbPath
                 };
                 this.hyperdb
                     .init(hyperDBOptions)
