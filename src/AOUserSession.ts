@@ -33,7 +33,7 @@ import {
     IAOFS_ReadStream_Data,
     IAOFS_UnzipFile_Data
 } from "./modules/fs/fs";
-import {
+import AOP2P, {
     AOP2P_Add_Discovery_Data,
     AOP2P_GetContentHosts_Data,
     AOP2P_IndexDataRow,
@@ -784,12 +784,14 @@ export default class AOUserSession {
             );
             return null;
         }
-        //TODO: make sure the below key route gets made with the static method out of p2p.
         const p2pWatchKeyRequest: AOP2P_Watch_AND_Get_IndexData_Data = {
-            // TODO: use AOP2P static methods to generate this path (or let AOP2P generate the path for us)
-            key: `/AOSpace/${content.contentType}/${
-                content.metadataDatKey
-            }/nodes/${content.nodeId}/${content.fileDatKey}/indexData`,
+            key: AOP2P.routeNodeRegistration({
+                nameSpace: "/AO",
+                contentType: content.contentType,
+                metaDatKey: content.metadataDatKey,
+                ethAddress: content.nodeId,
+                fileDatKey: content.fileDatKey
+            }),
             ethAddress: this.ethAddress
         };
         debug(p2pWatchKeyRequest);

@@ -125,7 +125,7 @@ export default class AOP2P extends AORouterInterface {
     constructor(args: AORouterSubprocessArgs) {
         super({ ...args, enableHyperDB: true });
         this.storageLocation = args.storageLocation;
-        this.taoDbRootDir = "/AOSpace/";
+        this.taoDbRootDir = "/AO";
 
         //New Content upload
         this.contentIngestion = new AOContentIngestion(this.router);
@@ -238,7 +238,7 @@ export default class AOP2P extends AORouterInterface {
                 // 2. List all keys within each content type
                 const contentListPromises = contentTypes.map(contentType => {
                     return this.hyperdb.list(
-                        `${this.taoDbRootDir}${contentType}/`,
+                        `${this.taoDbRootDir}/${contentType}/`,
                         { recursive: false }
                     );
                 });
@@ -846,33 +846,41 @@ export default class AOP2P extends AORouterInterface {
         ethAddress,
         metaDatKey
     }: AOP2P_ContentRegistrationRoute) {
-        return nameSpace + contentType + "/" + ethAddress + "/" + metaDatKey;
+        return (
+            nameSpace + "/" + contentType + "/" + ethAddress + "/" + metaDatKey
+        );
     }
 
     /**
      * Prefix Route for your own ethAddress
+     *
+     * Eth Address / App ID / Content Type / nodes
      */
     public static routeSelfRegistrationPrefix({
         nameSpace,
         ethAddress,
         contentType
     }) {
-        return ethAddress + "/" + nameSpace + contentType + "/nodes/";
+        return ethAddress + "/" + nameSpace + "/" + contentType + "/nodes/";
     }
 
     /**
      * Prefix Route for the App's namespace
+     *
+     * App ID / Content Type / metadataDatKey / nodes /
      */
     public static routeBaseRegistrationPrefix({
         nameSpace,
         contentType,
         metaDatKey
     }) {
-        return nameSpace + contentType + "/" + metaDatKey + "/nodes/";
+        return nameSpace + "/" + contentType + "/" + metaDatKey + "/nodes/";
     }
 
     /**
      * Registration Data route to IndexData
+     *
+     * Eth Address / fileDatKey / indexData
      */
     public static routeRegistrationData({ ethAddress, fileDatKey }) {
         return ethAddress + "/" + fileDatKey + "/indexData";
@@ -880,6 +888,8 @@ export default class AOP2P extends AORouterInterface {
 
     /**
      * Entire route for self registration
+     *
+     * Eth Address / App ID / Content Type / nodes / Eth Address / fileDatKey / indexData
      */
     public static routeSelfRegistration({
         nameSpace,
@@ -898,6 +908,8 @@ export default class AOP2P extends AORouterInterface {
 
     /**
      * Entire route for node registration
+     *
+     * App ID / Content Type / metadataDatKey / nodes / ethAddress / fileDatKey / indexData
      */
     public static routeNodeRegistration({
         nameSpace,

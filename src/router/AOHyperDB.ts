@@ -7,7 +7,7 @@ const debug = Debug("ao:taodb");
 
 export interface AO_Hyper_Options {
     dbKey: string;
-    dbPath: string;
+    dbPath: string | Function;
 }
 
 export interface HDB_ListValueRow {
@@ -19,35 +19,41 @@ export interface HDB_ListValueRow {
 export default class AOHyperDB {
     private aodb: aodb;
     private dbKey: string;
-    private dbPath: string;
+    private dbPath: string | Function;
     private swarm: discovery;
     public connectionStatus: IAOStatus = "DISCONNECTED";
 
-    //Init is separate from the constructor since we don't know all use cases until other modules are fully loaded (say web3/eth address)
-    public init(hyperOptions: AO_Hyper_Options) {
+    public init(hyperOptions: AO_Hyper_Options): Promise<any> {
         this.connectionStatus = "CONNECTING";
         return new Promise((resolve, reject) => {
-            this.dbKey = hyperOptions.dbKey;
-            this.dbPath = hyperOptions.dbPath;
-            this.aodb = aodb(this.dbPath, this.dbKey, {
-                valueEncoding: "json",
-                reduce: (a, b) => a
-            });
-            this.aodb.on("ready", () => {
-                debug(`connected`);
-                this.connectionStatus = "CONNECTED";
-                this.swarm = discovery(
-                    swarmDefaults({
-                        id: this.dbKey,
-                        stream: peer => {
-                            return this.aodb.replicate();
-                        }
-                    })
-                );
-                this.swarm.join(this.dbKey);
-                this.swarm.on("connection", this.onConnection.bind(this));
-                resolve();
-            });
+            try {
+                this.dbKey = hyperOptions.dbKey;
+                this.dbPath = hyperOptions.dbPath;
+                this.aodb = new aodb(this.dbPath, this.dbKey, {
+                    valueEncoding: "json",
+                    reduce: (a, b) => a
+                });
+                this.aodb.on("ready", () => {
+                    // Overwrite the dbKey assigned with whatever aodb has (in case dbKey was undefined or mismatch).
+                    // Just ensures a sync between aodb and swarm
+                    this.dbKey = this.aodb.key.toString("hex");
+                    debug(`ready, aodb public key: ${this.dbKey}`);
+                    this.connectionStatus = "CONNECTED";
+                    this.swarm = discovery(
+                        swarmDefaults({
+                            id: this.dbKey,
+                            stream: peer => {
+                                return this.aodb.replicate();
+                            }
+                        })
+                    );
+                    this.swarm.join(this.dbKey);
+                    this.swarm.on("connection", this.onConnection.bind(this));
+                    resolve();
+                });
+            } catch (error) {
+                reject(error);
+            }
         });
     }
 
@@ -96,6 +102,10 @@ export default class AOHyperDB {
         return this.swarm ? this.swarm.connected : 0;
     }
 
+    public createSignHash(key: string, value: any): string {
+        return this.aodb.createSignHash(key, value);
+    }
+
     public insert({
         key,
         value,
@@ -103,7 +113,7 @@ export default class AOHyperDB {
         writerAddress,
         schemaKey,
         options = {}
-    }) {
+    }): Promise<any> {
         return new Promise((resolve, reject) => {
             try {
                 let optionsWithSchemaKey = {
@@ -130,7 +140,16 @@ export default class AOHyperDB {
         });
     }
 
-    public query(key: string, options?: object) {
+    public batchInsert(batch: Array<object>): Promise<any> {
+        return new Promise((resolve, reject) => {
+            this.aodb.batch(batch, (err: Error) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+    }
+
+    public query(key: string, options?: object): Promise<any> {
         return new Promise((resolve, reject) => {
             this.aodb.get(key, options, (err: Error, node) => {
                 if (err) {
@@ -143,7 +162,7 @@ export default class AOHyperDB {
         });
     }
 
-    public exists(key: string) {
+    public exists(key: string): Promise<boolean> {
         return new Promise((resolve, reject) => {
             this.aodb.get(key, (err: Error, node) => {
                 if (err) {
@@ -164,7 +183,7 @@ export default class AOHyperDB {
             reverse: true,
             gt: false
         }
-    ) {
+    ): Promise<Array<object>> {
         return new Promise((resolve, reject) => {
             this.aodb.list(key, options, (err: Error, nodes) => {
                 if (err) {
@@ -186,7 +205,7 @@ export default class AOHyperDB {
         });
     }
 
-    public listValue(key: string, options?: object) {
+    public listValue(key: string, options?: object): Promise<Array<object>> {
         return new Promise((resolve, reject) => {
             this.aodb.list(key, options, (err: Error, nodes) => {
                 if (err) {
@@ -212,7 +231,7 @@ export default class AOHyperDB {
         });
     }
 
-    public watch(key: string) {
+    public watch(key: string): Promise<any> {
         return new Promise((resolve, reject) => {
             let watcher = this.aodb.watch(key, () => {});
             watcher.on("watching", () => {
@@ -226,7 +245,7 @@ export default class AOHyperDB {
         });
     }
 
-    public delete({ key, writerSignature, writerAddress }) {
+    public delete({ key, writerSignature, writerAddress }): Promise<any> {
         return new Promise((resolve, reject) => {
             this.aodb.del(key, writerSignature, writerAddress, (err: Error) => {
                 if (err) {
@@ -238,7 +257,12 @@ export default class AOHyperDB {
         });
     }
 
-    public addSchema({ key, value, writerSignature, writerAddress }) {
+    public addSchema({
+        key,
+        value,
+        writerSignature,
+        writerAddress
+    }): Promise<any> {
         return new Promise((resolve, reject) => {
             this.aodb.addSchema(
                 key,
