@@ -5,8 +5,9 @@ import { IAORouterMessage } from "../../router/AORouter";
 import { AONetworkContent } from "../../models/AONetworkContent";
 
 interface IVideos_Args {
-    contentType: AOContentType;
+    contentType?: AOContentType;
     query?: string;
+    id?: string;
 }
 
 export default (
@@ -19,9 +20,10 @@ export default (
         const networkQueryData: AODB_NetworkContentGet_Data = {
             query: {
                 status: "imported",
-                "content.contentType": args.contentType
+                "content.contentType": args.contentType || undefined,
+                "content.id": args.id || undefined
             },
-            fuzzyQuery: args.query,
+            fuzzyQuery: args.query || undefined,
             contentOnly: false
         };
         context.router
@@ -45,9 +47,11 @@ export default (
                     .filter(content => {
                         // Filter out current user's content from this feed (so they dont see their own content
                         // showing up in the network content listing)
-                        return (
-                            content.creatorId !== context.userSession.ethAddress
-                        );
+                        // TODO: this should really just be an argument on the query
+                        return args.id
+                            ? true
+                            : content.creatorId !==
+                                  context.userSession.ethAddress;
                     })
                     .sort((a, b) => {
                         // Sorting algorithm -> recently seen host -> created at date
