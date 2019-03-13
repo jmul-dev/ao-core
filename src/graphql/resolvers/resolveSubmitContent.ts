@@ -301,6 +301,7 @@ export default (
                             filename.substr(filename.lastIndexOf(".") + 1);
                         contentJson.fileName = fileName;
                         contentJson.fileUrl = fileName;
+                        contentJson.encryptionAlgorithm = "aes-256-ctr"; // TODO: this should be passed to the write stream method
                         const writeStreamData: IAOFS_WriteStream_Data = {
                             stream: contentReadStream,
                             streamDirection: "write",

@@ -107,6 +107,7 @@ export default abstract class AOContent {
     public fileDatKey: string;
     public fileUrl: string;
     public fileChecksum: string;
+    public encryptionAlgorithm: string;
     public baseChallenge: string;
     public baseChallengeSignature: string;
     public encChallenge: string;
@@ -215,6 +216,7 @@ export default abstract class AOContent {
             "fileDatKey",
             "fileUrl",
             "fileChecksum",
+            "encryptionAlgorithm",
             "title",
             "description",
             "fileSize",

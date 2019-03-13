@@ -94,6 +94,7 @@ interface IContent {
     fileDatStats: DatStats
     fileUrl: String
     fileChecksum: String
+    encryptionAlgorithm: String
     baseChallenge: String
     baseChallengeSignature: Signature
     encChallenge: String
@@ -157,6 +158,7 @@ type VideoContent implements IContent {
     fileDatStats: DatStats
     fileUrl: String
     fileChecksum: String
+    encryptionAlgorithm: String
     baseChallenge: String
     baseChallengeSignature: Signature
     encChallenge: String
@@ -206,6 +208,7 @@ type DappContent implements IContent {
     fileDatStats: DatStats
     fileUrl: String
     fileChecksum: String
+    encryptionAlgorithm: String
     baseChallenge: String
     baseChallengeSignature: Signature
     encChallenge: String
@@ -256,6 +259,7 @@ type PdfContent implements IContent {
     fileDatStats: DatStats
     fileUrl: String
     fileChecksum: String
+    encryptionAlgorithm: String
     baseChallenge: String
     baseChallengeSignature: Signature
     encChallenge: String

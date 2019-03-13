@@ -203,8 +203,21 @@ export default class Http {
                         resourceLocation
                     );
                     if (resourceOptions.encrypted) {
+                        const encryptionAlgorithm =
+                            content.encryptionAlgorithm || "aes-256-ctr";
+                        const availableCiphers = crypto.getCiphers();
+                        if (
+                            availableCiphers.indexOf(encryptionAlgorithm) === -1
+                        ) {
+                            reject(
+                                new Error(
+                                    `Unsupported cipher: ${encryptionAlgorithm}`
+                                )
+                            );
+                            return;
+                        }
                         const decryptionTransformer = crypto.createDecipher(
-                            "aes-256-ctr", // TODO: pull algorithm from the content itself
+                            encryptionAlgorithm,
                             content.decryptionKey
                         );
                         contentStream
