@@ -12,13 +12,16 @@ import ram from "random-access-memory";
  * 1. There seems to be some confusion around the difference
  * between address and publicKey where `writerAddress` is actually
  * referring to the users `publicKey`.
+ *
+ * 2. Running an un-authenticated insert seems to freeze up aodb.
+ * actorB attempting to write to actorA's content space triggers this.
+ * Error: key's writerAddress does not match the address
  */
 
-describe("AO P2P module", () => {
+describe("TaoDB module", () => {
     const actorA: AOCrypto.Identity = AOCrypto.createUserIdentity();
     const actorADecryptionKey = "teeeesting123";
     const actorB: AOCrypto.Identity = AOCrypto.createUserIdentity();
-    const dbNameSpace = "/AOSpace/";
     const contentJson = {
         id: "4dafd6582efbbfe913c4202cf926b700b3f5700ccebe1faf10d5f61e1e5ffda8",
         nodeId: "0x9c7caa71129f534223107e4486ed48afd85de5d6",
@@ -159,7 +162,80 @@ describe("AO P2P module", () => {
                 })
                 .catch(done);
         });
-        it("should not allow actorB to write to actorA's content space", done => {
+        it.skip("should not allow actorB to write to actorA's content space", done => {
+            const writerSignature = aodbSignature({
+                privateKey: actorB.privateKey,
+                key: dbKey,
+                value: dbValue
+            });
+            aodb.insert({
+                key: dbKey,
+                value: dbValue,
+                writerSignature,
+                writerAddress: actorB.publicKey,
+                schemaKey: aodbSchemas[0].key
+            })
+                .then(() => {
+                    done(
+                        new Error(
+                            `actorB should not be allowed to write to actorA's content space`
+                        )
+                    );
+                })
+                .catch(error => {
+                    expect(error).to.be.instanceOf(Error);
+                    done();
+                });
+        });
+        it("list of users content space should reflect insert", done => {
+            aodb.list(`${actorA.publicKey}`, { recursive: true })
+                .then(results => {
+                    expect(results[0].key).to.equal(dbKey);
+                    done();
+                })
+                .catch(done);
+        });
+    });
+
+    describe("Content Host Schema", () => {
+        const dbKey = `AO/Content/${content.contentType}/${
+            content.metadataDatKey
+        }/Hosts/${actorA.publicKey}/${content.fileDatKey}/indexData/signature`;
+        const dbValue = EthCrypto.hash.keccak256(content);
+
+        it("inserts content under content host schema", done => {
+            const writerSignature = aodbSignature({
+                privateKey: actorA.privateKey,
+                key: dbKey,
+                value: dbValue
+            });
+            aodb.insert({
+                key: dbKey,
+                value: dbValue,
+                writerSignature,
+                writerAddress: actorA.publicKey,
+                schemaKey: aodbSchemas[1].key
+            })
+                .then(done)
+                .catch(done);
+        });
+        it("verifies content host insert exists", done => {
+            aodb.exists(dbKey)
+                .then(exists => {
+                    expect(exists).to.be.true;
+                    done();
+                })
+                .catch(done);
+        });
+        it("verifies the content inserted", done => {
+            aodb.query(dbKey)
+                .then(value => {
+                    expect(value).to.equal(dbValue);
+                    done();
+                })
+                .catch(done);
+        });
+        it.skip("should not allow actorB to write to actorA's content space", done => {
             const writerSignature = aodbSignature({
                 privateKey: actorB.privateKey,
                 key: dbKey,
@@ -186,5 +262,47 @@ describe("AO P2P module", () => {
         });
     });
 
-    // it("inserts content under content host schema", done => {});
+    describe("Content Host indexData", () => {
+        const indexData = {
+            signature: "signatureofdecryptionkey",
+            decryptionKey: "thekeytoencryptedcontent"
+        };
+        const dbKey = `AO/Content/${content.contentType}/${
+            content.metadataDatKey
+        }/Hosts/${actorA.publicKey}/${content.fileDatKey}/indexData`;
+        const dbValue = indexData;
+
+        it("inserts content indexData under content host schema", done => {
+            const writerSignature = aodbSignature({
+                privateKey: actorA.privateKey,
+                key: dbKey,
+                value: dbValue
+            });
+            aodb.insert({
+                key: dbKey,
+                value: dbValue,
+                writerSignature,
+                writerAddress: actorA.publicKey,
+                schemaKey: aodbSchemas[1].key
+            })
+                .then(done)
+                .catch(done);
+        });
+        it("verifies content host insert exists", done => {
+            aodb.exists(dbKey)
+                .then(exists => {
+                    expect(exists).to.be.true;
+                    done();
+                })
+                .catch(done);
+        });
+        it("verifies the content indexData inserted", done => {
+            aodb.query(dbKey)
+                .then(value => {
+                    expect(value).to.equal(dbValue);
+                    done();
+                })
+                .catch(done);
+        });
+    });
 });

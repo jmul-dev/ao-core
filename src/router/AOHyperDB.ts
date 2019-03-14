@@ -10,10 +10,15 @@ export interface AO_Hyper_Options {
     dbPath: string | Function;
 }
 
-export interface HDB_ListValueRow {
+export interface AODB_Node<T> {
     key: string;
     splitKey: Array<string>;
-    value: any;
+    pointerKey: string;
+    schemaKey: string;
+    value: T;
+    deleted: boolean;
+    writerSignature: string;
+    writerAddress: string;
 }
 
 export default class AOHyperDB {
@@ -183,43 +188,60 @@ export default class AOHyperDB {
             reverse: true,
             gt: false
         }
-    ): Promise<Array<object>> {
+    ): Promise<Array<AODB_Node<any>>> {
         return new Promise((resolve, reject) => {
-            this.aodb.list(key, options, (err: Error, nodes) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    if (nodes.length) {
-                        let result = [];
-                        for (let i = 0; i < nodes.length; i++) {
-                            const node = nodes[i];
-                            let node_split = node[0].key.split("/");
-                            result.push(node_split);
-                        }
-                        resolve(result);
+            this.aodb.list(
+                key,
+                options,
+                (err: Error, nodes: Array<AODB_Node<any>>) => {
+                    if (err) {
+                        reject(err);
                     } else {
-                        resolve([]);
+                        let results = [];
+                        if (nodes.length) {
+                            for (let i = 0; i < nodes.length; i++) {
+                                const node = nodes[i];
+                                results.push({
+                                    key: node.key,
+                                    splitKey: node.key.split("/"),
+                                    pointerKey: node.pointerKey,
+                                    schemaKey: node.schemaKey,
+                                    value: node.value,
+                                    deleted: node.deleted,
+                                    writerSignature: node.writerSignature,
+                                    writerAddress: node.writerAddress
+                                });
+                            }
+                        }
+                        resolve(results);
                     }
                 }
-            });
+            );
         });
     }
 
-    public listValue(key: string, options?: object): Promise<Array<object>> {
+    public listValue(
+        key: string,
+        options?: object
+    ): Promise<Array<AODB_Node<any>>> {
         return new Promise((resolve, reject) => {
             this.aodb.list(key, options, (err: Error, nodes) => {
                 if (err) {
                     reject(err);
                 } else {
                     if (nodes.length) {
-                        let result: Array<HDB_ListValueRow> = [];
+                        let result: Array<AODB_Node<any>> = [];
                         for (let i = 0; i < nodes.length; i++) {
                             const node = nodes[i];
-                            const splitKey = node.key.split("/");
                             result.push({
                                 key: node.key,
-                                splitKey,
-                                value: node.value
+                                splitKey: node.key.split("/"),
+                                pointerKey: node.pointerKey,
+                                schemaKey: node.schemaKey,
+                                value: node.value,
+                                deleted: node.deleted,
+                                writerSignature: node.writerSignature,
+                                writerAddress: node.writerAddress
                             });
                         }
                         resolve(result);
