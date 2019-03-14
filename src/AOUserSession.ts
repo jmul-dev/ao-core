@@ -1256,7 +1256,7 @@ export default class AOUserSession {
         importDats.push(
             this.router.send("/dat/importSingle", fileImportDatData)
         );
-        if (content.creatorId == this.ethAddress) {
+        if (content.creatorEthAddress == this.ethAddress) {
             importDats.push(
                 this.router.send("/dat/importSingle", metaImportDatData)
             );
@@ -1275,7 +1275,7 @@ export default class AOUserSession {
                 resumeDats.push(
                     this.router.send("/dat/resumeSingle", fileResumeDatData)
                 );
-                if (content.creatorId == this.ethAddress) {
+                if (content.creatorEthAddress == this.ethAddress) {
                     resumeDats.push(
                         this.router.send("/dat/resumeSingle", metaResumeDatData)
                     );

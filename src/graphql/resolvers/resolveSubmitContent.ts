@@ -52,7 +52,6 @@ export default (
          * Quick note on this process, we initialize and store content in temp
          * locations
          */
-        const ethAddress: string = args.inputs.ethAddress;
         const contentTempId: string = md5(new Date());
         const metadataTempId: string = md5(new Date() + "-preview");
         const contentTempPath: string = path.join("content", contentTempId);
@@ -60,8 +59,10 @@ export default (
         const metadataFileFields = ["featuredImage", "videoTeaser"];
 
         let contentJson: AOContent = AOContent.fromObject({
-            nodeId: ethAddress,
-            creatorId: ethAddress,
+            nodeId: context.userSession.id,
+            nodeEthAddress: context.userSession.ethAddress,
+            creatorNodeId: context.userSession.id,
+            creatorEthAddress: context.userSession.ethAddress,
             taoId: args.inputs.taoId,
             contentType: args.inputs.contentType,
             contentLicense: args.inputs.contentLicense,
@@ -434,7 +435,7 @@ export default (
                         message: `[${
                             contentJson.title
                         }] has been uploaded locally, waiting for content stake transaction before this content becomes part of the AO network`,
-                        userId: ethAddress
+                        userId: context.userSession.ethAddress
                     });
                 }
             )

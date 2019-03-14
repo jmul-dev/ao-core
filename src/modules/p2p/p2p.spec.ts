@@ -24,7 +24,7 @@ const personB: identity = EthCrypto.createIdentity();
 const contentJson = {
     id: "4dafd6582efbbfe913c4202cf926b700b3f5700ccebe1faf10d5f61e1e5ffda8",
     nodeId: "0x9c7caa71129f534223107e4486ed48afd85de5d6",
-    creatorId: "0x9c7caa71129f534223107e4486ed48afd85de5d6",
+    creatorNodeId: "0x9c7caa71129f534223107e4486ed48afd85de5d6",
     metadataDatKey:
         "b7e815da776b9d1610e710bf2e8eca3f8d1972112f62f49997ca3281b73a75ee",
     contentType: "VOD",
