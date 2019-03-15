@@ -1,22 +1,10 @@
 import "mocha";
 import { expect } from "chai";
 import AOContent from "../models/AOContent";
-import AOHyperDB, { AO_Hyper_Options } from "./AOHyperDB";
+import AOHyperDB, { AO_Hyper_Options, AODB_Node } from "./AOHyperDB";
 import * as AOCrypto from "../AOCrypto";
 import EthCrypto from "eth-crypto";
 import ram from "random-access-memory";
-
-/**
- * Active questions:
- *
- * 1. There seems to be some confusion around the difference
- * between address and publicKey where `writerAddress` is actually
- * referring to the users `publicKey`.
- *
- * 2. Running an un-authenticated insert seems to freeze up aodb.
- * actorB attempting to write to actorA's content space triggers this.
- * Error: key's writerAddress does not match the address
- */
 
 describe("TaoDB module", () => {
     const actorA: AOCrypto.Identity = AOCrypto.createUserIdentity();
@@ -66,13 +54,37 @@ describe("TaoDB module", () => {
             writerAddress: ""
         },
         {
-            // Content Host schema
+            // Content Host signature schema
             type: "add-schema",
             key:
                 "schema/AO/Content/*/*/Hosts/%writerAddress%/*/indexData/signature",
             value: {
                 keySchema:
                     "AO/Content/*/*/Hosts/%writerAddress%/*/indexData/signature",
+                valueValidationKey: "",
+                keyValidation: ""
+            },
+            writerSignature: "",
+            writerAddress: ""
+        },
+        {
+            // Content Host indexData schema
+            type: "add-schema",
+            key: "schema/AO/Content/*/*/Hosts/%writerAddress%/*/indexData",
+            value: {
+                keySchema: "AO/Content/*/*/Hosts/%writerAddress%/*/indexData",
+                valueValidationKey: "",
+                keyValidation: ""
+            },
+            writerSignature: "",
+            writerAddress: ""
+        },
+        {
+            // User Content schema (CLASH)
+            type: "add-schema",
+            key: "schema/*/AO/Content/*/*/signature",
+            value: {
+                keySchema: "*/AO/Content/*/*/signature",
                 valueValidationKey: "",
                 keyValidation: ""
             },
@@ -162,6 +174,14 @@ describe("TaoDB module", () => {
                 })
                 .catch(done);
         });
+        it("list of users content space should reflect insert", done => {
+            aodb.list(`${actorA.publicKey}`, { recursive: true })
+                .then(results => {
+                    expect(results[0].key).to.equal(dbKey);
+                    done();
+                })
+                .catch(done);
+        });
         it.skip("should not allow actorB to write to actorA's content space", done => {
             const writerSignature = aodbSignature({
                 privateKey: actorB.privateKey,
@@ -187,17 +207,65 @@ describe("TaoDB module", () => {
                     done();
                 });
         });
-        it("list of users content space should reflect insert", done => {
-            aodb.list(`${actorA.publicKey}`, { recursive: true })
-                .then(results => {
-                    expect(results[0].key).to.equal(dbKey);
-                    done();
+        it("should not allow actorB to write to actorA's content space under malicous schema", done => {
+            const malicousValue =
+                "I am inserting a fake signature on top of you";
+            const writerSignature = aodbSignature({
+                privateKey: actorB.privateKey,
+                key: dbKey,
+                value: malicousValue
+            });
+            aodb.insert({
+                key: dbKey,
+                value: malicousValue,
+                writerSignature,
+                writerAddress: actorB.publicKey,
+                schemaKey: aodbSchemas[3].key
+            })
+                .then(() => {
+                    // Insert should have failed, but lets check the actual data to be sure
+                    aodb.list(dbKey)
+                        .then((nodes: Array<AODB_Node<any>>) => {
+                            expect(nodes.length).to.equal(1);
+                            expect(nodes[0].key).to.equal(dbKey);
+                            expect(nodes[0].value).to.equal(dbValue);
+                            done();
+                        })
+                        .catch(done);
+                    // done(
+                    //     new Error(
+                    //         `actorB should not be allowed to write to actorA's content space under malicous schema`
+                    //     )
+                    // );
                 })
+                .catch(error => {
+                    expect(error).to.be.instanceOf(Error);
+                    done();
+                });
+        });
+        it("inserts content under user content schema (actorB)", done => {
+            const dbKey = `${actorB.publicKey}/AO/Content/${
+                content.contentType
+            }/${content.metadataDatKey}/signature`;
+            const writerSignature = aodbSignature({
+                privateKey: actorB.privateKey,
+                key: dbKey,
+                value: dbValue
+            });
+            aodb.insert({
+                key: dbKey,
+                value: dbValue,
+                writerSignature,
+                writerAddress: actorB.publicKey,
+                schemaKey: aodbSchemas[0].key
+            })
+                .then(done)
                 .catch(done);
         });
     });
 
     describe("Content Host Schema", () => {
+        // schema/AO/Content/*/*/Hosts/%writerAddress%/*/indexData/signature
         const dbKey = `AO/Content/${content.contentType}/${
             content.metadataDatKey
         }/Hosts/${actorA.publicKey}/${content.fileDatKey}/indexData/signature`;
@@ -283,7 +351,7 @@ describe("TaoDB module", () => {
                 value: dbValue,
                 writerSignature,
                 writerAddress: actorA.publicKey,
-                schemaKey: aodbSchemas[1].key
+                schemaKey: aodbSchemas[2].key
             })
                 .then(done)
                 .catch(done);
@@ -299,7 +367,9 @@ describe("TaoDB module", () => {
         it("verifies the content indexData inserted", done => {
             aodb.query(dbKey)
                 .then(value => {
-                    expect(value).to.equal(dbValue);
+                    expect(value).to.be.an.instanceOf(Object);
+                    expect(value.signature).to.equal(dbValue.signature);
+                    expect(value.decryptionKey).to.equal(dbValue.decryptionKey);
                     done();
                 })
                 .catch(done);

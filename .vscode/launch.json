@@ -28,6 +28,14 @@
             "env": {
                 "DEBUG": "ao:*"
             }
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "TaoDB Test",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": ["run", "test-aodb"],
+            "port": 9229
         }
     ]
 }
