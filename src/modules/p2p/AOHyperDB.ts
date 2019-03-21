@@ -1,8 +1,8 @@
 import aodb from "aodb";
 import discovery from "discovery-swarm";
 import swarmDefaults from "dat-swarm-defaults";
-import Debug from "../AODebug";
-import { IAOStatus } from "../models/AOStatus";
+import Debug from "../../AODebug";
+import { IAOStatus } from "../../models/AOStatus";
 const debug = Debug("ao:taodb");
 
 export interface AO_Hyper_Options {
@@ -10,7 +10,7 @@ export interface AO_Hyper_Options {
     dbPath: string | Function;
 }
 
-export interface AODB_Node<T> {
+export interface AODB_Entry<T> {
     key: string;
     splitKey: Array<string>;
     pointerKey: string;
@@ -28,7 +28,7 @@ export default class AOHyperDB {
     private swarm: discovery;
     public connectionStatus: IAOStatus = "DISCONNECTED";
 
-    public init(hyperOptions: AO_Hyper_Options): Promise<any> {
+    public start(hyperOptions: AO_Hyper_Options): Promise<any> {
         this.connectionStatus = "CONNECTING";
         return new Promise((resolve, reject) => {
             try {
@@ -188,12 +188,12 @@ export default class AOHyperDB {
             reverse: true,
             gt: false
         }
-    ): Promise<Array<AODB_Node<any>>> {
+    ): Promise<Array<AODB_Entry<any>>> {
         return new Promise((resolve, reject) => {
             this.aodb.list(
                 key,
                 options,
-                (err: Error, nodes: Array<AODB_Node<any>>) => {
+                (err: Error, nodes: Array<AODB_Entry<any>>) => {
                     if (err) {
                         reject(err);
                     } else {
@@ -217,39 +217,6 @@ export default class AOHyperDB {
                     }
                 }
             );
-        });
-    }
-
-    public listValue(
-        key: string,
-        options?: object
-    ): Promise<Array<AODB_Node<any>>> {
-        return new Promise((resolve, reject) => {
-            this.aodb.list(key, options, (err: Error, nodes) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    if (nodes.length) {
-                        let result: Array<AODB_Node<any>> = [];
-                        for (let i = 0; i < nodes.length; i++) {
-                            const node = nodes[i];
-                            result.push({
-                                key: node.key,
-                                splitKey: node.key.split("/"),
-                                pointerKey: node.pointerKey,
-                                schemaKey: node.schemaKey,
-                                value: node.value,
-                                deleted: node.deleted,
-                                writerSignature: node.writerSignature,
-                                writerAddress: node.writerAddress
-                            });
-                        }
-                        resolve(result);
-                    } else {
-                        reject();
-                    }
-                }
-            });
         });
     }
 

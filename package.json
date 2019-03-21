@@ -18,7 +18,7 @@
         "test-module-dat": "MODULE=dat npm run test-module",
         "test-module-fs": "MODULE=fs npm run test-module",
         "test-ao-crypto": "mocha --exit -r ts-node/register src/AOCrypto.spec.ts",
-        "test-aodb": "mocha --exit -r ts-node/register src/router/AOHyperDB.spec.ts",
+        "test-aodb": "mocha --exit -r ts-node/register src/modules/p2p/AOHyperDB.spec.ts",
         "list-native-deps": "node ./node_modules/node-has-native-dependencies/index.js",
         "debug": "node --inspect --nolazy dist/bin.js"
     },

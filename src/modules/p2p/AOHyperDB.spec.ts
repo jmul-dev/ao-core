@@ -1,8 +1,8 @@
 import "mocha";
 import { expect } from "chai";
-import AOContent from "../models/AOContent";
-import AOHyperDB, { AO_Hyper_Options, AODB_Node } from "./AOHyperDB";
-import * as AOCrypto from "../AOCrypto";
+import AOContent from "../../models/AOContent";
+import AOHyperDB, { AO_Hyper_Options, AODB_Entry } from "./AOHyperDB";
+import * as AOCrypto from "../../AOCrypto";
 import EthCrypto from "eth-crypto";
 import ram from "random-access-memory";
 
@@ -106,7 +106,7 @@ describe("TaoDB module", () => {
                 return ram();
             }
         };
-        aodb.init(aodbOptions)
+        aodb.start(aodbOptions)
             .then(done)
             .catch(done);
     });
@@ -225,7 +225,7 @@ describe("TaoDB module", () => {
                 .then(() => {
                     // Insert should have failed, but lets check the actual data to be sure
                     aodb.list(dbKey)
-                        .then((nodes: Array<AODB_Node<any>>) => {
+                        .then((nodes: Array<AODB_Entry<any>>) => {
                             expect(nodes.length).to.equal(1);
                             expect(nodes[0].key).to.equal(dbKey);
                             expect(nodes[0].value).to.equal(dbValue);
