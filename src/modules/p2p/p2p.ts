@@ -426,7 +426,7 @@ export default class AOP2P extends AORouterInterface {
             .then(() => {
                 //Query
                 this.aodb
-                    .query(requestData.key)
+                    .get(requestData.key)
                     .then(value => {
                         request.respond(value);
                     })
@@ -446,7 +446,7 @@ export default class AOP2P extends AORouterInterface {
         }: AOP2P_Watch_AND_Get_IndexData_Data = request.data;
         debug(`[${request.id}] _handleWatchAndGetIndexData`);
         this.aodb
-            .query(key)
+            .get(key)
             .then((indexDataString: string) => {
                 debug(`[${indexDataString}] indexDataString`);
                 this.parseIndexDataByEth({ indexDataString, ethAddress })
@@ -471,7 +471,7 @@ export default class AOP2P extends AORouterInterface {
                             .watch(key)
                             .then(() => {
                                 this.aodb
-                                    .query(key)
+                                    .get(key)
                                     .then((indexDataString: string) => {
                                         this.parseIndexDataByEth({
                                             indexDataString,
@@ -732,7 +732,7 @@ export default class AOP2P extends AORouterInterface {
         const nodeRoute = AOP2P.routeNodeRegistration(nodeRouteArgs);
 
         this.aodb
-            .query(nodeRoute)
+            .get(nodeRoute)
             .then((indexDataString: string) => {
                 let indexData: object = {};
                 let indexDataRow: AOP2P_IndexDataRow = {

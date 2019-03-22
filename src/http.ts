@@ -13,6 +13,7 @@ import { AODat_Check_Data } from "./modules/dat/dat";
 import { AODB_UserContentGet_Data } from "./modules/db/db";
 import { IAOFS_FileStat_data, IAOFS_ReadStream_Data } from "./modules/fs/fs";
 import { AOCoreProcessRouter } from "./router/AORouterInterface";
+import TaoDB from "./modules/p2p/TaoDB";
 const debug = Debug("ao:http");
 
 export interface Http_Args {
@@ -41,7 +42,8 @@ export default class Http {
     constructor(
         router: AOCoreProcessRouter,
         options: Http_Args,
-        userSession: AOUserSession
+        userSession: AOUserSession,
+        taoDb: TaoDB
     ) {
         this.router = router;
         this.corePort = options.corePort;
@@ -59,7 +61,8 @@ export default class Http {
                 context: {
                     router,
                     options,
-                    userSession
+                    userSession,
+                    taoDb
                 }
             })
         );
