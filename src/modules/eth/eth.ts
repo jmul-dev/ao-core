@@ -189,13 +189,12 @@ export default class AOEth extends AORouterInterface {
             if (web3) web3.setProvider(null);
             if (provider) provider.disconnect();
             request.reject(error);
-        };
-        // 1. Setup web3 instance
-        this.web3 = new Web3();
+        };        
         // 2. Get the provider
         this.getEthereumProvider(this.rpcEndpoint)
             .then(provider => {
-                this.web3.setProvider(provider);
+                // 1. Setup web3 instance
+                this.web3 = new Web3(provider);
                 // 3. Attempt to fetch the network id. This will tell us if the rpc
                 // connection is valid.
                 this.web3.eth.net
