@@ -21,7 +21,7 @@ export interface AODB_Entry<T> {
     writerAddress: string;
 }
 
-export default class AOHyperDB {
+export default class AODB {
     private aodb: aodb;
     private dbKey: string;
     private dbPath: string | Function;
@@ -154,7 +154,7 @@ export default class AOHyperDB {
         });
     }
 
-    public query(key: string, options?: object): Promise<any> {
+    public get(key: string, options?: object): Promise<any> {
         return new Promise((resolve, reject) => {
             this.aodb.get(key, options, (err: Error, node) => {
                 if (err) {

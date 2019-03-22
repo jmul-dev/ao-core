@@ -1,7 +1,7 @@
 import Debug, { debugLogFile } from "../../AODebug";
 import path from "path";
 import AOContent from "../../models/AOContent";
-import { AO_Hyper_Options, AODB_Entry } from "./AOHyperDB";
+import { AO_Hyper_Options, AODB_Entry } from "./AODB";
 import AORouterInterface, {
     IAORouterRequest,
     AORouterSubprocessArgs
@@ -12,7 +12,7 @@ import AOContentHostsUpdater from "./AOContentHostsUpdater";
 import { AODB_NetworkContentGet_Data } from "../db/db";
 import { IAORouterMessage } from "../../router/AORouter";
 import { IAOStatus } from "../../models/AOStatus";
-import AOHyperDB from "./AOHyperDB";
+import AODB from "./AODB";
 const debug = Debug("ao:p2p");
 
 export interface AOP2P_Init_Data {
@@ -115,7 +115,7 @@ export interface NetworkContentHostEntry {
 }
 
 export default class AOP2P extends AORouterInterface {
-    private hyperdb: AOHyperDB;
+    private aodb: AODB;
     private dbPath: string;
 
     private taoDbRootDir: string;
@@ -177,8 +177,8 @@ export default class AOP2P extends AORouterInterface {
                     dbKey,
                     dbPath: this.dbPath
                 };
-                this.hyperdb = new AOHyperDB();
-                this.hyperdb
+                this.aodb = new AODB();
+                this.aodb
                     .start(hyperDBOptions)
                     .then(() => {
                         request.respond({ data: "great success!" });
@@ -192,7 +192,7 @@ export default class AOP2P extends AORouterInterface {
      * Runs the content discovery once, then again each time the
      * hyperdb instance changes under the content watch key.
      */
-    private _handleStartDiscovery(request: IAORouterRequest) {
+    _handleStartDiscovery(request: IAORouterRequest) {
         debug(`hyperdb starting discovery...`);
         this._runDiscovery()
             .then(() => {
@@ -204,8 +204,8 @@ export default class AOP2P extends AORouterInterface {
     }
 
     //For the sake of clean recursive methods.
-    private _watchDiscovery() {
-        this.hyperdb
+    _watchDiscovery() {
+        this.aodb
             .watch(this.taoDbRootDir)
             .then(() => {
                 debug("Something changed in " + this.taoDbRootDir);
@@ -218,12 +218,12 @@ export default class AOP2P extends AORouterInterface {
             .catch(debug);
     }
 
-    private _runDiscovery() {
+    _runDiscovery() {
         debug(`Running discovery...`);
         return Promise.resolve()
             .then(() => {
                 // 1. List all content types
-                return this.hyperdb.list(this.taoDbRootDir, {
+                return this.aodb.list(this.taoDbRootDir, {
                     recursive: false
                 });
             })
@@ -240,7 +240,7 @@ export default class AOP2P extends AORouterInterface {
                 );
                 // 2. List all keys within each content type
                 const contentListPromises = contentTypes.map(contentType => {
-                    return this.hyperdb.list(
+                    return this.aodb.list(
                         `${this.taoDbRootDir}/${contentType}/`,
                         { recursive: false }
                     );
@@ -336,79 +336,80 @@ export default class AOP2P extends AORouterInterface {
             );
     }
 
-    // private _handleNewContent(request: IAORouterRequest) {
-    //     const {
-    //         contentType,
-    //         metaDatKey,
-    //         fileDatKey,
-    //         ethAddress,
-    //         metaData,
-    //         indexData,
-    //         signature
-    //     }: AOP2P_New_Content_Data = request.data;
-    //     let allInserts = [];
+    _handleNewContent(request: IAORouterRequest) {
+        const {
+            contentType,
+            metaDatKey,
+            fileDatKey,
+            ethAddress,
+            metaData,
+            indexData,
+            signature
+        }: AOP2P_New_Content_Data = request.data;
+        let allInserts = [];
+        return request.reject(new Error(`TODO: Unimplemented!`));
+        //Content Signature/Meta Data
+        const contentRegistrationKey = AOP2P.routeContentRegistrtionPrefix({
+            nameSpace: this.taoDbRootDir,
+            contentType,
+            ethAddress,
+            metaDatKey
+        });
 
-    //     //Content Signature/Meta Data
-    //     const contentRegistrationKey = AOP2P.routeContentRegistrtionPrefix({
-    //         nameSpace: this.taoDbRootDir,
-    //         contentType,
-    //         ethAddress,
-    //         metaDatKey
-    //     });
-    //     allInserts.push(
-    //         this.hyperdb.insert(
-    //             contentRegistrationKey + "/signature",
-    //             signature
-    //         )
-    //     );
-    //     allInserts.push(
-    //         this.hyperdb.insert(contentRegistrationKey + "/metaData", metaData)
-    //     );
+        // allInserts.push(
+        //     this.hyperdb.insert(
+        //         contentRegistrationKey + "/signature",
+        //         signature
+        //     )
+        // );
+        // allInserts.push(
+        //     this.hyperdb.insert(contentRegistrationKey + "/metaData", metaData)
+        // );
 
-    //     //IndexData
-    //     const selfRegistration = AOP2P.routeSelfRegistration({
-    //         nameSpace: this.taoDbRootDir,
-    //         ethAddress,
-    //         contentType,
-    //         fileDatKey
-    //     });
-    //     const nodeRegistration = AOP2P.routeNodeRegistration({
-    //         nameSpace: this.taoDbRootDir,
-    //         contentType,
-    //         metaDatKey,
-    //         ethAddress,
-    //         fileDatKey
-    //     });
-    //     allInserts.push(this.hyperdb.insert(selfRegistration, indexData));
-    //     allInserts.push(this.hyperdb.insert(nodeRegistration, indexData));
+        // //IndexData
+        // const selfRegistration = AOP2P.routeSelfRegistration({
+        //     nameSpace: this.taoDbRootDir,
+        //     ethAddress,
+        //     contentType,
+        //     fileDatKey
+        // });
+        // const nodeRegistration = AOP2P.routeNodeRegistration({
+        //     nameSpace: this.taoDbRootDir,
+        //     contentType,
+        //     metaDatKey,
+        //     ethAddress,
+        //     fileDatKey
+        // });
+        // allInserts.push(this.hyperdb.insert(selfRegistration, indexData));
+        // allInserts.push(this.hyperdb.insert(nodeRegistration, indexData));
 
-    //     //On/Off/Signatures
-    //     allInserts.push(
-    //         this.hyperdb.insert(
-    //             AOP2P.routeAddSignature(selfRegistration),
-    //             signature
-    //         )
-    //     );
-    //     allInserts.push(
-    //         this.hyperdb.insert(
-    //             AOP2P.routeAddSignature(nodeRegistration),
-    //             signature
-    //         )
-    //     );
+        // //On/Off/Signatures
+        // allInserts.push(
+        //     this.hyperdb.insert(
+        //         AOP2P.routeAddSignature(selfRegistration),
+        //         signature
+        //     )
+        // );
+        // allInserts.push(
+        //     this.hyperdb.insert(
+        //         AOP2P.routeAddSignature(nodeRegistration),
+        //         signature
+        //     )
+        // );
 
-    //     Promise.all(allInserts)
-    //         .then(() => {
-    //             request.respond({ success: true });
-    //         })
-    //         .catch(e => {
-    //             request.reject(e);
-    //         });
-    // }
+        // Promise.all(allInserts)
+        //     .then(() => {
+        //         request.respond({ success: true });
+        //     })
+        //     .catch(e => {
+        //         request.reject(e);
+        //     });
+    }
 
-    private _handleWatchKey(request: IAORouterRequest) {
+    _handleWatchKey(request: IAORouterRequest) {
         const requestData: AOP2P_Watch_Key_Data = request.data;
         //TODO: We might consider helping construct the specific key here.  Dunno what exactly we're looking for yet 100%
-        this.hyperdb
+        this.aodb
             .watch(requestData.key)
             .then(() => {
                 request.respond({ success: true });
@@ -418,13 +419,13 @@ export default class AOP2P extends AORouterInterface {
             });
     }
 
-    private _handleWatchAndGetKey(request: IAORouterRequest) {
+    _handleWatchAndGetKey(request: IAORouterRequest) {
         const requestData: AOP2P_Watch_AND_Get_Key_Data = request.data;
-        this.hyperdb
+        this.aodb
             .watch(requestData.key)
             .then(() => {
                 //Query
-                this.hyperdb
+                this.aodb
                     .query(requestData.key)
                     .then(value => {
                         request.respond(value);
@@ -438,13 +439,13 @@ export default class AOP2P extends AORouterInterface {
             });
     }
 
-    private _handleWatchAndGetIndexData(request: IAORouterRequest) {
+    _handleWatchAndGetIndexData(request: IAORouterRequest) {
         const {
             key,
             ethAddress
         }: AOP2P_Watch_AND_Get_IndexData_Data = request.data;
         debug(`[${request.id}] _handleWatchAndGetIndexData`);
-        this.hyperdb
+        this.aodb
             .query(key)
             .then((indexDataString: string) => {
                 debug(`[${indexDataString}] indexDataString`);
@@ -466,10 +467,10 @@ export default class AOP2P extends AORouterInterface {
                                 request.id
                             }] _handleWatchAndGetIndexData did not find index data on first try, watching...`
                         );
-                        this.hyperdb
+                        this.aodb
                             .watch(key)
                             .then(() => {
-                                this.hyperdb
+                                this.aodb
                                     .query(key)
                                     .then((indexDataString: string) => {
                                         this.parseIndexDataByEth({
@@ -501,7 +502,7 @@ export default class AOP2P extends AORouterInterface {
             .catch(request.reject);
     }
 
-    private parseIndexDataByEth({ indexDataString, ethAddress }) {
+    parseIndexDataByEth({ indexDataString, ethAddress }) {
         return new Promise((resolve, reject) => {
             let indexData: object = {};
             try {
@@ -526,7 +527,7 @@ export default class AOP2P extends AORouterInterface {
         });
     }
 
-    private _handleAddDiscovery(request: IAORouterRequest) {
+    _handleAddDiscovery(request: IAORouterRequest) {
         const {
             contentType,
             fileDatKey,
@@ -574,8 +575,8 @@ export default class AOP2P extends AORouterInterface {
      * @param {IAORouterRequest} request
      * @returns {AOP2P_PeerStats} response.data
      */
-    private _handleStats(request: IAORouterRequest) {
-        const peersCurrentlyConnected = this.hyperdb.peersConnected();
+    _handleStats(request: IAORouterRequest) {
+        const peersCurrentlyConnected = this.aodb.peersConnected();
         const networkContentQuery: AODB_NetworkContentGet_Data = {
             query: {
                 recentlySeenHostsCount: {
@@ -604,7 +605,7 @@ export default class AOP2P extends AORouterInterface {
                     0
                 );
                 const stats: AOP2P_PeerStats = {
-                    p2pStatus: this.hyperdb.connectionStatus,
+                    p2pStatus: this.aodb.connectionStatus,
                     peersConnected: peersCurrentlyConnected,
                     recentlySeenContentHosts: totalRecentlySeenHostsCount
                 };
@@ -612,7 +613,7 @@ export default class AOP2P extends AORouterInterface {
             })
             .catch(error => {
                 const stats: AOP2P_PeerStats = {
-                    p2pStatus: this.hyperdb.connectionStatus,
+                    p2pStatus: this.aodb.connectionStatus,
                     peersConnected: peersCurrentlyConnected,
                     recentlySeenContentHosts: 0
                 };
@@ -627,14 +628,14 @@ export default class AOP2P extends AORouterInterface {
      *
      * @returns {Array<NetworkContentHostEntry>} response.data
      */
-    private _handleGetContentHosts(request: IAORouterRequest) {
+    _handleGetContentHosts(request: IAORouterRequest) {
         const { content }: AOP2P_GetContentHosts_Data = request.data;
         this._getContentHostsFormatted(content)
             .then(request.respond)
             .catch(request.reject);
     }
 
-    private _getContentHostsFormatted(
+    _getContentHostsFormatted(
         content: AOContent
     ): Promise<Array<NetworkContentHostEntry>> {
         return new Promise((resolve, reject) => {
@@ -643,7 +644,7 @@ export default class AOP2P extends AORouterInterface {
                 contentType: content.contentType,
                 metaDatKey: content.metadataDatKey
             });
-            this.hyperdb
+            this.aodb
                 .list(contentHostsRoute)
                 .then((results: Array<AODB_Entry<any>>) => {
                     /**
@@ -706,7 +707,7 @@ export default class AOP2P extends AORouterInterface {
         });
     }
 
-    private _handleSellDecryptionKey(request: IAORouterRequest) {
+    _handleSellDecryptionKey(request: IAORouterRequest) {
         let {
             content,
             buyerEthAddress,
@@ -730,7 +731,7 @@ export default class AOP2P extends AORouterInterface {
         };
         const nodeRoute = AOP2P.routeNodeRegistration(nodeRouteArgs);
 
-        this.hyperdb
+        this.aodb
             .query(nodeRoute)
             .then((indexDataString: string) => {
                 let indexData: object = {};
@@ -796,7 +797,7 @@ export default class AOP2P extends AORouterInterface {
             });
     }
 
-    private _handleNodeUpdate(request: IAORouterRequest) {
+    _handleNodeUpdate(request: IAORouterRequest) {
         const { content }: AOP2P_Update_Node_Timestamp_Data = request.data;
         this.nodeTimestampUpdate({
             nameSpace: this.taoDbRootDir,
@@ -812,7 +813,7 @@ export default class AOP2P extends AORouterInterface {
             .catch(request.reject);
     }
 
-    private nodeTimestampUpdate({
+    nodeTimestampUpdate({
         nameSpace,
         contentType,
         metaDatKey,

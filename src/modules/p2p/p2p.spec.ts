@@ -55,10 +55,21 @@ let content = AOContent.fromObject(contentJson);
 describe("AO P2P module", () => {
     const storageLocation = path.resolve(__dirname, "../../../data/p2ptest");
     const dbNameSpace = "/AOSpace/";
-    let aoP2P; //scoped outside
+    let aoP2P: AOP2P;
     before(done => {
         fs.ensureDir(storageLocation)
             .then(() => {
+                // faking process.send
+                process.send = () => {};
+                process.on("unhandledRejection", (reason, p) => {
+                    console.log(
+                        "Unhandled Rejection at: Promise",
+                        p,
+                        "reason:",
+                        reason
+                    );
+                    // application specific logging, throwing an error, or other logic here
+                });
                 aoP2P = new AOP2P({
                     storageLocation: storageLocation,
                     // unused args, making typescript happy
@@ -68,6 +79,10 @@ describe("AO P2P module", () => {
                     corePort: 9999,
                     ffprobeBin: "string"
                 });
+                // faking the router.send method for testing purposes
+                aoP2P.router.send = (route, message) => {
+                    return new Promise((resolve, reject) => {});
+                };
                 done();
             })
             .catch(e => {

@@ -1,7 +1,7 @@
 import "mocha";
 import { expect } from "chai";
 import AOContent from "../../models/AOContent";
-import AOHyperDB, { AO_Hyper_Options, AODB_Entry } from "./AOHyperDB";
+import AODB, { AO_Hyper_Options, AODB_Entry } from "./AODB";
 import * as AOCrypto from "../../AOCrypto";
 import EthCrypto from "eth-crypto";
 import ram from "random-access-memory";
@@ -92,14 +92,14 @@ describe("TaoDB module", () => {
             writerAddress: ""
         }
     ];
-    let aodb: AOHyperDB;
+    let aodb: AODB;
     let aodbSignature = ({ privateKey, key, value }): string => {
         return EthCrypto.sign(privateKey, aodb.createSignHash(key, value));
     };
 
     before(function(done) {
         // Storing this db in ram, no need to persist
-        aodb = new AOHyperDB();
+        aodb = new AODB();
         let aodbOptions: AO_Hyper_Options = {
             dbKey: undefined,
             dbPath: function(filename) {
@@ -167,7 +167,7 @@ describe("TaoDB module", () => {
                 .catch(done);
         });
         it("verifies the content inserted", done => {
-            aodb.query(dbKey)
+            aodb.get(dbKey)
                 .then(value => {
                     expect(value).to.equal(dbValue);
                     done();
@@ -296,7 +296,7 @@ describe("TaoDB module", () => {
                 .catch(done);
         });
         it("verifies the content inserted", done => {
-            aodb.query(dbKey)
+            aodb.get(dbKey)
                 .then(value => {
                     expect(value).to.equal(dbValue);
                     done();
@@ -365,7 +365,7 @@ describe("TaoDB module", () => {
                 .catch(done);
         });
         it("verifies the content indexData inserted", done => {
-            aodb.query(dbKey)
+            aodb.get(dbKey)
                 .then(value => {
                     expect(value).to.be.an.instanceOf(Object);
                     expect(value.signature).to.equal(dbValue.signature);
