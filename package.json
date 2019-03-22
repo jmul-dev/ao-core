@@ -7,6 +7,7 @@
         "ao-core": "bin/bin.js"
     },
     "scripts": {
+        "compile": "tsc",
         "start": "cross-env DEBUG=ao:* node dist/bin.js --ethNetworkRpc wss://rinkeby.infura.io/ws",
         "start:mainnet": "cross-env DEBUG=ao:* node dist/bin.js --ethNetworkRpc wss://mainnet.infura.io/ws",
         "build": "npm run clean && cross-env NODE_ENV=development webpack",
@@ -64,8 +65,9 @@
         "secp256k1": "^3.5.2",
         "supports-color": "^5.5.0",
         "unzipper": "^0.9.3",
-        "web3": "^1.0.0-beta.33",
+        "web3": "1.0.0-beta.33",
         "web3-legacy": "git://github.com/nharlow89/web3.js.git#legacy",
+        "web3-utils": "^1.0.0-beta.50",
         "winston": "^3.1.0",
         "yargs": "^12.0.2"
     },
@@ -99,7 +101,7 @@
         "ts-node": "^7.0.0",
         "tsc-watch": "^1.0.31",
         "tslint": "^5.10.0",
-        "typescript": "^2.9.1",
+        "typescript": "2.9.1",
         "webpack": "^4.16.5",
         "webpack-cli": "^3.1.0",
         "webpack-permissions-plugin": "^1.0.0"

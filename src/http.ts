@@ -140,12 +140,12 @@ export default class Http {
                 });
             })
             .then(() => {
-                if (!resourceOptions.encrypted) {
-                    // Non-encrypted resource does not need to fetch content from user db
-                    return Promise.resolve();
-                }
-                // 2. Fetch corresponding content
                 return new Promise((resolve, reject) => {
+                    if (!resourceOptions.encrypted) {
+                        // Non-encrypted resource does not need to fetch content from user db
+                        return resolve();
+                    }
+                    // 2. Fetch corresponding content                
                     const userContentData: AODB_UserContentGet_Data = {
                         query: { fileDatKey: key }
                     };

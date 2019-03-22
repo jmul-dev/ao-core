@@ -1,5 +1,6 @@
 import path from "path";
 import web3 from "web3";
+import web3Utils from "web3-utils";
 import * as AOCrypto from "./AOCrypto";
 import Debug from "./AODebug";
 import AOContent, { AOContentState, AODappContent } from "./models/AOContent";
@@ -76,7 +77,7 @@ export default class AOUserSession {
             if (this.ethAddress === ethAddress) {
                 return resolve({ ethAddress });
             }
-            if (!web3.utils.isAddress(ethAddress)) {
+            if (!web3Utils.isAddress(ethAddress)) {
                 return reject(new Error("ethAddress format rejected"));
             }
             this.ethAddress = ethAddress;
