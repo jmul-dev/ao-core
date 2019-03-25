@@ -1,4 +1,4 @@
-import AODB from "./AODB";
+import AODB, { AODB_Entry } from "./AODB";
 import EthCrypto from "eth-crypto";
 import { Identity } from "../../AOCrypto";
 import AOContent from "../../models/AOContent";
@@ -16,6 +16,14 @@ export interface ITaoDB_Schema_Insert extends ITaoDB_Schema {
     type: string;
     writerSignature: string;
     writerAddress: string;
+}
+
+export interface ITaoDB_ContentHost_IndexData {
+    [key: string]: ITaoDB_ContentHost_IndexData_Entry;
+}
+export interface ITaoDB_ContentHost_IndexData_Entry {
+    decryptionKey: string;
+    signature: string;
 }
 
 /**
@@ -106,7 +114,11 @@ export default class TaoDB extends AODB {
         return `${usersPublicKey}/AO/Content/${contentType}/${contentMetadataDatKey}/signature`;
     }
 
-    public insertUserContentSignature({ content }: { content: AOContent }) {
+    public insertUserContentSignature({
+        content
+    }: {
+        content: AOContent;
+    }): Promise<any> {
         const key = TaoDB.getUserContentSignatureKey({
             usersPublicKey: this._userIdentity.publicKey,
             contentType: content.contentType,
@@ -127,11 +139,10 @@ export default class TaoDB extends AODB {
         });
     }
 
-
     /**
-     * 
+     *
      * Content Host Signature
-     * 
+     *
      */
     public static getContentHostSignatureKey({
         hostsPublicKey,
@@ -142,7 +153,11 @@ export default class TaoDB extends AODB {
         return `/AO/Content/${contentType}/${contentMetadataDatKey}/Hosts/${hostsPublicKey}/${contentDatKey}/indexData/signature`;
     }
 
-    public insertContentHostSignature({ content }: { content: AOContent }) {
+    public insertContentHostSignature({
+        content
+    }: {
+        content: AOContent;
+    }): Promise<any> {
         const key = TaoDB.getContentHostSignatureKey({
             hostsPublicKey: this._userIdentity.publicKey,
             contentType: content.contentType,
@@ -165,9 +180,9 @@ export default class TaoDB extends AODB {
     }
 
     /**
-     * 
+     *
      * Content Host indexData (decryption key handoff)
-     * 
+     *
      */
     public static getContentHostIndexDataKey({
         hostsPublicKey,
@@ -178,14 +193,20 @@ export default class TaoDB extends AODB {
         return `/AO/Content/${contentType}/${contentMetadataDatKey}/Hosts/${hostsPublicKey}/${contentDatKey}/indexData`;
     }
 
-    public insertContentHostIndexData({ content }: { content: AOContent }) {
+    public insertContentHostIndexData({
+        content,
+        indexData
+    }: {
+        content: AOContent;
+        indexData: ITaoDB_ContentHost_IndexData;
+    }): Promise<any> {
         const key = TaoDB.getContentHostSignatureKey({
             hostsPublicKey: this._userIdentity.publicKey,
             contentType: content.contentType,
             contentMetadataDatKey: content.metadataDatKey,
             contentDatKey: content.fileDatKey
         });
-        const value = content.baseChallengeSignature;
+        const value = indexData;
         const writerSignature = this.createSignedHash({
             privateKey: this._userIdentity.privateKey,
             key,
@@ -201,9 +222,9 @@ export default class TaoDB extends AODB {
     }
 
     /**
-     * 
+     *
      * Content Host Timestamp (last seen/online host)
-     * 
+     *
      */
     public static getContentHostTimestampKey({
         hostsPublicKey,
@@ -213,7 +234,11 @@ export default class TaoDB extends AODB {
         return `/AO/Content/${contentType}/${contentMetadataDatKey}/Hosts/${hostsPublicKey}`;
     }
 
-    public insertContentHostTimestamp({ content }: { content: AOContent }) {
+    public insertContentHostTimestamp({
+        content
+    }: {
+        content: AOContent;
+    }): Promise<any> {
         const key = TaoDB.getContentHostTimestampKey({
             hostsPublicKey: this._userIdentity.publicKey,
             contentType: content.contentType,
@@ -238,4 +263,23 @@ export default class TaoDB extends AODB {
         });
     }
 
+    /**
+     *
+     * Content Hosts
+     *
+     */
+    public static getContentHostsKey({ contentType, contentMetadataDatKey }) {
+        return `/AO/Content/${contentType}/${contentMetadataDatKey}/Hosts`;
+    }
+    public listContentHosts({
+        content
+    }: {
+        content: AOContent;
+    }): Promise<Array<AODB_Entry<any>>> {
+        const key = TaoDB.getContentHostsKey({
+            contentType: content.contentType,
+            contentMetadataDatKey: content.metadataDatKey
+        });
+        return this.list(key, { recursive: false });
+    }
 }

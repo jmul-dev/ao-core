@@ -209,12 +209,7 @@ describe("AO P2P module", () => {
 
     it("add content discovery", done => {
         const addDiscoveryData: AOP2P_Add_Discovery_Data = {
-            contentType: "VOD",
-            //TODO: Assign more believable values?
-            metaDatKey: "bogusMetaKey",
-            fileDatKey: "bogusKey",
-            ethAddress: "bogusEth",
-            contentHostId: "bogusHostId"
+            content
         };
         aoP2P.router.emit("/p2p/addDiscovery", {
             data: addDiscoveryData,

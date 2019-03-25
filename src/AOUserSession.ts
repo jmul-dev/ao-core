@@ -37,7 +37,6 @@ import {
 import AOP2P, {
     AOP2P_Add_Discovery_Data,
     AOP2P_GetContentHosts_Data,
-    AOP2P_IndexDataRow,
     AOP2P_Update_Node_Timestamp_Data,
     AOP2P_Watch_AND_Get_IndexData_Data,
     AOP2P_Write_Decryption_Key_Data,
@@ -48,6 +47,7 @@ import {
     AORouterInterface,
     IAORouterRequest
 } from "./router/AORouterInterface";
+import { ITaoDB_ContentHost_IndexData_Entry } from "./modules/p2p/TaoDB";
 const AOContentContract = require("ao-contracts/build/contracts/AOContent.json");
 const debug = Debug("ao:userSession");
 
@@ -123,15 +123,15 @@ export default class AOUserSession {
                                             .then(
                                                 (
                                                     response: IAORouterMessage
-                                                ) => {                                                    
-                                                        // 6. Listeners that make this app work
-                                                        debug(
-                                                            `User identity generated, public key: ${
-                                                                identity.publicKey
-                                                            }`
-                                                        );
-                                                        resolve({ ethAddress });
-                                                        this._resume();                                                    
+                                                ) => {
+                                                    // 6. Listeners that make this app work
+                                                    debug(
+                                                        `User identity generated, public key: ${
+                                                            identity.publicKey
+                                                        }`
+                                                    );
+                                                    resolve({ ethAddress });
+                                                    this._resume();
                                                 }
                                             )
                                             .catch(reject);
@@ -143,10 +143,18 @@ export default class AOUserSession {
                                         this._resume();
                                     }
                                     // Register the taodb schemas
-                                    this.router.send("/p2p/setUserIdentity", {userIdentity: this.identity}).then(() => {
-                                    }).catch((error: Error) => {
-                                        debug(`Error registering taodb schemas: ${error.message}`)
-                                    })
+                                    this.router
+                                        .send("/p2p/setUserIdentity", {
+                                            userIdentity: this.identity
+                                        })
+                                        .then(() => {})
+                                        .catch((error: Error) => {
+                                            debug(
+                                                `Error registering taodb schemas: ${
+                                                    error.message
+                                                }`
+                                            );
+                                        });
                                 })
                                 .catch(reject);
                         })
@@ -420,7 +428,8 @@ export default class AOUserSession {
                         // 3. Handoff to discovery
                         const sendDecryptionKeyMessage: AOP2P_Write_Decryption_Key_Data = {
                             content: userContent,
-                            buyerEthAddress: buyContentEvent.buyer,
+                            hostsPublicKey: this.identity.publicKey,
+                            buyersPublicKey: buyContentEvent.publicKey,
                             encryptedDecryptionKey,
                             encryptedKeySignature: encryptedDecryptionKeySignature
                         };
@@ -733,7 +742,7 @@ export default class AOUserSession {
                         $set: {
                             state: AOContentState.PURCHASED,
                             purchaseId: buyContentEvent.purchaseId
-                            //"nodeId": buyContentEvent.contentHostId, //taken out since this should be the node id, which is the seller's eth address
+                            //"nodeId": buyContentEvent.contentHostId, //taken out since this should be the node id, which is the seller's public key
                         }
                     };
                 } else {
@@ -791,16 +800,9 @@ export default class AOUserSession {
             return null;
         }
         const p2pWatchKeyRequest: AOP2P_Watch_AND_Get_IndexData_Data = {
-            key: AOP2P.routeNodeRegistration({
-                nameSpace: "/AO",
-                contentType: content.contentType,
-                metaDatKey: content.metadataDatKey,
-                ethAddress: content.nodeId,
-                fileDatKey: content.fileDatKey
-            }),
-            ethAddress: this.ethAddress
+            content,
+            buyersPublicKey: this.identity.publicKey
         };
-        debug(p2pWatchKeyRequest);
         this.router
             .send("/p2p/watchAndGetIndexData", p2pWatchKeyRequest)
             .then((response: IAORouterMessage) => {
@@ -812,7 +814,8 @@ export default class AOUserSession {
                     );
                     return null;
                 }
-                const indexData: AOP2P_IndexDataRow = response.data;
+                const indexData: ITaoDB_ContentHost_IndexData_Entry =
+                    response.data;
                 if (indexData) {
                     let contentUpdateQuery: AODB_UserContentUpdate_Data = {
                         id: content.id,
@@ -1293,11 +1296,7 @@ export default class AOUserSession {
                         debug("Content resume is good ");
                         // 3. Add new discovery
                         const p2pAddDiscoveryData: AOP2P_Add_Discovery_Data = {
-                            contentType: content.contentType,
-                            fileDatKey: content.fileDatKey,
-                            metaDatKey: content.metadataDatKey,
-                            ethAddress: this.ethAddress, // Current user's ethAddress
-                            contentHostId: content.contentHostId
+                            content
                         };
                         this.router
                             .send("/p2p/addDiscovery", p2pAddDiscoveryData)

@@ -3,13 +3,19 @@ import Debug from "../../AODebug";
 import AOContent from "../../models/AOContent";
 import { IAOStatus } from "../../models/AOStatus";
 import { IAORouterMessage } from "../../router/AORouter";
-import AORouterInterface, { AORouterSubprocessArgs, IAORouterRequest } from "../../router/AORouterInterface";
+import AORouterInterface, {
+    AORouterSubprocessArgs,
+    IAORouterRequest
+} from "../../router/AORouterInterface";
 import { AODB_NetworkContentGet_Data } from "../db/db";
 import { IAOFS_Mkdir_Data } from "../fs/fs";
 import AOContentHostsUpdater from "./AOContentHostsUpdater";
 import AOContentIngestion from "./AOContentIngestion";
 import { AODB_Entry, IAODB_Args } from "./AODB";
-import TaoDB from './TaoDB';
+import TaoDB, {
+    ITaoDB_ContentHost_IndexData,
+    ITaoDB_ContentHost_IndexData_Entry
+} from "./TaoDB";
 const debug = Debug("ao:p2p");
 
 export interface AOP2P_Init_Data {
@@ -35,22 +41,18 @@ export interface AOP2P_Watch_AND_Get_Key_Data {
 }
 
 export interface AOP2P_Watch_AND_Get_IndexData_Data {
-    key: string;
-    ethAddress: string;
+    content: AOContent;
+    buyersPublicKey: string;
 }
 
 export interface AOP2P_Add_Discovery_Data {
-    contentType: string;
-    fileDatKey: string;
-    metaDatKey: string;
-    ethAddress: string;
-    contentHostId: string;
+    content: AOContent;
 }
 
 export interface AOP2P_Write_Decryption_Key_Data {
     content: AOContent;
-    buyerEthAddress: string;
-    sellerEthAddress?: string; //mostly for testing.
+    buyersPublicKey: string;
+    hostsPublicKey: string;
     encryptedDecryptionKey: string;
     encryptedKeySignature: string;
 }
@@ -61,12 +63,6 @@ export interface AOP2P_Update_Node_Timestamp_Data {
 
 export interface AOP2P_GetContentHosts_Data {
     content: AOContent;
-}
-
-//Single indexData
-export interface AOP2P_IndexDataRow {
-    signature: string;
-    decryptionKey: string;
 }
 
 export interface AOP2P_ContentRegistrationRoute {
@@ -161,7 +157,10 @@ export default class AOP2P extends AORouterInterface {
             this._handleGetContentHosts.bind(this)
         );
         this.router.on("/p2p/stats", this._handleStats.bind(this));
-        this.router.on("/p2p/setUserIdentity", this._setUserIdentity.bind(this));
+        this.router.on(
+            "/p2p/setUserIdentity",
+            this._setUserIdentity.bind(this)
+        );
     }
 
     private _init(request: IAORouterRequest) {
@@ -335,7 +334,7 @@ export default class AOP2P extends AORouterInterface {
     }
 
     _setUserIdentity(request: IAORouterRequest) {
-        const { userIdentity } = request.data
+        const { userIdentity } = request.data;
         this.taodb
             .setUserIdentity(userIdentity)
             .then(request.respond)
@@ -355,12 +354,12 @@ export default class AOP2P extends AORouterInterface {
         let allInserts = [];
         return request.reject(new Error(`TODO: Unimplemented!`));
         //Content Signature/Meta Data
-        const contentRegistrationKey = AOP2P.routeContentRegistrtionPrefix({
-            nameSpace: this.taoDbRootDir,
-            contentType,
-            ethAddress,
-            metaDatKey
-        });
+        // const contentRegistrationKey = AOP2P.routeContentRegistrtionPrefix({
+        //     nameSpace: this.taoDbRootDir,
+        //     contentType,
+        //     ethAddress,
+        //     metaDatKey
+        // });
 
         // allInserts.push(
         //     this.hyperdb.insert(
@@ -447,127 +446,111 @@ export default class AOP2P extends AORouterInterface {
 
     _handleWatchAndGetIndexData(request: IAORouterRequest) {
         const {
-            key,
-            ethAddress
+            buyersPublicKey,
+            content
         }: AOP2P_Watch_AND_Get_IndexData_Data = request.data;
-        debug(`[${request.id}] _handleWatchAndGetIndexData`);
-        this.taodb
-            .get(key)
-            .then((indexDataString: string) => {
-                debug(`[${indexDataString}] indexDataString`);
-                this.parseIndexDataByEth({ indexDataString, ethAddress })
-                    .then(indexData => {
-                        debug(indexData);
-                        // If it exists, send it back.
-                        debug(
-                            `[${
-                                request.id
-                            }] _handleWatchAndGetIndexData got index data on first try`
-                        );
-                        request.respond(indexData);
-                    })
-                    .catch(() => {
-                        // If it doens't, watch for change
-                        debug(
-                            `[${
-                                request.id
-                            }] _handleWatchAndGetIndexData did not find index data on first try, watching...`
-                        );
-                        this.taodb
-                            .watch(key)
-                            .then(() => {
-                                this.taodb
-                                    .get(key)
-                                    .then((indexDataString: string) => {
-                                        this.parseIndexDataByEth({
-                                            indexDataString,
-                                            ethAddress
-                                        })
-                                            .then(indexData => {
-                                                request.respond(indexData);
-                                            })
-                                            .catch(() => {
-                                                //Self call if there isn't a record for our own indexData
-                                                debug(
-                                                    `[${
-                                                        request.id
-                                                    }] _handleWatchAndGetIndexData recursively called`
-                                                );
-                                                setTimeout(() => {
-                                                    this._handleWatchAndGetIndexData(
-                                                        request
-                                                    );
-                                                }, 500);
-                                            });
-                                    })
-                                    .catch(request.reject);
-                            })
-                            .catch(request.reject);
-                    });
+
+        const indexDataKey = TaoDB.getContentHostIndexDataKey({
+            hostsPublicKey: content.nodeId,
+            contentDatKey: content.fileDatKey,
+            contentMetadataDatKey: content.metadataDatKey,
+            contentType: content.contentType
+        });
+
+        Promise.resolve()
+            .then(() => {
+                // 1. Initial query for indexData
+                return this.taodb.get(indexDataKey);
             })
+            .then((entry: AODB_Entry<ITaoDB_ContentHost_IndexData>) => {
+                // 2a. Check if indexData entry for the buyer already exists
+                if (entry.value && entry.value[buyersPublicKey]) {
+                    debug(
+                        `[${
+                            request.id
+                        }] _handleWatchAndGetIndexData got index data on first try`
+                    );
+                    request.respond(entry.value[buyersPublicKey]);
+                    return;
+                }
+                // 2b. Not found, listen for changes...
+                debug(
+                    `[${
+                        request.id
+                    }] _handleWatchAndGetIndexData did not find index data on first try, watching...`
+                );
+                const watcher = this.taodb.aodb.watch(indexDataKey);
+                return Promise.resolve(watcher);
+            })
+            .then(watcher => {
+                return new Promise((localResolve, localReject) => {
+                    watcher.on("watching", () => {
+                        debug(
+                            `[${
+                                request.id
+                            }] watching aodb on ${indexDataKey}...`
+                        );
+                    });
+                    watcher.on("change", () => {
+                        debug(
+                            `[${
+                                request.id
+                            }] aodb detected change on ${indexDataKey}!`
+                        );
+                        // Check if our value exists
+                        this.taodb
+                            .get(indexDataKey)
+                            .then(
+                                (
+                                    entry: AODB_Entry<
+                                        ITaoDB_ContentHost_IndexData
+                                    >
+                                ) => {
+                                    if (
+                                        entry.value &&
+                                        entry.value[buyersPublicKey]
+                                    ) {
+                                        watcher.destroy();
+                                        localResolve(
+                                            entry.value[buyersPublicKey]
+                                        );
+                                    }
+                                }
+                            );
+                    });
+                    watcher.on("error", localReject);
+                });
+            })
+            .then(
+                (buyersIndexDataEntry: ITaoDB_ContentHost_IndexData_Entry) => {
+                    request.respond(buyersIndexDataEntry);
+                }
+            )
             .catch(request.reject);
     }
 
-    parseIndexDataByEth({ indexDataString, ethAddress }) {
-        return new Promise((resolve, reject) => {
-            let indexData: object = {};
-            try {
-                indexData = JSON.parse(indexDataString);
-            } catch (e) {
-                debug("Index Data was not able to be parsed");
-                indexData = {};
-            }
-            let comparativeAddress = ethAddress.substring(2);
-            for (const address in indexData) {
-                if (indexData.hasOwnProperty(address)) {
-                    let currentAddress = address.substring(2).toLowerCase();
-                    if (comparativeAddress == currentAddress) {
-                        let indexDataRow: AOP2P_IndexDataRow =
-                            indexData[address];
-                        resolve(indexDataRow);
-                        return;
-                    }
-                }
-            }
-            reject();
-        });
-    }
-
+    /**
+     * Method for adding a piece of content to the p2p network,
+     * ie make content discoverable.
+     */
     _handleAddDiscovery(request: IAORouterRequest) {
-        const {
-            contentType,
-            fileDatKey,
-            ethAddress,
-            metaDatKey,
-            contentHostId
-        }: AOP2P_Add_Discovery_Data = request.data;
-        const nodeRoute = AOP2P.routeNodeRegistration({
-            nameSpace: this.taoDbRootDir,
-            contentType,
-            metaDatKey,
-            ethAddress,
-            fileDatKey
-        });
-        return request.reject(new Error(`TODO: Unimplemented!`));
-        // this.hyperdb
-        //     .insert(nodeRoute, {})
-        //     .then(() => {
-        //         debug("NODE INSERTED");
-        //         this.nodeTimestampUpdate({
-        //             nameSpace: this.taoDbRootDir,
-        //             contentType,
-        //             ethAddress,
-        //             metaDatKey,
-        //             contentHostId,
-        //             contentDatKey: fileDatKey
-        //         })
-        //             .then(() => {
-        //                 debug("NODE TIMESTAMP UPDATED FO SURE");
-        //                 request.respond({ success: true });
-        //             })
-        //             .catch(request.reject);
-        //     })
-        //     .catch(request.reject);
+        const { content }: AOP2P_Add_Discovery_Data = request.data;
+        Promise.resolve()
+            .then(() => {
+                // Initial indexData entry, no handoffs yet
+                return this.taodb.insertContentHostIndexData({
+                    content,
+                    indexData: {}
+                });
+            })
+            .then(() => {
+                return this.taodb.insertContentHostSignature({ content });
+            })
+            .then(() => {
+                return this.taodb.insertContentHostTimestamp({ content });
+            })
+            .then(request.respond)
+            .catch(request.reject);
     }
 
     /**
@@ -645,39 +628,28 @@ export default class AOP2P extends AORouterInterface {
         content: AOContent
     ): Promise<Array<NetworkContentHostEntry>> {
         return new Promise((resolve, reject) => {
-            const contentHostsRoute = AOP2P.routeBaseRegistrationPrefix({
-                nameSpace: this.taoDbRootDir,
-                contentType: content.contentType,
-                metaDatKey: content.metadataDatKey
-            });
             this.taodb
-                .list(contentHostsRoute)
+                .listContentHosts({ content })
                 .then((results: Array<AODB_Entry<any>>) => {
                     /**
                      * Results needs quite a bit of formatting
                      */
-                    // 1. Convert entry value data to json
                     let jsonResults = results
                         .map((entry: AODB_Entry<any>) => {
-                            try {
-                                let entryValue = JSON.parse(entry.value);
+                            // 1. Convert entry value data to json
+                            if (entry && entry.value) {
                                 return {
-                                    contentDatKey: entryValue.contentDatKey,
-                                    contentHostId: entryValue.contentHostId,
-                                    nodeId: entry.splitKey[4], //node that holds the content
-                                    timestamp: entryValue.timestamp
+                                    contentDatKey: entry.value.contentDatKey,
+                                    contentHostId: entry.value.contentHostId,
+                                    timestamp: entry.value.timestamp,
+                                    nodeId: entry.splitKey[5] // /AO/Content/{contentType}/{contentMetadataDatKey}/Hosts/{hostsNodeId/publicKey}
                                 };
-                            } catch (error) {
-                                // Instead of letting a single malformed entry ruin the show, we just ignore it
-                                debug(
-                                    "Malformatted timestamp/contentHostId for " +
-                                        entry.key
-                                );
+                            } else {
                                 return null;
                             }
-                            // 2. Filter any malformed entries or entries without the correct values
                         })
                         .filter((entry: NetworkContentHostEntry) => {
+                            // 2. Filter any malformed entries or entries without the correct values
                             if (entry === null) return false;
                             if (
                                 !entry.timestamp ||
@@ -686,13 +658,13 @@ export default class AOP2P extends AORouterInterface {
                             )
                                 return false;
                             return true;
-                            // 3. Sort by timestamps
                         })
                         .sort(
                             (
                                 a: NetworkContentHostEntry,
                                 b: NetworkContentHostEntry
                             ) => {
+                                // 3. Sort by timestamps
                                 const timestampA = parseInt(a.timestamp);
                                 const timestampB = parseInt(b.timestamp);
                                 return timestampA > timestampB
@@ -716,252 +688,61 @@ export default class AOP2P extends AORouterInterface {
     _handleSellDecryptionKey(request: IAORouterRequest) {
         let {
             content,
-            buyerEthAddress,
-            sellerEthAddress,
+            buyersPublicKey,
+            hostsPublicKey,
             encryptedDecryptionKey,
             encryptedKeySignature
         }: AOP2P_Write_Decryption_Key_Data = request.data;
         if (!content) {
             return request.reject(new Error("No content"));
         }
-        if (request.ethAddress) {
-            sellerEthAddress = request.ethAddress;
-        }
-        // 1. Let's get the current indexData for this
-        const nodeRouteArgs: AOP2P_NodeRegistrationRoute = {
-            nameSpace: this.taoDbRootDir,
+        const indexDataKey = TaoDB.getContentHostIndexDataKey({
+            hostsPublicKey,
             contentType: content.contentType,
-            metaDatKey: content.metadataDatKey,
-            ethAddress: sellerEthAddress,
-            fileDatKey: content.fileDatKey
-        };
-        const nodeRoute = AOP2P.routeNodeRegistration(nodeRouteArgs);
-
+            contentMetadataDatKey: content.metadataDatKey,
+            contentDatKey: content.fileDatKey
+        });
         this.taodb
-            .get(nodeRoute)
-            .then((indexDataString: string) => {
-                let indexData: object = {};
-                let indexDataRow: AOP2P_IndexDataRow = {
-                    decryptionKey: encryptedDecryptionKey, // Encrypted key with publicKey
-                    signature: encryptedKeySignature //
-                };
-                try {
-                    indexData = JSON.parse(indexDataString);
-                } catch (e) {
-                    debug(
-                        "Index Data could not be read/parsed while selling a key"
-                    );
-                    indexData = {};
-                }
-
-                // 2. Check to see if we have already wrote in the right data (to avoid unecessary hyperdb update)
-                const existingIndexDataForBuyer = indexData[buyerEthAddress];
+            .get(indexDataKey)
+            .then((entry: AODB_Entry<ITaoDB_ContentHost_IndexData>) => {
+                let existingIndexData: ITaoDB_ContentHost_IndexData =
+                    entry.value || {};
+                const existingIndexDataForBuyer =
+                    existingIndexData[buyersPublicKey];
                 if (
                     existingIndexDataForBuyer &&
-                    existingIndexDataForBuyer.signature &&
                     existingIndexDataForBuyer.decryptionKey
                 ) {
-                    // We have already wrote the signature/decryption keys for the given user, lets not overwrite
                     debug(
                         `Decryption key handoff already exists for content ${
                             content.title
-                        } and buyer ${buyerEthAddress}`
+                        } and buyer ${buyersPublicKey}`
                     );
                     request.respond({ success: true, alreadyExists: true });
                     return null;
                 }
-                // if (existingIndexDataForBuyer && existingIndexDataForBuyer.signature == indexDataRow.signature) {
-                //     debug('This transaction is already recorded')
-                //     request.respond({ success: true })
-                //     return
-                // } else if (existingIndexDataForBuyer) {
-                //     debug(`Looks like we've already sold ${content.title} to ${buyerEthAddress}, going to overwrite the entry with new signature ${indexDataRow.signature}.`)
-                //     debug(`Previous signature: ${existingIndexDataForBuyer.signature}`)
-                //     debug(`Overwriting signature: ${indexDataRow.signature}`)
-                // }
-
-                // 3. Add row to indexData
-                indexData[buyerEthAddress] = indexDataRow;
-
-                // 4. Let's write this thing into hyperdb
-                return request.reject(new Error(`TODO: Unimplemented!`));
-                // this.hyperdb
-                //     .insert(nodeRoute, indexData)
-                //     .then(() => {
-                //         debug("Wrote in sold decryption key");
-                //         request.respond({
-                //             success: true,
-                //             alreadyExists: false
-                //         });
-                //     })
-                //     .catch(e => {
-                //         request.reject(e);
-                //     });
-            })
-            .catch(e => {
-                request.reject(e);
-            });
-    }
-
-    _handleNodeUpdate(request: IAORouterRequest) {
-        const { content }: AOP2P_Update_Node_Timestamp_Data = request.data;
-        this.nodeTimestampUpdate({
-            nameSpace: this.taoDbRootDir,
-            contentType: content.contentType,
-            metaDatKey: content.metadataDatKey,
-            ethAddress: request.ethAddress,
-            contentHostId: content.contentHostId,
-            contentDatKey: content.fileDatKey
-        })
-            .then(() => {
-                request.respond({});
+                existingIndexData[buyersPublicKey] = {
+                    signature: encryptedKeySignature,
+                    decryptionKey: encryptedDecryptionKey
+                };
+                this.taodb
+                    .insertContentHostIndexData({
+                        content,
+                        indexData: existingIndexData
+                    })
+                    .then(() => {
+                        request.respond({ success: true });
+                    })
+                    .catch(request.reject);
             })
             .catch(request.reject);
     }
 
-    nodeTimestampUpdate({
-        nameSpace,
-        contentType,
-        metaDatKey,
-        ethAddress,
-        contentHostId,
-        contentDatKey
-    }) {
-        return new Promise((resolve, reject) => {
-            const nodeUpdateKey: string = AOP2P.routeNodeRegistrationUpdate({
-                nameSpace,
-                contentType,
-                metaDatKey,
-                ethAddress
-            });
-            const insertObject = {
-                timestamp: Date.now(),
-                contentHostId,
-                contentDatKey
-            };
-            return reject(new Error(`TODO: Unimplemented!`));
-            // this.hyperdb
-            //     .insert(nodeUpdateKey, insertObject)
-            //     .then(() => {
-            //         resolve();
-            //     })
-            //     .catch(reject);
-        });
-    }
-
-    /**
-     * Creator Dat registration.  Only used for initial upload
-     * App ID / Content Type / Creator EthAddress / Meta Dat Key
-     */
-    public static routeContentRegistrtionPrefix({
-        nameSpace,
-        contentType,
-        ethAddress,
-        metaDatKey
-    }: AOP2P_ContentRegistrationRoute) {
-        return (
-            nameSpace + "/" + contentType + "/" + ethAddress + "/" + metaDatKey
-        );
-    }
-
-    /**
-     * Prefix Route for your own ethAddress
-     *
-     * Eth Address / App ID / Content Type / nodes
-     */
-    public static routeSelfRegistrationPrefix({
-        nameSpace,
-        ethAddress,
-        contentType
-    }) {
-        return ethAddress + "/" + nameSpace + "/" + contentType + "/nodes/";
-    }
-
-    /**
-     * Prefix Route for the App's namespace
-     *
-     * App ID / Content Type / metadataDatKey / nodes /
-     */
-    public static routeBaseRegistrationPrefix({
-        nameSpace,
-        contentType,
-        metaDatKey
-    }) {
-        return nameSpace + "/" + contentType + "/" + metaDatKey + "/nodes/";
-    }
-
-    /**
-     * Registration Data route to IndexData
-     *
-     * Eth Address / fileDatKey / indexData
-     */
-    public static routeRegistrationData({ ethAddress, fileDatKey }) {
-        return ethAddress + "/" + fileDatKey + "/indexData";
-    }
-
-    /**
-     * Entire route for self registration
-     *
-     * Eth Address / App ID / Content Type / nodes / Eth Address / fileDatKey / indexData
-     */
-    public static routeSelfRegistration({
-        nameSpace,
-        ethAddress,
-        contentType,
-        fileDatKey
-    }: AOP2P_SelfRegistrationRoute) {
-        return (
-            AOP2P.routeSelfRegistrationPrefix({
-                nameSpace,
-                ethAddress,
-                contentType
-            }) + AOP2P.routeRegistrationData({ ethAddress, fileDatKey })
-        );
-    }
-
-    /**
-     * Entire route for node registration
-     *
-     * App ID / Content Type / metadataDatKey / nodes / ethAddress / fileDatKey / indexData
-     */
-    public static routeNodeRegistration({
-        nameSpace,
-        contentType,
-        metaDatKey,
-        ethAddress,
-        fileDatKey
-    }: AOP2P_NodeRegistrationRoute) {
-        return (
-            AOP2P.routeBaseRegistrationPrefix({
-                nameSpace,
-                contentType,
-                metaDatKey
-            }) + AOP2P.routeRegistrationData({ ethAddress, fileDatKey })
-        );
-    }
-
-    /**
-     * Entire route for updating your node registration timestamp
-     */
-    public static routeNodeRegistrationUpdate({
-        nameSpace,
-        contentType,
-        metaDatKey,
-        ethAddress
-    }: AOP2P_NodeUpdateRoute) {
-        return (
-            AOP2P.routeBaseRegistrationPrefix({
-                nameSpace,
-                contentType,
-                metaDatKey
-            }) + ethAddress
-        );
-    }
-
-    /**
-     * Simply adds signatures to the end of the route for node routes.
-     */
-    public static routeAddSignature(route) {
-        return route + "/signature";
+    _handleNodeUpdate(request: IAORouterRequest) {
+        const { content }: AOP2P_Update_Node_Timestamp_Data = request.data;
+        this.taodb
+            .insertContentHostTimestamp({ content })
+            .then(request.respond)
+            .catch(request.reject);
     }
 }

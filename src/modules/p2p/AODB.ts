@@ -22,7 +22,7 @@ export interface AODB_Entry<T> {
 }
 
 export default class AODB {
-    private aodb: aodb;
+    public aodb: aodb;
     private dbKey: string;
     private dbPath: string | Function;
     private swarm: discovery;
