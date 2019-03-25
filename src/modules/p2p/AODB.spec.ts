@@ -1,7 +1,7 @@
 import "mocha";
 import { expect } from "chai";
 import AOContent from "../../models/AOContent";
-import AODB, { AO_Hyper_Options, AODB_Entry } from "./AODB";
+import AODB, { IAODB_Args, AODB_Entry } from "./AODB";
 import * as AOCrypto from "../../AOCrypto";
 import EthCrypto from "eth-crypto";
 import ram from "random-access-memory";
@@ -100,7 +100,7 @@ describe("TaoDB module", () => {
     before(function(done) {
         // Storing this db in ram, no need to persist
         aodb = new AODB();
-        let aodbOptions: AO_Hyper_Options = {
+        let aodbOptions: IAODB_Args = {
             dbKey: undefined,
             dbPath: function(filename) {
                 return ram();

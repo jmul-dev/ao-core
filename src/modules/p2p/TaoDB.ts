@@ -95,9 +95,7 @@ export default class TaoDB extends AODB {
 
     /**
      *
-     *
      * User Content Schema
-     *
      *
      */
     public static getUserContentSignatureKey({
@@ -129,33 +127,115 @@ export default class TaoDB extends AODB {
         });
     }
 
-    // public insertContentHostSignature({
-    //     key,
-    //     value,
-    //     writerSignature,
-    //     writerAddress
-    // }) {
-    //     return this.insert({
-    //         key,
-    //         value,
-    //         writerAddress,
-    //         writerSignature,
-    //         schemaKey: this.schemas.contentHostSignature.key
-    //     });
-    // }
 
-    // public insertContentHostData({
-    //     key,
-    //     value,
-    //     writerSignature,
-    //     writerAddress
-    // }) {
-    //     return this.insert({
-    //         key,
-    //         value,
-    //         writerAddress,
-    //         writerSignature,
-    //         schemaKey: this.schemas.contentHostIndexData.key
-    //     });
-    // }
+    /**
+     * 
+     * Content Host Signature
+     * 
+     */
+    public static getContentHostSignatureKey({
+        hostsPublicKey,
+        contentType,
+        contentMetadataDatKey,
+        contentDatKey
+    }) {
+        return `/AO/Content/${contentType}/${contentMetadataDatKey}/Hosts/${hostsPublicKey}/${contentDatKey}/indexData/signature`;
+    }
+
+    public insertContentHostSignature({ content }: { content: AOContent }) {
+        const key = TaoDB.getContentHostSignatureKey({
+            hostsPublicKey: this._userIdentity.publicKey,
+            contentType: content.contentType,
+            contentMetadataDatKey: content.metadataDatKey,
+            contentDatKey: content.fileDatKey
+        });
+        const value = content.baseChallengeSignature;
+        const writerSignature = this.createSignedHash({
+            privateKey: this._userIdentity.privateKey,
+            key,
+            value
+        });
+        return this.insert({
+            key,
+            value,
+            writerAddress: this._userIdentity.publicKey,
+            writerSignature,
+            schemaKey: this.schemas.userContent.key
+        });
+    }
+
+    /**
+     * 
+     * Content Host indexData (decryption key handoff)
+     * 
+     */
+    public static getContentHostIndexDataKey({
+        hostsPublicKey,
+        contentType,
+        contentMetadataDatKey,
+        contentDatKey
+    }) {
+        return `/AO/Content/${contentType}/${contentMetadataDatKey}/Hosts/${hostsPublicKey}/${contentDatKey}/indexData`;
+    }
+
+    public insertContentHostIndexData({ content }: { content: AOContent }) {
+        const key = TaoDB.getContentHostSignatureKey({
+            hostsPublicKey: this._userIdentity.publicKey,
+            contentType: content.contentType,
+            contentMetadataDatKey: content.metadataDatKey,
+            contentDatKey: content.fileDatKey
+        });
+        const value = content.baseChallengeSignature;
+        const writerSignature = this.createSignedHash({
+            privateKey: this._userIdentity.privateKey,
+            key,
+            value
+        });
+        return this.insert({
+            key,
+            value,
+            writerAddress: this._userIdentity.publicKey,
+            writerSignature,
+            schemaKey: this.schemas.userContent.key
+        });
+    }
+
+    /**
+     * 
+     * Content Host Timestamp (last seen/online host)
+     * 
+     */
+    public static getContentHostTimestampKey({
+        hostsPublicKey,
+        contentType,
+        contentMetadataDatKey
+    }) {
+        return `/AO/Content/${contentType}/${contentMetadataDatKey}/Hosts/${hostsPublicKey}`;
+    }
+
+    public insertContentHostTimestamp({ content }: { content: AOContent }) {
+        const key = TaoDB.getContentHostTimestampKey({
+            hostsPublicKey: this._userIdentity.publicKey,
+            contentType: content.contentType,
+            contentMetadataDatKey: content.metadataDatKey
+        });
+        const value = {
+            timestamp: Date.now(),
+            contentHostId: content.contentHostId,
+            contentDatKey: content.fileDatKey
+        };
+        const writerSignature = this.createSignedHash({
+            privateKey: this._userIdentity.privateKey,
+            key,
+            value
+        });
+        return this.insert({
+            key,
+            value,
+            writerAddress: this._userIdentity.publicKey,
+            writerSignature,
+            schemaKey: this.schemas.userContent.key
+        });
+    }
+
 }
