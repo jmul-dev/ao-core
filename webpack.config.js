@@ -10,8 +10,6 @@ console.log(__dirname + "/nodebin");
 
 const devMode = process.env.NODE_ENV !== "production";
 
-console.log("Are we in development mode?", devMode ? "yes" : "no");
-
 fs.mkdirSync(path.resolve(__dirname, "dist"));
 
 const productionLoader = {
@@ -48,7 +46,7 @@ var config = {
     },
     output: {
         path: path.resolve(__dirname, "dist"),
-        filename: chunkData => {
+        filename: chunkData => {``
             return chunkData.chunk.name === "main" ||
                 chunkData.chunk.name === "bin"
                 ? "[name].js"
@@ -57,29 +55,30 @@ var config = {
         library: "[name]",
         libraryTarget: "commonjs"
     },
-    optimization: {
-        minimize: process.env.NODE_ENV === "production" ? true : false, // <---- disables uglify.
-        minimizer: [
-            new UglifyJsPlugin({
-                exclude: /modules/, // Need to exclude for string replacement to happen post compile.
-                parallel: true
-            })
-        ], //if you want to customize it.
-        namedModules: true //enabled for string replacement
-    },
+    // optimization: {
+    //     minimize: process.env.NODE_ENV === "production" ? true : false, // <---- disables uglify.
+    //     minimizer: [
+    //         new UglifyJsPlugin({
+    //             exclude: /modules/, // Need to exclude for string replacement to happen post compile.
+    //             parallel: true,
+                
+    //         })
+    //     ], //if you want to customize it.
+    //     namedModules: true //enabled for string replacement
+    // },
     resolve: {
         // Add `.ts` and `.tsx` as a resolvable extension.
         extensions: [".ts", ".tsx", ".mjs", ".js", ".graphql", ".json", ".node"]
     },
     module: {
-        rules: [
+        rules: [            
             {
                 test: /bin\.(js|ts)$/,
                 use: ["shebang-loader"]
             },
             {
                 test: /\.tsx?$/,
-                loader: "awesome-typescript-loader"
+                loader: "awesome-typescript-loader",
             },
             // https://github.com/graphql/graphql-js/issues/1272
             {
@@ -95,6 +94,18 @@ var config = {
             {
                 test: /\.node$/,
                 use: [devMode ? developmentLoader : productionLoader]
+            },
+            // eccrypto return hack
+            {
+                test: /index\.js$/,
+                include: [
+                    path.resolve(__dirname, "node_modules/aodb/node_modules/eccrypto")
+                ],
+                loader: "string-replace-loader",
+                options: {
+                    search: 'return (module.exports = require("./browser"));',
+                    replace: 'console.error("ignoring browser return");'
+                }
             },
             //UTP
             {
@@ -127,10 +138,11 @@ var config = {
                         path.join("sodium-prebuilds") +
                         "')"
                 }
-            }
+            },            
         ]
     },
     plugins: [
+        new webpack.IgnorePlugin(/vertx/),  // sry
         new webpack.BannerPlugin({ banner: "#!/usr/bin/env node", raw: true }),
         new CopyWebpackPlugin([
             { from: "node_modules/ffprobe-static/bin", to: "bin" },
