@@ -1,17 +1,18 @@
 import { graphiqlExpress, graphqlExpress } from "apollo-server-express";
-import { graphqlUploadExpress } from "graphql-upload";
 import { json } from "body-parser";
 import cors from "cors";
-import express, { Express, Response } from "express";
+import crypto from "crypto";
+import express, { Express, NextFunction, Request, Response } from "express";
+import fs from "fs";
+import { graphqlUploadExpress } from "graphql-upload";
 import { AddressInfo, Server } from "net";
 import path from "path";
 import Debug from "./AODebug";
 import AOUserSession from "./AOUserSession";
 import schema from "./graphql/schema";
 import AOContent from "./models/AOContent";
-import { AODat_Check_Data } from "./modules/dat/dat";
 import { AODB_UserContentGet_Data } from "./modules/db/db";
-import { IAOFS_FileStat_data, IAOFS_ReadStream_Data } from "./modules/fs/fs";
+import { IAORouterMessage } from "./router/AORouter";
 import { AOCoreProcessRouter } from "./router/AORouterInterface";
 import TaoDB from "./modules/p2p/TaoDB";
 const debug = Debug("ao:http");
@@ -36,8 +37,7 @@ export default class Http {
     private express: Express;
     private server: Server;
     private router: AOCoreProcessRouter;
-    public corePort: number;
-    public httpOrigin: string;
+    public options: Http_Args;
 
     constructor(
         router: AOCoreProcessRouter,
@@ -46,8 +46,7 @@ export default class Http {
         taoDb: TaoDB
     ) {
         this.router = router;
-        this.corePort = options.corePort;
-        this.httpOrigin = options.httpOrigin;
+        this.options = options;
         this.express = express();
         const graphqlSchema = schema();
         this.express.use(
@@ -74,55 +73,28 @@ export default class Http {
         }
         this.express.get(
             `/${Http.ENCRYPTED_RESOURCES_ENDPOINT}/:key/:filename`,
-            async (request, response: Response, next) => {
-                this._streamEncryptedFile(request, response)
-                    .then(() => {
-                        // response.end();
-                    })
-                    .catch(error => {
-                        debug(error);
-                        next(error);
-                    });
-            }
+            this._serveResource.bind(this, { encrypted: true })
         );
         this.express.get(
             `/${Http.RESOURCES_ENDPOINT}/:key/:filename`,
-            async (request, response: Response, next) => {
-                this._streamFile(request, response)
-                    .then(({ data }) => {
-                        // response.end();
-                    })
-                    .catch(error => {
-                        debug(error);
-                        next(error);
-                    });
-            }
+            this._serveResource.bind(this, { encrypted: false })
         );
         this.express.get(
             `/${Http.RESOURCES_ENDPOINT}/:key/:folder/*`,
-            async (request, response: Response, next) => {
-                this._streamDappContent(request, response)
-                    .then(({ data }) => {
-                        // response.end();
-                    })
-                    .catch(error => {
-                        debug(error);
-                        next(error);
-                    });
-            }
+            this._serveResource.bind(this, { encrypted: false })
         );
     }
 
     public start(): Promise<any> {
         let promiseHandled = false;
         return new Promise((resolve, reject) => {
-            this.server = this.express.listen(this.corePort, () => {
+            this.server = this.express.listen(this.options.corePort, () => {
                 const address: AddressInfo = <AddressInfo>this.server.address();
                 debug("Express server running on port: " + address.port);
                 this.router.send("/core/log", {
                     message: `AO http interface running on port ${
                         address.port
-                    }, accesible from origin ${this.httpOrigin}`
+                    }, accesible from origin ${this.options.httpOrigin}`
                 });
                 debug(`started`);
                 promiseHandled = true;
@@ -138,167 +110,130 @@ export default class Http {
         });
     }
 
-    private _streamDappContent(request, response) {
-        return new Promise((resolve, reject) => {
-            const datKey = request.params.key;
-            const folder = request.params.folder;
-            let contentPath = request.path.substring(
-                request.path.indexOf(datKey)
-            );
-            //First check to make sure the file exists in the dat check
-            const datCheckData: AODat_Check_Data = {
-                key: datKey
-            };
-            this.router
-                .send("/dat/exists", datCheckData)
-                .then(() => {
-                    const filePath = path.join("content", contentPath);
-                    const statFileData: IAOFS_FileStat_data = {
-                        path: filePath
-                    };
-                    this.router
-                        .send("/fs/stats", statFileData)
-                        .then(fileStats => {
-                            const fileSize = fileStats.data.size;
-                            let streamOptions: Object = {};
-                            //Images and smaller files
-                            let head200 = {
-                                "Accept-Ranges": "bytes",
-                                "Content-Length": fileSize
-                            };
-                            debug(
-                                `/${datKey}/${contentPath}: Content-Length: ${fileSize}`
-                            );
-                            response.writeHead(200, head200);
-                            const readFileData: IAOFS_ReadStream_Data = {
-                                stream: response,
-                                streamDirection: "read",
-                                streamOptions: streamOptions,
-                                readPath: filePath
-                            };
-                            this.router
-                                .send("/fs/readStream", readFileData)
-                                .then(resolve)
-                                .catch(reject);
-                        })
-                        .catch(reject);
-                })
-                .catch(reject);
-        });
-    }
-
-    private _streamFile(request, response) {
-        return new Promise((resolve, reject) => {
-            const datKey = request.params.key;
-            const filename = request.params.filename;
-
-            //First check to make sure the file exists in the dat check
-            const datCheckData: AODat_Check_Data = {
-                key: datKey
-            };
-            this.router
-                .send("/dat/exists", datCheckData)
-                .then(() => {
-                    const filePath = path.join("content", datKey, filename);
-                    const statFileData: IAOFS_FileStat_data = {
-                        path: filePath
-                    };
-                    this.router
-                        .send("/fs/stats", statFileData)
-                        .then(fileStats => {
-                            const fileSize = fileStats.data.size;
-                            let streamOptions: Object = {};
-                            //Images and smaller files
-                            let head200 = {
-                                "Accept-Ranges": "bytes",
-                                "Content-Length": fileSize
-                            };
-                            debug(
-                                `/${datKey}/${filename}: Content-Length: ${fileSize}`
-                            );
-                            response.writeHead(200, head200);
-                            const readFileData: IAOFS_ReadStream_Data = {
-                                stream: response,
-                                streamDirection: "read",
-                                streamOptions: streamOptions,
-                                readPath: filePath
-                            };
-                            this.router
-                                .send("/fs/readStream", readFileData)
-                                .then(resolve)
-                                .catch(reject);
-                        })
-                        .catch(reject);
-                })
-                .catch(reject);
-        });
-    }
-
-    private _streamEncryptedFile(request, response) {
-        return new Promise((resolve, reject) => {
-            const datKey = request.params.key;
-            const filename = request.params.filename;
-            const filePath = path.join("content", datKey, filename);
-            // 1. Make sure dat exists
-            const datCheckData: AODat_Check_Data = {
-                key: datKey
-            };
-            this.router
-                .send("/dat/exists", datCheckData)
-                .then(() => {
-                    // 2. Get corresponding user content (for decryption key)
+    private _serveResource(
+        resourceOptions: { encrypted: boolean },
+        request: Request,
+        response: Response,
+        next: NextFunction
+    ) {
+        const { key, filename } = request.params;
+        const contentRelativePath = request.path.substring(
+            request.path.indexOf(key)
+        );
+        const resourceLocation = path.resolve(
+            this.options.storageLocation,
+            "content",
+            contentRelativePath
+        );
+        Promise.resolve()
+            .then(() => {
+                // 1. Ensure resource exists
+                return new Promise((resolve, reject) => {
+                    fs.access(
+                        resourceLocation,
+                        fs.constants.R_OK,
+                        (error?: Error) => {
+                            if (error) {
+                                reject(error);
+                            } else {
+                                resolve();
+                            }
+                        }
+                    );
+                });
+            })
+            .then(() => {
+                return new Promise((resolve, reject) => {
+                    if (!resourceOptions.encrypted) {
+                        // Non-encrypted resource does not need to fetch content from user db
+                        return resolve();
+                    }
+                    // 2. Fetch corresponding content                
                     const userContentData: AODB_UserContentGet_Data = {
-                        query: { fileDatKey: datKey }
+                        query: { fileDatKey: key }
                     };
                     this.router
                         .send("/db/user/content/get", userContentData)
-                        .then(userContentResponse => {
-                            if (userContentResponse.data.length) {
-                                const content: AOContent = AOContent.fromObject(
-                                    userContentResponse.data[0]
+                        .then((userContentResponse: IAORouterMessage) => {
+                            if (
+                                !userContentResponse.data ||
+                                userContentResponse.data.length < 1
+                            ) {
+                                reject(
+                                    new Error(
+                                        `Content not found for the current user`
+                                    )
                                 );
-                                // 3. File stat (for content length)
-                                const statFileData: IAOFS_FileStat_data = {
-                                    path: filePath
-                                };
-                                this.router
-                                    .send("/fs/stats", statFileData)
-                                    .then(fileStats => {
-                                        const fileSize = fileStats.data.size;
-                                        let streamOptions: Object = {};
-                                        let head200 = {
-                                            "Accept-Ranges": "bytes",
-                                            "Content-Length": fileSize
-                                        };
-                                        response.writeHead(200, head200);
-                                        const readFileData: IAOFS_ReadStream_Data = {
-                                            stream: response,
-                                            streamDirection: "read",
-                                            streamOptions: streamOptions,
-                                            readPath: path.join(
-                                                "content",
-                                                datKey,
-                                                filename
-                                            ),
-                                            key: content.decryptionKey
-                                        };
-                                        this.router
-                                            .send(
-                                                "/fs/readStream",
-                                                readFileData
-                                            )
-                                            .then(resolve)
-                                            .catch(reject);
-                                    })
-                                    .catch(reject);
-                            } else {
-                                reject(new Error("No such datKey"));
+                                return;
                             }
+                            const content: AOContent = AOContent.fromObject(
+                                userContentResponse.data[0]
+                            );
+                            resolve(content);
                         })
                         .catch(reject);
-                })
-                .catch(reject);
-        });
+                });
+            })
+            .then((content?: AOContent) => {
+                // 3. Stat file for content length
+                return new Promise((resolve, reject) => {
+                    fs.stat(
+                        resourceLocation,
+                        (error: Error, stats: fs.Stats) => {
+                            if (error) {
+                                reject(error);
+                            } else {
+                                // Write headers
+                                response.set("Accept-Ranges", "bytes");
+                                response.set("Content-Length", `${stats.size}`);
+                                if (content && content.mimetype) {
+                                    response.set(
+                                        "Content-Type",
+                                        content.mimetype
+                                    );
+                                }
+                                resolve(content);
+                            }
+                        }
+                    );
+                });
+            })
+            .then((content?: AOContent) => {
+                // 4. Time to stream response
+                return new Promise((resolve, reject) => {
+                    response.status(200);
+                    const contentStream: fs.ReadStream = fs.createReadStream(
+                        resourceLocation
+                    );
+                    if (resourceOptions.encrypted) {
+                        const encryptionAlgorithm =
+                            content.encryptionAlgorithm || "aes-256-ctr";
+                        const availableCiphers = crypto.getCiphers();
+                        if (
+                            availableCiphers.indexOf(encryptionAlgorithm) === -1
+                        ) {
+                            reject(
+                                new Error(
+                                    `Unsupported cipher: ${encryptionAlgorithm}`
+                                )
+                            );
+                            return;
+                        }
+                        const decryptionTransformer = crypto.createDecipher(
+                            encryptionAlgorithm,
+                            content.decryptionKey
+                        );
+                        contentStream
+                            .pipe(decryptionTransformer)
+                            .on("error", reject)
+                            .pipe(response)
+                            .on("error", reject);
+                    } else {
+                        contentStream.pipe(response).on("error", reject);
+                    }
+                });
+            })
+            .catch(next);
     }
 
     public shutdown(err?: Error) {

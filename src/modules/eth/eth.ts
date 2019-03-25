@@ -104,6 +104,11 @@ export default class AOEth extends AORouterInterface {
     private rpcEndpoint: string;
     private providerReconnectDebounce: number = 100;
     private connectionStatus: IAOStatus = "DISCONNECTED";
+    private contentHosts = {
+        totalContentHosts: 0,
+        lastFetched: null,
+        refetchPeriodInMs: 60 * 1000 // 1 min
+    };
 
     private contracts: {
         // sry no type checking on these bad boys!
@@ -184,13 +189,12 @@ export default class AOEth extends AORouterInterface {
             if (web3) web3.setProvider(null);
             if (provider) provider.disconnect();
             request.reject(error);
-        };
-        // 1. Setup web3 instance
-        this.web3 = new Web3();
+        };        
         // 2. Get the provider
         this.getEthereumProvider(this.rpcEndpoint)
             .then(provider => {
-                this.web3.setProvider(provider);
+                // 1. Setup web3 instance
+                this.web3 = new Web3(provider);
                 // 3. Attempt to fetch the network id. This will tell us if the rpc
                 // connection is valid.
                 this.web3.eth.net
@@ -417,14 +421,26 @@ export default class AOEth extends AORouterInterface {
     }
 
     _handleStats(request: IAORouterRequest) {
+        let shouldRefetchContentHostCount = false;
+        if (this.contentHosts.lastFetched === null) {
+            shouldRefetchContentHostCount = true;
+        } else if (
+            this.contentHosts.lastFetched <
+            Date.now() - this.contentHosts.refetchPeriodInMs
+        ) {
+            shouldRefetchContentHostCount = true;
+        }
         if (
             this.connectionStatus === "CONNECTED" &&
-            typeof this.contracts !== "undefined"
+            typeof this.contracts !== "undefined" &&
+            shouldRefetchContentHostCount
         ) {
+            this.contentHosts.lastFetched = Date.now();
             this.contracts.aoContent.methods
                 .totalContentHosts()
                 .call()
                 .then(totalContentHosts => {
+                    this.contentHosts.totalContentHosts = totalContentHosts;
                     let stats: IAOETH_Stats = {
                         connectionStatus: this.connectionStatus,
                         networkId: this.networkId,
@@ -437,7 +453,7 @@ export default class AOEth extends AORouterInterface {
             let stats: IAOETH_Stats = {
                 connectionStatus: this.connectionStatus,
                 networkId: this.networkId,
-                totalContentHosts: undefined
+                totalContentHosts: this.contentHosts.totalContentHosts
             };
             request.respond(stats);
         }

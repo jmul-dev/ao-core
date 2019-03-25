@@ -18,6 +18,7 @@ The dist folder can then be served without any additional dependencies/node_modu
 
 -   `web3@v1.0.0-beta.33`: dependency requirement based on infura rpc filter support https://github.com/ethereum/web3.js/issues/1559. May upgrade to beta.36+ once released.
 -   `web3@v0.20.6`: dependency required for parsing log information from transactionReceipt. Forked under `web3-legacy` so that we can use both versions of web3 side by side.
+-   `@types/bn.js` might need to be deleted from node_modules folder...
 
 ## Adding content types
 
