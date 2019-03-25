@@ -123,15 +123,15 @@ export default class AOUserSession {
                                             .then(
                                                 (
                                                     response: IAORouterMessage
-                                                ) => {
-                                                    // 5. Listeners that make this app work
-                                                    debug(
-                                                        `User identity generated, public key: ${
-                                                            identity.publicKey
-                                                        }`
-                                                    );
-                                                    resolve({ ethAddress });
-                                                    this._resume();
+                                                ) => {                                                    
+                                                        // 6. Listeners that make this app work
+                                                        debug(
+                                                            `User identity generated, public key: ${
+                                                                identity.publicKey
+                                                            }`
+                                                        );
+                                                        resolve({ ethAddress });
+                                                        this._resume();                                                    
                                                 }
                                             )
                                             .catch(reject);
@@ -142,6 +142,11 @@ export default class AOUserSession {
                                         resolve({ ethAddress });
                                         this._resume();
                                     }
+                                    // Register the taodb schemas
+                                    this.router.send("/p2p/setUserIdentity", {userIdentity: this.identity}).then(() => {
+                                    }).catch((error: Error) => {
+                                        debug(`Error registering taodb schemas: ${error.message}`)
+                                    })
                                 })
                                 .catch(reject);
                         })

@@ -5,7 +5,7 @@ import TaoDB from "./TaoDB";
 import * as AOCrypto from "../../AOCrypto";
 import EthCrypto from "eth-crypto";
 import ram from "random-access-memory";
-import { AO_Hyper_Options } from "./AODB";
+import { IAODB_Args } from "./AODB";
 
 describe("TaoDB module", () => {
     const actorA: AOCrypto.Identity = AOCrypto.createUserIdentity();
@@ -53,7 +53,7 @@ describe("TaoDB module", () => {
     before(function(done) {
         // Storing this db in ram, no need to persist
         taoDB = new TaoDB();
-        let aodbOptions: AO_Hyper_Options = {
+        let aodbOptions: IAODB_Args = {
             dbKey: undefined,
             dbPath: function(filename) {
                 return ram();

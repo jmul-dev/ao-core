@@ -21,7 +21,6 @@ import Debug, { debugLogFile } from "./AODebug";
 import { IAOETH_Init_Data } from "./modules/eth/eth";
 import { AOP2P_Init_Data } from "./modules/p2p/p2p";
 import { AODB_NetworkInit_Data } from "./modules/db/db";
-import TaoDB from "./modules/p2p/TaoDB";
 
 const debugLog = Debug("ao:core");
 const errorLog = Debug("ao:core:error");
@@ -108,7 +107,6 @@ export default class Core extends EventEmitter {
     private coreRouter: AORouter;
     private http: Http;
     private userSession: AOUserSession;
-    private taoDb: TaoDB;
 
     // current state of the core
     private state: String;
@@ -499,28 +497,18 @@ export default class Core extends EventEmitter {
             .send("/eth/settings/taoDbKey")
             .then((response: IAORouterMessage) => {
                 const taoDbKey = response.data.taoDbKey;
-                // 2. Ensure directory exists
-                const p2pPath = path.join(
-                    this.options.storageLocation,
-                    "p2p",
-                    taoDbKey
-                );
-                fsExtra
-                    .ensureDir(p2pPath)
+                // 2. Spin up p2p module with the fetched taoDbKey
+                const p2pInitData: AOP2P_Init_Data = {
+                    dbKey: taoDbKey
+                };
+                this.coreRouter.router
+                    .send("/p2p/init", p2pInitData)
                     .then(() => {
-                        this.taoDb = new TaoDB();
-                        this.taoDb
-                            .start({
-                                dbPath: p2pPath,
-                                dbKey: taoDbKey
-                            })
-                            .then(() => {
-                                this.stateChangeHandler(
-                                    AOCoreState.P2P_MODULE_INITIALIZED
-                                );
-                            });
+                        this.stateChangeHandler(
+                            AOCoreState.P2P_MODULE_INITIALIZED
+                        );
                     })
-                    .catch(error => {
+                    .catch((error: Error) => {
                         this.stateChangeHandler(
                             AOCoreState.INITIALIZATION_FAILED,
                             error,
@@ -535,6 +523,7 @@ export default class Core extends EventEmitter {
                     `Unable to reach the AO network settings`
                 );
             });
+
     }
 
     private datModuleInitializer() {
@@ -578,8 +567,7 @@ export default class Core extends EventEmitter {
         this.http = new Http(
             this.coreRouter.router,
             this.options,
-            this.userSession,
-            this.taoDb
+            this.userSession
         );
         this.http
             .start()

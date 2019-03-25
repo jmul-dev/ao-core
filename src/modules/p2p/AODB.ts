@@ -5,7 +5,7 @@ import Debug from "../../AODebug";
 import { IAOStatus } from "../../models/AOStatus";
 const debug = Debug("ao:taodb");
 
-export interface AO_Hyper_Options {
+export interface IAODB_Args {
     dbKey: string;
     dbPath: string | Function;
 }
@@ -28,7 +28,7 @@ export default class AODB {
     private swarm: discovery;
     public connectionStatus: IAOStatus = "DISCONNECTED";
 
-    public start(hyperOptions: AO_Hyper_Options): Promise<any> {
+    public start(hyperOptions: IAODB_Args): Promise<any> {
         this.connectionStatus = "CONNECTING";
         return new Promise((resolve, reject) => {
             try {

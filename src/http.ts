@@ -14,7 +14,6 @@ import AOContent from "./models/AOContent";
 import { AODB_UserContentGet_Data } from "./modules/db/db";
 import { IAORouterMessage } from "./router/AORouter";
 import { AOCoreProcessRouter } from "./router/AORouterInterface";
-import TaoDB from "./modules/p2p/TaoDB";
 const debug = Debug("ao:http");
 
 export interface Http_Args {
@@ -42,8 +41,7 @@ export default class Http {
     constructor(
         router: AOCoreProcessRouter,
         options: Http_Args,
-        userSession: AOUserSession,
-        taoDb: TaoDB
+        userSession: AOUserSession
     ) {
         this.router = router;
         this.options = options;
@@ -60,8 +58,7 @@ export default class Http {
                 context: {
                     router,
                     options,
-                    userSession,
-                    taoDb
+                    userSession
                 }
             })
         );
