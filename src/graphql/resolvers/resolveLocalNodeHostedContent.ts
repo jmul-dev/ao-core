@@ -28,7 +28,7 @@ export default (
         let contentQueryParams: AODB_UserContentGet_Data = {
             userId: obj.ethAddress,
             query: {
-                creatorId: {
+                creatorNodeId: {
                     $ne: obj.ethAddress
                 },
                 state: args.inputs.incomplete

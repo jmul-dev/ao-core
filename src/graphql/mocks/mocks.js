@@ -1,17 +1,19 @@
-import casual from 'casual';
-import { MockList } from 'graphql-tools';
+import casual from "casual";
+import { MockList } from "graphql-tools";
 
-casual.define('ethAddress', () => {
+casual.define("ethAddress", () => {
     var text = "";
-    var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    var possible =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     for (var i = 0; i < 40; i++)
         text += possible.charAt(Math.floor(Math.random() * possible.length));
-    return '0x' + text;
+    return "0x" + text;
 });
 
-casual.define('datHash', () => {
+casual.define("datHash", () => {
     var text = "";
-    var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    var possible =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     for (var i = 0; i < 64; i++)
         text += possible.charAt(Math.floor(Math.random() * possible.length));
     return text;
@@ -27,13 +29,13 @@ const mocks = {
         // @ts-ignore
         datProfile: casual.datHash,
         // @ts-ignore
-        datStorage: casual.datHash,
+        datStorage: casual.datHash
     }),
     NodeIdentityLocal: () => ({
-        localStorageReserved: casual.integer(20000, Math.pow(1.25, 8)),  // 20MB - 1TB
+        localStorageReserved: casual.integer(20000, Math.pow(1.25, 8)), // 20MB - 1TB
         downloadRateCap: casual.integer(1, 100000), // 1KB/s - 100MB/s
         uploadRateCap: casual.integer(1, 100000), // 1KB/s - 100MB/s
-        maxUploadCap: casual.integer(20000, Math.pow(1.25, 8)),  // 20MB - 1TB
+        maxUploadCap: casual.integer(20000, Math.pow(1.25, 8)) // 20MB - 1TB
     }),
     NodeIdentityContentCreator: () => ({
         content: () => new MockList([1, 12])
@@ -41,7 +43,7 @@ const mocks = {
     // IContent: (data) => ({
     //     id: casual.uuid,
     //     nodeId: casual.uuid,
-    //     creatorId: casual.uuid,
+    //     creatorNodeId: casual.uuid,
     //     contentType: 'VOD',
     //     isFolder: false,
     //     isMutable: false,
@@ -63,7 +65,7 @@ const mocks = {
     //     featuredImageUrl: casual.word + '.jpg',
     // }),
     NodeStatistics: () => ({
-        status: 'connected',
+        status: "connected",
         uptime: casual.double(0, 1000),
         peersConnected: casual.integer(0, 100),
         videosAvailable: casual.integer(),
@@ -71,16 +73,16 @@ const mocks = {
         videosStreaming: casual.integer(),
         storageUsed: casual.double(),
         bandwidthUp: casual.double(),
-        bandwidthDown: casual.double(),
+        bandwidthDown: casual.double()
     }),
     Wallet: () => ({
-        ethNetwork: 'ropsten',
+        ethNetwork: "ropsten",
         // @ts-ignore
         ethAddress: casual.ethAddress,
         ethBalance: casual.double(),
         aoBalance: casual.double(),
-        aoStaked: casual.double(),
+        aoStaked: casual.double()
     })
-}
+};
 
-export default mocks
+export default mocks;

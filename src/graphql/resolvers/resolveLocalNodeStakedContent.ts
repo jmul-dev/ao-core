@@ -21,7 +21,7 @@ export default (
         const contentQueryParams: AODB_UserContentGet_Data = {
             userId: obj.ethAddress,
             query: {
-                creatorId: obj.ethAddress,
+                creatorNodeId: obj.ethAddress,
                 state: args.inputs.incomplete
                     ? {
                           $in: getListOfContentIncompleteStates()
