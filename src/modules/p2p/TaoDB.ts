@@ -25,6 +25,11 @@ export interface ITaoDB_ContentHost_IndexData_Entry {
     decryptionKey: string;
     signature: string;
 }
+export interface ITaoDB_ContentHost_Timestamp {
+    timestamp: number;
+    contentHostId: string;
+    contentDatKey: string;
+}
 
 /**
  * Additional layer on top of AODB that adds schema helpers, schema
@@ -252,7 +257,7 @@ export default class TaoDB extends AODB {
             contentType: content.contentType,
             contentMetadataDatKey: content.metadataDatKey
         });
-        const value = {
+        const value: ITaoDB_ContentHost_Timestamp = {
             timestamp: Date.now(),
             contentHostId: content.contentHostId,
             contentDatKey: content.fileDatKey

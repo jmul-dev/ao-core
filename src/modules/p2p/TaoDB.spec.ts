@@ -1,9 +1,10 @@
 import "mocha";
 import { expect } from "chai";
-import AOContent from "../../models/AOContent";
+import AOContent, { AOVideoContent } from "../../models/AOContent";
 import TaoDB, {
     ITaoDB_ContentHost_IndexData_Entry,
-    ITaoDB_ContentHost_IndexData
+    ITaoDB_ContentHost_IndexData,
+    ITaoDB_ContentHost_Timestamp
 } from "./TaoDB";
 import * as AOCrypto from "../../AOCrypto";
 import EthCrypto from "eth-crypto";
@@ -16,8 +17,9 @@ describe("TaoDB module", () => {
     const actorC: AOCrypto.Identity = AOCrypto.createUserIdentity();
     const contentJson = {
         id: "4dafd6582efbbfe913c4202cf926b700b3f5700ccebe1faf10d5f61e1e5ffda8",
-        nodeId: "0x9c7caa71129f534223107e4486ed48afd85de5d6",
-        creatorId: "0x9c7caa71129f534223107e4486ed48afd85de5d6",
+        nodeId: actorA.publicKey,
+        creatorId: actorA.publicKey,
+        contentHostId: "somerandomhostidgeneratedbyethereumnetwork",
         metadataDatKey:
             "b7e815da776b9d1610e710bf2e8eca3f8d1972112f62f49997ca3281b73a75ee",
         contentType: "VOD",
@@ -27,7 +29,7 @@ describe("TaoDB module", () => {
         description: "asd fasdf asdf",
         stake: 12092665,
         profit: 10,
-        createdAt: 1536254388663,
+        createdAt: "1536254388663",
         fileUrl:
             "4dafd6582efbbfe913c4202cf926b700b3f5700ccebe1faf10d5f61e1e5ffda8/video.mp4",
         fileDatKey:
@@ -41,7 +43,7 @@ describe("TaoDB module", () => {
         featuredImageName: "featuredImage.jpg",
         featuredImageUrl:
             "b7e815da776b9d1610e710bf2e8eca3f8d1972112f62f49997ca3281b73a75ee/featuredImage.jpg",
-        metadata: { duration: "24.824800", resolution: 1080, encoding: "h264" },
+        metadata: { duration: 24.8248, resolution: 1080, encoding: "h264" },
         decryptionKey: "0xDEADBEEF"
     };
     let content = AOContent.fromObject(contentJson);
@@ -231,6 +233,33 @@ describe("TaoDB module", () => {
                     expect(entryC.signature).to.equal(
                         indexDataForActorC.signature
                     );
+                    done();
+                })
+                .catch(done);
+        });
+    });
+
+    describe("Content Host Schema - timestamps", () => {
+        it("inserts timestamp for content host", done => {
+            taoDB
+                .insertContentHostTimestamp({ content })
+                .then(done)
+                .catch(done);
+        });
+        it("verifies timestamp was written for content host", done => {
+            const timestampKey = TaoDB.getContentHostTimestampKey({
+                hostsPublicKey: actorA.publicKey,
+                contentType: content.contentType,
+                contentMetadataDatKey: content.metadataDatKey
+            });
+            taoDB
+                .get(timestampKey)
+                .then((value: ITaoDB_ContentHost_Timestamp) => {
+                    expect(value).to.not.be.empty;
+                    expect(value.contentDatKey).to.equal(content.fileDatKey);
+                    expect(value.contentHostId).to.equal(content.contentHostId);
+                    expect(value.timestamp).to.be.a("number");
+                    expect(value.timestamp).to.be.lessThan(Date.now());
                     done();
                 })
                 .catch(done);
