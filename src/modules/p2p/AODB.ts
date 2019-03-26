@@ -3,7 +3,7 @@ import discovery from "discovery-swarm";
 import swarmDefaults from "dat-swarm-defaults";
 import Debug from "../../AODebug";
 import { IAOStatus } from "../../models/AOStatus";
-const debug = Debug("ao:taodb");
+const debug = Debug("ao:aodb");
 
 export interface IAODB_Args {
     dbKey: string;

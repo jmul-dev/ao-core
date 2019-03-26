@@ -433,7 +433,10 @@ export default class AOUserSession {
                             encryptedKeySignature: encryptedDecryptionKeySignature
                         };
                         this.router
-                            .send("/p2p/soldKey", sendDecryptionKeyMessage)
+                            .send(
+                                "/p2p/decryptionKeyHandoff",
+                                sendDecryptionKeyMessage
+                            )
                             .then((response: IAORouterMessage) => {
                                 if (response.data.alreadyExists) {
                                     debug(

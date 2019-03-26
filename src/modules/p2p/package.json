@@ -15,7 +15,7 @@
             "/p2p/watchAndGetKey",
             "/p2p/watchAndGetIndexData",
             "/p2p/registerContentHost",
-            "/p2p/soldKey",
+            "/p2p/decryptionKeyHandoff",
             "/p2p/updateNode",
             "/p2p/content/getContentHosts",
             "/p2p/stats",

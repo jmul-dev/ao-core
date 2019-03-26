@@ -103,7 +103,7 @@ export interface NetworkContentHostEntry {
 }
 
 export default class AOP2P extends AORouterInterface {
-    private taodb: TaoDB;
+    public taodb: TaoDB;
 
     private taoDbRootDir: string;
     private storageLocation: string;
@@ -131,6 +131,10 @@ export default class AOP2P extends AORouterInterface {
             "/p2p/registerContent",
             this._handleContentRegistration.bind(this)
         );
+        this.router.on(
+            "/p2p/registerContentHost",
+            this._handleRegisterContentHost.bind(this)
+        );
         this.router.on("/p2p/watchKey", this._handleWatchKey.bind(this));
         this.router.on(
             "/p2p/watchAndGetKey",
@@ -141,12 +145,8 @@ export default class AOP2P extends AORouterInterface {
             this._handleWatchAndGetIndexData.bind(this)
         );
         this.router.on(
-            "/p2p/registerContentHost",
-            this._handleAddDiscovery.bind(this)
-        );
-        this.router.on(
-            "/p2p/soldKey",
-            this._handleSellDecryptionKey.bind(this)
+            "/p2p/decryptionKeyHandoff",
+            this._handleDecryptionKeyHandoff.bind(this)
         );
         this.router.on("/p2p/updateNode", this._handleNodeUpdate.bind(this));
         this.router.on(
@@ -162,11 +162,7 @@ export default class AOP2P extends AORouterInterface {
 
     _init(request: IAORouterRequest) {
         const { dbKey, dbPath }: AOP2P_Init_Data = request.data;
-        let resolvedDbPath: Function | string = path.join(
-            this.storageLocation,
-            "p2p",
-            dbKey
-        );
+        let resolvedDbPath: Function | string;
         Promise.resolve()
             .then(() => {
                 // NOTE: really only for testing purposes (where dbPath is in-memory)
@@ -174,6 +170,11 @@ export default class AOP2P extends AORouterInterface {
                     resolvedDbPath = dbPath;
                     return Promise.resolve();
                 } else {
+                    resolvedDbPath = path.join(
+                        this.storageLocation,
+                        "p2p",
+                        dbKey
+                    );
                     const ensureP2PPathData: IAOFS_Mkdir_Data = {
                         dirPath: resolvedDbPath.toString()
                     };
@@ -469,7 +470,7 @@ export default class AOP2P extends AORouterInterface {
      * Method for adding a piece of content to the p2p network,
      * ie make content discoverable.
      */
-    _handleAddDiscovery(request: IAORouterRequest) {
+    _handleRegisterContentHost(request: IAORouterRequest) {
         const { content }: AOP2P_Add_Discovery_Data = request.data;
         Promise.resolve()
             .then(() => {
@@ -621,7 +622,7 @@ export default class AOP2P extends AORouterInterface {
         });
     }
 
-    _handleSellDecryptionKey(request: IAORouterRequest) {
+    _handleDecryptionKeyHandoff(request: IAORouterRequest) {
         let {
             content,
             buyersPublicKey,

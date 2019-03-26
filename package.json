@@ -22,6 +22,7 @@
         "test-ao-crypto": "mocha --exit -r ts-node/register src/AOCrypto.spec.ts",
         "test-aodb": "mocha --exit -r ts-node/register src/modules/p2p/AOHyperDB.spec.ts",
         "test-taodb": "mocha --exit -r ts-node/register src/modules/p2p/TaoDB.spec.ts",
+        "test-p2p": "mocha --exit -r ts-node/register src/modules/p2p/p2p.spec.ts",
         "list-native-deps": "node ./node_modules/node-has-native-dependencies/index.js",
         "debug": "node --inspect --nolazy dist/bin.js",
         "postinstall": "rimraf node_modules/@types/bn.js"

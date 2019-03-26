@@ -4,7 +4,12 @@ import path from "path";
 import ram from "random-access-memory";
 import * as AOCrypto from "../../AOCrypto";
 import AOContent from "../../models/AOContent";
-import AOP2P, { AOP2P_Init_Data } from "./p2p";
+import AOP2P, { AOP2P_Init_Data, AOP2P_Write_Decryption_Key_Data } from "./p2p";
+import TaoDB, {
+    ITaoDB_ContentHost_Timestamp,
+    ITaoDB_ContentHost_IndexData
+} from "./TaoDB";
+import { expect } from "chai";
 
 describe("AO P2P module", () => {
     const actorA: AOCrypto.Identity = AOCrypto.createUserIdentity();
@@ -98,17 +103,161 @@ describe("AO P2P module", () => {
 
     describe("New content registration", () => {
         it("should register new content for actorA", done => {
-            aoP2P.router.emit("/p2p/init", {
-                data: p2pInitData,
+            aoP2P.router.emit("/p2p/registerContent", {
+                data: { content },
                 respond: () => {
-                    aoP2P.router.emit("/p2p/setUserIdentity", {
-                        data: { userIdentity: actorA },
-                        respond: done,
-                        reject: done
-                    });
+                    done();
                 },
                 reject: done
             });
+        });
+        it("verifies content was registered under the User Content schema", done => {
+            const dbKey = TaoDB.getUserContentSignatureKey({
+                usersPublicKey: actorA.publicKey,
+                contentType: content.contentType,
+                contentMetadataDatKey: content.metadataDatKey
+            });
+            aoP2P.taodb
+                .get(dbKey)
+                .then(value => {
+                    expect(value).to.not.be.empty;
+                    const recoveredSigner = EthCrypto.recoverPublicKey(
+                        value,
+                        content.baseChallenge
+                    );
+                    expect(recoveredSigner).to.equal(actorA.publicKey);
+                    done();
+                })
+                .catch(done);
+        });
+    });
+
+    describe("New content host registration", () => {
+        it("should register actorA as new content host", done => {
+            aoP2P.router.emit("/p2p/registerContentHost", {
+                data: { content },
+                respond: () => {
+                    done();
+                },
+                reject: done
+            });
+        });
+        it("verifies content host signature was registered under the Content Host signature schema", done => {
+            const dbKey = TaoDB.getContentHostSignatureKey({
+                hostsPublicKey: actorA.publicKey,
+                contentDatKey: content.fileDatKey,
+                contentType: content.contentType,
+                contentMetadataDatKey: content.metadataDatKey
+            });
+            aoP2P.taodb
+                .get(dbKey)
+                .then(value => {
+                    expect(value).to.not.be.empty;
+                    const recoveredSigner = EthCrypto.recoverPublicKey(
+                        value,
+                        content.baseChallenge
+                    );
+                    expect(recoveredSigner).to.equal(actorA.publicKey);
+                    done();
+                })
+                .catch(done);
+        });
+        it("verifies content host indexData was added under the Content Host indexData schema", done => {
+            const dbKey = TaoDB.getContentHostIndexDataKey({
+                hostsPublicKey: actorA.publicKey,
+                contentDatKey: content.fileDatKey,
+                contentType: content.contentType,
+                contentMetadataDatKey: content.metadataDatKey
+            });
+            aoP2P.taodb
+                .get(dbKey)
+                .then(value => {
+                    // IndexData should be empty after initial host registration
+                    expect(value).to.be.deep.equal({});
+                    done();
+                })
+                .catch(done);
+        });
+        it("verifies content host timestamp was added under the Content Host timestamp schema", done => {
+            const dbKey = TaoDB.getContentHostTimestampKey({
+                hostsPublicKey: actorA.publicKey,
+                contentType: content.contentType,
+                contentMetadataDatKey: content.metadataDatKey
+            });
+            aoP2P.taodb
+                .get(dbKey)
+                .then((value: ITaoDB_ContentHost_Timestamp) => {
+                    expect(value).to.not.be.empty;
+                    expect(value.contentDatKey).to.equal(content.fileDatKey);
+                    expect(value.contentHostId).to.equal(content.contentHostId);
+                    expect(value.timestamp).to.be.a("number");
+                    expect(value.timestamp).to.be.lessThan(Date.now());
+                    done();
+                })
+                .catch(done);
+        });
+    });
+
+    describe("Decryption key handoff, actorB purchases registered content from actorA", async () => {
+        let encryptedKeyAndSignature;
+
+        before(async () => {
+            const contentDecryptParams = {
+                contentDecryptionKey: content.decryptionKey,
+                contentRequesterPublicKey: actorB.publicKey,
+                contentOwnersPrivateKey: actorA.privateKey
+            };
+            encryptedKeyAndSignature = await AOCrypto.generateContentEncryptionKeyForUser(
+                contentDecryptParams
+            );
+        });
+
+        it("should insert index data with decryption key handoff", done => {
+            const handoffData: AOP2P_Write_Decryption_Key_Data = {
+                content,
+                buyersPublicKey: actorB.publicKey,
+                hostsPublicKey: actorA.publicKey,
+                encryptedDecryptionKey:
+                    encryptedKeyAndSignature.encryptedDecryptionKey,
+                encryptedKeySignature:
+                    encryptedKeyAndSignature.encryptedDecryptionKeySignature
+            };
+            aoP2P.router.emit("/p2p/decryptionKeyHandoff", {
+                data: handoffData,
+                respond: () => {
+                    done();
+                },
+                reject: done
+            });
+        });
+
+        it("verifies decryption key handoff for actorB", done => {
+            const dbKey = TaoDB.getContentHostIndexDataKey({
+                hostsPublicKey: actorA.publicKey,
+                contentDatKey: content.fileDatKey,
+                contentMetadataDatKey: content.metadataDatKey,
+                contentType: content.contentType
+            });
+            aoP2P.taodb
+                .get(dbKey)
+                .then((indexData: ITaoDB_ContentHost_IndexData) => {
+                    expect(indexData).to.not.be.empty;
+                    const actorBIndexData = indexData[actorB.publicKey];
+                    expect(actorBIndexData).to.not.be.empty;
+                    expect(actorBIndexData.decryptionKey).to.not.be.empty;
+                    AOCrypto.decryptMessage({
+                        message: actorBIndexData.decryptionKey,
+                        privateKey: actorB.privateKey
+                    })
+                        .then(decryptionKey => {
+                            expect(decryptionKey).to.equal(
+                                content.decryptionKey
+                            );
+                            done();
+                        })
+                        .catch(done);
+                })
+                .catch(done);
         });
     });
 
@@ -158,7 +307,7 @@ describe("AO P2P module", () => {
     //         encryptedKeySignature: fakeSignature
     //     };
     //     return new Promise((resolve, reject) => {
-    //         aoP2P.router.emit("/p2p/soldKey", {
+    //         aoP2P.router.emit("/p2p/decryptionKeyHandoff", {
     //             data: soldKeyData,
     //             respond: message => {
     //                 resolve(message);

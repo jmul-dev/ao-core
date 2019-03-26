@@ -6,7 +6,7 @@ import * as AOCrypto from "../../AOCrypto";
 import EthCrypto from "eth-crypto";
 import ram from "random-access-memory";
 
-describe("TaoDB module", () => {
+describe("AODB module", () => {
     const actorA: AOCrypto.Identity = AOCrypto.createUserIdentity();
     const actorADecryptionKey = "teeeesting123";
     const actorB: AOCrypto.Identity = AOCrypto.createUserIdentity();
