@@ -38,7 +38,8 @@ import {
     AOP2P_Update_Node_Timestamp_Data,
     AOP2P_Watch_AND_Get_IndexData_Data,
     AOP2P_Write_Decryption_Key_Data,
-    NetworkContentHostEntry
+    NetworkContentHostEntry,
+    AOP2P_ContentRegistration_Data
 } from "./modules/p2p/p2p";
 import { ITaoDB_ContentHost_IndexData_Entry } from "./modules/p2p/TaoDB";
 import { IAORouterMessage } from "./router/AORouter";
@@ -1253,26 +1254,32 @@ export default class AOUserSession {
      * @param {AOContent} content
      */
     private _handleContentStaked(content: AOContent) {
-        debug("Content is gonna become discoverable ", content.fileDatKey);
-        // 1. Import all the freaken files.
-        const fileImportDatData: AODat_ImportSingle_Data = {
-            key: content.fileDatKey
-        };
-        const metaImportDatData: AODat_ImportSingle_Data = {
-            key: content.metadataDatKey
-        };
-        let importDats = [];
-        importDats.push(
-            this.router.send("/dat/importSingle", fileImportDatData)
+        debug(
+            "Content staked, begin process of making discoverable...",
+            content.fileDatKey
         );
-        if (content.creatorId == this.ethAddress) {
-            importDats.push(
-                this.router.send("/dat/importSingle", metaImportDatData)
-            );
-        }
-        Promise.all(importDats)
+        Promise.resolve()
             .then(() => {
-                debug("Content imports is good ");
+                // 1. Import all the freaken files.
+                const fileImportDatData: AODat_ImportSingle_Data = {
+                    key: content.fileDatKey
+                };
+                const metaImportDatData: AODat_ImportSingle_Data = {
+                    key: content.metadataDatKey
+                };
+                let importDats = [];
+                importDats.push(
+                    this.router.send("/dat/importSingle", fileImportDatData)
+                );
+                if (content.creatorId == this.ethAddress) {
+                    importDats.push(
+                        this.router.send("/dat/importSingle", metaImportDatData)
+                    );
+                }
+                return Promise.all(importDats);
+            })
+            .then(() => {
+                debug("Content dat imports are good, now resuming...");
                 // 2. Ensure the dats are resumed (they may already be, but need to make sure)
                 const fileResumeDatData: AODat_ResumeSingle_Data = {
                     key: content.fileDatKey
@@ -1284,71 +1291,79 @@ export default class AOUserSession {
                 resumeDats.push(
                     this.router.send("/dat/resumeSingle", fileResumeDatData)
                 );
+                // TODO: make sure this field is updated to creatorEthAddress
                 if (content.creatorId == this.ethAddress) {
                     resumeDats.push(
                         this.router.send("/dat/resumeSingle", metaResumeDatData)
                     );
                 }
-                Promise.all(resumeDats)
-                    .then(() => {
-                        debug("Content resume is good ");
-                        // 3. Add new discovery
-                        const p2pAddDiscoveryData: AOP2P_Add_Discovery_Data = {
-                            content
-                        };
-                        this.router
-                            .send(
-                                "/p2p/registerContentHost",
-                                p2pAddDiscoveryData
-                            )
-                            .then((response: IAORouterMessage) => {
-                                debug("Content has been added to discovery");
-                                if (response.data.success) {
-                                    // 4. Update the content state (mark as Discoverable)
-                                    const contentUpdateQuery: AODB_UserContentUpdate_Data = {
-                                        id: content.id,
-                                        update: {
-                                            $set: {
-                                                state:
-                                                    AOContentState.DISCOVERABLE
-                                            }
-                                        }
-                                    };
-                                    this.router
-                                        .send(
-                                            "/db/user/content/update",
-                                            contentUpdateQuery
-                                        )
-                                        .then(
-                                            (
-                                                contentUpdateResponse: IAORouterMessage
-                                            ) => {
-                                                const updatedContent: AOContent = AOContent.fromObject(
-                                                    contentUpdateResponse.data
-                                                );
-                                                // Handoff to next state handler
-                                                this.processContent(
-                                                    updatedContent
-                                                );
-                                            }
-                                        )
-                                        .catch(debug);
-                                    this.router.send("/db/logs/insert", {
-                                        message: `Content [${
-                                            content.title
-                                        }] is now discoverable within the AO network!`,
-                                        userId: this.ethAddress
-                                    });
-                                } else {
-                                    debug(
-                                        `Error, failed to add content to discovery`
-                                    );
-                                }
-                            })
-                            .catch(debug);
-                    })
-                    .catch(debug);
+                return Promise.all(resumeDats);
             })
-            .catch(debug);
+            .then(() => {
+                // 3. If this is the content creator, we also register the content under their
+                // namespace
+                // TODO: make sure this field is updated to creatorEthAddress
+                if (content.creatorId == this.ethAddress) {
+                    const contentRegistrationRequest: AOP2P_ContentRegistration_Data = {
+                        content
+                    };
+                    return this.router.send(
+                        "/p2p/registerContent",
+                        contentRegistrationRequest
+                    );
+                } else {
+                    return Promise.resolve();
+                }
+            })
+            .then(() => {
+                debug("Content dats resumed, adding content to discovery...");
+                // 4. Add new discovery
+                const p2pAddDiscoveryData: AOP2P_Add_Discovery_Data = {
+                    content
+                };
+                return this.router.send(
+                    "/p2p/registerContentHost",
+                    p2pAddDiscoveryData
+                );
+            })
+            .then((response: IAORouterMessage) => {
+                if (!response.data.success) {
+                    return Promise.reject(
+                        "Error, failed to add content to discovery"
+                    );
+                }
+                debug("Content has been added to discovery");
+                // 5. Update the content state (mark as Discoverable)
+                const contentUpdateQuery: AODB_UserContentUpdate_Data = {
+                    id: content.id,
+                    update: {
+                        $set: {
+                            state: AOContentState.DISCOVERABLE
+                        }
+                    }
+                };
+                this.router.send("/db/logs/insert", {
+                    message: `Content [${
+                        content.title
+                    }] is now discoverable within the AO network!`,
+                    userId: this.ethAddress
+                });
+                return this.router.send(
+                    "/db/user/content/update",
+                    contentUpdateQuery
+                );
+            })
+            .then((contentUpdateResponse: IAORouterMessage) => {
+                // 6. Finally, done with staked content
+                const updatedContent: AOContent = AOContent.fromObject(
+                    contentUpdateResponse.data
+                );
+                // Handoff to next state handler
+                this.processContent(updatedContent);
+            })
+            .catch((error: Error) => {
+                // NOTE; no real recovery mechanism if this state fails to advance.
+                debug(error);
+            });
     }
 }
