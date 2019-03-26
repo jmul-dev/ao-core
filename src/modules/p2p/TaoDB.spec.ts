@@ -13,6 +13,7 @@ import { IAODB_Args } from "./AODB";
 describe("TaoDB module", () => {
     const actorA: AOCrypto.Identity = AOCrypto.createUserIdentity();
     const actorB: AOCrypto.Identity = AOCrypto.createUserIdentity();
+    const actorC: AOCrypto.Identity = AOCrypto.createUserIdentity();
     const contentJson = {
         id: "4dafd6582efbbfe913c4202cf926b700b3f5700ccebe1faf10d5f61e1e5ffda8",
         nodeId: "0x9c7caa71129f534223107e4486ed48afd85de5d6",
@@ -120,6 +121,7 @@ describe("TaoDB module", () => {
         });
 
         let indexDataForActorB: ITaoDB_ContentHost_IndexData_Entry;
+        let indexDataForActorC: ITaoDB_ContentHost_IndexData_Entry;
 
         it("inserts content host indexData (assumes actorB purchased, actorA wrote indexData)", done => {
             AOCrypto.generateContentEncryptionKeyForUser({
@@ -164,13 +166,71 @@ describe("TaoDB module", () => {
                     expect(entry.signature).to.equal(
                         indexDataForActorB.signature
                     );
-                    console.log(entry);
                     // Double check that actorA signed this decryption key
                     const signersPublicKey = EthCrypto.recoverPublicKey(
                         entry.signature,
                         EthCrypto.hash.keccak256(entry.decryptionKey)
                     );
                     expect(signersPublicKey).to.equal(actorA.publicKey);
+                    done();
+                })
+                .catch(done);
+        });
+
+        it("inserts content host indexData (assumes actorB purchased, actorA wrote indexData)", done => {
+            AOCrypto.generateContentEncryptionKeyForUser({
+                contentDecryptionKey: content.decryptionKey,
+                contentOwnersPrivateKey: actorA.privateKey,
+                contentRequesterPublicKey: actorC.publicKey
+            })
+                .then(
+                    ({
+                        encryptedDecryptionKey,
+                        encryptedDecryptionKeySignature
+                    }) => {
+                        indexDataForActorC = {
+                            signature: encryptedDecryptionKeySignature,
+                            decryptionKey: encryptedDecryptionKey
+                        };
+                        // NOTE: normally this would append to the existing index data but we are skipping that logic
+                        taoDB
+                            .insertContentHostIndexData({
+                                content,
+                                indexData: {
+                                    [actorB.publicKey]: indexDataForActorB,
+                                    [actorC.publicKey]: indexDataForActorC
+                                }
+                            })
+                            .then(done)
+                            .catch(done);
+                    }
+                )
+                .catch(done);
+        });
+
+        it("verifies content host indexData exists for both actorB & actorC", done => {
+            taoDB
+                .get(dbKey)
+                .then((indexData: ITaoDB_ContentHost_IndexData) => {
+                    expect(indexData).to.not.be.empty;
+                    const entryB: ITaoDB_ContentHost_IndexData_Entry =
+                        indexData[actorB.publicKey];
+                    expect(entryB).to.not.be.empty;
+                    expect(entryB.decryptionKey).to.equal(
+                        indexDataForActorB.decryptionKey
+                    );
+                    expect(entryB.signature).to.equal(
+                        indexDataForActorB.signature
+                    );
+                    const entryC: ITaoDB_ContentHost_IndexData_Entry =
+                        indexData[actorC.publicKey];
+                    expect(entryC).to.not.be.empty;
+                    expect(entryC.decryptionKey).to.equal(
+                        indexDataForActorC.decryptionKey
+                    );
+                    expect(entryC.signature).to.equal(
+                        indexDataForActorC.signature
+                    );
                     done();
                 })
                 .catch(done);
