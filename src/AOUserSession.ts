@@ -1,5 +1,4 @@
 import path from "path";
-import web3 from "web3";
 import web3Utils from "web3-utils";
 import * as AOCrypto from "./AOCrypto";
 import Debug from "./AODebug";
@@ -16,8 +15,8 @@ import {
     AODB_NetworkContentUpdate_Data,
     AODB_UserContentGet_Data,
     AODB_UserContentUpdate_Data,
-    AODB_UserInsert_Data,
-    AODB_UserInit_Data
+    AODB_UserInit_Data,
+    AODB_UserInsert_Data
 } from "./modules/db/db";
 import {
     BuyContentEvent,
@@ -30,11 +29,10 @@ import {
     IAOFS_Move_Data,
     IAOFS_Reencrypt_Data,
     IAOFS_Unlink_Data,
-    IAOFS_Write_Data,
-    IAOFS_ReadStream_Data,
-    IAOFS_UnzipFile_Data
+    IAOFS_UnzipFile_Data,
+    IAOFS_Write_Data
 } from "./modules/fs/fs";
-import AOP2P, {
+import {
     AOP2P_Add_Discovery_Data,
     AOP2P_GetContentHosts_Data,
     AOP2P_Update_Node_Timestamp_Data,
@@ -42,12 +40,12 @@ import AOP2P, {
     AOP2P_Write_Decryption_Key_Data,
     NetworkContentHostEntry
 } from "./modules/p2p/p2p";
+import { ITaoDB_ContentHost_IndexData_Entry } from "./modules/p2p/TaoDB";
 import { IAORouterMessage } from "./router/AORouter";
 import {
     AORouterInterface,
     IAORouterRequest
 } from "./router/AORouterInterface";
-import { ITaoDB_ContentHost_IndexData_Entry } from "./modules/p2p/TaoDB";
 const AOContentContract = require("ao-contracts/build/contracts/AOContent.json");
 const debug = Debug("ao:userSession");
 
@@ -1299,7 +1297,10 @@ export default class AOUserSession {
                             content
                         };
                         this.router
-                            .send("/p2p/addDiscovery", p2pAddDiscoveryData)
+                            .send(
+                                "/p2p/registerContentHost",
+                                p2pAddDiscoveryData
+                            )
                             .then((response: IAORouterMessage) => {
                                 debug("Content has been added to discovery");
                                 if (response.data.success) {

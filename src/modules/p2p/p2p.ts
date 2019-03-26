@@ -20,16 +20,11 @@ const debug = Debug("ao:p2p");
 
 export interface AOP2P_Init_Data {
     dbKey: string;
+    dbPath?: Function | string;
 }
 
-export interface AOP2P_New_Content_Data {
-    contentType: string;
-    metaDatKey: string;
-    fileDatKey: string;
-    ethAddress: string;
-    metaData: Object;
-    indexData: Object;
-    signature: string;
+export interface AOP2P_ContentRegistration_Data {
+    content: AOContent;
 }
 
 export interface AOP2P_Watch_Key_Data {
@@ -109,7 +104,6 @@ export interface NetworkContentHostEntry {
 
 export default class AOP2P extends AORouterInterface {
     private taodb: TaoDB;
-    private dbPath: string;
 
     private taoDbRootDir: string;
     private storageLocation: string;
@@ -133,7 +127,10 @@ export default class AOP2P extends AORouterInterface {
             "/p2p/beginDiscovery",
             this._handleStartDiscovery.bind(this)
         );
-        // this.router.on("/p2p/newContent", this._handleNewContent.bind(this));
+        this.router.on(
+            "/p2p/registerContent",
+            this._handleContentRegistration.bind(this)
+        );
         this.router.on("/p2p/watchKey", this._handleWatchKey.bind(this));
         this.router.on(
             "/p2p/watchAndGetKey",
@@ -144,7 +141,7 @@ export default class AOP2P extends AORouterInterface {
             this._handleWatchAndGetIndexData.bind(this)
         );
         this.router.on(
-            "/p2p/addDiscovery",
+            "/p2p/registerContentHost",
             this._handleAddDiscovery.bind(this)
         );
         this.router.on(
@@ -163,24 +160,36 @@ export default class AOP2P extends AORouterInterface {
         );
     }
 
-    private _init(request: IAORouterRequest) {
-        const { dbKey }: AOP2P_Init_Data = request.data;
-        this.dbPath = path.join(this.storageLocation, "p2p", dbKey);
-        const ensureP2PPathData: IAOFS_Mkdir_Data = { dirPath: this.dbPath };
-        this.router
-            .send("/fs/mkdir", ensureP2PPathData)
+    _init(request: IAORouterRequest) {
+        const { dbKey, dbPath }: AOP2P_Init_Data = request.data;
+        let resolvedDbPath: Function | string = path.join(
+            this.storageLocation,
+            "p2p",
+            dbKey
+        );
+        Promise.resolve()
             .then(() => {
-                const hyperDBOptions: IAODB_Args = {
+                // NOTE: really only for testing purposes (where dbPath is in-memory)
+                if (typeof dbPath === "function") {
+                    resolvedDbPath = dbPath;
+                    return Promise.resolve();
+                } else {
+                    const ensureP2PPathData: IAOFS_Mkdir_Data = {
+                        dirPath: resolvedDbPath.toString()
+                    };
+                    return this.router.send("/fs/mkdir", ensureP2PPathData);
+                }
+            })
+            .then(() => {
+                const aodbArgs: IAODB_Args = {
                     dbKey,
-                    dbPath: this.dbPath
+                    dbPath: resolvedDbPath
                 };
                 this.taodb = new TaoDB();
-                this.taodb
-                    .start(hyperDBOptions)
-                    .then(() => {
-                        request.respond({ data: "great success!" });
-                    })
-                    .catch(request.reject);
+                return this.taodb.start(aodbArgs);
+            })
+            .then(() => {
+                request.respond({ data: "great success!" });
             })
             .catch(request.reject);
     }
@@ -341,74 +350,12 @@ export default class AOP2P extends AORouterInterface {
             .catch(request.reject);
     }
 
-    _handleNewContent(request: IAORouterRequest) {
-        const {
-            contentType,
-            metaDatKey,
-            fileDatKey,
-            ethAddress,
-            metaData,
-            indexData,
-            signature
-        }: AOP2P_New_Content_Data = request.data;
-        let allInserts = [];
-        return request.reject(new Error(`TODO: Unimplemented!`));
-        //Content Signature/Meta Data
-        // const contentRegistrationKey = AOP2P.routeContentRegistrtionPrefix({
-        //     nameSpace: this.taoDbRootDir,
-        //     contentType,
-        //     ethAddress,
-        //     metaDatKey
-        // });
-
-        // allInserts.push(
-        //     this.hyperdb.insert(
-        //         contentRegistrationKey + "/signature",
-        //         signature
-        //     )
-        // );
-        // allInserts.push(
-        //     this.hyperdb.insert(contentRegistrationKey + "/metaData", metaData)
-        // );
-
-        // //IndexData
-        // const selfRegistration = AOP2P.routeSelfRegistration({
-        //     nameSpace: this.taoDbRootDir,
-        //     ethAddress,
-        //     contentType,
-        //     fileDatKey
-        // });
-        // const nodeRegistration = AOP2P.routeNodeRegistration({
-        //     nameSpace: this.taoDbRootDir,
-        //     contentType,
-        //     metaDatKey,
-        //     ethAddress,
-        //     fileDatKey
-        // });
-        // allInserts.push(this.hyperdb.insert(selfRegistration, indexData));
-        // allInserts.push(this.hyperdb.insert(nodeRegistration, indexData));
-
-        // //On/Off/Signatures
-        // allInserts.push(
-        //     this.hyperdb.insert(
-        //         AOP2P.routeAddSignature(selfRegistration),
-        //         signature
-        //     )
-        // );
-        // allInserts.push(
-        //     this.hyperdb.insert(
-        //         AOP2P.routeAddSignature(nodeRegistration),
-        //         signature
-        //     )
-        // );
-
-        // Promise.all(allInserts)
-        //     .then(() => {
-        //         request.respond({ success: true });
-        //     })
-        //     .catch(e => {
-        //         request.reject(e);
-        //     });
+    _handleContentRegistration(request: IAORouterRequest) {
+        const { content }: AOP2P_ContentRegistration_Data = request.data;
+        this.taodb
+            .insertUserContentSignature({ content })
+            .then(request.respond)
+            .catch(request.reject);
     }
 
     _handleWatchKey(request: IAORouterRequest) {
