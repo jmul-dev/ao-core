@@ -93,7 +93,9 @@ export default abstract class AOContent {
     public stakeId: string;
     public purchaseId: string;
     public nodeId: string;
-    public creatorId: string;
+    public nodeEthAddress: string;
+    public creatorNodeId: string;
+    public creatorEthAddress: string;
     public taoId: string;
     public contentType: AOContentType;
     public mimetype: string;
@@ -202,7 +204,8 @@ export default abstract class AOContent {
             "id",
             "metadataDatKey",
             "stakeId",
-            "creatorId",
+            "creatorNodeId",
+            "creatorEthAddress",
             "taoId",
             "contentType",
             "mimetype",

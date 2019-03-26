@@ -18,7 +18,9 @@ describe("TaoDB module", () => {
     const contentJson = {
         id: "4dafd6582efbbfe913c4202cf926b700b3f5700ccebe1faf10d5f61e1e5ffda8",
         nodeId: actorA.publicKey,
-        creatorId: actorA.publicKey,
+        nodeEthAddress: actorA.address,
+        creatorNodeId: actorA.publicKey,
+        creatorEthAddress: actorA.address,
         contentHostId: "somerandomhostidgeneratedbyethereumnetwork",
         metadataDatKey:
             "b7e815da776b9d1610e710bf2e8eca3f8d1972112f62f49997ca3281b73a75ee",
@@ -28,7 +30,7 @@ describe("TaoDB module", () => {
         title: "asdfasdf",
         description: "asd fasdf asdf",
         stake: 12092665,
-        profit: 10,
+        profitSplitPercentage: 10,
         createdAt: "1536254388663",
         fileUrl:
             "4dafd6582efbbfe913c4202cf926b700b3f5700ccebe1faf10d5f61e1e5ffda8/video.mp4",
@@ -37,10 +39,8 @@ describe("TaoDB module", () => {
         fileName: "video.mp4",
         fileSize: 12092665,
         fileChecksum: "066fe55d9f3a744fec738c8fdf8e40bf722b9f48",
-        teaserName: "videoTeaser.mp4",
         teaserUrl:
             "b7e815da776b9d1610e710bf2e8eca3f8d1972112f62f49997ca3281b73a75ee/videoTeaser.mp4",
-        featuredImageName: "featuredImage.jpg",
         featuredImageUrl:
             "b7e815da776b9d1610e710bf2e8eca3f8d1972112f62f49997ca3281b73a75ee/featuredImage.jpg",
         metadata: { duration: 24.8248, resolution: 1080, encoding: "h264" },

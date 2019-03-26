@@ -1274,7 +1274,7 @@ export default class AOUserSession {
                 importDats.push(
                     this.router.send("/dat/importSingle", fileImportDatData)
                 );
-                if (content.creatorId == this.ethAddress) {
+                if (content.creatorEthAddress == this.ethAddress) {
                     importDats.push(
                         this.router.send("/dat/importSingle", metaImportDatData)
                     );
@@ -1294,8 +1294,7 @@ export default class AOUserSession {
                 resumeDats.push(
                     this.router.send("/dat/resumeSingle", fileResumeDatData)
                 );
-                // TODO: make sure this field is updated to creatorEthAddress
-                if (content.creatorId == this.ethAddress) {
+                if (content.creatorEthAddress == this.ethAddress) {
                     resumeDats.push(
                         this.router.send("/dat/resumeSingle", metaResumeDatData)
                     );
@@ -1305,8 +1304,7 @@ export default class AOUserSession {
             .then(() => {
                 // 3. If this is the content creator, we also register the content under their
                 // namespace
-                // TODO: make sure this field is updated to creatorEthAddress
-                if (content.creatorId == this.ethAddress) {
+                if (content.creatorEthAddress == this.ethAddress) {
                     const contentRegistrationRequest: AOP2P_ContentRegistration_Data = {
                         content
                     };
