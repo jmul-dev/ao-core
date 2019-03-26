@@ -92,7 +92,7 @@ export default abstract class AOContent {
     public state: string;
     public stakeId: string;
     public purchaseId: string;
-    public nodeId: string;
+    public nodePublicKey: string;
     public nodeEthAddress: string;
     public creatorNodeId: string;
     public creatorEthAddress: string;

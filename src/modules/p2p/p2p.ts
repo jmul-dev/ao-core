@@ -98,7 +98,7 @@ export interface AOP2P_PeerStats {
 export interface NetworkContentHostEntry {
     contentDatKey: string;
     contentHostId: string;
-    nodeId: string;
+    nodePublicKey: string;
     timestamp: string;
 }
 
@@ -400,7 +400,7 @@ export default class AOP2P extends AORouterInterface {
         }: AOP2P_Watch_AND_Get_IndexData_Data = request.data;
 
         const indexDataKey = TaoDB.getContentHostIndexDataKey({
-            hostsPublicKey: content.nodeId,
+            hostsPublicKey: content.nodePublicKey,
             contentDatKey: content.fileDatKey,
             contentMetadataDatKey: content.metadataDatKey,
             contentType: content.contentType
@@ -580,7 +580,7 @@ export default class AOP2P extends AORouterInterface {
                                     contentDatKey: entry.value.contentDatKey,
                                     contentHostId: entry.value.contentHostId,
                                     timestamp: entry.value.timestamp,
-                                    nodeId: entry.splitKey[5] // /AO/Content/{contentType}/{contentMetadataDatKey}/Hosts/{hostsNodeId/publicKey}
+                                    nodePublicKey: entry.splitKey[5] // /AO/Content/{contentType}/{contentMetadataDatKey}/Hosts/{hostsNodeId/publicKey}
                                 };
                             } else {
                                 return null;

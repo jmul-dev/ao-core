@@ -17,7 +17,7 @@ describe("TaoDB module", () => {
     const actorC: AOCrypto.Identity = AOCrypto.createUserIdentity();
     const contentJson = {
         id: "4dafd6582efbbfe913c4202cf926b700b3f5700ccebe1faf10d5f61e1e5ffda8",
-        nodeId: actorA.publicKey,
+        nodePublicKey: actorA.publicKey,
         nodeEthAddress: actorA.address,
         creatorNodeId: actorA.publicKey,
         creatorEthAddress: actorA.address,

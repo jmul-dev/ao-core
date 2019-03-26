@@ -560,8 +560,9 @@ export default class AOUserSession {
                                         downloadResponse.data.contentHostId,
                                     fileDatKey:
                                         downloadResponse.data.datEntry.key,
-                                    nodeId:
-                                        downloadResponse.data.nodeEntry.nodeId //Important for when you're listening on the sold key channel.
+                                    nodePublicKey:
+                                        downloadResponse.data.nodeEntry
+                                            .nodePublicKey //Important for when you're listening on the sold key channel.
                                 }
                             }
                         };
@@ -744,7 +745,7 @@ export default class AOUserSession {
                         $set: {
                             state: AOContentState.PURCHASED,
                             purchaseId: buyContentEvent.purchaseId
-                            //"nodeId": buyContentEvent.contentHostId, //taken out since this should be the node id, which is the seller's public key
+                            //"nodePublicKey": buyContentEvent.contentHostId, //taken out since this should be the node id, which is the seller's public key
                         }
                     };
                 } else {
