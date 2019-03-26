@@ -15,12 +15,12 @@ export default (
                     .send("/eth/network/get")
                     .then((ethNetworkResponse: IAORouterMessage) => {
                         // fetching rpc endpoint from eth network in case it is not defined/overwritten by settings
-                        resolve({
-                            ...settingsResponse.data,
-                            ethNetorkRpc:
-                                settingsResponse.data.ethNetorkRpc ||
-                                ethNetworkResponse.data.rpcEndpoint
-                        });
+                        let settings = settingsResponse.data;
+                        if (!settings.ethNetworkRpc) {
+                            settings.ethNetworkRpc =
+                                ethNetworkResponse.data.rpcEndpoint;
+                        }
+                        resolve(settings);
                     })
                     .catch(reject);
             })
