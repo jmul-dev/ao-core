@@ -259,127 +259,15 @@ describe("AO P2P module", () => {
                 })
                 .catch(done);
         });
+
+        // it("logs some shit", done => {
+        //     aoP2P.taodb
+        //         .list("AO", { recursive: true })
+        //         .then(data => {
+        //             console.log(data);
+        //             done();
+        //         })
+        //         .catch(done);
+        // });
     });
-
-    // it("personA uploads new content", done => {
-    //     const keyHash = EthCrypto.hash.keccak256(personADecryptionKey);
-    //     const fakeSignature = EthCrypto.sign(personA.privateKey, keyHash);
-
-    //     const newContentData: AOP2P_New_Content_Data = {
-    //         contentType: "VOD",
-    //         metaDatKey: content.metadataDatKey, //same as the test contentDat
-    //         fileDatKey: content.fileDatKey,
-    //         ethAddress: personA.address,
-    //         metaData: content.toMetadataJson(),
-    //         indexData: {}, //Empty for now.
-    //         signature: fakeSignature
-    //     };
-    //     aoP2P.router.emit("/p2p/registerContent", {
-    //         data: newContentData,
-    //         respond: message => {
-    //             done();
-    //         },
-    //         reject: message => {
-    //             done(message);
-    //         }
-    //     });
-    // });
-
-    // it("personB buys personAs new content.  personA puts key in indexData", async () => {
-    //     //As personA
-    //     const keyHash = EthCrypto.hash.keccak256(personADecryptionKey);
-    //     const fakeSignature = EthCrypto.sign(personA.privateKey, keyHash);
-    //     let encrypted = {};
-    //     try {
-    //         encrypted = await EthCrypto.encryptWithPublicKey(
-    //             personB.publicKey,
-    //             personADecryptionKey
-    //         );
-    //     } catch (e) {
-    //         console.log(e);
-    //     }
-    //     let stringifiedEncrypted = EthCrypto.cipher.stringify(encrypted);
-    //     const soldKeyData: AOP2P_Write_Decryption_Key_Data = {
-    //         content: content,
-    //         buyerEthAddress: personB.address,
-    //         sellerEthAddress: personA.address,
-    //         encryptedDecryptionKey: stringifiedEncrypted,
-    //         encryptedKeySignature: fakeSignature
-    //     };
-    //     return new Promise((resolve, reject) => {
-    //         aoP2P.router.emit("/p2p/decryptionKeyHandoff", {
-    //             data: soldKeyData,
-    //             respond: message => {
-    //                 resolve(message);
-    //             },
-    //             reject: message => {
-    //                 console.log(new Error("failed"));
-    //                 reject(message);
-    //             }
-    //         });
-    //     });
-    // });
-
-    // it("personB watches to see if personA has dropped his keys", () => {
-    //     //As person B
-    //     const watchKey = AOP2P.routeNodeRegistration({
-    //         nameSpace: dbNameSpace,
-    //         contentType: contentJson.contentType,
-    //         metaDatKey: contentJson.metadataDatKey,
-    //         ethAddress: personA.address,
-    //         fileDatKey: content.fileDatKey
-    //     });
-    //     const watchKeyData: AOP2P_Watch_AND_Get_IndexData_Data = {
-    //         key: watchKey,
-    //         ethAddress: personB.address
-    //     };
-    //     return new Promise((resolve, reject) => {
-    //         aoP2P.router.emit("/p2p/watchAndGetIndexData", {
-    //             data: watchKeyData,
-    //             respond: async message => {
-    //                 let indexDataRow: ITaoDB_ContentHost_IndexData_Entry =
-    //                     message.indexDataRow;
-    //                 let parsedDecryptionKey = EthCrypto.cipher.parse(
-    //                     indexDataRow.decryptionKey
-    //                 );
-    //                 let parsed = "";
-    //                 try {
-    //                     parsed = await EthCrypto.decryptWithPrivateKey(
-    //                         personB.privateKey,
-    //                         parsedDecryptionKey
-    //                     );
-    //                 } catch (error) {
-    //                     reject(error);
-    //                 }
-    //                 if (parsed == personADecryptionKey) {
-    //                     resolve();
-    //                 } else {
-    //                     reject(
-    //                         new Error(
-    //                             "Decryption key did not decrypt correctly and do not match"
-    //                         )
-    //                     );
-    //                 }
-    //             },
-    //             reject: message => {
-    //                 reject(message);
-    //             }
-    //         });
-    //     });
-    // });
-
-    // it("add content discovery", done => {
-    //     const addDiscoveryData: AOP2P_Add_Discovery_Data = {
-    //         content
-    //     };
-    //     aoP2P.router.emit("/p2p/registerContentHost", {
-    //         data: addDiscoveryData,
-    //         respond: message => {
-    //             done();
-    //         },
-    //         reject: message => {
-    //             done(message);
-    //         }
-    //     });
-    // });
 });

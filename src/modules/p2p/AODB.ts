@@ -77,7 +77,7 @@ export default class AODB {
         try {
             remotePeerKey = Buffer.from(peer.remoteUserData);
         } catch (err) {
-            debug(err);
+            debug(`Error buffering remote peer: ${err.message}`);
             return;
         }
 

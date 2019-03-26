@@ -182,6 +182,7 @@ export default class AOP2P extends AORouterInterface {
                 }
             })
             .then(() => {
+                debug(`Attempting to spin up taodb...`);
                 const aodbArgs: IAODB_Args = {
                     dbKey,
                     dbPath: resolvedDbPath
