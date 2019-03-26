@@ -61,7 +61,7 @@ export default (
         let contentJson: AOContent = AOContent.fromObject({
             nodePublicKey: context.userSession.publicKey,
             nodeEthAddress: context.userSession.ethAddress,
-            creatorNodeId: context.userSession.publicKey,
+            creatorNodePublicKey: context.userSession.publicKey,
             creatorEthAddress: context.userSession.ethAddress,
             taoId: args.inputs.taoId,
             contentType: args.inputs.contentType,

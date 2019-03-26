@@ -82,7 +82,7 @@ interface IContent {
     stakeId: ID
     nodePublicKey: ID!
     nodeEthAddress: ID!
-    creatorNodeId: ID!
+    creatorNodePublicKey: ID!
     creatorEthAddress: ID!
     taoId: ID
     contentType: ContentType!
@@ -148,7 +148,7 @@ type VideoContent implements IContent {
     stakeId: ID
     nodePublicKey: ID!
     nodeEthAddress: ID!
-    creatorNodeId: ID!
+    creatorNodePublicKey: ID!
     creatorEthAddress: ID!
     taoId: ID
     contentType: ContentType!
@@ -200,7 +200,7 @@ type DappContent implements IContent {
     stakeId: ID
     nodePublicKey: ID!
     nodeEthAddress: ID!
-    creatorNodeId: ID!
+    creatorNodePublicKey: ID!
     creatorEthAddress: ID!
     taoId: ID
     contentType: ContentType!
@@ -253,7 +253,7 @@ type PdfContent implements IContent {
     stakeId: ID
     nodePublicKey: ID!
     nodeEthAddress: ID!
-    creatorNodeId: ID!
+    creatorNodePublicKey: ID!
     creatorEthAddress: ID!
     taoId: ID
     contentType: ContentType!

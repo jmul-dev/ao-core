@@ -8,7 +8,7 @@ import { ILocalNode_ContentQuery_Inputs } from "./resolveLocalNodeHostedContent"
 
 // TODO: obj is of type NodeIdentity (sorry still no types outside of graphql)
 export default (
-    obj: any,
+    nodeIdentity: any,
     args: ILocalNode_ContentQuery_Inputs = { inputs: {} },
     context: IGraphqlResolverContext,
     info: any
@@ -19,9 +19,9 @@ export default (
             return null;
         }
         const contentQueryParams: AODB_UserContentGet_Data = {
-            userId: obj.ethAddress,
+            userId: nodeIdentity.ethAddress,
             query: {
-                creatorNodeId: obj.ethAddress,
+                creatorNodePublicKey: nodeIdentity.publicKey,
                 state: args.inputs.incomplete
                     ? {
                           $in: getListOfContentIncompleteStates()

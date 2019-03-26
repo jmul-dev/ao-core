@@ -50,7 +50,7 @@ export default (
                         // TODO: this should really just be an argument on the query
                         return args.id
                             ? true
-                            : content.creatorNodeId !==
+                            : content.creatorNodePublicKey !==
                                   context.userSession.ethAddress;
                     })
                     .sort((a, b) => {
