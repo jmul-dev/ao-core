@@ -1,7 +1,10 @@
 import "mocha";
 import { expect } from "chai";
 import AOContent from "../../models/AOContent";
-import TaoDB from "./TaoDB";
+import TaoDB, {
+    ITaoDB_ContentHost_IndexData_Entry,
+    ITaoDB_ContentHost_IndexData
+} from "./TaoDB";
 import * as AOCrypto from "../../AOCrypto";
 import EthCrypto from "eth-crypto";
 import ram from "random-access-memory";
@@ -37,7 +40,8 @@ describe("TaoDB module", () => {
         featuredImageName: "featuredImage.jpg",
         featuredImageUrl:
             "b7e815da776b9d1610e710bf2e8eca3f8d1972112f62f49997ca3281b73a75ee/featuredImage.jpg",
-        metadata: { duration: "24.824800", resolution: 1080, encoding: "h264" }
+        metadata: { duration: "24.824800", resolution: 1080, encoding: "h264" },
+        decryptionKey: "0xDEADBEEF"
     };
     let content = AOContent.fromObject(contentJson);
     content.baseChallenge = EthCrypto.hash.keccak256(
@@ -101,6 +105,72 @@ describe("TaoDB module", () => {
                         content.baseChallenge
                     );
                     expect(recoveredPublicKey).to.equal(actorA.publicKey);
+                    done();
+                })
+                .catch(done);
+        });
+    });
+
+    describe("Content Host Schema - indexData", () => {
+        const dbKey = TaoDB.getContentHostIndexDataKey({
+            hostsPublicKey: actorA.publicKey,
+            contentDatKey: content.fileDatKey,
+            contentMetadataDatKey: content.metadataDatKey,
+            contentType: content.contentType
+        });
+
+        let indexDataForActorB: ITaoDB_ContentHost_IndexData_Entry;
+
+        it("inserts content host indexData (assumes actorB purchased, actorA wrote indexData)", done => {
+            AOCrypto.generateContentEncryptionKeyForUser({
+                contentDecryptionKey: content.decryptionKey,
+                contentOwnersPrivateKey: actorA.privateKey,
+                contentRequesterPublicKey: actorB.publicKey
+            })
+                .then(
+                    ({
+                        encryptedDecryptionKey,
+                        encryptedDecryptionKeySignature
+                    }) => {
+                        indexDataForActorB = {
+                            signature: encryptedDecryptionKeySignature,
+                            decryptionKey: encryptedDecryptionKey
+                        };
+                        taoDB
+                            .insertContentHostIndexData({
+                                content,
+                                indexData: {
+                                    [actorB.publicKey]: indexDataForActorB
+                                }
+                            })
+                            .then(done)
+                            .catch(done);
+                    }
+                )
+                .catch(done);
+        });
+
+        it("verifies content host indexData was written for actorB", done => {
+            taoDB
+                .get(dbKey)
+                .then((indexData: ITaoDB_ContentHost_IndexData) => {
+                    expect(indexData).to.not.be.empty;
+                    const entry: ITaoDB_ContentHost_IndexData_Entry =
+                        indexData[actorB.publicKey];
+                    expect(entry).to.not.be.empty;
+                    expect(entry.decryptionKey).to.equal(
+                        indexDataForActorB.decryptionKey
+                    );
+                    expect(entry.signature).to.equal(
+                        indexDataForActorB.signature
+                    );
+                    console.log(entry);
+                    // Double check that actorA signed this decryption key
+                    const signersPublicKey = EthCrypto.recoverPublicKey(
+                        entry.signature,
+                        EthCrypto.hash.keccak256(entry.decryptionKey)
+                    );
+                    expect(signersPublicKey).to.equal(actorA.publicKey);
                     done();
                 })
                 .catch(done);

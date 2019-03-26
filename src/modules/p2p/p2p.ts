@@ -462,15 +462,15 @@ export default class AOP2P extends AORouterInterface {
                 // 1. Initial query for indexData
                 return this.taodb.get(indexDataKey);
             })
-            .then((entry: AODB_Entry<ITaoDB_ContentHost_IndexData>) => {
+            .then((indexData: ITaoDB_ContentHost_IndexData) => {
                 // 2a. Check if indexData entry for the buyer already exists
-                if (entry.value && entry.value[buyersPublicKey]) {
+                if (indexData && indexData[buyersPublicKey]) {
                     debug(
                         `[${
                             request.id
                         }] _handleWatchAndGetIndexData got index data on first try`
                     );
-                    request.respond(entry.value[buyersPublicKey]);
+                    request.respond(indexData[buyersPublicKey]);
                     return;
                 }
                 // 2b. Not found, listen for changes...
@@ -500,23 +500,12 @@ export default class AOP2P extends AORouterInterface {
                         // Check if our value exists
                         this.taodb
                             .get(indexDataKey)
-                            .then(
-                                (
-                                    entry: AODB_Entry<
-                                        ITaoDB_ContentHost_IndexData
-                                    >
-                                ) => {
-                                    if (
-                                        entry.value &&
-                                        entry.value[buyersPublicKey]
-                                    ) {
-                                        watcher.destroy();
-                                        localResolve(
-                                            entry.value[buyersPublicKey]
-                                        );
-                                    }
+                            .then((indexData: ITaoDB_ContentHost_IndexData) => {
+                                if (indexData && indexData[buyersPublicKey]) {
+                                    watcher.destroy();
+                                    localResolve(indexData[buyersPublicKey]);
                                 }
-                            );
+                            });
                     });
                     watcher.on("error", localReject);
                 });
@@ -704,9 +693,7 @@ export default class AOP2P extends AORouterInterface {
         });
         this.taodb
             .get(indexDataKey)
-            .then((entry: AODB_Entry<ITaoDB_ContentHost_IndexData>) => {
-                let existingIndexData: ITaoDB_ContentHost_IndexData =
-                    entry.value || {};
+            .then((existingIndexData: ITaoDB_ContentHost_IndexData) => {
                 const existingIndexDataForBuyer =
                     existingIndexData[buyersPublicKey];
                 if (

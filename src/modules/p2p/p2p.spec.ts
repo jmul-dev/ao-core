@@ -5,11 +5,11 @@ import path from "path";
 import AOContent from "../../models/AOContent";
 import AOP2P, {
     AOP2P_Add_Discovery_Data,
-    AOP2P_IndexDataRow,
     AOP2P_New_Content_Data,
     AOP2P_Watch_AND_Get_IndexData_Data,
     AOP2P_Write_Decryption_Key_Data
 } from "./p2p";
+import { ITaoDB_ContentHost_IndexData_Entry } from "./TaoDB";
 
 interface identity {
     address: string;
@@ -177,7 +177,8 @@ describe("AO P2P module", () => {
             aoP2P.router.emit("/p2p/watchAndGetIndexData", {
                 data: watchKeyData,
                 respond: async message => {
-                    let indexDataRow: AOP2P_IndexDataRow = message.indexDataRow;
+                    let indexDataRow: ITaoDB_ContentHost_IndexData_Entry =
+                        message.indexDataRow;
                     let parsedDecryptionKey = EthCrypto.cipher.parse(
                         indexDataRow.decryptionKey
                     );

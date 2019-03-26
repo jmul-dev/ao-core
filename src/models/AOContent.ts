@@ -1,8 +1,6 @@
 import path from "path";
-import {
-    AOP2P_IndexDataRow,
-    NetworkContentHostEntry
-} from "../modules/p2p/p2p";
+import { NetworkContentHostEntry } from "../modules/p2p/p2p";
+import { ITaoDB_ContentHost_IndexData_Entry } from "../modules/p2p/TaoDB";
 
 export type AOContentType = "VOD" | "PDF" | "DAPP";
 export type AOContentLicense = "AO" | "TAO" | "CC";
@@ -133,7 +131,7 @@ export default abstract class AOContent {
     public totalHosts?: number;
     public recentlySeenHostsCount?: number;
     // variables not exposed to graphql
-    public receivedIndexData: AOP2P_IndexDataRow;
+    public receivedIndexData: ITaoDB_ContentHost_IndexData_Entry;
     public decryptionKey: string;
 
     static fromObject(contentObject): AOContent {

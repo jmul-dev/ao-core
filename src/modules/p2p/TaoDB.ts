@@ -59,6 +59,14 @@ export default class TaoDB extends AODB {
                 valueValidationKey: "",
                 keyValidation: ""
             }
+        },
+        contentHostTimestamp: {
+            key: "schema/AO/Content/*/*/Hosts/%writerAddress%",
+            value: {
+                keySchema: "AO/Content/*/*/Hosts/%writerAddress%",
+                valueValidationKey: "",
+                keyValidation: ""
+            }
         }
     };
 
@@ -175,7 +183,7 @@ export default class TaoDB extends AODB {
             value,
             writerAddress: this._userIdentity.publicKey,
             writerSignature,
-            schemaKey: this.schemas.userContent.key
+            schemaKey: this.schemas.contentHostSignature.key
         });
     }
 
@@ -200,7 +208,7 @@ export default class TaoDB extends AODB {
         content: AOContent;
         indexData: ITaoDB_ContentHost_IndexData;
     }): Promise<any> {
-        const key = TaoDB.getContentHostSignatureKey({
+        const key = TaoDB.getContentHostIndexDataKey({
             hostsPublicKey: this._userIdentity.publicKey,
             contentType: content.contentType,
             contentMetadataDatKey: content.metadataDatKey,
@@ -217,7 +225,7 @@ export default class TaoDB extends AODB {
             value,
             writerAddress: this._userIdentity.publicKey,
             writerSignature,
-            schemaKey: this.schemas.userContent.key
+            schemaKey: this.schemas.contentHostIndexData.key
         });
     }
 
@@ -259,7 +267,7 @@ export default class TaoDB extends AODB {
             value,
             writerAddress: this._userIdentity.publicKey,
             writerSignature,
-            schemaKey: this.schemas.userContent.key
+            schemaKey: this.schemas.contentHostTimestamp.key
         });
     }
 
