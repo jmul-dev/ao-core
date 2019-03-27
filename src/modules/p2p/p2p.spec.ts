@@ -127,7 +127,6 @@ describe("AO P2P module", () => {
             aoP2P.taodb
                 .get(dbKey)
                 .then(value => {
-                    console.log(value);
                     expect(value).to.not.be.empty;
                     const recoveredSigner = EthCrypto.recoverPublicKey(
                         value,
@@ -207,10 +206,12 @@ describe("AO P2P module", () => {
         it("verifies content host exists", done => {
             aoP2P.router.emit("/p2p/content/getContentHosts", {
                 data: { content },
-                respond: (response: IAORouterMessage) => {
-                    const results: Array<NetworkContentHostEntry> =
-                        response.data;
+                respond: (results: Array<NetworkContentHostEntry>) => {
                     expect(results.length).to.equal(1);
+                    const contentHost = results[0];
+                    expect(contentHost.nodePublicKey).to.equal(
+                        actorA.publicKey
+                    );
                     done();
                 },
                 reject: done

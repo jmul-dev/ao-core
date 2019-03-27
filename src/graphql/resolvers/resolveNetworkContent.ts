@@ -44,15 +44,6 @@ export default (
                         aoContent.totalHosts = networkContent.totalHosts || 0;
                         return aoContent;
                     })
-                    .filter(content => {
-                        // Filter out current user's content from this feed (so they dont see their own content
-                        // showing up in the network content listing)
-                        // TODO: this should really just be an argument on the query
-                        return args.id
-                            ? true
-                            : content.creatorNodePublicKey !==
-                                  context.userSession.ethAddress;
-                    })
                     .sort((a, b) => {
                         // Sorting algorithm -> recently seen host -> created at date
                         if (
