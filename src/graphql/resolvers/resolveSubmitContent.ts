@@ -100,7 +100,7 @@ export default (
                     // 2. Metadata content store
                     debug(`Temp directories created`);
                     debug(
-                        `Beginning storage of metadata file uploads [featuredImage, teaserVideo]...`
+                        `Beginning storage of metadata file uploads [featuredImage, videoTeaser]...`
                     );
                     const storagePromises: Array<
                         Promise<any>
@@ -145,7 +145,7 @@ export default (
                                             if (fieldName === "featuredImage") {
                                                 contentJson.featuredImageUrl = fileName;
                                             } else if (
-                                                fieldName === "teaserVideo"
+                                                fieldName === "videoTeaser"
                                             ) {
                                                 contentJson.teaserUrl = fileName;
                                             }
