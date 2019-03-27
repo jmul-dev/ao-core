@@ -189,7 +189,7 @@ export default class AOEth extends AORouterInterface {
             if (web3) web3.setProvider(null);
             if (provider) provider.disconnect();
             request.reject(error);
-        };        
+        };
         // 2. Get the provider
         this.getEthereumProvider(this.rpcEndpoint)
             .then(provider => {
@@ -461,9 +461,12 @@ export default class AOEth extends AORouterInterface {
 
     _handleNetworkGet(request: IAORouterRequest) {
         if (this.networkId) {
-            request.respond({ networkId: this.networkId });
+            request.respond({
+                networkId: this.networkId,
+                rpcEndpoint: this.rpcEndpoint
+            });
         } else {
-            request.respond({ networkId: null });
+            request.respond({ networkId: null, rpcEndpoint: null });
         }
     }
 

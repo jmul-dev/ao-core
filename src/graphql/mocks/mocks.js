@@ -42,8 +42,8 @@ const mocks = {
     }),
     // IContent: (data) => ({
     //     id: casual.uuid,
-    //     nodeId: casual.uuid,
-    //     creatorNodeId: casual.uuid,
+    //     nodePublicKey: casual.uuid,
+    //     creatorNodePublicKey: casual.uuid,
     //     contentType: 'VOD',
     //     isFolder: false,
     //     isMutable: false,

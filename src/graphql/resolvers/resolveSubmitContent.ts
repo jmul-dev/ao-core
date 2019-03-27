@@ -59,9 +59,9 @@ export default (
         const metadataFileFields = ["featuredImage", "videoTeaser"];
 
         let contentJson: AOContent = AOContent.fromObject({
-            nodeId: context.userSession.id,
+            nodePublicKey: context.userSession.publicKey,
             nodeEthAddress: context.userSession.ethAddress,
-            creatorNodeId: context.userSession.id,
+            creatorNodePublicKey: context.userSession.publicKey,
             creatorEthAddress: context.userSession.ethAddress,
             taoId: args.inputs.taoId,
             contentType: args.inputs.contentType,

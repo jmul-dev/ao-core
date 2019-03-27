@@ -15,7 +15,7 @@ export interface ILocalNode_ContentQuery_Inputs {
 }
 // TODO: obj is of type NodeIdentity (sorry still no types outside of graphql)
 export default (
-    obj: any,
+    nodeIdentity: any,
     args: ILocalNode_ContentQuery_Inputs = { inputs: {} },
     context: IGraphqlResolverContext,
     info: any
@@ -26,10 +26,10 @@ export default (
             return null;
         }
         let contentQueryParams: AODB_UserContentGet_Data = {
-            userId: obj.ethAddress,
+            userId: nodeIdentity.ethAddress,
             query: {
-                creatorNodeId: {
-                    $ne: obj.ethAddress
+                creatorNodePublicKey: {
+                    $ne: nodeIdentity.publicKey
                 },
                 state: args.inputs.incomplete
                     ? {

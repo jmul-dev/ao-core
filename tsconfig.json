@@ -14,5 +14,12 @@
         "allowSyntheticDefaultImports": true
     },
     "include": ["src"],
-    "exclude": ["dist", ".git", ".vscode", ".vscode/*", "node_modules"]
+    "exclude": [
+        "./src/**/*.spec.ts",
+        "dist",
+        ".git",
+        ".vscode",
+        ".vscode/*",
+        "node_modules"
+    ]
 }

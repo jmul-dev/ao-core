@@ -5,23 +5,22 @@
     "displayName": "AO P2P",
     "description": "AO - P2P package",
     "main": "p2p/p2p.js",
-    "bin":  "p2p.bin.js",
+    "bin": "p2p.bin.js",
     "AO": {
         "events": [
             "/p2p/init",
             "/p2p/beginDiscovery",
-            "/p2p/newContent",
+            "/p2p/registerContent",
             "/p2p/watchKey",
             "/p2p/watchAndGetKey",
             "/p2p/watchAndGetIndexData",
-            "/p2p/addDiscovery",
-            "/p2p/soldKey",
+            "/p2p/registerContentHost",
+            "/p2p/decryptionKeyHandoff",
             "/p2p/updateNode",
             "/p2p/content/getContentHosts",
-            "/p2p/stats"
+            "/p2p/stats",
+            "/p2p/setUserIdentity"
         ],
-        "activationEvents": [
-            
-        ]        
+        "activationEvents": []
     }
-  }
+}

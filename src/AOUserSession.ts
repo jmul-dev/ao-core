@@ -1,6 +1,5 @@
 import path from "path";
-import web3 from "web3";
-import web3Utils from "web3-utils";
+import { isAddress } from "web3-utils";
 import * as AOCrypto from "./AOCrypto";
 import Debug from "./AODebug";
 import AOContent, { AOContentState, AODappContent } from "./models/AOContent";
@@ -16,8 +15,8 @@ import {
     AODB_NetworkContentUpdate_Data,
     AODB_UserContentGet_Data,
     AODB_UserContentUpdate_Data,
-    AODB_UserInsert_Data,
-    AODB_UserInit_Data
+    AODB_UserInit_Data,
+    AODB_UserInsert_Data
 } from "./modules/db/db";
 import {
     BuyContentEvent,
@@ -30,19 +29,19 @@ import {
     IAOFS_Move_Data,
     IAOFS_Reencrypt_Data,
     IAOFS_Unlink_Data,
-    IAOFS_Write_Data,
-    IAOFS_ReadStream_Data,
-    IAOFS_UnzipFile_Data
+    IAOFS_UnzipFile_Data,
+    IAOFS_Write_Data
 } from "./modules/fs/fs";
 import {
     AOP2P_Add_Discovery_Data,
     AOP2P_GetContentHosts_Data,
-    AOP2P_IndexDataRow,
     AOP2P_Update_Node_Timestamp_Data,
     AOP2P_Watch_AND_Get_IndexData_Data,
     AOP2P_Write_Decryption_Key_Data,
-    NetworkContentHostEntry
+    NetworkContentHostEntry,
+    AOP2P_ContentRegistration_Data
 } from "./modules/p2p/p2p";
+import { ITaoDB_ContentHost_IndexData_Entry } from "./modules/p2p/TaoDB";
 import { IAORouterMessage } from "./router/AORouter";
 import {
     AORouterInterface,
@@ -77,7 +76,7 @@ export default class AOUserSession {
             if (this.ethAddress === ethAddress) {
                 return resolve({ ethAddress });
             }
-            if (!web3Utils.isAddress(ethAddress)) {
+            if (!isAddress(ethAddress)) {
                 return reject(new Error("ethAddress format rejected"));
             }
             this.ethAddress = ethAddress;
@@ -124,7 +123,7 @@ export default class AOUserSession {
                                                 (
                                                     response: IAORouterMessage
                                                 ) => {
-                                                    // 5. Listeners that make this app work
+                                                    // 6. Listeners that make this app work
                                                     debug(
                                                         `User identity generated, public key: ${
                                                             identity.publicKey
@@ -142,6 +141,19 @@ export default class AOUserSession {
                                         resolve({ ethAddress });
                                         this._resume();
                                     }
+                                    // Register the taodb schemas
+                                    this.router
+                                        .send("/p2p/setUserIdentity", {
+                                            userIdentity: this.identity
+                                        })
+                                        .then(() => {})
+                                        .catch((error: Error) => {
+                                            debug(
+                                                `Error registering taodb schemas: ${
+                                                    error.message
+                                                }`
+                                            );
+                                        });
                                 })
                                 .catch(reject);
                         })
@@ -415,12 +427,16 @@ export default class AOUserSession {
                         // 3. Handoff to discovery
                         const sendDecryptionKeyMessage: AOP2P_Write_Decryption_Key_Data = {
                             content: userContent,
-                            buyerEthAddress: buyContentEvent.buyer,
+                            hostsPublicKey: this.identity.publicKey,
+                            buyersPublicKey: buyContentEvent.publicKey,
                             encryptedDecryptionKey,
                             encryptedKeySignature: encryptedDecryptionKeySignature
                         };
                         this.router
-                            .send("/p2p/soldKey", sendDecryptionKeyMessage)
+                            .send(
+                                "/p2p/decryptionKeyHandoff",
+                                sendDecryptionKeyMessage
+                            )
                             .then((response: IAORouterMessage) => {
                                 if (response.data.alreadyExists) {
                                     debug(
@@ -544,8 +560,9 @@ export default class AOUserSession {
                                         downloadResponse.data.contentHostId,
                                     fileDatKey:
                                         downloadResponse.data.datEntry.key,
-                                    nodeId:
-                                        downloadResponse.data.nodeEntry.nodeId //Important for when you're listening on the sold key channel.
+                                    nodePublicKey:
+                                        downloadResponse.data.nodeEntry
+                                            .nodePublicKey //Important for when you're listening on the sold key channel.
                                 }
                             }
                         };
@@ -728,7 +745,7 @@ export default class AOUserSession {
                         $set: {
                             state: AOContentState.PURCHASED,
                             purchaseId: buyContentEvent.purchaseId
-                            //"nodeId": buyContentEvent.contentHostId, //taken out since this should be the node id, which is the seller's eth address
+                            //"nodePublicKey": buyContentEvent.contentHostId, //taken out since this should be the node id, which is the seller's public key
                         }
                     };
                 } else {
@@ -785,15 +802,10 @@ export default class AOUserSession {
             );
             return null;
         }
-        //TODO: make sure the below key route gets made with the static method out of p2p.
         const p2pWatchKeyRequest: AOP2P_Watch_AND_Get_IndexData_Data = {
-            // TODO: use AOP2P static methods to generate this path (or let AOP2P generate the path for us)
-            key: `/AOSpace/${content.contentType}/${
-                content.metadataDatKey
-            }/nodes/${content.nodeId}/${content.fileDatKey}/indexData`,
-            ethAddress: this.ethAddress
+            content,
+            buyersPublicKey: this.identity.publicKey
         };
-        debug(p2pWatchKeyRequest);
         this.router
             .send("/p2p/watchAndGetIndexData", p2pWatchKeyRequest)
             .then((response: IAORouterMessage) => {
@@ -805,7 +817,8 @@ export default class AOUserSession {
                     );
                     return null;
                 }
-                const indexData: AOP2P_IndexDataRow = response.data;
+                const indexData: ITaoDB_ContentHost_IndexData_Entry =
+                    response.data;
                 if (indexData) {
                     let contentUpdateQuery: AODB_UserContentUpdate_Data = {
                         id: content.id,
@@ -1245,26 +1258,32 @@ export default class AOUserSession {
      * @param {AOContent} content
      */
     private _handleContentStaked(content: AOContent) {
-        debug("Content is gonna become discoverable ", content.fileDatKey);
-        // 1. Import all the freaken files.
-        const fileImportDatData: AODat_ImportSingle_Data = {
-            key: content.fileDatKey
-        };
-        const metaImportDatData: AODat_ImportSingle_Data = {
-            key: content.metadataDatKey
-        };
-        let importDats = [];
-        importDats.push(
-            this.router.send("/dat/importSingle", fileImportDatData)
+        debug(
+            "Content staked, begin process of making discoverable...",
+            content.fileDatKey
         );
-        if (content.creatorEthAddress == this.ethAddress) {
-            importDats.push(
-                this.router.send("/dat/importSingle", metaImportDatData)
-            );
-        }
-        Promise.all(importDats)
+        Promise.resolve()
             .then(() => {
-                debug("Content imports is good ");
+                // 1. Import all the freaken files.
+                const fileImportDatData: AODat_ImportSingle_Data = {
+                    key: content.fileDatKey
+                };
+                const metaImportDatData: AODat_ImportSingle_Data = {
+                    key: content.metadataDatKey
+                };
+                let importDats = [];
+                importDats.push(
+                    this.router.send("/dat/importSingle", fileImportDatData)
+                );
+                if (content.creatorEthAddress == this.ethAddress) {
+                    importDats.push(
+                        this.router.send("/dat/importSingle", metaImportDatData)
+                    );
+                }
+                return Promise.all(importDats);
+            })
+            .then(() => {
+                debug("Content dat imports are good, now resuming...");
                 // 2. Ensure the dats are resumed (they may already be, but need to make sure)
                 const fileResumeDatData: AODat_ResumeSingle_Data = {
                     key: content.fileDatKey
@@ -1281,67 +1300,67 @@ export default class AOUserSession {
                         this.router.send("/dat/resumeSingle", metaResumeDatData)
                     );
                 }
-                Promise.all(resumeDats)
-                    .then(() => {
-                        debug("Content resume is good ");
-                        // 3. Add new discovery
-                        const p2pAddDiscoveryData: AOP2P_Add_Discovery_Data = {
-                            contentType: content.contentType,
-                            fileDatKey: content.fileDatKey,
-                            metaDatKey: content.metadataDatKey,
-                            ethAddress: this.ethAddress, // Current user's ethAddress
-                            contentHostId: content.contentHostId
-                        };
-                        this.router
-                            .send("/p2p/addDiscovery", p2pAddDiscoveryData)
-                            .then((response: IAORouterMessage) => {
-                                debug("Content has been added to discovery");
-                                if (response.data.success) {
-                                    // 4. Update the content state (mark as Discoverable)
-                                    const contentUpdateQuery: AODB_UserContentUpdate_Data = {
-                                        id: content.id,
-                                        update: {
-                                            $set: {
-                                                state:
-                                                    AOContentState.DISCOVERABLE
-                                            }
-                                        }
-                                    };
-                                    this.router
-                                        .send(
-                                            "/db/user/content/update",
-                                            contentUpdateQuery
-                                        )
-                                        .then(
-                                            (
-                                                contentUpdateResponse: IAORouterMessage
-                                            ) => {
-                                                const updatedContent: AOContent = AOContent.fromObject(
-                                                    contentUpdateResponse.data
-                                                );
-                                                // Handoff to next state handler
-                                                this.processContent(
-                                                    updatedContent
-                                                );
-                                            }
-                                        )
-                                        .catch(debug);
-                                    this.router.send("/db/logs/insert", {
-                                        message: `Content [${
-                                            content.title
-                                        }] is now discoverable within the AO network!`,
-                                        userId: this.ethAddress
-                                    });
-                                } else {
-                                    debug(
-                                        `Error, failed to add content to discovery`
-                                    );
-                                }
-                            })
-                            .catch(debug);
-                    })
-                    .catch(debug);
+                return Promise.all(resumeDats);
             })
-            .catch(debug);
+            .then(() => {
+                // 3. If this is the content creator, we also register the content under their
+                // namespace
+                if (content.creatorEthAddress == this.ethAddress) {
+                    const contentRegistrationRequest: AOP2P_ContentRegistration_Data = {
+                        content
+                    };
+                    return this.router.send(
+                        "/p2p/registerContent",
+                        contentRegistrationRequest
+                    );
+                } else {
+                    return Promise.resolve();
+                }
+            })
+            .then(() => {
+                debug("Content dats resumed, adding content to discovery...");
+                // 4. Add new discovery
+                const p2pAddDiscoveryData: AOP2P_Add_Discovery_Data = {
+                    content
+                };
+                return this.router.send(
+                    "/p2p/registerContentHost",
+                    p2pAddDiscoveryData
+                );
+            })
+            .then((response: IAORouterMessage) => {
+                debug("Content has been added to discovery");
+                // 5. Update the content state (mark as Discoverable)
+                const contentUpdateQuery: AODB_UserContentUpdate_Data = {
+                    id: content.id,
+                    update: {
+                        $set: {
+                            state: AOContentState.DISCOVERABLE
+                        }
+                    }
+                };
+                this.router.send("/db/logs/insert", {
+                    message: `Content [${
+                        content.title
+                    }] is now discoverable within the AO network!`,
+                    userId: this.ethAddress
+                });
+                return this.router.send(
+                    "/db/user/content/update",
+                    contentUpdateQuery
+                );
+            })
+            .then((contentUpdateResponse: IAORouterMessage) => {
+                // 6. Finally, done with staked content
+                const updatedContent: AOContent = AOContent.fromObject(
+                    contentUpdateResponse.data
+                );
+                // Handoff to next state handler
+                this.processContent(updatedContent);
+            })
+            .catch((error: Error) => {
+                // NOTE; no real recovery mechanism if this state fails to advance.
+                debug(error);
+            });
     }
 }

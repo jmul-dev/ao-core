@@ -2,7 +2,6 @@ import { EventEmitter } from "events";
 import { IAORouterMessage, IAORouterMessageRouterParams } from "./AORouter";
 import fs from "fs";
 import AORouterCoreProcessPretender from "./AORouterCoreProcessPretender";
-import AOHyperDB from "./AOHyperDB";
 
 /**
  * TODO: AOSubprocessRouter & AOCoreProcessRouter are similar enough
@@ -306,8 +305,6 @@ export interface AORouterSubprocessArgs {
     corePort: number;
     ffprobeBin: string;
     ethNetworkRpc: string;
-    // optional arg
-    enableHyperDB?: Boolean;
 }
 
 /**
@@ -318,15 +315,9 @@ export interface AORouterSubprocessArgs {
  */
 export default abstract class AORouterSubprocessInterface {
     router: AOSubprocessRouter;
-    hyperdb: AOHyperDB;
 
     constructor(routerArgs: AORouterSubprocessArgs) {
         this.router = new AOSubprocessRouter();
-        if (routerArgs) {
-            if (routerArgs.enableHyperDB) {
-                this.hyperdb = new AOHyperDB();
-            }
-        }
     }
 }
 
