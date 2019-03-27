@@ -48,7 +48,10 @@ export default class AODB {
                         swarmDefaults({
                             id: this.dbKey,
                             stream: peer => {
-                                return this.aodb.replicate();
+                                return this.aodb.replicate({
+                                    live: true,
+                                    userData: this.aodb.local.key
+                                });
                             }
                         })
                     );
