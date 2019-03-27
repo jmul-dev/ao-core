@@ -105,7 +105,6 @@ export interface NetworkContentHostEntry {
 export default class AOP2P extends AORouterInterface {
     public taodb: TaoDB;
 
-    private taoDbRootDir: string;
     private storageLocation: string;
     private contentIngestion: AOContentIngestion;
     private contentHostsUpdater: AOContentHostsUpdater;
@@ -113,7 +112,6 @@ export default class AOP2P extends AORouterInterface {
     constructor(args: AORouterSubprocessArgs) {
         super(args);
         this.storageLocation = args.storageLocation;
-        this.taoDbRootDir = "/AO";
 
         //New Content upload
         this.contentIngestion = new AOContentIngestion(this.router);
@@ -214,9 +212,9 @@ export default class AOP2P extends AORouterInterface {
     //For the sake of clean recursive methods.
     _watchDiscovery() {
         this.taodb
-            .watch(this.taoDbRootDir)
+            .watch(TaoDB.ContentKey)
             .then(() => {
-                debug("Something changed in " + this.taoDbRootDir);
+                debug("Something changed in " + TaoDB.ContentKey);
                 this._runDiscovery()
                     .then(() => {
                         this._watchDiscovery();
@@ -231,14 +229,14 @@ export default class AOP2P extends AORouterInterface {
         return Promise.resolve()
             .then(() => {
                 // 1. List all content types
-                return this.taodb.list(this.taoDbRootDir, {
+                return this.taodb.list(TaoDB.ContentKey, {
                     recursive: false
                 });
             })
             .then((contentList: Array<AODB_Entry<any>>) => {
                 const contentTypes = contentList.map(
                     (entry: AODB_Entry<any>) => {
-                        return entry.splitKey[1]; // /AOSpace/{contentType}
+                        return entry.splitKey[2]; // /AO/Content/{contentType}
                     }
                 );
                 debug(
@@ -249,7 +247,7 @@ export default class AOP2P extends AORouterInterface {
                 // 2. List all keys within each content type
                 const contentListPromises = contentTypes.map(contentType => {
                     return this.taodb.list(
-                        `${this.taoDbRootDir}/${contentType}/`,
+                        `${TaoDB.ContentKey}/${contentType}/`,
                         { recursive: false }
                     );
                 });
@@ -261,9 +259,9 @@ export default class AOP2P extends AORouterInterface {
                 contentLists.forEach(contentList => {
                     contentList.forEach((entry: AODB_Entry<any>) => {
                         // sanity check to make sure entry is a Dat key
-                        const key = entry.splitKey[2];
+                        const key = entry.splitKey[3];
                         if (key.length === 64) {
-                            contentKeys.push(key); // /AOSpace/{contentType}/{metadataDatKey}
+                            contentKeys.push(key); // /AO/Content/{contentType}/{metadataDatKey}
                         }
                     });
                 });

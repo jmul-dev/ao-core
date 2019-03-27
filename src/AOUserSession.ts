@@ -1329,11 +1329,6 @@ export default class AOUserSession {
                 );
             })
             .then((response: IAORouterMessage) => {
-                if (!response.data.success) {
-                    return Promise.reject(
-                        "Error, failed to add content to discovery"
-                    );
-                }
                 debug("Content has been added to discovery");
                 // 5. Update the content state (mark as Discoverable)
                 const contentUpdateQuery: AODB_UserContentUpdate_Data = {

@@ -36,6 +36,7 @@ export interface ITaoDB_ContentHost_Timestamp {
  * aware inserts, and user identity context.
  */
 export default class TaoDB extends AODB {
+    public static ContentKey = "/AO/Content";
     private _userIdentity: Identity;
     private schemasHaveBeenRegistered: boolean = false; // schema registration only needs to occur once
     public schemas: { [key: string]: ITaoDB_Schema } = {
@@ -137,7 +138,7 @@ export default class TaoDB extends AODB {
             contentType: content.contentType,
             contentMetadataDatKey: content.metadataDatKey
         });
-        const value = content.baseChallengeSignature;
+        const value = content.baseChallenge;
         const writerSignature = this.createSignedHash({
             privateKey: this._userIdentity.privateKey,
             key,
@@ -177,7 +178,7 @@ export default class TaoDB extends AODB {
             contentMetadataDatKey: content.metadataDatKey,
             contentDatKey: content.fileDatKey
         });
-        const value = content.baseChallengeSignature;
+        const value = content.baseChallenge;
         const writerSignature = this.createSignedHash({
             privateKey: this._userIdentity.privateKey,
             key,
