@@ -138,7 +138,7 @@ export default class TaoDB extends AODB {
             contentType: content.contentType,
             contentMetadataDatKey: content.metadataDatKey
         });
-        const value = content.baseChallenge;
+        const value = content.baseChallengeSignature;
         const writerSignature = this.createSignedHash({
             privateKey: this._userIdentity.privateKey,
             key,
@@ -178,7 +178,7 @@ export default class TaoDB extends AODB {
             contentMetadataDatKey: content.metadataDatKey,
             contentDatKey: content.fileDatKey
         });
-        const value = content.baseChallenge;
+        const value = content.baseChallengeSignature;
         const writerSignature = this.createSignedHash({
             privateKey: this._userIdentity.privateKey,
             key,

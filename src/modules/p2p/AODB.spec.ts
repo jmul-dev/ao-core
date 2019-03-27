@@ -42,6 +42,16 @@ describe("AODB module", () => {
         decryptionKey: "0xDEADBEEF"
     };
     let content = AOContent.fromObject(contentJson);
+
+    content.baseChallenge = AOCrypto.generateContentBaseChallenge({
+        fileChecksum: content.fileChecksum,
+        contractAddress: "0x0000"
+    });
+    content.baseChallengeSignature = AOCrypto.generateBaseChallengeSignature({
+        baseChallenge: content.baseChallenge,
+        privateKey: actorA.privateKey
+    });
+
     const aodbSchemas = [
         {
             // User Content schema

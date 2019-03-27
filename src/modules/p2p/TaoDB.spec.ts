@@ -47,9 +47,11 @@ describe("TaoDB module", () => {
         decryptionKey: "0xDEADBEEF"
     };
     let content = AOContent.fromObject(contentJson);
-    content.baseChallenge = EthCrypto.hash.keccak256(
-        "base challenge of fake content"
-    );
+
+    content.baseChallenge = AOCrypto.generateContentBaseChallenge({
+        fileChecksum: content.fileChecksum,
+        contractAddress: "0x0000"
+    });
     content.baseChallengeSignature = AOCrypto.generateBaseChallengeSignature({
         baseChallenge: content.baseChallenge,
         privateKey: actorA.privateKey
@@ -102,7 +104,7 @@ describe("TaoDB module", () => {
             taoDB
                 .get(dbKey)
                 .then(value => {
-                    // expect(value).to.equal(content.baseChallengeSignature);
+                    expect(value).to.equal(content.baseChallengeSignature);
                     const recoveredPublicKey = EthCrypto.recoverPublicKey(
                         value,
                         content.baseChallenge
