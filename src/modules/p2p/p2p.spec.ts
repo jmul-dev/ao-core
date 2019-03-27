@@ -4,12 +4,17 @@ import path from "path";
 import ram from "random-access-memory";
 import * as AOCrypto from "../../AOCrypto";
 import AOContent from "../../models/AOContent";
-import AOP2P, { AOP2P_Init_Data, AOP2P_Write_Decryption_Key_Data } from "./p2p";
+import AOP2P, {
+    AOP2P_Init_Data,
+    AOP2P_Write_Decryption_Key_Data,
+    NetworkContentHostEntry
+} from "./p2p";
 import TaoDB, {
     ITaoDB_ContentHost_Timestamp,
     ITaoDB_ContentHost_IndexData
 } from "./TaoDB";
 import { expect } from "chai";
+import { IAORouterMessage } from "../../router/AORouter";
 
 describe("AO P2P module", () => {
     const actorA: AOCrypto.Identity = AOCrypto.createUserIdentity();
@@ -120,6 +125,7 @@ describe("AO P2P module", () => {
             aoP2P.taodb
                 .get(dbKey)
                 .then(value => {
+                    console.log(value);
                     expect(value).to.not.be.empty;
                     const recoveredSigner = EthCrypto.recoverPublicKey(
                         value,
@@ -195,6 +201,18 @@ describe("AO P2P module", () => {
                     done();
                 })
                 .catch(done);
+        });
+        it("verifies content host exists", done => {
+            aoP2P.router.emit("/p2p/content/getContentHosts", {
+                data: { content },
+                respond: (response: IAORouterMessage) => {
+                    const results: Array<NetworkContentHostEntry> =
+                        response.data;
+                    expect(results.length).to.equal(1);
+                    done();
+                },
+                reject: done
+            });
         });
     });
 

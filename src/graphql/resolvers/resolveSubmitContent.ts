@@ -328,10 +328,9 @@ export default (
                         videoStats
                     }
                 }) => {
-                    // 5. Content (and metadata files) have been writin to disk, update contentJson
+                    // 5a. Content (and metadata files) have been writin to disk, update contentJson
                     debug(`Content encrypted and stored to temp directory`);
                     contentJson.decryptionKey = key;
-                    contentJson.baseChallenge = checksum;
                     contentJson.encChallenge = encryptedChecksum;
                     contentJson.state = AOContent.States.DAT_INITIALIZED;
                     contentJson.fileChecksum = checksum;
@@ -340,6 +339,21 @@ export default (
                     return Promise.resolve();
                 }
             )
+            .then(() => {
+                // 5b. Additionally, add base challenge signature
+                return new Promise((localResolve, localReject) => {
+                    context.userSession
+                        .getContentBaseChallenges({
+                            contentChecksum: contentJson.fileChecksum
+                        })
+                        .then(({ baseChallenge, baseChallengeSignature }) => {
+                            contentJson.baseChallenge = baseChallenge;
+                            contentJson.baseChallengeSignature = baseChallengeSignature;
+                            localResolve();
+                        })
+                        .catch(localReject);
+                });
+            })
             .then(() => {
                 // 6. Dat intialization, both content and metadata (used in discovery)
                 debug(`Initializing content and metadata Dats...`);

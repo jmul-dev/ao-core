@@ -71,6 +71,37 @@ export default class AOUserSession {
         return this.identity ? this.identity.publicKey : null;
     }
 
+    public getContentBaseChallenges({
+        contentChecksum
+    }): Promise<{ baseChallenge: string; baseChallengeSignature: string }> {
+        return new Promise((localResolve, localReject) => {
+            this.router
+                .send("/eth/network/get")
+                .then((networkResponse: IAORouterMessage) => {
+                    const { networkId } = networkResponse.data;
+                    const contractAddress =
+                        AOContentContract["networks"][networkId]["address"];
+                    const baseChallenge = AOCrypto.generateContentBaseChallenge(
+                        {
+                            fileChecksum: contentChecksum,
+                            contractAddress
+                        }
+                    );
+                    const baseChallengeSignature = AOCrypto.generateBaseChallengeSignature(
+                        {
+                            baseChallenge: baseChallenge,
+                            privateKey: this.identity.privateKey
+                        }
+                    );
+                    localResolve({
+                        baseChallenge,
+                        baseChallengeSignature
+                    });
+                })
+                .catch(localReject);
+        });
+    }
+
     public register(ethAddress: string): Promise<{ ethAddress: string }> {
         return new Promise((resolve, reject) => {
             if (this.ethAddress === ethAddress) {
@@ -999,49 +1030,15 @@ export default class AOUserSession {
                                     cleanupTmpContent();
                                     return null;
                                 }
-                                // 4. Generate the baseChallengeSignature & assign encChallenge
-                                this.router
-                                    .send("/eth/network/get")
+                                // 4. Generate the baseChallengeSignature & assign encChallenge (note that baseChallenge should not change as fileChecksum should remain the same)
+                                this.getContentBaseChallenges({
+                                    contentChecksum: content.fileChecksum
+                                })
                                     .then(
-                                        (
-                                            networkIdResponse: IAORouterMessage
-                                        ) => {
-                                            if (
-                                                networkIdResponse.data
-                                                    .networkId == null
-                                            ) {
-                                                debug(
-                                                    "Bad news, we are not connected to a network"
-                                                );
-                                                cleanupTmpContent();
-                                                return null;
-                                            }
-                                            debug(
-                                                "typeof networkId ",
-                                                networkIdResponse.data.networkId
-                                            );
-                                            const encChallenge = newEncryptedChecksum;
-                                            const contractAddress =
-                                                AOContentContract["networks"][
-                                                    networkIdResponse.data
-                                                        .networkId
-                                                ]["address"];
-                                            const hashedBaseChallenge = AOCrypto.generateContentBaseChallenge(
-                                                {
-                                                    fileChecksum:
-                                                        content.baseChallenge,
-                                                    contractAddress
-                                                }
-                                            );
-                                            const baseChallengeSignature = AOCrypto.generateBaseChallengeSignature(
-                                                {
-                                                    baseChallenge: hashedBaseChallenge,
-                                                    privateKey: this.identity
-                                                        .privateKey
-                                                }
-                                            );
-                                            //debug('Recovered: ',EthCrypto.recover(baseChallengeSignature, content.baseChallenge))
-
+                                        ({
+                                            baseChallenge,
+                                            baseChallengeSignature
+                                        }) => {
                                             // 5. Update Content State to Encrypted
                                             let contentUpdateQuery: AODB_UserContentUpdate_Data = {
                                                 id: content.id,
@@ -1050,7 +1047,7 @@ export default class AOUserSession {
                                                         state:
                                                             AOContentState.ENCRYPTED,
                                                         decryptionKey: newDecrytionKey,
-                                                        encChallenge: encChallenge,
+                                                        encChallenge: newEncryptedChecksum,
                                                         baseChallengeSignature: baseChallengeSignature
                                                     }
                                                 }
@@ -1085,7 +1082,17 @@ export default class AOUserSession {
                                             );
                                         }
                                     )
-                                    .catch(debug);
+                                    .catch(error => {
+                                        debug(
+                                            `Bad news, there was an error generating content base challenge and signature: ${
+                                                error
+                                                    ? error.message
+                                                    : "(error not an object)"
+                                            }`
+                                        );
+                                        cleanupTmpContent();
+                                        return null;
+                                    });
                             })
                             .catch((error: Error) => {
                                 debug(

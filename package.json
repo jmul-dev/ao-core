@@ -20,7 +20,7 @@
         "test-module-fs": "MODULE=fs npm run test-module",
         "test-module-p2p": "MODULE=p2p npm run test-module",
         "test-ao-crypto": "mocha --exit -r ts-node/register src/AOCrypto.spec.ts",
-        "test-aodb": "mocha --exit -r ts-node/register src/modules/p2p/AOHyperDB.spec.ts",
+        "test-aodb": "mocha --exit -r ts-node/register src/modules/p2p/AODB.spec.ts",
         "test-taodb": "mocha --exit -r ts-node/register src/modules/p2p/TaoDB.spec.ts",
         "test-p2p": "mocha --exit -r ts-node/register src/modules/p2p/p2p.spec.ts",
         "list-native-deps": "node ./node_modules/node-has-native-dependencies/index.js",
