@@ -114,10 +114,13 @@ export default class AOP2P extends AORouterInterface {
         this.storageLocation = args.storageLocation;
 
         //New Content upload
-        this.contentIngestion = new AOContentIngestion(this.router);
         this.contentHostsUpdater = new AOContentHostsUpdater(
             this.router,
             this._getContentHostsFormatted.bind(this)
+        );
+        this.contentIngestion = new AOContentIngestion(
+            this.router,
+            this.contentHostsUpdater.addContentKeyToQueue
         );
 
         this.router.on("/p2p/init", this._init.bind(this));
