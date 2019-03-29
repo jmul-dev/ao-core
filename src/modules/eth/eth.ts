@@ -6,8 +6,11 @@ import Web3 from "web3";
 import SolidityEvent from "web3-legacy/lib/web3/event.js";
 import Debug from "../../AODebug";
 import { IAOStatus } from "../../models/AOStatus";
+const AOPurchaseReceipt = require("ao-contracts/build/contracts/AOPurchaseReceipt.json");
 const AOContent = require("ao-contracts/build/contracts/AOContent.json");
-const AOToken = require("ao-contracts/build/contracts/AOToken.json");
+const AOContentHost = require("ao-contracts/build/contracts/AOContentHost.json");
+const AOStakedContent = require("ao-contracts/build/contracts/AOStakedContent.json");
+const AOIon = require("ao-contracts/build/contracts/AOIon.json");
 const AOSetting = require("ao-contracts/build/contracts/AOSetting.json");
 const debug = Debug("ao:eth");
 const errorLog = Debug("ao:eth:error");
@@ -112,8 +115,9 @@ export default class AOEth extends AORouterInterface {
 
     private contracts: {
         // sry no type checking on these bad boys!
-        aoToken: any;
-        aoContent: any;
+        aoIon: any;
+        aoPurchaseReceipt: any;
+        aoContentHost: any;
         aoSetting: any;
     };
 
@@ -155,7 +159,6 @@ export default class AOEth extends AORouterInterface {
             "/eth/events/BuyContent/unsubscribe",
             this._unsubscribeBuyContentEvents.bind(this)
         );
-        debug(`started with ethereum rpc: ${args.ethNetworkRpc}`);
     }
 
     /**
@@ -171,6 +174,7 @@ export default class AOEth extends AORouterInterface {
         if (ethNetworkRpc) {
             this.rpcEndpoint = ethNetworkRpc;
         }
+        debug(`Initializing ethereum module with RPC: ${this.rpcEndpoint}`);
         // 0. Sanity check, make sure the user provided a websocket url
         if (
             this.rpcEndpoint.indexOf("wss://") !== 0 &&
@@ -187,7 +191,6 @@ export default class AOEth extends AORouterInterface {
         const rejectWithError = (web3, provider, error) => {
             this.connectionStatus = "ERROR";
             if (web3) web3.setProvider(null);
-            if (provider) provider.disconnect();
             request.reject(error);
         };
         // 2. Get the provider
@@ -246,7 +249,7 @@ export default class AOEth extends AORouterInterface {
                         } else {
                             request.respond({
                                 ethNetworkId: `${networkId}`,
-                                ethNetworkRpc
+                                ethNetworkRpc: this.rpcEndpoint
                             });
                             let recconectAttempted = false;
                             const reconnectAttempt = (error?: Error) => {
@@ -283,7 +286,10 @@ export default class AOEth extends AORouterInterface {
                     });
             })
             .catch(error => {
-                errorLog(error);
+                errorLog(
+                    `Attempt at getting ethereum provider rejected with error:`,
+                    error
+                );
                 request.reject(error);
             });
     }
@@ -375,13 +381,17 @@ export default class AOEth extends AORouterInterface {
     private initializeEthereumContracts(): boolean {
         try {
             this.contracts = {
-                aoContent: new this.web3.eth.Contract(
-                    AOContent.abi,
-                    AOContent.networks[this.networkId].address
+                aoPurchaseReceipt: new this.web3.eth.Contract(
+                    AOPurchaseReceipt.abi,
+                    AOPurchaseReceipt.networks[this.networkId].address
                 ),
-                aoToken: new this.web3.eth.Contract(
-                    AOToken.abi,
-                    AOToken.networks[this.networkId].address
+                aoContentHost: new this.web3.eth.Contract(
+                    AOContentHost.abi,
+                    AOContentHost.networks[this.networkId].address
+                ),
+                aoIon: new this.web3.eth.Contract(
+                    AOIon.abi,
+                    AOIon.networks[this.networkId].address
                 ),
                 aoSetting: new this.web3.eth.Contract(
                     AOSetting.abi,
@@ -399,7 +409,7 @@ export default class AOEth extends AORouterInterface {
     }
 
     private _handleGetTaoDbKey(request: IAORouterRequest) {
-        this.contracts.aoToken.methods
+        this.contracts.aoIon.methods
             .settingTAOId()
             .call()
             .then((settingTaoId: string) => {
@@ -436,7 +446,7 @@ export default class AOEth extends AORouterInterface {
             shouldRefetchContentHostCount
         ) {
             this.contentHosts.lastFetched = Date.now();
-            this.contracts.aoContent.methods
+            this.contracts.aoContentHost.methods
                 .totalContentHosts()
                 .call()
                 .then(totalContentHosts => {
@@ -498,7 +508,7 @@ export default class AOEth extends AORouterInterface {
     private listenForBuyContentEvents(): Promise<any> {
         return new Promise((resolve, reject) => {
             try {
-                let subscription = this.contracts.aoContent.events
+                let subscription = this.contracts.aoPurchaseReceipt.events
                     .BuyContent(
                         {
                             fromBlock: 0,
@@ -580,7 +590,7 @@ export default class AOEth extends AORouterInterface {
                 if (status && receipt) {
                     const logs = this.receiptLogParser(
                         receipt.logs,
-                        AOContent.abi
+                        AOPurchaseReceipt.abi
                     );
                     try {
                         const buyContentEvent: BuyContentEvent = logs.find(
@@ -617,7 +627,7 @@ export default class AOEth extends AORouterInterface {
                 if (status && receipt) {
                     const logs = this.receiptLogParser(
                         receipt.logs,
-                        AOContent.abi
+                        AOContentHost.abi
                     );
                     const hostContentEvent: HostContentEvent = logs.find(
                         log => log.event === "HostContent"
@@ -646,17 +656,28 @@ export default class AOEth extends AORouterInterface {
         this._listenForTransactionStatus(requestData.transactionHash)
             .then(({ status, receipt }) => {
                 if (status && receipt) {
-                    const logs = this.receiptLogParser(
+                    // TODO: These events have been split into multiple contracts with different abi's.
+                    // I beleive this means that we will need to run the receiptLogParser multiple times
+                    // to extract each event. Also, the HostContent event is the main event being used.
+                    const stakedContentLogs = this.receiptLogParser(
+                        receipt.logs,
+                        AOStakedContent.abi
+                    );
+                    const stakeContentEvent: StakeContentEvent = stakedContentLogs.find(
+                        log => log.event === "StakeContent"
+                    ).args;
+                    const contentHostLogs = this.receiptLogParser(
+                        receipt.logs,
+                        AOContentHost.abi
+                    );
+                    const hostContentEvent: HostContentEvent = contentHostLogs.find(
+                        log => log.event === "HostContent"
+                    ).args;
+                    const contentLogs = this.receiptLogParser(
                         receipt.logs,
                         AOContent.abi
                     );
-                    const stakeContentEvent: StakeContentEvent = logs.find(
-                        log => log.event === "StakeContent"
-                    ).args;
-                    const hostContentEvent: HostContentEvent = logs.find(
-                        log => log.event === "HostContent"
-                    ).args;
-                    let storeContentEvent: StoreContentEvent = logs.find(
+                    let storeContentEvent: StoreContentEvent = contentLogs.find(
                         log => log.event === "StoreContent"
                     ).args;
                     if (
