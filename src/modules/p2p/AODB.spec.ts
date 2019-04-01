@@ -39,16 +39,17 @@ describe("AODB module", () => {
         featuredImageUrl:
             "b7e815da776b9d1610e710bf2e8eca3f8d1972112f62f49997ca3281b73a75ee/featuredImage.jpg",
         metadata: { duration: 24.8248, resolution: 1080, encoding: "h264" },
-        decryptionKey: "0xDEADBEEF"
+        decryptionKey: "0xDEADBEEF",
+        baseChallenge: "0xBASECHALLANGE"
     };
     let content = AOContent.fromObject(contentJson);
 
-    content.baseChallenge = AOCrypto.generateContentBaseChallenge({
-        fileChecksum: content.fileChecksum,
+    const baseChallengeHash = AOCrypto.generateContentBaseChallengeHash({
+        baseChallenge: content.fileChecksum,
         contractAddress: "0x0000"
     });
     content.baseChallengeSignature = AOCrypto.generateBaseChallengeSignature({
-        baseChallenge: content.baseChallenge,
+        baseChallengeHash,
         privateKey: actorA.privateKey
     });
 

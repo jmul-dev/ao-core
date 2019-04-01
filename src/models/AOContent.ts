@@ -91,7 +91,7 @@ export default abstract class AOContent {
     public contentHostId?: string;
     public state: string;
     public stakeId: string;
-    public purchaseId: string;
+    public purchaseReceiptId: string;
     public nodePublicKey: string;
     public nodeEthAddress: string;
     public creatorNodePublicKey: string;

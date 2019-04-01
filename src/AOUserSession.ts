@@ -47,7 +47,7 @@ import {
     AORouterInterface,
     IAORouterRequest
 } from "./router/AORouterInterface";
-const AOContentContract = require("ao-contracts/build/contracts/AOContent.json");
+const AOContentHostContract = require("ao-contracts/build/contracts/AOContentHost.json");
 const debug = Debug("ao:userSession");
 
 export default class AOUserSession {
@@ -71,32 +71,29 @@ export default class AOUserSession {
         return this.identity ? this.identity.publicKey : null;
     }
 
-    public getContentBaseChallenges({
+    public getContentBaseChallengeSignature({
         contentChecksum
-    }): Promise<{ baseChallenge: string; baseChallengeSignature: string }> {
+    }): Promise<string> {
         return new Promise((localResolve, localReject) => {
             this.router
                 .send("/eth/network/get")
                 .then((networkResponse: IAORouterMessage) => {
                     const { networkId } = networkResponse.data;
                     const contractAddress =
-                        AOContentContract["networks"][networkId]["address"];
-                    const baseChallenge = AOCrypto.generateContentBaseChallenge(
+                        AOContentHostContract["networks"][networkId]["address"];
+                    const baseChallengeHash = AOCrypto.generateContentBaseChallengeHash(
                         {
-                            fileChecksum: contentChecksum,
+                            baseChallenge: contentChecksum,
                             contractAddress
                         }
                     );
                     const baseChallengeSignature = AOCrypto.generateBaseChallengeSignature(
                         {
-                            baseChallenge: baseChallenge,
+                            baseChallengeHash,
                             privateKey: this.identity.privateKey
                         }
                     );
-                    localResolve({
-                        baseChallenge,
-                        baseChallengeSignature
-                    });
+                    localResolve(baseChallengeSignature);
                 })
                 .catch(localReject);
         });
@@ -437,8 +434,8 @@ export default class AOUserSession {
                     );
                     debug(
                         `Handling incoming purchase, content[${
-                            userContent.id
-                        }]->buyer[${buyContentEvent.buyer}]`
+                            userContent.title
+                        }]->buyer[${buyContentEvent.publicKey}]`
                     );
                     try {
                         // 2. Generate the encryption key according to spec
@@ -479,8 +476,8 @@ export default class AOUserSession {
                                     debug(
                                         `Succesfully handled content purchase with: contentHostId[${
                                             buyContentEvent.contentHostId
-                                        }], purchaseId[${
-                                            buyContentEvent.purchaseId
+                                        }], purchaseReceiptId[${
+                                            buyContentEvent.purchaseReceiptId
                                         }]`
                                     );
                                     this.router.send("/db/logs/insert", {
@@ -775,7 +772,7 @@ export default class AOUserSession {
                     contentUpdateAfterTx.update = {
                         $set: {
                             state: AOContentState.PURCHASED,
-                            purchaseId: buyContentEvent.purchaseId
+                            purchaseReceiptId: buyContentEvent.purchaseReceiptId
                             //"nodePublicKey": buyContentEvent.contentHostId, //taken out since this should be the node id, which is the seller's public key
                         }
                     };
@@ -1031,57 +1028,49 @@ export default class AOUserSession {
                                     return null;
                                 }
                                 // 4. Generate the baseChallengeSignature & assign encChallenge (note that baseChallenge should not change as fileChecksum should remain the same)
-                                this.getContentBaseChallenges({
+                                this.getContentBaseChallengeSignature({
                                     contentChecksum: content.fileChecksum
                                 })
-                                    .then(
-                                        ({
-                                            baseChallenge,
-                                            baseChallengeSignature
-                                        }) => {
-                                            // 5. Update Content State to Encrypted
-                                            let contentUpdateQuery: AODB_UserContentUpdate_Data = {
-                                                id: content.id,
-                                                update: {
-                                                    $set: {
-                                                        state:
-                                                            AOContentState.ENCRYPTED,
-                                                        decryptionKey: newDecrytionKey,
-                                                        encChallenge: newEncryptedChecksum,
-                                                        baseChallengeSignature: baseChallengeSignature
-                                                    }
+                                    .then(baseChallengeSignature => {
+                                        // 5. Update Content State to Encrypted
+                                        let contentUpdateQuery: AODB_UserContentUpdate_Data = {
+                                            id: content.id,
+                                            update: {
+                                                $set: {
+                                                    state:
+                                                        AOContentState.ENCRYPTED,
+                                                    decryptionKey: newDecrytionKey,
+                                                    encChallenge: newEncryptedChecksum,
+                                                    baseChallengeSignature
                                                 }
-                                            };
-                                            this.router
-                                                .send(
-                                                    "/db/user/content/update",
-                                                    contentUpdateQuery
-                                                )
-                                                .then(
-                                                    (
-                                                        contentUpdateResponse: IAORouterMessage
-                                                    ) => {
-                                                        const updatedContent: AOContent = AOContent.fromObject(
-                                                            contentUpdateResponse.data
-                                                        );
-                                                        // Handoff to next state handler
-                                                        this.processContent(
-                                                            updatedContent
-                                                        );
-                                                    }
-                                                )
-                                                .catch(debug); // Content State update to Encrypted
-                                            this.router.send(
-                                                "/db/logs/insert",
-                                                {
-                                                    message: `Content succesfully encrypted [${
-                                                        content.title
-                                                    }]`,
-                                                    userId: this.ethAddress
+                                            }
+                                        };
+                                        this.router
+                                            .send(
+                                                "/db/user/content/update",
+                                                contentUpdateQuery
+                                            )
+                                            .then(
+                                                (
+                                                    contentUpdateResponse: IAORouterMessage
+                                                ) => {
+                                                    const updatedContent: AOContent = AOContent.fromObject(
+                                                        contentUpdateResponse.data
+                                                    );
+                                                    // Handoff to next state handler
+                                                    this.processContent(
+                                                        updatedContent
+                                                    );
                                                 }
-                                            );
-                                        }
-                                    )
+                                            )
+                                            .catch(debug); // Content State update to Encrypted
+                                        this.router.send("/db/logs/insert", {
+                                            message: `Content succesfully encrypted [${
+                                                content.title
+                                            }]`,
+                                            userId: this.ethAddress
+                                        });
+                                    })
                                     .catch(error => {
                                         debug(
                                             `Bad news, there was an error generating content base challenge and signature: ${

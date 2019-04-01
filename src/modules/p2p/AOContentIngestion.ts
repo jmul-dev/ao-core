@@ -117,9 +117,17 @@ export default class AOContentIngestion {
                                                     networkContent
                                                 )
                                                 .then(() => {
-                                                    this.addToHostsUpdatedQueue(
-                                                        metadataDatKey
-                                                    );
+                                                    if (
+                                                        networkContent.status ===
+                                                        "imported"
+                                                    ) {
+                                                        debug(
+                                                            `Succesfully imported ${metadataDatKey}, adding to hosts update queue...`
+                                                        );
+                                                        this.addToHostsUpdatedQueue(
+                                                            metadataDatKey
+                                                        );
+                                                    }
                                                     resolve();
                                                 })
                                                 .catch(e => {

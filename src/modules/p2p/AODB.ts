@@ -138,6 +138,7 @@ export default class AODB {
                         if (err) {
                             reject(err);
                         } else {
+                            debug(`Inserted key: ${key}`);
                             resolve();
                         }
                     }

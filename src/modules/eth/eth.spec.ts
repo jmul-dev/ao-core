@@ -3,6 +3,10 @@ import { expect } from "chai";
 import AOStatus from "../../models/AOStatus";
 import "mocha";
 
+// NOTE: these values will change if contracts are redeployed
+const rinkebyStakeTransactionHash =
+    "0xcdce8946555e3acc2c61f51ee44a51d9330a466348b3ab1e65294475e8426a25";
+
 describe("Ethereum module", () => {
     // faking process.send
     process.send = () => {};
@@ -118,7 +122,7 @@ describe("Ethereum module", () => {
         }).timeout(4000);
     });
 
-    describe("Testing contract methods", () => {
+    describe("Testing contract methods on rinkeby", () => {
         let aoEth;
         before(done => {
             aoEth = getEthModuleInstance({
@@ -156,6 +160,28 @@ describe("Ethereum module", () => {
                     expect(networkId).to.equal("4");
                     expect(totalContentHosts).to.be.greaterThan(-1);
                     expect(connectionStatus).to.equal(AOStatus.CONNECTED);
+                    done();
+                },
+                reject: done
+            });
+        });
+
+        it("should fetch events from known stake transaction", done => {
+            aoEth.router.emit("/eth/tx/StakeContent", {
+                data: {
+                    transactionHash: rinkebyStakeTransactionHash
+                },
+                respond: ({
+                    status,
+                    hostContentEvent,
+                    stakeContentEvent,
+                    storeContentEvent
+                }) => {
+                    // not really going to validate the contents of events.
+                    expect(status).to.equal(1);
+                    expect(hostContentEvent).to.not.be.empty;
+                    expect(stakeContentEvent).to.not.be.empty;
+                    expect(storeContentEvent).to.not.be.empty;
                     done();
                 },
                 reject: done

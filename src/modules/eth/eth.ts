@@ -42,7 +42,7 @@ export interface IAOEth_Events_BuyContent_Data {}
 
 export interface BuyContentEvent {
     buyer: string;
-    purchaseId: string;
+    purchaseReceiptId: string;
     contentHostId: string;
     paidNetworkAmount: number;
     publicKey: string;
@@ -822,6 +822,7 @@ export default class AOEth extends AORouterInterface {
             });
         return logs.map(function(log) {
             var decoder = decoders.find(function(decoder) {
+                if (!log.topics) return false;
                 return decoder.signature() == log.topics[0].replace("0x", "");
             });
             if (decoder) {

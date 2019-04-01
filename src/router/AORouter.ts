@@ -372,15 +372,17 @@ export default class AORouter extends AORouterCoreProcessInterface {
                     reject(error);
                     return;
                 }
+                if (receivingProcess.listenerCount("message") > 16) {
+                    debug(
+                        `${
+                            receivingRegistryEntry.name
+                        } currently has ${receivingProcess.listenerCount(
+                            "message"
+                        )} message listeners attached...`
+                    );
+                }
                 // 6. Match incoming messages to the requestId, this will be our response
                 receivingProcess.on("message", receivingProcessResponseHandler);
-                debug(
-                    `${
-                        receivingRegistryEntry.name
-                    } currently has ${receivingProcess.listenerCount(
-                        "message"
-                    )} message listeners attached...`
-                );
                 function receivingProcessResponseHandler(
                     response: IAORouterMessage
                 ) {
@@ -390,12 +392,10 @@ export default class AORouter extends AORouterCoreProcessInterface {
                             responseTime / 1000
                         ).toFixed(2);
                         if (responseTime / 1000 > 5) {
-                            process.emitWarning(
-                                new Error(
-                                    `Response time for the following request took ${responseTimeFormated} seconds: [${
-                                        message.routerMessageId
-                                    }][${event}]`
-                                )
+                            debug(
+                                `Response time for the following request took ${responseTimeFormated} seconds: [${
+                                    message.routerMessageId
+                                }][${event}]`
                             );
                         }
                         if (

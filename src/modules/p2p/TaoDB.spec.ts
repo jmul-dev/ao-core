@@ -44,16 +44,17 @@ describe("TaoDB module", () => {
         featuredImageUrl:
             "b7e815da776b9d1610e710bf2e8eca3f8d1972112f62f49997ca3281b73a75ee/featuredImage.jpg",
         metadata: { duration: 24.8248, resolution: 1080, encoding: "h264" },
-        decryptionKey: "0xDEADBEEF"
+        decryptionKey: "0xDEADBEEF",
+        baseChallenge: "0xBASECHALLANGE"
     };
     let content = AOContent.fromObject(contentJson);
 
-    content.baseChallenge = AOCrypto.generateContentBaseChallenge({
-        fileChecksum: content.fileChecksum,
+    const baseChallengeHash = AOCrypto.generateContentBaseChallengeHash({
+        baseChallenge: content.fileChecksum,
         contractAddress: "0x0000"
     });
     content.baseChallengeSignature = AOCrypto.generateBaseChallengeSignature({
-        baseChallenge: content.baseChallenge,
+        baseChallengeHash,
         privateKey: actorA.privateKey
     });
 
@@ -262,6 +263,51 @@ describe("TaoDB module", () => {
                     expect(value.contentHostId).to.equal(content.contentHostId);
                     expect(value.timestamp).to.be.a("number");
                     expect(value.timestamp).to.be.lessThan(Date.now());
+                    done();
+                })
+                .catch(done);
+        });
+    });
+
+    describe("Permissions", () => {
+        before(done => {
+            taoDB
+                .setUserIdentity(actorB)
+                .then(done)
+                .catch(done);
+        });
+
+        it("verifies timestamp was written for content host", done => {
+            const timestampKey = TaoDB.getContentHostTimestampKey({
+                hostsPublicKey: actorA.publicKey,
+                contentType: content.contentType,
+                contentMetadataDatKey: content.metadataDatKey
+            });
+            taoDB
+                .get(timestampKey)
+                .then((value: ITaoDB_ContentHost_Timestamp) => {
+                    expect(value).to.not.be.empty;
+                    expect(value.contentDatKey).to.equal(content.fileDatKey);
+                    expect(value.contentHostId).to.equal(content.contentHostId);
+                    expect(value.timestamp).to.be.a("number");
+                    expect(value.timestamp).to.be.lessThan(Date.now());
+                    done();
+                })
+                .catch(done);
+        });
+
+        it("should let actorB query for indexData that was written by actorA", done => {
+            const dbKey = TaoDB.getContentHostIndexDataKey({
+                hostsPublicKey: actorA.publicKey,
+                contentDatKey: content.fileDatKey,
+                contentMetadataDatKey: content.metadataDatKey,
+                contentType: content.contentType
+            });
+
+            taoDB
+                .get(dbKey)
+                .then(indexData => {
+                    console.log(indexData);
                     done();
                 })
                 .catch(done);

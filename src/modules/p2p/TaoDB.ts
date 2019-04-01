@@ -88,7 +88,7 @@ export default class TaoDB extends AODB {
      * @param signedSchemas
      */
     public registerSchemas(signerIdentity: Identity): Promise<any> {
-        if (this.schemasHaveBeenRegistered) return Promise.resolve();
+        // if (this.schemasHaveBeenRegistered) return Promise.resolve();
         let signedSchemas: Array<ITaoDB_Schema_Insert> = Object.keys(
             this.schemas
         ).map(key => {

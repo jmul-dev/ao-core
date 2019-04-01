@@ -115,7 +115,7 @@ interface IContent {
     # Network
     createdAt: String
     transactions: ContentTransactions
-    purchaseId: String
+    purchaseReceiptId: String
     lastSeenContentHost: NetworkContentHostEntry
     totalHosts: Int
     recentlySeenHostsCount: Int
@@ -181,7 +181,7 @@ type VideoContent implements IContent {
     # Network
     createdAt: String
     transactions: ContentTransactions
-    purchaseId: String
+    purchaseReceiptId: String
     lastSeenContentHost: NetworkContentHostEntry
     totalHosts: Int
     recentlySeenHostsCount: Int
@@ -233,7 +233,7 @@ type DappContent implements IContent {
     # Network
     createdAt: String
     transactions: ContentTransactions
-    purchaseId: String
+    purchaseReceiptId: String
     lastSeenContentHost: NetworkContentHostEntry
     totalHosts: Int
     recentlySeenHostsCount: Int
@@ -286,7 +286,7 @@ type PdfContent implements IContent {
     # Network
     createdAt: String
     transactions: ContentTransactions
-    purchaseId: String
+    purchaseReceiptId: String
     lastSeenContentHost: NetworkContentHostEntry
     totalHosts: Int
     recentlySeenHostsCount: Int

@@ -334,6 +334,7 @@ export default (
                     contentJson.encChallenge = encryptedChecksum;
                     contentJson.state = AOContent.States.DAT_INITIALIZED;
                     contentJson.fileChecksum = checksum;
+                    contentJson.baseChallenge = checksum;
                     contentJson.fileSize = fileSize;
                     contentJson.metadata = videoStats;
                     return Promise.resolve();
@@ -343,11 +344,10 @@ export default (
                 // 5b. Additionally, add base challenge signature
                 return new Promise((localResolve, localReject) => {
                     context.userSession
-                        .getContentBaseChallenges({
+                        .getContentBaseChallengeSignature({
                             contentChecksum: contentJson.fileChecksum
                         })
-                        .then(({ baseChallenge, baseChallengeSignature }) => {
-                            contentJson.baseChallenge = baseChallenge;
+                        .then(baseChallengeSignature => {
                             contentJson.baseChallengeSignature = baseChallengeSignature;
                             localResolve();
                         })
