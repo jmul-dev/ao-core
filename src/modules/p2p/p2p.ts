@@ -60,35 +60,6 @@ export interface AOP2P_GetContentHosts_Data {
     content: AOContent;
 }
 
-export interface AOP2P_ContentRegistrationRoute {
-    nameSpace: string;
-    contentType: string;
-    ethAddress: string;
-    metaDatKey: string;
-}
-
-export interface AOP2P_SelfRegistrationRoute {
-    nameSpace: string;
-    ethAddress: string;
-    contentType: string;
-    fileDatKey: string;
-}
-
-export interface AOP2P_NodeRegistrationRoute {
-    nameSpace: string;
-    contentType: string;
-    metaDatKey: string;
-    ethAddress: string;
-    fileDatKey: string;
-}
-
-export interface AOP2P_NodeUpdateRoute {
-    nameSpace: string;
-    contentType: string;
-    metaDatKey: string;
-    ethAddress: string;
-}
-
 export interface AOP2P_PeerStats {
     p2pStatus: IAOStatus;
     peersConnected: number;
@@ -113,14 +84,16 @@ export default class AOP2P extends AORouterInterface {
         super(args);
         this.storageLocation = args.storageLocation;
 
-        //New Content upload
         this.contentHostsUpdater = new AOContentHostsUpdater(
             this.router,
             this._getContentHostsFormatted.bind(this)
         );
-        this.contentIngestion = new AOContentIngestion(
-            this.router,
-            this.contentHostsUpdater.addContentKeyToQueue
+        this.contentIngestion = new AOContentIngestion(this.router);
+        this.contentIngestion.on(
+            AOContentIngestion.Events.CONTENT_INGESTED,
+            metadataDatKey => {
+                this.contentHostsUpdater.addContentKeyToQueue(metadataDatKey);
+            }
         );
 
         this.router.on("/p2p/init", this._init.bind(this));

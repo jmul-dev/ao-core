@@ -8,6 +8,7 @@ import { AORouterInterface } from "../../router/AORouterInterface";
 import { AODat_Download_Data } from "../dat/dat";
 import { IAOFS_Read_Data } from "../fs/fs";
 import { AODB_NetworkContentGet_Data } from "../db/db";
+import { EventEmitter } from "events";
 const debug = Debug("ao:p2p:contentIngestion");
 
 /**
@@ -20,15 +21,17 @@ const debug = Debug("ao:p2p:contentIngestion");
  *  5. Insert the metadata into network content db and mark as complete
  *
  */
-export default class AOContentIngestion {
+export default class AOContentIngestion extends EventEmitter {
+    public static Events = {
+        CONTENT_INGESTED: "content:ingested"
+    };
     private router: AORouterInterface;
-    private addToHostsUpdatedQueue: Function;
     private processingQueue: IQueue;
     private datKeysInQueue: Array<string> = [];
 
-    constructor(router: AORouterInterface, addToHostsUpdatedQueue: Function) {
+    constructor(router: AORouterInterface) {
+        super();
         this.router = router;
-        this.addToHostsUpdatedQueue = addToHostsUpdatedQueue;
         // @ts-ignore Types not up to date
         this.processingQueue = queue({
             concurrency: 2,
@@ -124,7 +127,10 @@ export default class AOContentIngestion {
                                                         debug(
                                                             `Succesfully imported ${metadataDatKey}, adding to hosts update queue...`
                                                         );
-                                                        this.addToHostsUpdatedQueue(
+                                                        this.emit(
+                                                            AOContentIngestion
+                                                                .Events
+                                                                .CONTENT_INGESTED,
                                                             metadataDatKey
                                                         );
                                                     }
