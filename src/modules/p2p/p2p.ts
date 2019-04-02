@@ -73,6 +73,15 @@ export interface NetworkContentHostEntry {
     timestamp: string;
 }
 
+export interface AOP2P_TaoRequest_Data {
+    method:
+        | "insertTaoDescription"
+        | "getTaoDescription"
+        | "insertTaoProfileImage"
+        | "getTaoProfileImage";
+    methodArgs: any;
+}
+
 export default class AOP2P extends AORouterInterface {
     public taodb: TaoDB;
 
@@ -132,6 +141,7 @@ export default class AOP2P extends AORouterInterface {
             "/p2p/setUserIdentity",
             this._setUserIdentity.bind(this)
         );
+        this.router.on("/p2p/tao", this._handleTaoRequest.bind(this));
     }
 
     _init(request: IAORouterRequest) {
@@ -686,5 +696,49 @@ export default class AOP2P extends AORouterInterface {
             .insertContentHostTimestamp({ content })
             .then(request.respond)
             .catch(request.reject);
+    }
+
+    /**
+     * Just a pass through to access taodb methods. Should have exposed taodb in
+     * main process...
+     */
+    _handleTaoRequest(request: IAORouterRequest) {
+        const { method, methodArgs }: AOP2P_TaoRequest_Data = request.data;
+        let taodbPromise: Promise<any> = Promise.resolve();
+        switch (method) {
+            case "getTaoDescription": {
+                let key = TaoDB.getTaoDescriptionKey({
+                    taoId: methodArgs["taoId"]
+                });
+                taodbPromise = this.taodb.get(key);
+                break;
+            }
+            case "getTaoProfileImage": {
+                let key = TaoDB.getTaoProfileImageKey({
+                    nameId: methodArgs["nameId"]
+                });
+                taodbPromise = this.taodb.get(key);
+                break;
+            }
+            case "insertTaoDescription": {
+                taodbPromise = this.taodb.insertTaoDescription({
+                    taoId: methodArgs["taoId"],
+                    description: methodArgs["description"]
+                });
+                break;
+            }
+            case "insertTaoProfileImage": {
+                taodbPromise = this.taodb.insertTaoProfileImage({
+                    nameId: methodArgs["nameId"],
+                    imageString: methodArgs["imageString"]
+                });
+                break;
+            }
+            default:
+                debug(
+                    `Warning, /p2p/tao request with invalid method [${method}]`
+                );
+        }
+        taodbPromise.then(request.respond).catch(request.reject);
     }
 }

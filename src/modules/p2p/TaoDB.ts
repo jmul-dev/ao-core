@@ -73,6 +73,22 @@ export default class TaoDB extends AODB {
                 valueValidationKey: "",
                 keyValidation: ""
             }
+        },
+        profileImage: {
+            key: "schema/TAO/this/nameId/*/profileImage",
+            value: {
+                keySchema: "TAO/this/nameId/*/profileImage",
+                valueValidationKey: "",
+                keyValidation: ""
+            }
+        },
+        taoDescription: {
+            key: "schema/TAO/this/taoId/*/description",
+            value: {
+                keySchema: "TAO/this/taoId/*/description",
+                valueValidationKey: "",
+                keyValidation: ""
+            }
         }
     };
 
@@ -295,5 +311,71 @@ export default class TaoDB extends AODB {
             contentMetadataDatKey: content.metadataDatKey
         });
         return this.list(key, { recursive: false });
+    }
+
+    /**
+     *
+     * Profile Image
+     *
+     */
+    public static getTaoProfileImageKey({ nameId }) {
+        return `/TAO/this/nameId/${nameId}/profileImage`;
+    }
+    public insertTaoProfileImage({
+        nameId,
+        imageString
+    }: {
+        nameId: string;
+        imageString: string;
+    }): Promise<any> {
+        const key = TaoDB.getTaoProfileImageKey({
+            nameId
+        });
+        const value = imageString;
+        const writerSignature = this.createSignedHash({
+            privateKey: this._userIdentity.privateKey,
+            key,
+            value
+        });
+        return this.insert({
+            key,
+            value,
+            writerAddress: this._userIdentity.publicKey,
+            writerSignature,
+            schemaKey: this.schemas.profileImage.key
+        });
+    }
+
+    /**
+     *
+     * TAO Description
+     *
+     */
+    public static getTaoDescriptionKey({ taoId }) {
+        return `/TAO/this/taoId/${taoId}/description`;
+    }
+    public insertTaoDescription({
+        taoId,
+        description
+    }: {
+        taoId: string;
+        description: string;
+    }): Promise<any> {
+        const key = TaoDB.getTaoDescriptionKey({
+            taoId
+        });
+        const value = description;
+        const writerSignature = this.createSignedHash({
+            privateKey: this._userIdentity.privateKey,
+            key,
+            value
+        });
+        return this.insert({
+            key,
+            value,
+            writerAddress: this._userIdentity.publicKey,
+            writerSignature,
+            schemaKey: this.schemas.taoDescription.key
+        });
     }
 }
