@@ -1171,8 +1171,28 @@ export default class AOUserSession {
             (!content.transactions.stakeTx && !content.transactions.hostTx)
         ) {
             debug(
-                `Warning: calling _listenForContentStakingReceipt without a stakeTx or hostTx`
+                `Warning: calling _listenForContentStakingReceipt without a stakeTx or hostTx, rolling back state...`
             );
+            let contentUpdateQuery: AODB_UserContentUpdate_Data = {
+                id: content.id,
+                update: {
+                    $set: {
+                        state: AOContentState.DAT_INITIALIZED
+                    }
+                }
+            };
+            this.router
+                .send("/db/user/content/update", contentUpdateQuery)
+                .then((contentUpdateResponse: IAORouterMessage) => {
+                    debug(
+                        `Content [${content.title}] rolled back to state [${
+                            AOContentState.DAT_INITIALIZED
+                        }]`
+                    );
+                })
+                .catch(error => {
+                    debug(`Error rolling back content state: ${error.message}`);
+                });
             return null;
         }
         let transactionHash =
