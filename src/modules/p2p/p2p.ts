@@ -615,14 +615,41 @@ export default class AOP2P extends AORouterInterface {
         if (!content) {
             return request.reject(new Error("No content"));
         }
-        const indexDataKey = TaoDB.getContentHostIndexDataKey({
-            hostsPublicKey,
-            contentType: content.contentType,
-            contentMetadataDatKey: content.metadataDatKey,
-            contentDatKey: content.fileDatKey
-        });
-        this.taodb
-            .get(indexDataKey)
+
+        Promise.resolve()
+            .then(() => {
+                return new Promise((localResolve, localReject) => {
+                    // Fetch existing indexData...
+                    const indexDataKey = TaoDB.getContentHostIndexDataKey({
+                        hostsPublicKey,
+                        contentType: content.contentType,
+                        contentMetadataDatKey: content.metadataDatKey,
+                        contentDatKey: content.fileDatKey
+                    });
+                    this.taodb
+                        .get(indexDataKey)
+                        .then(
+                            (
+                                existingIndexData: ITaoDB_ContentHost_IndexData
+                            ) => {
+                                localResolve(existingIndexData);
+                            }
+                        )
+                        .catch((error: Error) => {
+                            if (
+                                error.message &&
+                                error.message.indexOf("No value found") > -1
+                            ) {
+                                debug(
+                                    `Warning, expected indexData key not found in aodb: ${indexDataKey}. Proceeding with write anyway.`
+                                );
+                                localResolve({});
+                            } else {
+                                localReject(error);
+                            }
+                        });
+                });
+            })
             .then((existingIndexData: ITaoDB_ContentHost_IndexData) => {
                 const existingIndexDataForBuyer =
                     existingIndexData[buyersPublicKey];
@@ -642,15 +669,13 @@ export default class AOP2P extends AORouterInterface {
                     signature: encryptedKeySignature,
                     decryptionKey: encryptedDecryptionKey
                 };
-                this.taodb
-                    .insertContentHostIndexData({
-                        content,
-                        indexData: existingIndexData
-                    })
-                    .then(() => {
-                        request.respond({ success: true });
-                    })
-                    .catch(request.reject);
+                return this.taodb.insertContentHostIndexData({
+                    content,
+                    indexData: existingIndexData
+                });
+            })
+            .then(() => {
+                request.respond({ success: true });
             })
             .catch(request.reject);
     }
