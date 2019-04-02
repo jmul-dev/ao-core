@@ -1,0 +1,19 @@
+type TaoProfile {
+    nameId: ID!
+    imageString: String
+}
+
+input TaoProfileInputs {
+    nameId: ID!
+    imageString: String!
+}
+
+type TaoDescription {
+    taoId: ID!
+    description: String
+}
+
+input TaoDescriptionInputs {
+    taoId: ID!
+    description: String!
+}

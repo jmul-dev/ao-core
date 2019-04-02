@@ -63,7 +63,9 @@ export default function() {
                 settings: resolvers.resolveSettings,
                 networkContent: resolvers.resolveNetworkContent,
                 userContent: resolvers.resolveUserContent,
-                statistics: resolvers.resolveNodeStatistics
+                statistics: resolvers.resolveNodeStatistics,
+                taoProfile: resolvers.resolveTaoProfile,
+                taoDescription: resolvers.resolveTaoDescription
             },
             Mutation: {
                 register: resolvers.resolveRegister,
@@ -78,7 +80,9 @@ export default function() {
                     resolvers.resolveContentUploadStakeTransaction,
                 contentRetryHostDiscovery:
                     resolvers.resolveContentRetryHostDiscovery,
-                export: resolvers.resolveExportData
+                export: resolvers.resolveExportData,
+                submitTaoDescription: resolvers.resolveSubmitTaoDescription,
+                submitTaoProfile: resolvers.resolveSubmitTaoProfile
             }
         },
         resolverValidationOptions: {
