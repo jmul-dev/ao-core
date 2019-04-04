@@ -178,8 +178,13 @@ export default class AOP2P extends AORouterInterface {
                 this.taodb
                     .list("AO", { recursive: true })
                     .then(data => {
-                        debug(`Dumping initial state of DB`);
-                        debug(data);
+                        debug(`AO: `, data);
+                    })
+                    .catch(debug);
+                this.taodb
+                    .list("TAO", { recursive: true })
+                    .then(data => {
+                        debug(`TAO: `, data);
                     })
                     .catch(debug);
                 request.respond({ data: "great success!" });
@@ -337,10 +342,8 @@ export default class AOP2P extends AORouterInterface {
 
     _setUserIdentity(request: IAORouterRequest) {
         const { userIdentity } = request.data;
-        this.taodb
-            .setUserIdentity(userIdentity)
-            .then(request.respond)
-            .catch(request.reject);
+        this.taodb.setUserIdentity(userIdentity);
+        request.respond(null);
     }
 
     _handleContentRegistration(request: IAORouterRequest) {
@@ -705,40 +708,50 @@ export default class AOP2P extends AORouterInterface {
     _handleTaoRequest(request: IAORouterRequest) {
         const { method, methodArgs }: AOP2P_TaoRequest_Data = request.data;
         let taodbPromise: Promise<any> = Promise.resolve();
+        debug(`Attempt at handling tao request method: ${method}`);
         switch (method) {
-            case "getTaoDescription": {
-                let key = TaoDB.getTaoDescriptionKey({
+            case "getTaoDescription":
+                let descriptionKey = TaoDB.getTaoDescriptionKey({
                     taoId: methodArgs["taoId"]
                 });
-                taodbPromise = this.taodb.get(key);
+                taodbPromise = this.taodb.get(descriptionKey);
                 break;
-            }
-            case "getTaoProfileImage": {
-                let key = TaoDB.getTaoProfileImageKey({
+            case "getTaoProfileImage":
+                let profileImageKey = TaoDB.getTaoProfileImageKey({
                     nameId: methodArgs["nameId"]
                 });
-                taodbPromise = this.taodb.get(key);
+                taodbPromise = this.taodb.get(profileImageKey);
                 break;
-            }
-            case "insertTaoDescription": {
+            case "insertTaoDescription":
                 taodbPromise = this.taodb.insertTaoDescription({
                     taoId: methodArgs["taoId"],
                     description: methodArgs["description"]
                 });
                 break;
-            }
-            case "insertTaoProfileImage": {
+            case "insertTaoProfileImage":
                 taodbPromise = this.taodb.insertTaoProfileImage({
                     nameId: methodArgs["nameId"],
                     imageString: methodArgs["imageString"]
                 });
                 break;
-            }
             default:
                 debug(
                     `Warning, /p2p/tao request with invalid method [${method}]`
                 );
         }
-        taodbPromise.then(request.respond).catch(request.reject);
+        taodbPromise
+            .then(data => {
+                debug(`Resolved!`, data);
+                request.respond(data);
+            })
+            .catch(error => {
+                request.reject(error);
+                this.taodb
+                    .listKeys("TAO")
+                    .then(keys => {
+                        debug(keys);
+                    })
+                    .catch(debug);
+            });
     }
 }

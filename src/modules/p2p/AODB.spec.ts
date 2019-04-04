@@ -120,7 +120,9 @@ describe("AODB module", () => {
             }
         };
         aodb.start(aodbOptions)
-            .then(done)
+            .then(dbKey => {
+                done();
+            })
             .catch(done);
     });
 

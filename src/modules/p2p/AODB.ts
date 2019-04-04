@@ -3,6 +3,7 @@ import discovery from "discovery-swarm";
 import swarmDefaults from "dat-swarm-defaults";
 import Debug from "../../AODebug";
 import { IAOStatus } from "../../models/AOStatus";
+import EthCrypto from "eth-crypto";
 const debug = Debug("ao:aodb");
 
 export interface IAODB_Args {
@@ -28,7 +29,7 @@ export default class AODB {
     private swarm: discovery;
     public connectionStatus: IAOStatus = "DISCONNECTED";
 
-    public start(hyperOptions: IAODB_Args): Promise<any> {
+    public start(hyperOptions: IAODB_Args): Promise<string> {
         this.connectionStatus = "CONNECTING";
         return new Promise((resolve, reject) => {
             try {
@@ -41,13 +42,19 @@ export default class AODB {
                 this.aodb.on("ready", () => {
                     // Overwrite the dbKey assigned with whatever aodb has (in case dbKey was undefined or mismatch).
                     // Just ensures a sync between aodb and swarm
+                    debug(`ready, aodb key: ${this.dbKey}`);
                     this.dbKey = this.aodb.key.toString("hex");
-                    debug(`ready, aodb public key: ${this.dbKey}`);
+                    debug(`ready, aodb derived key: ${this.dbKey}`);
                     this.connectionStatus = "CONNECTED";
                     this.swarm = discovery(
                         swarmDefaults({
                             id: this.dbKey,
                             stream: peer => {
+                                debug(
+                                    `stream replication with key: ${this.aodb.local.key.toString(
+                                        "hex"
+                                    )}`
+                                );
                                 return this.aodb.replicate({
                                     live: true,
                                     userData: this.aodb.local.key
@@ -57,7 +64,7 @@ export default class AODB {
                     );
                     this.swarm.join(this.dbKey);
                     this.swarm.on("connection", this.onConnection.bind(this));
-                    resolve();
+                    resolve(this.dbKey);
                 });
             } catch (error) {
                 reject(error);
@@ -136,14 +143,28 @@ export default class AODB {
                     optionsWithSchemaKey,
                     (err?: Error) => {
                         if (err) {
+                            const recoveredPublicKey = EthCrypto.recoverPublicKey(
+                                writerSignature,
+                                this.createSignHash(key, value)
+                            );
+                            debug(
+                                `put key callback error for key: ${key}: \n\t${
+                                    err.message
+                                }\n\twriterAddress: ${writerAddress}
+                                \n\trecoverd publicKey: ${recoveredPublicKey}
+                                \n\tschemaKey: ${
+                                    optionsWithSchemaKey.schemaKey
+                                }`
+                            );
                             reject(err);
                         } else {
-                            debug(`Inserted key: ${key}`);
+                            debug(`put key[${key}] succesful`);
                             resolve();
                         }
                     }
                 );
             } catch (error) {
+                debug(`put try-catch error for key[${key}]: ${error.message}`);
                 reject(error);
             }
         });
@@ -165,7 +186,7 @@ export default class AODB {
                     reject(err);
                 } else {
                     if (node) resolve(node.value);
-                    reject(new Error(`No value found for key: ${key}`));
+                    else reject(new Error(`No value found for key: ${key}`));
                 }
             });
         });
@@ -224,6 +245,36 @@ export default class AODB {
         });
     }
 
+    public listKeys(
+        key: string,
+        options: { recursive?: boolean; reverse?: boolean; gt?: boolean } = {
+            recursive: true,
+            reverse: true,
+            gt: false
+        }
+    ): Promise<Array<string>> {
+        return new Promise((resolve, reject) => {
+            this.aodb.list(
+                key,
+                options,
+                (err: Error, nodes: Array<AODB_Entry<any>>) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        let results = [];
+                        if (nodes.length) {
+                            for (let i = 0; i < nodes.length; i++) {
+                                const node = nodes[i];
+                                results.push(node.key);
+                            }
+                        }
+                        resolve(results);
+                    }
+                }
+            );
+        });
+    }
+
     public watch(key: string): Promise<any> {
         return new Promise((resolve, reject) => {
             let watcher = this.aodb.watch(key, () => {});
@@ -257,6 +308,7 @@ export default class AODB {
         writerAddress
     }): Promise<any> {
         return new Promise((resolve, reject) => {
+            debug(`adding schema: ${key}...`);
             this.aodb.addSchema(
                 key,
                 value,
@@ -264,7 +316,7 @@ export default class AODB {
                 writerAddress,
                 (err: Error) => {
                     if (err) reject(err);
-                    resolve();
+                    else resolve();
                 }
             );
         });

@@ -58,28 +58,46 @@ describe("TaoDB module", () => {
         privateKey: actorA.privateKey
     });
 
-    let taoDB: TaoDB;
+    let taoDb: TaoDB;
+    let taoDbForActorB: TaoDB;
 
     before(function(done) {
-        // Storing this db in ram, no need to persist
-        taoDB = new TaoDB();
+        /**
+         * Setup two instances of aodb
+         * Storing this db in ram, no need to persist
+         */
+        taoDb = new TaoDB();
         let aodbOptions: IAODB_Args = {
             dbKey: undefined,
             dbPath: function(filename) {
                 return ram();
             }
         };
-        taoDB
+        taoDb
             .start(aodbOptions)
-            .then(done)
+            .then(dbKey => {
+                taoDbForActorB = new TaoDB();
+                taoDbForActorB
+                    .start({
+                        dbKey,
+                        dbPath: function(filename) {
+                            return ram();
+                        }
+                    })
+                    .then(dbKey => {
+                        done();
+                    })
+                    .catch(done);
+            })
             .catch(done);
     });
 
-    it("sets user context and registers schemas", done => {
-        taoDB
-            .setUserIdentity(actorA)
-            .then(done)
-            .catch(done);
+    it("sets user context and registers schemas for actorA", () => {
+        taoDb.setUserIdentity(actorA);
+    });
+
+    it("sets user context and registers schemas for actorB", () => {
+        taoDbForActorB.setUserIdentity(actorB);
     });
 
     describe("User Content Schema", () => {
@@ -96,19 +114,19 @@ describe("TaoDB module", () => {
             );
         });
         it("inserts content under user content schema", done => {
-            taoDB
+            taoDb
                 .insertUserContentSignature({ content })
                 .then(done)
                 .catch(done);
         });
         it("signature recovery reflects actorA", done => {
-            taoDB
+            taoDb
                 .get(dbKey)
                 .then(value => {
                     expect(value).to.equal(content.baseChallengeSignature);
                     const recoveredPublicKey = EthCrypto.recoverPublicKey(
                         value,
-                        content.baseChallenge
+                        baseChallengeHash
                     );
                     expect(recoveredPublicKey).to.equal(actorA.publicKey);
                     done();
@@ -143,7 +161,7 @@ describe("TaoDB module", () => {
                             signature: encryptedDecryptionKeySignature,
                             decryptionKey: encryptedDecryptionKey
                         };
-                        taoDB
+                        taoDb
                             .insertContentHostIndexData({
                                 content,
                                 indexData: {
@@ -158,7 +176,7 @@ describe("TaoDB module", () => {
         });
 
         it("verifies content host indexData was written for actorB", done => {
-            taoDB
+            taoDb
                 .get(dbKey)
                 .then((indexData: ITaoDB_ContentHost_IndexData) => {
                     expect(indexData).to.not.be.empty;
@@ -198,7 +216,7 @@ describe("TaoDB module", () => {
                             decryptionKey: encryptedDecryptionKey
                         };
                         // NOTE: normally this would append to the existing index data but we are skipping that logic
-                        taoDB
+                        taoDb
                             .insertContentHostIndexData({
                                 content,
                                 indexData: {
@@ -214,7 +232,7 @@ describe("TaoDB module", () => {
         });
 
         it("verifies content host indexData exists for both actorB & actorC", done => {
-            taoDB
+            taoDb
                 .get(dbKey)
                 .then((indexData: ITaoDB_ContentHost_IndexData) => {
                     expect(indexData).to.not.be.empty;
@@ -240,11 +258,16 @@ describe("TaoDB module", () => {
                 })
                 .catch(done);
         });
+
+        // it("fails to insert content host indexData for invalid writerAddress", done => {
+        //     const invalidKey = 'AO/Content/VOD/8612c0ae1c97c5133ad0d67c87ddd84c3f0c7c520a92676e11ed16817c93004a/Hosts/7aa8f10d143791b251b41cf36f2e58a87a0c12ca51a05ad18a4df77864741ea93ef9fb14e816b4acfbb9cf0f00c61da689782a29c46dc60a663d6730c6fbc480/514bbdf84fa1008cca3903080bca77698d25b3fc42e45af3a76afd04df050794/indexData'
+
+        // })
     });
 
     describe("Content Host Schema - timestamps", () => {
         it("inserts timestamp for content host", done => {
-            taoDB
+            taoDb
                 .insertContentHostTimestamp({ content })
                 .then(done)
                 .catch(done);
@@ -255,7 +278,7 @@ describe("TaoDB module", () => {
                 contentType: content.contentType,
                 contentMetadataDatKey: content.metadataDatKey
             });
-            taoDB
+            taoDb
                 .get(timestampKey)
                 .then((value: ITaoDB_ContentHost_Timestamp) => {
                     expect(value).to.not.be.empty;
@@ -270,11 +293,8 @@ describe("TaoDB module", () => {
     });
 
     describe("Permissions", () => {
-        before(done => {
-            taoDB
-                .setUserIdentity(actorB)
-                .then(done)
-                .catch(done);
+        before(() => {
+            taoDb.setUserIdentity(actorB);
         });
 
         it("verifies timestamp was written for content host", done => {
@@ -283,7 +303,7 @@ describe("TaoDB module", () => {
                 contentType: content.contentType,
                 contentMetadataDatKey: content.metadataDatKey
             });
-            taoDB
+            taoDb
                 .get(timestampKey)
                 .then((value: ITaoDB_ContentHost_Timestamp) => {
                     expect(value).to.not.be.empty;
@@ -304,7 +324,7 @@ describe("TaoDB module", () => {
                 contentType: content.contentType
             });
 
-            taoDB
+            taoDb
                 .get(dbKey)
                 .then(indexData => {
                     console.log(indexData);
@@ -313,4 +333,6 @@ describe("TaoDB module", () => {
                 .catch(done);
         });
     });
+
+    // TODO: test replication to actorB's instance of taodb
 });

@@ -169,19 +169,6 @@ export default class AOUserSession {
                                         resolve({ ethAddress });
                                         this._resume();
                                     }
-                                    // Register the taodb schemas
-                                    this.router
-                                        .send("/p2p/setUserIdentity", {
-                                            userIdentity: this.identity
-                                        })
-                                        .then(() => {})
-                                        .catch((error: Error) => {
-                                            debug(
-                                                `Error registering taodb schemas: ${
-                                                    error.message
-                                                }`
-                                            );
-                                        });
                                 })
                                 .catch(reject);
                         })
@@ -192,56 +179,71 @@ export default class AOUserSession {
     }
 
     /**
-     * Resume, picks up where the user left off. Handles content in any state.
+     * Resume, picks up where the user left off. Handles content in all states.
      */
     private _resume() {
-        // Content resume
+        // Register the taodb schemas
         this.router
-            .send("/db/user/content/get")
-            .then((response: IAORouterMessage) => {
-                const userContent = response.data;
-                userContent.forEach(contentJson => {
-                    const content: AOContent = AOContent.fromObject(
-                        contentJson
-                    );
-                    this.processContent(content);
-                });
-            });
-        // Incoming content resume
-        if (!this.isListeningForIncomingContent) {
-            this.isListeningForIncomingContent = true;
-            this.router.on(
-                "/core/content/incomingPurchase",
-                (request: IAORouterRequest) => {
-                    const buyContentEvent: BuyContentEvent = request.data;
-                    this._handleIncomingContentPurchase(buyContentEvent)
-                        .then(() => {
-                            request.respond({});
-                        })
-                        .catch(error => {
-                            debug(error);
-                            request.reject(error);
+            .send("/p2p/setUserIdentity", {
+                userIdentity: this.identity
+            })
+            .then(() => {
+                // Content resume
+                this.router
+                    .send("/db/user/content/get")
+                    .then((response: IAORouterMessage) => {
+                        const userContent = response.data;
+                        userContent.forEach(contentJson => {
+                            const content: AOContent = AOContent.fromObject(
+                                contentJson
+                            );
+                            this.processContent(content);
                         });
+                    });
+                // Incoming content resume
+                if (!this.isListeningForIncomingContent) {
+                    this.isListeningForIncomingContent = true;
+                    this.router.on(
+                        "/core/content/incomingPurchase",
+                        (request: IAORouterRequest) => {
+                            const buyContentEvent: BuyContentEvent =
+                                request.data;
+                            this._handleIncomingContentPurchase(buyContentEvent)
+                                .then(() => {
+                                    request.respond({});
+                                })
+                                .catch(error => {
+                                    debug(error);
+                                    request.reject(error);
+                                });
+                        }
+                    );
                 }
-            );
-        }
-        // Updates p2p content timestamps periodically
-        if (!this.usersContentDiscoveryUpdateInterval) {
-            this.usersContentDiscoveryUpdateInterval = setInterval(
-                this._usersContentDiscoveryUpdate.bind(this),
-                AOUserSession.CONTENT_DISCOVERY_UPDATE_INTERVAL
-            );
-            this._usersContentDiscoveryUpdate();
-        }
-        // Listen for content purchases on Eth network
-        if (this.isSubscribedToBuyContentEvents) {
-            this.router.send("/eth/events/BuyContent/unsubscribe").then(() => {
-                this.router.send("/eth/events/BuyContent/subscribe");
+                // Updates p2p content timestamps periodically
+                if (!this.usersContentDiscoveryUpdateInterval) {
+                    this.usersContentDiscoveryUpdateInterval = setInterval(
+                        this._usersContentDiscoveryUpdate.bind(this),
+                        AOUserSession.CONTENT_DISCOVERY_UPDATE_INTERVAL
+                    );
+                    this._usersContentDiscoveryUpdate();
+                }
+                // Listen for content purchases on Eth network
+                if (this.isSubscribedToBuyContentEvents) {
+                    this.router
+                        .send("/eth/events/BuyContent/unsubscribe")
+                        .then(() => {
+                            this.router.send(
+                                "/eth/events/BuyContent/subscribe"
+                            );
+                        });
+                } else {
+                    this.router.send("/eth/events/BuyContent/subscribe");
+                }
+                this.isSubscribedToBuyContentEvents = true;
+            })
+            .catch((error: Error) => {
+                debug(`Error registering taodb schemas: ${error.message}`);
             });
-        } else {
-            this.router.send("/eth/events/BuyContent/subscribe");
-        }
-        this.isSubscribedToBuyContentEvents = true;
     }
 
     private _usersContentDiscoveryUpdate() {

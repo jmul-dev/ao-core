@@ -7,7 +7,8 @@ import AOContent from "../../models/AOContent";
 import AOP2P, {
     AOP2P_Init_Data,
     AOP2P_Write_Decryption_Key_Data,
-    NetworkContentHostEntry
+    NetworkContentHostEntry,
+    AOP2P_TaoRequest_Data
 } from "./p2p";
 import TaoDB, {
     ITaoDB_ContentHost_Timestamp,
@@ -131,7 +132,7 @@ describe("AO P2P module", () => {
                     expect(value).to.not.be.empty;
                     const recoveredSigner = EthCrypto.recoverPublicKey(
                         value,
-                        content.baseChallenge
+                        baseChallengeHash
                     );
                     expect(recoveredSigner).to.equal(actorA.publicKey);
                     done();
@@ -163,7 +164,7 @@ describe("AO P2P module", () => {
                     expect(value).to.not.be.empty;
                     const recoveredSigner = EthCrypto.recoverPublicKey(
                         value,
-                        content.baseChallenge
+                        baseChallengeHash
                     );
                     expect(recoveredSigner).to.equal(actorA.publicKey);
                     done();
@@ -281,10 +282,44 @@ describe("AO P2P module", () => {
                 })
                 .catch(done);
         });
+    });
 
+    describe("Tao UI requests", () => {
+        it("inserts tao description", done => {
+            const taoRequest: AOP2P_TaoRequest_Data = {
+                method: "insertTaoDescription",
+                methodArgs: {
+                    taoId: "0xDEADBEEF",
+                    description: "testing"
+                }
+            };
+            aoP2P.router.emit("/p2p/tao", {
+                data: taoRequest,
+                respond: () => {
+                    done();
+                },
+                reject: done
+            });
+        });
+        it("verifies tao description insert exists", done => {
+            const taoRequest: AOP2P_TaoRequest_Data = {
+                method: "getTaoDescription",
+                methodArgs: {
+                    taoId: "0xDEADBEEF"
+                }
+            };
+            aoP2P.router.emit("/p2p/tao", {
+                data: taoRequest,
+                respond: description => {
+                    expect(description).to.equal("testing");
+                    done();
+                },
+                reject: done
+            });
+        });
         // it("logs some shit", done => {
         //     aoP2P.taodb
-        //         .list("AO", { recursive: true })
+        //         .list("TAO", { recursive: true })
         //         .then(data => {
         //             console.log(data);
         //             done();
