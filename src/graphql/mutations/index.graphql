@@ -14,6 +14,9 @@ type Mutation {
     contentBecomeHostTransaction(inputs: ContentHostTransactionInputs): IContent
     contentRetryHostDiscovery(id: ID!): IContent
     export(inputs: ExportInputs): String
+    # Tao related
+    submitTaoDescription(inputs: TaoDescriptionInputs): TaoDescription
+    submitTaoProfile(inputs: TaoProfileInputs): TaoProfile
 }
 
 input ContentHostTransactionInputs {

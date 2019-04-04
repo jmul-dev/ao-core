@@ -20,6 +20,10 @@ import resolveContentRetryHostDiscovery from "./resolveContentRetryHostDiscovery
 import resolveExportData from "./resolveExportData";
 import resolveNodeStatistics from "./resolveNodeStatistics";
 import resolveDappUrl from "./resolveDappUrl";
+import resolveTaoDescription from "./resolveTaoDescription";
+import resolveTaoProfile from "./resolveTaoProfile";
+import resolveSubmitTaoDescription from "./resolveSubmitTaoDescription";
+import resolveSubmitTaoProfile from "./resolveSubmitTaoProfile";
 
 export default {
     // Query resolvers
@@ -33,6 +37,8 @@ export default {
     resolveSettings,
     resolveState,
     resolveNodeStatistics,
+    resolveTaoDescription,
+    resolveTaoProfile,
     // Mutation resolvers
     resolveSubmitContent,
     resolveRegister,
@@ -43,6 +49,8 @@ export default {
     resolveContentUploadStakeTransaction,
     resolveContentRetryHostDiscovery,
     resolveExportData,
+    resolveSubmitTaoDescription,
+    resolveSubmitTaoProfile,
     // Field resolvers
     resolveUrl,
     resolveDappUrl,

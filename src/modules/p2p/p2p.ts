@@ -73,6 +73,15 @@ export interface NetworkContentHostEntry {
     timestamp: string;
 }
 
+export interface AOP2P_TaoRequest_Data {
+    method:
+        | "insertTaoDescription"
+        | "getTaoDescription"
+        | "insertTaoProfileImage"
+        | "getTaoProfileImage";
+    methodArgs: any;
+}
+
 export default class AOP2P extends AORouterInterface {
     public taodb: TaoDB;
 
@@ -132,6 +141,7 @@ export default class AOP2P extends AORouterInterface {
             "/p2p/setUserIdentity",
             this._setUserIdentity.bind(this)
         );
+        this.router.on("/p2p/tao", this._handleTaoRequest.bind(this));
     }
 
     _init(request: IAORouterRequest) {
@@ -168,8 +178,13 @@ export default class AOP2P extends AORouterInterface {
                 this.taodb
                     .list("AO", { recursive: true })
                     .then(data => {
-                        debug(`Dumping initial state of DB`);
-                        debug(data);
+                        debug(`AO: `, data);
+                    })
+                    .catch(debug);
+                this.taodb
+                    .list("TAO", { recursive: true })
+                    .then(data => {
+                        debug(`TAO: `, data);
                     })
                     .catch(debug);
                 request.respond({ data: "great success!" });
@@ -327,10 +342,8 @@ export default class AOP2P extends AORouterInterface {
 
     _setUserIdentity(request: IAORouterRequest) {
         const { userIdentity } = request.data;
-        this.taodb
-            .setUserIdentity(userIdentity)
-            .then(request.respond)
-            .catch(request.reject);
+        this.taodb.setUserIdentity(userIdentity);
+        request.respond(null);
     }
 
     _handleContentRegistration(request: IAORouterRequest) {
@@ -686,5 +699,46 @@ export default class AOP2P extends AORouterInterface {
             .insertContentHostTimestamp({ content })
             .then(request.respond)
             .catch(request.reject);
+    }
+
+    /**
+     * Just a pass through to access taodb methods. Should have exposed taodb in
+     * main process...
+     */
+    _handleTaoRequest(request: IAORouterRequest) {
+        const { method, methodArgs }: AOP2P_TaoRequest_Data = request.data;
+        let taodbPromise: Promise<any> = Promise.resolve();
+        debug(`Attempt at handling tao request method: ${method}`);
+        switch (method) {
+            case "getTaoDescription":
+                let descriptionKey = TaoDB.getTaoDescriptionKey({
+                    taoId: methodArgs["taoId"]
+                });
+                taodbPromise = this.taodb.get(descriptionKey);
+                break;
+            case "getTaoProfileImage":
+                let profileImageKey = TaoDB.getTaoProfileImageKey({
+                    nameId: methodArgs["nameId"]
+                });
+                taodbPromise = this.taodb.get(profileImageKey);
+                break;
+            case "insertTaoDescription":
+                taodbPromise = this.taodb.insertTaoDescription({
+                    taoId: methodArgs["taoId"],
+                    description: methodArgs["description"]
+                });
+                break;
+            case "insertTaoProfileImage":
+                taodbPromise = this.taodb.insertTaoProfileImage({
+                    nameId: methodArgs["nameId"],
+                    imageString: methodArgs["imageString"]
+                });
+                break;
+            default:
+                debug(
+                    `Warning, /p2p/tao request with invalid method [${method}]`
+                );
+        }
+        taodbPromise.then(request.respond).catch(request.reject);
     }
 }
