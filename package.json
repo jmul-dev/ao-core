@@ -8,7 +8,7 @@
     },
     "scripts": {
         "compile": "tsc",
-        "start": "cross-env DEBUG=ao:* node dist/bin.js --ethNetworkRpc wss://rinkeby.infura.io/ws",
+        "start": "cross-env NODE_ENV=development DEBUG=ao:* node dist/bin.js --ethNetworkRpc wss://rinkeby.infura.io/ws",
         "start:mainnet": "cross-env DEBUG=ao:* node dist/bin.js --ethNetworkRpc wss://mainnet.infura.io/ws",
         "build": "npm run clean && cross-env NODE_ENV=development webpack --progress",
         "build-prod": "npm run clean && cross-env NODE_ENV=production webpack --progress",
