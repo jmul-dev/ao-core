@@ -47,9 +47,24 @@ export default class Http {
         this.options = options;
         this.express = express();
         const graphqlSchema = schema();
+        const corsOrigin =
+            process.env.NODE_ENV === "development"
+                ? [
+                      options.httpOrigin,
+                      "http://localhost",
+                      "http://localhost:3000"
+                  ]
+                : options.httpOrigin;
+        debug(
+            `settings cors on server: ${corsOrigin}, process.env.NODE_ENV=${
+                process.env.NODE_ENV
+            }`
+        );
         this.express.use(
             "/graphql",
-            cors({ origin: options.httpOrigin }),
+            cors({
+                origin: corsOrigin
+            }),
             json(),
             graphqlUploadExpress({ maxFieldSize: "1gb" }),
             graphqlExpress({
@@ -62,7 +77,7 @@ export default class Http {
                 }
             })
         );
-        if (process.env.NODE_ENV !== "production") {
+        if (process.env.NODE_ENV === "development") {
             this.express.get(
                 "/graphiql",
                 graphiqlExpress({ endpointURL: "/graphql" })
@@ -145,7 +160,7 @@ export default class Http {
                         // Non-encrypted resource does not need to fetch content from user db
                         return resolve();
                     }
-                    // 2. Fetch corresponding content                
+                    // 2. Fetch corresponding content
                     const userContentData: AODB_UserContentGet_Data = {
                         query: { fileDatKey: key }
                     };
