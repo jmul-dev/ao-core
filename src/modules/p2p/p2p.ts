@@ -739,19 +739,6 @@ export default class AOP2P extends AORouterInterface {
                     `Warning, /p2p/tao request with invalid method [${method}]`
                 );
         }
-        taodbPromise
-            .then(data => {
-                debug(`Resolved!`, data);
-                request.respond(data);
-            })
-            .catch(error => {
-                request.reject(error);
-                this.taodb
-                    .listKeys("TAO")
-                    .then(keys => {
-                        debug(keys);
-                    })
-                    .catch(debug);
-            });
+        taodbPromise.then(request.respond).catch(request.reject);
     }
 }
