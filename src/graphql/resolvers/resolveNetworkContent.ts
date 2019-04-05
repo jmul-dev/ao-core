@@ -1,11 +1,15 @@
 import { IGraphqlResolverContext } from "../../http";
-import AOContent, { AOContentType } from "../../models/AOContent";
+import AOContent, {
+    AOContentType,
+    AOContentLicense
+} from "../../models/AOContent";
 import { AODB_NetworkContentGet_Data } from "../../modules/db/db";
 import { IAORouterMessage } from "../../router/AORouter";
 import { AONetworkContent } from "../../models/AONetworkContent";
 
 interface IVideos_Args {
     contentType?: AOContentType;
+    contentLicense?: AOContentLicense;
     query?: string;
     id?: string;
 }
@@ -21,7 +25,8 @@ export default (
             query: {
                 status: "imported",
                 "content.contentType": args.contentType || undefined,
-                "content.id": args.id || undefined
+                "content.id": args.id || undefined,
+                "content.contentLicense": args.contentLicense || undefined
             },
             fuzzyQuery: args.query || undefined,
             contentOnly: false

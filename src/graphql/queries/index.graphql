@@ -15,7 +15,7 @@ type Query {
     node: NodeIdentity
     statistics: NodeStatistics
     wallet: Wallet
-    networkContent(id: ID, query: String, contentType: ContentType): [IContent]
+    networkContent(id: ID, query: String, contentType: ContentType, contentLicense: contentLicense): [IContent]
     userContent(id: ID!): IContent
     settings: Settings!
     # Tao related
