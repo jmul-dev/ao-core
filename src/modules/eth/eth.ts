@@ -51,7 +51,7 @@ export interface BuyContentEvent {
 }
 export interface StakeContentEvent {
     stakeOwner: string;
-    stakeId: string;
+    stakedContentId: string;
     contentId: string;
     baseNetworkAmount: number;
     primordialAmount: number;
@@ -62,7 +62,7 @@ export interface StakeContentEvent {
 export interface HostContentEvent {
     host: string;
     contentHostId: string;
-    stakeId: string;
+    stakedContentId: string;
     contentDatKey: string;
     metadataDatKey: string;
 }

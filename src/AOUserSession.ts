@@ -1220,7 +1220,7 @@ export default class AOUserSession {
                         $set: {
                             state: AOContentState.STAKED,
                             contentHostId: hostContentEvent.contentHostId,
-                            stakeId: hostContentEvent.stakeId
+                            stakeId: hostContentEvent.stakedContentId
                         }
                     };
                 } else {
