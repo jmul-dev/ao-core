@@ -27,7 +27,8 @@ export default (
                           $in: getListOfContentIncompleteStates()
                       }
                     : undefined,
-                contentType: args.inputs.contentType
+                contentType: args.inputs.contentType,
+                contentLicense: args.inputs.contentLicense
             }
         };
         context.router

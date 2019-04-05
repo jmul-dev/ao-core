@@ -4,6 +4,7 @@ input UserContentInputs {
     id: ID
     incomplete: Boolean
     contentType: ContentType
+    contentLicense: ContentLicense
 }
 
 type NodeIdentity {

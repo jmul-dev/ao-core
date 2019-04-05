@@ -3,7 +3,8 @@ import { IAORouterMessage } from "../../router/AORouter";
 import { AODB_UserContentGet_Data } from "../../modules/db/db";
 import AOContent, {
     getListOfContentIncompleteStates,
-    AOContentType
+    AOContentType,
+    AOContentLicense
 } from "../../models/AOContent";
 
 export interface ILocalNode_ContentQuery_Inputs {
@@ -11,6 +12,7 @@ export interface ILocalNode_ContentQuery_Inputs {
         id?: string;
         incomplete?: boolean;
         contentType?: AOContentType;
+        contentLicense?: AOContentLicense;
     };
 }
 // TODO: obj is of type NodeIdentity (sorry still no types outside of graphql)
@@ -36,7 +38,8 @@ export default (
                           $in: getListOfContentIncompleteStates()
                       }
                     : undefined,
-                contentType: args.inputs.contentType
+                contentType: args.inputs.contentType,
+                contentLicense: args.inputs.contentLicense
             }
         };
         context.router
