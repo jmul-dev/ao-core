@@ -634,11 +634,6 @@ export default class AODB extends AORouterInterface {
             if (error) {
                 request.reject(error);
             } else {
-                if (requestData.contentOnly) {
-                    results = results.map((result: AONetworkContent) => {
-                        return result.content;
-                    });
-                }
                 if (requestData.fuzzyQuery) {
                     const fuseOptions = {
                         shouldSort: true,
@@ -647,12 +642,15 @@ export default class AODB extends AORouterInterface {
                         distance: 100,
                         maxPatternLength: 32,
                         minMatchCharLength: 1,
-                        keys: requestData.contentOnly
-                            ? ["title", "description"]
-                            : ["content.title", "content.description"]
+                        keys: ["content.title", "content.description"]
                     };
                     const fuse = new Fuse(results, fuseOptions);
                     results = fuse.search(requestData.fuzzyQuery);
+                }
+                if (requestData.contentOnly) {
+                    results = results.map((result: AONetworkContent) => {
+                        return result.content;
+                    });
                 }
                 request.respond(results);
             }

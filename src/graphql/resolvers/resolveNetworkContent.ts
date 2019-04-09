@@ -1,7 +1,8 @@
 import { IGraphqlResolverContext } from "../../http";
 import AOContent, {
     AOContentType,
-    AOContentLicense
+    AOContentLicense,
+    AOContentTypes
 } from "../../models/AOContent";
 import { AODB_NetworkContentGet_Data } from "../../modules/db/db";
 import { IAORouterMessage } from "../../router/AORouter";
@@ -48,6 +49,12 @@ export default (
                             networkContent.recentlySeenHostsCount || 0;
                         aoContent.totalHosts = networkContent.totalHosts || 0;
                         return aoContent;
+                    })
+                    .filter(content => {
+                        // Just in case, filter out any unknown content types
+                        return (
+                            AOContentTypes[content.contentType] !== undefined
+                        );
                     })
                     .sort((a, b) => {
                         // Sorting algorithm -> recently seen host -> created at date
