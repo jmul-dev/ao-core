@@ -1,19 +1,43 @@
+# Tao profile
 type TaoProfile {
     nameId: ID!
     imageString: String
 }
-
 input TaoProfileInputs {
     nameId: ID!
     imageString: String!
 }
-
+# Tao description
 type TaoDescription {
     taoId: ID!
     description: String
 }
-
 input TaoDescriptionInputs {
     taoId: ID!
     description: String!
+}
+# Tao thought
+type TaoThought {
+    nameId: ID!
+    parentThoughtId: ID
+    thought: String!
+    timestamp: Int!
+}
+input TaoThoughtInputs {
+    nameId: ID!
+    taoId: ID!
+    parentThoughtId: ID
+    thought: String!
+}
+
+# What aodb returns when running queries
+type AodbEntry {
+    key: String!
+    splitKey: [String]!
+    pointerKey: String!
+    schemaKey: String!
+    value: String | Int | TaoThought
+    deleted: Boolean
+    writerSignature: String!
+    writerAddress: String!
 }

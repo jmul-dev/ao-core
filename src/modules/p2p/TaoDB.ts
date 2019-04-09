@@ -84,9 +84,26 @@ export default class TaoDB extends AODB {
             }
         },
         taoDescription: {
-            key: "schema/TAO/this/taoId/*/description",
+            key: "schema/TAO/this/taoId/*/description/timestamp/%number%",
             value: {
-                keySchema: "TAO/this/taoId/*/description",
+                keySchema: "TAO/this/taoId/*/description/timestamp/%number%",
+                valueValidationKey: "",
+                keyValidation: ""
+            }
+        },
+        taoThought: {
+            key: "schema/TAO/this/taoId/*/thoughts/thoughtId/%number%",
+            value: {
+                keySchema: "TAO/this/taoId/*/thoughts/thoughtId/%number%",
+                valueValidationKey: "",
+                keyValidation: ""
+            }
+        },
+        taoNameThought: {
+            key: "schema/TAO/this/nameId/*/taoId/*/thoughts/thoughtId/%number%",
+            value: {
+                keySchema:
+                    "TAO/this/nameId/*/taoId/*/thoughts/thoughtId/%number%",
                 valueValidationKey: "",
                 keyValidation: ""
             }
@@ -321,7 +338,7 @@ export default class TaoDB extends AODB {
 
     /**
      *
-     * Profile Image
+     * TAO Profile Image
      *
      */
     public static getTaoProfileImageKey({ nameId }) {
@@ -362,7 +379,10 @@ export default class TaoDB extends AODB {
      * TAO Description
      *
      */
-    public static getTaoDescriptionKey({ taoId }) {
+    public static getTaoDescriptionKey({ taoId, timestamp }) {
+        return `TAO/this/taoId/${taoId}/description/timestamp/${timestamp}`;
+    }
+    public static getTaoDescriptionListKey({ taoId }) {
         return `TAO/this/taoId/${taoId}/description`;
     }
     public async insertTaoDescription({
@@ -373,7 +393,8 @@ export default class TaoDB extends AODB {
         description: string;
     }): Promise<any> {
         const key = TaoDB.getTaoDescriptionKey({
-            taoId
+            taoId,
+            timestamp: Math.round(new Date().getTime() / 1000)
         });
         const value = description;
         const writerSignature = this.createSignedHash({
@@ -393,5 +414,86 @@ export default class TaoDB extends AODB {
             writerSignature,
             schemaKey: schema.key
         });
+    }
+
+    /**
+     *
+     * TAO Thought
+     *
+     */
+    public static getTaoThoughtKey({ taoId, thoughtId }) {
+        return `TAO/this/taoId/${taoId}/thoughts/thoughtId/${thoughtId}`;
+    }
+    public static getTaoThoughtsListKey({ taoId }) {
+        return `TAO/this/taoId/${taoId}/thoughts/thoughtId`;
+    }
+    public static getTaoNameThoughtKey({ taoId, nameId, thoughtId }) {
+        return `TAO/this/nameId/${nameId}/taoId/${taoId}/thoughts/thoughtId/${thoughtId}`;
+    }
+    public async insertTaoThought({
+        taoId,
+        nameId,
+        parentThoughtId,
+        thought
+    }: {
+        taoId: string;
+        nameId: string;
+        parentThoughtId?: string;
+        thought: string;
+    }): Promise<any> {
+        try {
+            // 1. If parentThoughtId was passed, check that it exists
+            if (parentThoughtId) {
+                const parentThoughtKey = TaoDB.getTaoThoughtKey({
+                    taoId,
+                    thoughtId: parentThoughtId
+                });
+                const parentThoughtExist = await this.exists(parentThoughtKey);
+                if (!parentThoughtExist) {
+                    throw new Error(`Parent thought does not exist`);
+                }
+            }
+            const thoughtListKey = TaoDB.getTaoThoughtsListKey({ taoId });
+            const thoughtCount = await this.count(thoughtListKey);
+            const thoughtId = thoughtCount + 1;
+
+            const key = TaoDB.getTaoThoughtKey({
+                taoId,
+                thoughtId
+            });
+            const value = {
+                nameId,
+                parentThoughtId,
+                thought,
+                timestamp: Math.round(new Date().getTime() / 1000)
+            };
+            const writerSignature = this.createSignedHash({
+                privateKey: this._userIdentity.privateKey,
+                key,
+                value
+            });
+            const schema: ITaoDB_Schema = this.schemas.taoThought;
+            const schemaExists = await this.exists(schema.key);
+            if (!schemaExists) {
+                await this.insertSchema(schema);
+            }
+            return this.insert({
+                key,
+                value,
+                writerAddress: this._userIdentity.publicKey,
+                writerSignature,
+                schemaKey: schema.key,
+                options: {
+                    pointerSchemaKey: this.schemas.taoNameThought.key,
+                    pointerKey: TaoDB.getTaoNameThoughtKey({
+                        taoId,
+                        nameId,
+                        thoughtId
+                    })
+                }
+            });
+        } catch (error) {
+            return Promise.reject(error);
+        }
     }
 }

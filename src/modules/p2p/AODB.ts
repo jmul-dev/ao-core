@@ -275,6 +275,29 @@ export default class AODB {
         });
     }
 
+    public count(
+        key: string,
+        options: { recursive?: boolean; reverse?: boolean; gt?: boolean } = {
+            recursive: true,
+            reverse: true,
+            gt: false
+        }
+    ): Promise<number> {
+        return new Promise((resolve, reject) => {
+            this.aodb.list(
+                key,
+                options,
+                (err: Error, nodes: Array<AODB_Entry<any>>) => {
+                    if (err) {
+                        resolve(0);
+                    } else {
+                        resolve(nodes.length);
+                    }
+                }
+            );
+        });
+    }
+
     public watch(key: string): Promise<any> {
         return new Promise((resolve, reject) => {
             let watcher = this.aodb.watch(key, () => {});

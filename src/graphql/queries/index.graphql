@@ -21,4 +21,8 @@ type Query {
     # Tao related
     taoProfile(nameId: ID!): TaoProfile
     taoDescription(taoId: ID!): TaoDescription
+    taoDescriptions(taoId: ID!): [AodbEntry]
+    taoThoughtsCount(taoId: ID!): Int
+    taoThoughts(taoId: ID!): [AodbEntry]
+    taoThought(taoId: ID!): TaoThought
 }

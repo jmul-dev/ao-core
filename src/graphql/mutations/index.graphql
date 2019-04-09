@@ -17,6 +17,7 @@ type Mutation {
     # Tao related
     submitTaoDescription(inputs: TaoDescriptionInputs): TaoDescription
     submitTaoProfile(inputs: TaoProfileInputs): TaoProfile
+    submitTaoThought(inputs: TaoThoughtInputs): TaoThought
 }
 
 input ContentHostTransactionInputs {

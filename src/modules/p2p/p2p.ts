@@ -77,8 +77,13 @@ export interface AOP2P_TaoRequest_Data {
     method:
         | "insertTaoDescription"
         | "getTaoDescription"
+        | "getTaoDescriptions"
         | "insertTaoProfileImage"
-        | "getTaoProfileImage";
+        | "getTaoProfileImage"
+        | "getTaoThoughts"
+        | "getTaoThought"
+        | "getTaoThoughtsCount"
+        | "insertTaoThought";
     methodArgs: any;
 }
 
@@ -712,9 +717,21 @@ export default class AOP2P extends AORouterInterface {
         switch (method) {
             case "getTaoDescription":
                 let descriptionKey = TaoDB.getTaoDescriptionKey({
-                    taoId: methodArgs["taoId"]
+                    taoId: methodArgs["taoId"],
+                    timestamp: methodArgs["timestamp"]
                 });
                 taodbPromise = this.taodb.get(descriptionKey);
+                break;
+            case "getTaoDescriptions":
+                let descriptionsKey = TaoDB.getTaoDescriptionListKey({
+                    taoId: methodArgs["taoId"]
+                });
+                taodbPromise = this.taodb.list(descriptionsKey);
+            case "insertTaoDescription":
+                taodbPromise = this.taodb.insertTaoDescription({
+                    taoId: methodArgs["taoId"],
+                    description: methodArgs["description"]
+                });
                 break;
             case "getTaoProfileImage":
                 let profileImageKey = TaoDB.getTaoProfileImageKey({
@@ -722,16 +739,37 @@ export default class AOP2P extends AORouterInterface {
                 });
                 taodbPromise = this.taodb.get(profileImageKey);
                 break;
-            case "insertTaoDescription":
-                taodbPromise = this.taodb.insertTaoDescription({
-                    taoId: methodArgs["taoId"],
-                    description: methodArgs["description"]
-                });
-                break;
             case "insertTaoProfileImage":
                 taodbPromise = this.taodb.insertTaoProfileImage({
                     nameId: methodArgs["nameId"],
                     imageString: methodArgs["imageString"]
+                });
+                break;
+            case "getTaoThoughts":
+                let taoThoughtsKey = TaoDB.getTaoThoughtsListKey({
+                    taoId: methodArgs["taoId"]
+                });
+                taodbPromise = this.taodb.list(taoThoughtsKey);
+                break;
+            case "getTaoThought":
+                let taoThoughtKey = TaoDB.getTaoThoughtKey({
+                    taoId: methodArgs["taoId"],
+                    thoughtId: methodArgs["thoughtId"]
+                });
+                taodbPromise = this.taodb.get(taoThoughtKey);
+                break;
+            case "getTaoThoughtsCount":
+                let taoThoughtsCountKey = TaoDB.getTaoThoughtsListKey({
+                    taoId: methodArgs["taoId"]
+                });
+                taodbPromise = this.taodb.count(taoThoughtsCountKey);
+                break;
+            case "insertTaoThought":
+                taodbPromise = this.taodb.insertTaoThought({
+                    nameId: methodArgs["nameId"],
+                    taoId: methodArgs["taoId"],
+                    parentThoughtId: methodArgs["parentThoughtId"],
+                    thought: methodArgs["thought"]
                 });
                 break;
             default:
