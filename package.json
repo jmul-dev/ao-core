@@ -35,7 +35,7 @@
         "@types/web3": "^1.0.18",
         "ao-contracts": "git+ssh://git@git.y-designs.com:ao/ao-contracts.git#v1.0.11",
         "ao-library": "git+ssh://git@git.y-designs.com:ao/ao-library.git",
-        "aodb": "^1.1.2",
+        "aodb": "^1.1.4",
         "apollo-server-express": "^1.3.6",
         "archiver": "^3.0.0",
         "assert": "^1.4.1",

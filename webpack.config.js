@@ -6,9 +6,10 @@ const CopyWebpackPlugin = require("copy-webpack-plugin");
 const PermissionsOutputPlugin = require("webpack-permissions-plugin");
 const ReplaceInFileWebpackPlugin = require("replace-in-file-webpack-plugin");
 
-console.log(__dirname + "/nodebin");
-
 const devMode = process.env.NODE_ENV !== "production";
+console.log(
+    `Running webpack in ${devMode ? "development" : "production"} mode...`
+);
 
 fs.mkdirSync(path.resolve(__dirname, "dist"));
 
@@ -23,7 +24,8 @@ const productionLoader = {
 const developmentLoader = {
     loader: "awesome-node-loader",
     options: {
-        rewritePath: path.resolve(__dirname, "dist")
+        rewritePath: path.resolve(__dirname, "dist"),
+        useDirname: false
     }
 };
 
@@ -46,7 +48,7 @@ var config = {
     },
     output: {
         path: path.resolve(__dirname, "dist"),
-        filename: chunkData => {``
+        filename: chunkData => {
             return chunkData.chunk.name === "main" ||
                 chunkData.chunk.name === "bin"
                 ? "[name].js"
@@ -61,7 +63,7 @@ var config = {
     //         new UglifyJsPlugin({
     //             exclude: /modules/, // Need to exclude for string replacement to happen post compile.
     //             parallel: true,
-                
+
     //         })
     //     ], //if you want to customize it.
     //     namedModules: true //enabled for string replacement
@@ -71,14 +73,14 @@ var config = {
         extensions: [".ts", ".tsx", ".mjs", ".js", ".graphql", ".json", ".node"]
     },
     module: {
-        rules: [            
+        rules: [
             {
                 test: /bin\.(js|ts)$/,
                 use: ["shebang-loader"]
             },
             {
                 test: /\.tsx?$/,
-                loader: "awesome-typescript-loader",
+                loader: "awesome-typescript-loader"
             },
             // https://github.com/graphql/graphql-js/issues/1272
             {
@@ -99,7 +101,10 @@ var config = {
             {
                 test: /index\.js$/,
                 include: [
-                    path.resolve(__dirname, "node_modules/aodb/node_modules/eccrypto")
+                    path.resolve(
+                        __dirname,
+                        "node_modules/aodb/node_modules/eccrypto"
+                    )
                 ],
                 loader: "string-replace-loader",
                 options: {
@@ -138,11 +143,11 @@ var config = {
                         path.join("sodium-prebuilds") +
                         "')"
                 }
-            },            
+            }
         ]
     },
     plugins: [
-        new webpack.IgnorePlugin(/vertx/),  // sry
+        new webpack.IgnorePlugin(/vertx/), // sry
         new webpack.BannerPlugin({ banner: "#!/usr/bin/env node", raw: true }),
         new CopyWebpackPlugin([
             { from: "node_modules/ffprobe-static/bin", to: "bin" },
