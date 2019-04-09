@@ -31,13 +31,45 @@ input TaoThoughtInputs {
 }
 
 # What aodb returns when running queries
-type AodbEntry {
+interface IAodbEntry {
     key: String!
     splitKey: [String]!
     pointerKey: String!
-    schemaKey: String!
-    value: String | Int | TaoThought
+    schemaKey: String!    
     deleted: Boolean
     writerSignature: String!
     writerAddress: String!
+}
+type TaoProfileAodbEntry implements IAodbEntry {
+    key: String!
+    splitKey: [String]!
+    pointerKey: String!
+    schemaKey: String!    
+    deleted: Boolean
+    writerSignature: String!
+    writerAddress: String!
+    # value is the imageString associated with the profile
+    value: String
+}
+type TaoDescriptionAodbEntry implements IAodbEntry {
+    key: String!
+    splitKey: [String]!
+    pointerKey: String!
+    schemaKey: String!    
+    deleted: Boolean
+    writerSignature: String!
+    writerAddress: String!
+    # value is the description
+    value: String
+}
+type TaoThoughtAodbEntry implements IAodbEntry {
+    key: String!
+    splitKey: [String]!
+    pointerKey: String!
+    schemaKey: String!    
+    deleted: Boolean
+    writerSignature: String!
+    writerAddress: String!
+    # value is the description
+    value: TaoThought
 }

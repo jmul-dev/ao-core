@@ -4,6 +4,7 @@ import { IAORouterMessage } from "../../router/AORouter";
 
 interface ITaoThought_Args {
     taoId: string;
+    thoughtId: string;
 }
 
 export default (
@@ -16,13 +17,15 @@ export default (
         const taoRequestArgs: AOP2P_TaoRequest_Data = {
             method: "getTaoThought",
             methodArgs: {
-                taoId: args.taoId
+                taoId: args.taoId,
+                thoughtId: args.thoughtId
             }
         };
         context.router
             .send("/p2p/tao", taoRequestArgs)
             .then((response: IAORouterMessage) => {
-                resolve(response.data);
+                if (response.data) resolve(response.data.value);
+                else reject(new Error(`Tao thought not found`));
             })
             .catch(reject);
     });

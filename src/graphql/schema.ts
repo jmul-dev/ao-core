@@ -65,7 +65,11 @@ export default function() {
                 userContent: resolvers.resolveUserContent,
                 statistics: resolvers.resolveNodeStatistics,
                 taoProfile: resolvers.resolveTaoProfile,
-                taoDescription: resolvers.resolveTaoDescription
+                taoDescription: resolvers.resolveTaoDescription,
+                taoThought: resolvers.resolveTaoThought,
+                taoThoughts: resolvers.resolveTaoThoughts,
+                taoThoughtsCount: resolvers.resolveTaoThoughtsCount,
+                taoDescriptions: resolvers.resolveTaoDescriptions
             },
             Mutation: {
                 register: resolvers.resolveRegister,
@@ -82,7 +86,8 @@ export default function() {
                     resolvers.resolveContentRetryHostDiscovery,
                 export: resolvers.resolveExportData,
                 submitTaoDescription: resolvers.resolveSubmitTaoDescription,
-                submitTaoProfile: resolvers.resolveSubmitTaoProfile
+                submitTaoProfile: resolvers.resolveSubmitTaoProfile,
+                submitTaoThought: resolvers.resolveSubmitTaoThought
             }
         },
         resolverValidationOptions: {

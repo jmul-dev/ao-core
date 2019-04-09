@@ -477,7 +477,7 @@ export default class TaoDB extends AODB {
             if (!schemaExists) {
                 await this.insertSchema(schema);
             }
-            return this.insert({
+            await this.insert({
                 key,
                 value,
                 writerAddress: this._userIdentity.publicKey,
@@ -492,6 +492,7 @@ export default class TaoDB extends AODB {
                     })
                 }
             });
+            return Promise.resolve(value);
         } catch (error) {
             return Promise.reject(error);
         }

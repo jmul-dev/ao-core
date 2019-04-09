@@ -24,6 +24,11 @@ import resolveTaoDescription from "./resolveTaoDescription";
 import resolveTaoProfile from "./resolveTaoProfile";
 import resolveSubmitTaoDescription from "./resolveSubmitTaoDescription";
 import resolveSubmitTaoProfile from "./resolveSubmitTaoProfile";
+import resolveTaoThought from "./resolveTaoThought";
+import resolveTaoThoughts from "./resolveTaoThoughts";
+import resolveTaoThoughtsCount from "./resolveTaoThoughtsCount";
+import resolveSubmitTaoThought from "./resolveSubmitTaoThought";
+import resolveTaoDescriptions from "./resolveTaoDescriptions";
 
 export default {
     // Query resolvers
@@ -39,6 +44,10 @@ export default {
     resolveNodeStatistics,
     resolveTaoDescription,
     resolveTaoProfile,
+    resolveTaoThought,
+    resolveTaoThoughts,
+    resolveTaoThoughtsCount,
+    resolveTaoDescriptions,
     // Mutation resolvers
     resolveSubmitContent,
     resolveRegister,
@@ -51,6 +60,7 @@ export default {
     resolveExportData,
     resolveSubmitTaoDescription,
     resolveSubmitTaoProfile,
+    resolveSubmitTaoThought,
     // Field resolvers
     resolveUrl,
     resolveDappUrl,
