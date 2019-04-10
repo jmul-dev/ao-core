@@ -497,12 +497,12 @@ export default class Core extends EventEmitter {
             .send("/eth/settings/taoDbKey")
             .then((response: IAORouterMessage) => {
                 let taoDbKey = response.data.taoDbKey;
-                if (process.env.NODE_ENV !== "production") {
-                    // TODO: remove once taodb key has been moved to contracts
-                    debugLog(`WARNING, HARDCODED TAODB KEY`);
-                    taoDbKey =
-                        "b5175e3afdd2f327b979e07584d00fafb3371fde4a852a4a8b39255b337bb3a0";
-                }
+
+                // TODO: remove once taodb key has been moved to contracts
+                debugLog(`WARNING, HARDCODED TAODB KEY`);
+                taoDbKey =
+                    "b5175e3afdd2f327b979e07584d00fafb3371fde4a852a4a8b39255b337bb3a0";
+
                 // 2. Spin up p2p module with the fetched taoDbKey
                 const p2pInitData: AOP2P_Init_Data = {
                     dbKey: taoDbKey

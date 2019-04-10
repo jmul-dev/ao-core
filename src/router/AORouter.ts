@@ -344,10 +344,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
                 readStream.pipe(writeStream);
             }
             const startTime = Date.now();
-            if (
-                !incomingMessage.routerParams.ignoreLogging &&
-                process.env.NODE_ENV !== "production"
-            ) {
+            if (!incomingMessage.routerParams.ignoreLogging) {
                 debug(
                     `[${message.routerMessageId}][${event}]: ${from.name} -> ${
                         receivingRegistryEntry.name

@@ -9,7 +9,7 @@ export default (
 ) => {
     return new Promise((resolve, reject) => {
         context.router
-            .send("/db/settings/get", { ignoreLogging: true })
+            .send("/db/settings/get")
             .then((settingsResponse: IAORouterMessage) => {
                 context.router
                     .send("/eth/network/get")

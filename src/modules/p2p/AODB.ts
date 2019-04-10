@@ -4,7 +4,7 @@ import swarmDefaults from "dat-swarm-defaults";
 import Debug from "../../AODebug";
 import { IAOStatus } from "../../models/AOStatus";
 import EthCrypto from "eth-crypto";
-import { Identity } from "../../AOCrypto";
+import { createUserIdentity, Identity } from "../../AOCrypto";
 const debug = Debug("ao:aodb");
 
 export interface IAODB_Args {
@@ -30,6 +30,12 @@ export default class AODB {
     private swarm: discovery;
     protected _userIdentity: Identity;
     public connectionStatus: IAOStatus = "DISCONNECTED";
+
+    constructor() {
+        // NOTE: this is really a hack to allow replication
+        // when a user is not "signed in".
+        this._userIdentity = createUserIdentity();
+    }
 
     public setUserIdentity(v: Identity) {
         this._userIdentity = v;
@@ -74,18 +80,23 @@ export default class AODB {
     private createSwarm() {
         if (this.swarm) {
             // wait for the existing swarm to close/cleanup
-            this.swarm.close(() => {
+            this.swarm.leave(this.dbKey);
+            this.swarm.destroy(() => {
                 debug(`existing discovery swarm closed`);
                 this.swarm = undefined;
                 this.createSwarm();
             });
             return;
         }
-        if (!this._userIdentity) {
-            debug(`identity required for aodb replication`);
-            return;
-        }
-        debug(`creating discovery swarm...`);
+        // if (!this._userIdentity) {
+        //     debug(`identity required for aodb replication`);
+        //     return;
+        // }
+        debug(
+            `creating discovery swarm ${
+                this._userIdentity ? "with" : "without"
+            } user identity...`
+        );
         this.swarm = discovery(
             swarmDefaults({
                 id: this.dbKey,
@@ -132,9 +143,9 @@ export default class AODB {
 
         let remoteUserData;
         try {
-            remoteUserData = Buffer.from(peer.remoteUserData);
+            remoteUserData = JSON.parse(peer.remoteUserData);
         } catch (err) {
-            debug(`Error buffering remote peer: ${err.message}`);
+            debug(`Error parsing remote peer userData: ${err.message}`);
             return;
         }
 
@@ -144,7 +155,8 @@ export default class AODB {
             !remoteUserData.hasOwnProperty("writerSignature")
         ) {
             debug(
-                "Remote user data is missing key/writerAddress/writerSignature properties"
+                "Remote user data is missing key/writerAddress/writerSignature properties:",
+                remoteUserData
             );
             return;
         }

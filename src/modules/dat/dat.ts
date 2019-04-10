@@ -541,18 +541,12 @@ export default class AODat extends AORouterInterface {
                                             reject(err);
                                             return;
                                         } else if (
-                                            !(
-                                                dat.network.connected +
-                                                dat.network.connecting
-                                            ) &&
+                                            (!dat.network.connected ||
+                                                !dat.network.connecting) &&
                                             !datDownloadComplete
                                         ) {
                                             debug(
-                                                `[${key}] Failed to download, no one is hosting. connected[${
-                                                    dat.network.connected
-                                                }] connecting[${
-                                                    dat.network.connecting
-                                                }].`
+                                                `[${key}] Failed to download, no one is hosting.`
                                             );
                                             this.removeDat(key);
                                             reject(
@@ -563,7 +557,11 @@ export default class AODat extends AORouterInterface {
                                             return;
                                         } else {
                                             debug(
-                                                `[${key}] Succesfully joined network and began downloading!`
+                                                `[${key}] Succesfully joined network and began downloading! connected[${
+                                                    dat.network.connected
+                                                }] connecting[${
+                                                    dat.network.connecting
+                                                }]`
                                             );
                                             dat.AO_joinedNetwork = true;
                                             // Assuming we do not have an existing dat db entry
@@ -589,6 +587,20 @@ export default class AODat extends AORouterInterface {
                                         dat.AO_isTrackingStats = true;
                                         stats.on("update", () => {
                                             const newStats = stats.get();
+
+                                            const downloadPercentage =
+                                                (newStats.downloaded.length /
+                                                    newStats.length.length) *
+                                                100;
+                                            debug(
+                                                `[${key}] download stats`,
+                                                newStats
+                                            );
+                                            // debug(
+                                            //     `[${key}] downloaded ${downloadPercentage.toFixed(
+                                            //         0
+                                            //     )}%`
+                                            // );
                                             //TODO: Add percentage off of length vs downloaded as percentage of newStats
                                             // if(newStats.length.length == newStats.downloaded.length) {
                                             // }
@@ -659,7 +671,11 @@ export default class AODat extends AORouterInterface {
                     this._removeDat(key);
                 });
             } catch (e) {
-                debug(e);
+                debug(
+                    `[${key}] caught error while attempting to call close() method on dat instance: ${
+                        e.message
+                    }`
+                );
                 this._removeDat(key);
             }
         }
@@ -679,9 +695,11 @@ export default class AODat extends AORouterInterface {
         this.router
             .send("/fs/unlink", unlinkParams)
             .then(() => {
-                debug("Dat removed");
+                debug(`[${key}] dat removed`);
             })
-            .catch(debug);
+            .catch(error => {
+                debug(`[${key}] failed to unlink: ${error.message}`);
+            });
     }
 
     private _handleDatExists(request: IAORouterRequest) {

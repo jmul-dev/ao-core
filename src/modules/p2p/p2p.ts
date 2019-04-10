@@ -500,7 +500,9 @@ export default class AOP2P extends AORouterInterface {
             projection: { recentlySeenHostsCount: 1 }
         };
         this.router
-            .send("/db/network/content/get", networkContentQuery)
+            .send("/db/network/content/get", networkContentQuery, {
+                ignoreLogging: true
+            })
             .then((networkContentResults: IAORouterMessage) => {
                 // NOTE: hosts count for each content may technically be overlaping (one host
                 // for multiple pieces of content). Ideally we would add up unique host ids
