@@ -30,11 +30,6 @@ export default class AODB {
     private swarm: discovery;
     protected _userIdentity: Identity;
     public connectionStatus: IAOStatus = "DISCONNECTED";
-    private onConnectionBound: Function;
-
-    constructor() {
-        this.onConnectionBound = this.onConnection.bind(this);
-    }
 
     public setUserIdentity(v: Identity) {
         this._userIdentity = v;
@@ -79,15 +74,15 @@ export default class AODB {
     private createSwarm() {
         if (this.swarm) {
             // wait for the existing swarm to close/cleanup
-            this.swarm.removeEventListener(
-                "connection",
-                this.onConnectionBound
-            );
             this.swarm.close(() => {
                 debug(`existing discovery swarm closed`);
                 this.swarm = undefined;
                 this.createSwarm();
             });
+            return;
+        }
+        if (!this._userIdentity) {
+            debug(`identity required for aodb replication`);
             return;
         }
         debug(`creating discovery swarm...`);
@@ -98,7 +93,7 @@ export default class AODB {
             })
         );
         this.swarm.join(this.dbKey);
-        this.swarm.on("connection", this.onConnectionBound);
+        this.swarm.on("connection", this.onConnection.bind(this));
     }
 
     private replicate(peer) {
