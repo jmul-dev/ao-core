@@ -4,6 +4,7 @@ import swarmDefaults from "dat-swarm-defaults";
 import Debug from "../../AODebug";
 import { IAOStatus } from "../../models/AOStatus";
 import EthCrypto from "eth-crypto";
+import { Identity } from "../../AOCrypto";
 const debug = Debug("ao:aodb");
 
 export interface IAODB_Args {
@@ -27,7 +28,12 @@ export default class AODB {
     private dbKey: string;
     private dbPath: string | Function;
     private swarm: discovery;
+    protected _userIdentity: Identity;
     public connectionStatus: IAOStatus = "DISCONNECTED";
+
+    public setUserIdentity(v: Identity) {
+        this._userIdentity = v;
+    }
 
     public start(hyperOptions: IAODB_Args): Promise<string> {
         this.connectionStatus = "CONNECTING";
@@ -49,17 +55,7 @@ export default class AODB {
                     this.swarm = discovery(
                         swarmDefaults({
                             id: this.dbKey,
-                            stream: peer => {
-                                debug(
-                                    `stream replication with key: ${this.aodb.local.key.toString(
-                                        "hex"
-                                    )}`
-                                );
-                                return this.aodb.replicate({
-                                    live: true,
-                                    userData: this.aodb.local.key
-                                });
-                            }
+                            stream: this.replicate.bind(this)
                         })
                     );
                     this.swarm.join(this.dbKey);
@@ -70,6 +66,29 @@ export default class AODB {
                 reject(error);
             }
         });
+    }
+
+    private replicate(peer) {
+        if (!this._userIdentity) {
+            return this.aodb.replicate({
+                live: false
+            });
+        } else {
+            return this.aodb.replicate({
+                live: true,
+                userData: JSON.stringify({
+                    key: this.aodb.local.key,
+                    writerAddress: this._userIdentity.publicKey,
+                    writerSignature: EthCrypto.sign(
+                        this._userIdentity.privateKey,
+                        this.aodb.createSignHash(
+                            "discoveryKey",
+                            this.aodb.key.toString("hex")
+                        )
+                    )
+                }) // this.aodb.local.key
+            });
+        }
     }
 
     /**
@@ -83,11 +102,37 @@ export default class AODB {
             return;
         }
 
-        let remotePeerKey;
+        let remoteUserData;
         try {
-            remotePeerKey = Buffer.from(peer.remoteUserData);
+            remoteUserData = Buffer.from(peer.remoteUserData);
         } catch (err) {
             debug(`Error buffering remote peer: ${err.message}`);
+            return;
+        }
+
+        if (
+            !remoteUserData.hasOwnProperty("key") ||
+            !remoteUserData.hasOwnProperty("writerAddress") ||
+            !remoteUserData.hasOwnProperty("writerSignature")
+        ) {
+            debug(
+                "Remote user data is missing key/writerAddress/writerSignature properties"
+            );
+            return;
+        }
+        const remotePeerKey = Buffer.from(remoteUserData.key);
+        const signer = EthCrypto.recoverPublicKey(
+            remoteUserData.writerSignature,
+            this.aodb.createSignHash(
+                "discoveryKey",
+                this.aodb.key.toString("hex")
+            )
+        );
+        if (signer !== remoteUserData.writerAddress) {
+            debug(
+                "Signer does not match the writerAddress. Will not authorize the connected peer: " +
+                    peer.id.toString("hex")
+            );
             return;
         }
 

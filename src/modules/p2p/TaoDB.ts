@@ -39,7 +39,7 @@ export interface ITaoDB_ContentHost_Timestamp {
  */
 export default class TaoDB extends AODB {
     public static ContentKey = "AO/Content";
-    private _userIdentity: Identity;
+
     public schemas: { [key: string]: ITaoDB_Schema } = {
         userContent: {
             key: "schema/%writerAddress%/AO/Content/*/*/signature",
@@ -109,10 +109,6 @@ export default class TaoDB extends AODB {
             }
         }
     };
-
-    public setUserIdentity(v: Identity) {
-        this._userIdentity = v;
-    }
 
     private async insertSchema(schema: ITaoDB_Schema): Promise<any> {
         if (!this._userIdentity) {
