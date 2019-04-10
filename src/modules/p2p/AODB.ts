@@ -30,12 +30,27 @@ export default class AODB {
     private swarm: discovery;
     protected _userIdentity: Identity;
     public connectionStatus: IAOStatus = "DISCONNECTED";
+    private onConnectionBound: Function;
+
+    constructor() {
+        this.onConnectionBound = this.onConnection.bind(this);
+    }
 
     public setUserIdentity(v: Identity) {
         this._userIdentity = v;
+        this.createSwarm();
     }
 
     public start(hyperOptions: IAODB_Args): Promise<string> {
+        if (
+            this.connectionStatus === "CONNECTED" ||
+            this.connectionStatus === "CONNECTING"
+        ) {
+            debug(
+                `Warning, start() method was called on an instance that is already started.`
+            );
+            return Promise.resolve(this.dbKey);
+        }
         this.connectionStatus = "CONNECTING";
         return new Promise((resolve, reject) => {
             try {
@@ -52,20 +67,38 @@ export default class AODB {
                     this.dbKey = this.aodb.key.toString("hex");
                     debug(`ready, aodb derived key: ${this.dbKey}`);
                     this.connectionStatus = "CONNECTED";
-                    this.swarm = discovery(
-                        swarmDefaults({
-                            id: this.dbKey,
-                            stream: this.replicate.bind(this)
-                        })
-                    );
-                    this.swarm.join(this.dbKey);
-                    this.swarm.on("connection", this.onConnection.bind(this));
+                    this.createSwarm();
                     resolve(this.dbKey);
                 });
             } catch (error) {
                 reject(error);
             }
         });
+    }
+
+    private createSwarm() {
+        if (this.swarm) {
+            // wait for the existing swarm to close/cleanup
+            this.swarm.removeEventListener(
+                "connection",
+                this.onConnectionBound
+            );
+            this.swarm.close(() => {
+                debug(`existing discovery swarm closed`);
+                this.swarm = undefined;
+                this.createSwarm();
+            });
+            return;
+        }
+        debug(`creating discovery swarm...`);
+        this.swarm = discovery(
+            swarmDefaults({
+                id: this.dbKey,
+                stream: this.replicate.bind(this)
+            })
+        );
+        this.swarm.join(this.dbKey);
+        this.swarm.on("connection", this.onConnectionBound);
     }
 
     private replicate(peer) {

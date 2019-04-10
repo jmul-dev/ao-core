@@ -186,7 +186,7 @@ export default class AODat extends AORouterInterface {
             debug(
                 `Resuming ${
                     datEntry.complete ? "complete" : "incomplete"
-                } dat: ${datDir}`
+                } dat: ${datEntry.key}`
             );
             Dat(datDir, (err: Error, dat: Dat) => {
                 if (err || !dat) {

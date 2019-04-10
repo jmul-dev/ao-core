@@ -180,18 +180,6 @@ export default class AOP2P extends AORouterInterface {
                 return this.taodb.start(aodbArgs);
             })
             .then(() => {
-                this.taodb
-                    .list("AO", { recursive: true })
-                    .then(data => {
-                        debug(`AO: `, data);
-                    })
-                    .catch(debug);
-                this.taodb
-                    .list("TAO", { recursive: true })
-                    .then(data => {
-                        debug(`TAO: `, data);
-                    })
-                    .catch(debug);
                 request.respond({ data: "great success!" });
             })
             .catch(request.reject);
