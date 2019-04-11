@@ -587,20 +587,14 @@ export default class AODat extends AORouterInterface {
                                         dat.AO_isTrackingStats = true;
                                         stats.on("update", () => {
                                             const newStats = stats.get();
-
-                                            const downloadPercentage =
-                                                (newStats.downloaded.length /
-                                                    newStats.length.length) *
-                                                100;
+                                            const downloadPercentage = (
+                                                (newStats.downloaded /
+                                                    newStats.length) *
+                                                100
+                                            ).toFixed(0);
                                             debug(
-                                                `[${key}] download stats`,
-                                                newStats
+                                                `[${key}] downloaded ${downloadPercentage}%`
                                             );
-                                            // debug(
-                                            //     `[${key}] downloaded ${downloadPercentage.toFixed(
-                                            //         0
-                                            //     )}%`
-                                            // );
                                             //TODO: Add percentage off of length vs downloaded as percentage of newStats
                                             // if(newStats.length.length == newStats.downloaded.length) {
                                             // }

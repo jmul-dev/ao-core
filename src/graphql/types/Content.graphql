@@ -33,6 +33,7 @@ type DatStats {
     files: Int
     byteLength: Int
     length: Int
+    downloaded: Int
     version: Int
     downloadSpeed: Float
     uploadSpeed: Float
