@@ -403,8 +403,8 @@ export default class AOP2P extends AORouterInterface {
                 if (indexData && indexData[buyersPublicKey]) {
                     debug(
                         `[${
-                            request.id
-                        }] _handleWatchAndGetIndexData got index data on first try`
+                            content.title
+                        }]->[${buyersPublicKey}] _handleWatchAndGetIndexData got index data on first try`
                     );
                     request.respond(indexData[buyersPublicKey]);
                     return;
@@ -412,8 +412,8 @@ export default class AOP2P extends AORouterInterface {
                 // 2b. Not found, listen for changes...
                 debug(
                     `[${
-                        request.id
-                    }] _handleWatchAndGetIndexData did not find index data on first try, watching...`
+                        content.title
+                    }]->[${buyersPublicKey}] _handleWatchAndGetIndexData did not find index data on first try, watching...`
                 );
                 const watcher = this.taodb.aodb.watch(indexDataKey);
                 return Promise.resolve(watcher);
@@ -423,23 +423,34 @@ export default class AOP2P extends AORouterInterface {
                     watcher.on("watching", () => {
                         debug(
                             `[${
-                                request.id
-                            }] watching aodb on ${indexDataKey}...`
+                                content.title
+                            }]->[${buyersPublicKey}] watching aodb on ${indexDataKey}...`
                         );
                     });
                     watcher.on("change", () => {
                         debug(
                             `[${
-                                request.id
-                            }] aodb detected change on ${indexDataKey}!`
+                                content.title
+                            }]->[${buyersPublicKey}] aodb detected change on ${indexDataKey}!`
                         );
                         // Check if our value exists
                         this.taodb
                             .get(indexDataKey)
                             .then((indexData: ITaoDB_ContentHost_IndexData) => {
                                 if (indexData && indexData[buyersPublicKey]) {
+                                    debug(
+                                        `[${
+                                            content.title
+                                        }]->[${buyersPublicKey}] aodb detected change on ${indexDataKey}!`
+                                    );
                                     watcher.destroy();
                                     localResolve(indexData[buyersPublicKey]);
+                                } else {
+                                    debug(
+                                        `[${
+                                            content.title
+                                        }]->[${buyersPublicKey}] aodb detected change on ${indexDataKey}, but no matching indexData entry for buyer. Still waiting...`
+                                    );
                                 }
                             });
                     });
@@ -623,7 +634,6 @@ export default class AOP2P extends AORouterInterface {
         if (!content) {
             return request.reject(new Error("No content"));
         }
-
         Promise.resolve()
             .then(() => {
                 return new Promise((localResolve, localReject) => {
@@ -640,6 +650,14 @@ export default class AOP2P extends AORouterInterface {
                             (
                                 existingIndexData: ITaoDB_ContentHost_IndexData
                             ) => {
+                                const existingBuyerCount = Object.keys(
+                                    existingIndexData
+                                ).length;
+                                debug(
+                                    `content[${
+                                        content.title
+                                    }] has been sold ${existingBuyerCount} times, appending to previous indexData`
+                                );
                                 localResolve(existingIndexData);
                             }
                         )
@@ -650,6 +668,11 @@ export default class AOP2P extends AORouterInterface {
                             ) {
                                 debug(
                                     `Warning, expected indexData key not found in aodb: ${indexDataKey}. Proceeding with write anyway.`
+                                );
+                                debug(
+                                    `content[${
+                                        content.title
+                                    }] has not been sold, indexData not found`
                                 );
                                 localResolve({});
                             } else {
@@ -673,13 +696,17 @@ export default class AOP2P extends AORouterInterface {
                     request.respond({ success: true, alreadyExists: true });
                     return null;
                 }
-                existingIndexData[buyersPublicKey] = {
+                let updatedIndexData: ITaoDB_ContentHost_IndexData = Object.assign(
+                    {},
+                    existingIndexData
+                );
+                updatedIndexData[buyersPublicKey] = {
                     signature: encryptedKeySignature,
                     decryptionKey: encryptedDecryptionKey
                 };
                 return this.taodb.insertContentHostIndexData({
                     content,
-                    indexData: existingIndexData
+                    indexData: updatedIndexData
                 });
             })
             .then(() => {

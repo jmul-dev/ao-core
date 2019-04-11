@@ -501,7 +501,7 @@ export default class Core extends EventEmitter {
                 // TODO: remove once taodb key has been moved to contracts
                 debugLog(`WARNING, HARDCODED TAODB KEY`);
                 taoDbKey =
-                    "b5175e3afdd2f327b979e07584d00fafb3371fde4a852a4a8b39255b337bb3a0";
+                    "1e49bba118a52b8c668b546a47e4de78669904569ab85f2beae8da990f401c00";
 
                 // 2. Spin up p2p module with the fetched taoDbKey
                 const p2pInitData: AOP2P_Init_Data = {
