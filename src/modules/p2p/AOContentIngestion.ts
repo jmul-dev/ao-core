@@ -35,7 +35,8 @@ export default class AOContentIngestion extends EventEmitter {
         // @ts-ignore Types not up to date
         this.processingQueue = queue({
             concurrency: 2,
-            autostart: true
+            autostart: true,
+            timeout: 5 * 60000 // 5 min timeout to avoid freezing up the queue
         });
     }
 

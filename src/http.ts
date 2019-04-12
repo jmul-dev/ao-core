@@ -69,6 +69,8 @@ export default class Http {
             graphqlUploadExpress({ maxFieldSize: "1gb" }),
             graphqlExpress({
                 schema: graphqlSchema,
+                // debug prints additional info when execution error occurs
+                debug: debug,
                 // context given to our graphql resolvers
                 context: {
                     router,

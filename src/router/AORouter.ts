@@ -395,10 +395,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
                                 }][${event}]`
                             );
                         }
-                        if (
-                            !incomingMessage.routerParams.ignoreLogging &&
-                            process.env.NODE_ENV !== "production"
-                        ) {
+                        if (!incomingMessage.routerParams.ignoreLogging) {
                             debug(
                                 `  [${message.routerMessageId}][${event}]: ${
                                     from.name

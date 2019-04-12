@@ -50,6 +50,17 @@ import {
 const AOContentHostContract = require("ao-contracts/build/contracts/AOContentHost.json");
 const debug = Debug("ao:userSession");
 
+/**
+ * NOTE: there is currently a flaw in how this class is being used that can result
+ * in identity crossover's between users. If, while a piece of content is being processed,
+ * the there is a change in user/identity by calling register() method again, then that
+ * content may finish processing with a reference to the new user identity. Ideally, a
+ * new instance of this class would be instantiated on user change, but time is of the essence.
+ *
+ * For now I just store a scoped reference inside the processing methods. This is not a solution,
+ * but at least ensures same user identity is used for the processing for any one state. In most
+ * cases user action is required after a state change which helps minimize the problem.
+ */
 export default class AOUserSession {
     private router: AORouterInterface;
     public ethAddress: string;
@@ -352,6 +363,7 @@ export default class AOUserSession {
      * @param {AODappContent} content Dapp content specifically needs unpacking/unzipping
      */
     private _handleContentUnpacking(content: AODappContent) {
+        const sessionEthAddress = this.ethAddress;
         if (
             content.contentType !== AOContent.Types.DAPP ||
             content.unpacked === true
@@ -389,7 +401,7 @@ export default class AOUserSession {
                     });
                 this.router.send("/db/logs/insert", {
                     message: `Succesfully unpacked DAPP [${content.title}]`,
-                    userId: this.ethAddress
+                    userId: sessionEthAddress
                 });
             })
             .catch(error => {
@@ -406,10 +418,12 @@ export default class AOUserSession {
      */
     private _handleIncomingContentPurchase(buyContentEvent: BuyContentEvent) {
         return new Promise((resolve, reject) => {
+            const sessionEthAddress = this.ethAddress;
+            const sessionIdentity = this.identity;
             // 0. Disregard if the BuyContent event is from the current user
             if (
                 buyContentEvent.buyer.toLowerCase() ===
-                this.ethAddress.toLowerCase()
+                sessionEthAddress.toLowerCase()
             ) {
                 return null;
             }
@@ -445,7 +459,7 @@ export default class AOUserSession {
                             contentDecryptionKey: userContent.decryptionKey,
                             contentRequesterPublicKey:
                                 buyContentEvent.publicKey,
-                            contentOwnersPrivateKey: this.identity.privateKey
+                            contentOwnersPrivateKey: sessionIdentity.privateKey
                         };
                         const {
                             encryptedDecryptionKey,
@@ -456,7 +470,7 @@ export default class AOUserSession {
                         // 3. Handoff to discovery
                         const sendDecryptionKeyMessage: AOP2P_Write_Decryption_Key_Data = {
                             content: userContent,
-                            hostsPublicKey: this.identity.publicKey,
+                            hostsPublicKey: sessionIdentity.publicKey,
                             buyersPublicKey: buyContentEvent.publicKey,
                             encryptedDecryptionKey,
                             encryptedKeySignature: encryptedDecryptionKeySignature
@@ -487,7 +501,7 @@ export default class AOUserSession {
                                         } to user ${
                                             buyContentEvent.buyer
                                         }, decryption key handoff successful`,
-                                        userId: this.ethAddress
+                                        userId: sessionEthAddress
                                     });
                                 } else {
                                     debug(
@@ -499,7 +513,7 @@ export default class AOUserSession {
                                         } to user ${
                                             buyContentEvent.buyer
                                         }, decryption key handoff unsuccessful`,
-                                        userId: this.ethAddress
+                                        userId: sessionEthAddress
                                     });
                                 }
                                 resolve();
@@ -533,6 +547,7 @@ export default class AOUserSession {
      * @param {AOContent} content
      */
     private _handleContentHostDiscovery(content: AOContent) {
+        const sessionEthAddress = this.ethAddress;
         // 1. Grab all nodes/contentHostId's for this piece of content
         const findEncryptedNodeData: AOP2P_GetContentHosts_Data = { content };
         this.router
@@ -622,7 +637,7 @@ export default class AOUserSession {
                             }]. See dat://${
                                 downloadResponse.data.datEntry.key
                             }`,
-                            userId: this.ethAddress
+                            userId: sessionEthAddress
                         });
                     })
                     .catch(error => {
@@ -697,6 +712,7 @@ export default class AOUserSession {
      * @param {AOContent} content
      */
     private _handleContentDownloading(content: AOContent) {
+        const sessionEthAddress = this.ethAddress;
         setTimeout(() => {
             const datStatsParams: AODat_GetDatStats_Data = {
                 key: content.fileDatKey
@@ -749,6 +765,7 @@ export default class AOUserSession {
      * @param {AOContent} content
      */
     private _listenForContentPurchaseReceipt(content: AOContent) {
+        const sessionEthAddress = this.ethAddress;
         if (!content.transactions || !content.transactions.purchaseTx) {
             debug(
                 `Warning: calling _listenForContentPurchaseReceipt without a purchaseTx`
@@ -797,7 +814,7 @@ export default class AOUserSession {
                                 message: `Purchased content [${
                                     content.title
                                 }], see tx/${content.transactions.purchaseTx}`,
-                                userId: this.ethAddress
+                                userId: sessionEthAddress
                             });
                             // Content succesfully purchased, begin next step in process (listen for decryption key)
                             this.processContent(updatedContent);
@@ -822,6 +839,8 @@ export default class AOUserSession {
      * @param {AOContent} content
      */
     private _listenForContentDecryptionKey(content: AOContent) {
+        const sessionEthAddress = this.ethAddress;
+        const sessionIdentity = this.identity;
         debug("starting to listen for content decryption keys");
         if (content.state !== AOContentState.PURCHASED) {
             debug(
@@ -833,12 +852,12 @@ export default class AOUserSession {
         }
         const p2pWatchKeyRequest: AOP2P_Watch_AND_Get_IndexData_Data = {
             content,
-            buyersPublicKey: this.identity.publicKey
+            buyersPublicKey: sessionIdentity.publicKey
         };
         this.router
             .send("/p2p/watchAndGetIndexData", p2pWatchKeyRequest)
             .then((response: IAORouterMessage) => {
-                if (response.ethAddress !== this.ethAddress) {
+                if (response.ethAddress !== sessionEthAddress) {
                     // TODO: we currently do not have a method of stopping /p2p/watchAndGetIndexData. There is a chance
                     // that the user has changed within this time frame and we dont want
                     debug(
@@ -874,7 +893,7 @@ export default class AOUserSession {
                                 message: `Decryption key received for content [${
                                     content.title
                                 }]`,
-                                userId: this.ethAddress
+                                userId: sessionEthAddress
                             });
                         })
                         .catch(debug);
@@ -896,6 +915,8 @@ export default class AOUserSession {
      * @param {AOContent} content
      */
     private _handleContentDecryptionKeyReceived(content: AOContent) {
+        const sessionEthAddress = this.ethAddress;
+        const sessionIdentity = this.identity;
         if (!content.receivedIndexData) {
             debug(
                 `Warning: calling _handleContentDecryptionKeyReceived without receivedIndexData from p2p/hyperdb`
@@ -905,7 +926,7 @@ export default class AOUserSession {
         // 1. Decrypt the decryption key that we received from seller
         AOCrypto.decryptMessage({
             message: content.receivedIndexData.decryptionKey,
-            privateKey: this.identity.privateKey
+            privateKey: sessionIdentity.privateKey
         })
             .then((decryptionKey: string) => {
                 // 2. Decrypt/ffprobe/Checksum the downloaded file and match against the content data.
@@ -935,7 +956,7 @@ export default class AOUserSession {
                                     : `Decrypted content failed the verification step, checksum did not match the original content [${
                                           content.title
                                       }]`,
-                            userId: this.ethAddress
+                            userId: sessionEthAddress
                         });
                         // 4. Update the content with verification state
                         let contentUpdateQuery: AODB_UserContentUpdate_Data = {
@@ -978,10 +999,12 @@ export default class AOUserSession {
      * @param {AOContent} content
      */
     private _handleContentVerified(content: AOContent) {
+        const sessionEthAddress = this.ethAddress;
+        const sessionIdentity = this.identity;
         // 1. Get the decryption key again
         AOCrypto.decryptMessage({
             message: content.receivedIndexData.decryptionKey,
-            privateKey: this.identity.privateKey
+            privateKey: sessionIdentity.privateKey
         })
             .then((decryptionKey: string) => {
                 // 2. New directory for data to be re-encrypted (tmp path)
@@ -1069,7 +1092,7 @@ export default class AOUserSession {
                                             message: `Content succesfully encrypted [${
                                                 content.title
                                             }]`,
-                                            userId: this.ethAddress
+                                            userId: sessionEthAddress
                                         });
                                     })
                                     .catch(error => {
@@ -1105,6 +1128,8 @@ export default class AOUserSession {
      * @param {AOContent} content
      */
     private _handleContentEncrypted(content: AOContent) {
+        const sessionEthAddress = this.ethAddress;
+        const sessionIdentity = this.identity;
         // 1. Initialize the new Dat within our temp folder created during encryption process
         const createDatData: AODat_Create_Data = {
             newDatDir: content.getDatTempFolderPath() //Contextually aware of the dat's constraints to 'content' path
@@ -1132,7 +1157,10 @@ export default class AOUserSession {
                             update: {
                                 $set: {
                                     state: AOContentState.DAT_INITIALIZED,
-                                    fileDatKey: newDatKey
+                                    fileDatKey: newDatKey,
+                                    // At this point the content is reencrypted and it is safe to update the content's node
+                                    nodePublicKey: sessionIdentity.publicKey,
+                                    nodeEthAddress: sessionEthAddress
                                 }
                             }
                         };
@@ -1167,6 +1195,7 @@ export default class AOUserSession {
      * @param {AOContent} content
      */
     private _listenForContentStakingReceipt(content: AOContent) {
+        const sessionEthAddress = this.ethAddress;
         if (
             !content.transactions ||
             (!content.transactions.stakeTx && !content.transactions.hostTx)
@@ -1251,7 +1280,7 @@ export default class AOUserSession {
                                 } content [${
                                     content.title
                                 }], see tx:${transactionHash}`,
-                                userId: this.ethAddress
+                                userId: sessionEthAddress
                             });
                         }
                         // Handoff to next state handler
@@ -1275,6 +1304,7 @@ export default class AOUserSession {
      * @param {AOContent} content
      */
     private _handleContentStaked(content: AOContent) {
+        const sessionEthAddress = this.ethAddress;
         debug(
             "Content staked, begin process of making discoverable...",
             content.fileDatKey
@@ -1292,7 +1322,7 @@ export default class AOUserSession {
                 importDats.push(
                     this.router.send("/dat/importSingle", fileImportDatData)
                 );
-                if (content.creatorEthAddress == this.ethAddress) {
+                if (content.creatorEthAddress == sessionEthAddress) {
                     importDats.push(
                         this.router.send("/dat/importSingle", metaImportDatData)
                     );
@@ -1312,7 +1342,7 @@ export default class AOUserSession {
                 resumeDats.push(
                     this.router.send("/dat/resumeSingle", fileResumeDatData)
                 );
-                if (content.creatorEthAddress == this.ethAddress) {
+                if (content.creatorEthAddress == sessionEthAddress) {
                     resumeDats.push(
                         this.router.send("/dat/resumeSingle", metaResumeDatData)
                     );
@@ -1322,7 +1352,7 @@ export default class AOUserSession {
             .then(() => {
                 // 3. If this is the content creator, we also register the content under their
                 // namespace
-                if (content.creatorEthAddress == this.ethAddress) {
+                if (content.creatorEthAddress == sessionEthAddress) {
                     const contentRegistrationRequest: AOP2P_ContentRegistration_Data = {
                         content
                     };
@@ -1360,7 +1390,7 @@ export default class AOUserSession {
                     message: `Content [${
                         content.title
                     }] is now discoverable within the AO network!`,
-                    userId: this.ethAddress
+                    userId: sessionEthAddress
                 });
                 return this.router.send(
                     "/db/user/content/update",

@@ -57,9 +57,6 @@ export default (
                         // 3. Insert the content into user db (they have begun the content purchase/hosting process)
                         let updatedContent: AOContent = AOContent.fromObject({
                             ...response.data[0],
-                            // Bringing this content into node, so the nodePublicKey/nodeEthAddress now reference this node.
-                            nodePublicKey: context.userSession.publicKey,
-                            nodeEthAddress: context.userSession.ethAddress,
                             state: AOContentState.HOST_DISCOVERY
                         });
                         context.router

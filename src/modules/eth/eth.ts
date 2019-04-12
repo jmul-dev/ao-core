@@ -509,21 +509,10 @@ export default class AOEth extends AORouterInterface {
         return new Promise((resolve, reject) => {
             try {
                 let subscription = this.contracts.aoPurchaseReceipt.events
-                    .BuyContent(
-                        {
-                            fromBlock: 0,
-                            toBlock: "latest"
-                        },
-                        (error, event) => {
-                            if (error) {
-                                debug(
-                                    `BuyContent callback error: ${
-                                        error.message
-                                    }`
-                                );
-                            }
-                        }
-                    )
+                    .BuyContent({
+                        fromBlock: 0,
+                        toBlock: "latest"
+                    })
                     .on("data", event => {
                         const buyContentEvent: BuyContentEvent =
                             event.returnValues;
@@ -566,8 +555,18 @@ export default class AOEth extends AORouterInterface {
             debug(
                 `Attempting to unsubscribe from BuyContent event listener...`
             );
-            this.events.BuyContent.unsubscribe();
-            delete this.events.BuyContent;
+            this.events.BuyContent.unsubscribe((error, unsubscribed) => {
+                if (error) {
+                    debug(`Error unsubscribing from BuyContent event:`, error);
+                } else if (!unsubscribed) {
+                    debug(
+                        `Unsubscribe from BuyContent event returned false with no error`
+                    );
+                } else {
+                    debug(`Unsubscribed from BuyContent event.`);
+                }
+                delete this.events.BuyContent;
+            });
         }
     }
 
