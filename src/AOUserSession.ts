@@ -424,11 +424,11 @@ export default class AOUserSession {
                 .then(async (response: IAORouterMessage) => {
                     if (!response.data || response.data.length < 1) {
                         // NOTE: this is most likely a BuyContent event for another user's content / host
-                        debug(
-                            `[BuyContent][contentHostId=${
-                                buyContentEvent.contentHostId
-                            }] Skip, user is not a host.`
-                        );
+                        // debug(
+                        //     `[BuyContent][contentHostId=${
+                        //         buyContentEvent.contentHostId
+                        //     }] Skip, user is not a host.`
+                        // );
                         return;
                     }
                     const userContent: AOContent = AOContent.fromObject(
@@ -447,7 +447,6 @@ export default class AOUserSession {
                                 buyContentEvent.publicKey,
                             contentOwnersPrivateKey: this.identity.privateKey
                         };
-                        debug(contentDecryptParams);
                         const {
                             encryptedDecryptionKey,
                             encryptedDecryptionKeySignature

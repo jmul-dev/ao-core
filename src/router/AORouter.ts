@@ -373,9 +373,9 @@ export default class AORouter extends AORouterCoreProcessInterface {
                     debug(
                         `${
                             receivingRegistryEntry.name
-                        } currently has ${receivingProcess.listenerCount(
+                        }, ${receivingProcess.listenerCount(
                             "message"
-                        )} message listeners attached...`
+                        )} message listeners attached, latest event ${event}`
                     );
                 }
                 // 6. Match incoming messages to the requestId, this will be our response

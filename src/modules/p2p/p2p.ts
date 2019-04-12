@@ -656,7 +656,7 @@ export default class AOP2P extends AORouterInterface {
                                 debug(
                                     `content[${
                                         content.title
-                                    }] has been sold ${existingBuyerCount} times, appending to previous indexData`
+                                    }] has been sold ${existingBuyerCount} times`
                                 );
                                 localResolve(existingIndexData);
                             }
@@ -686,12 +686,14 @@ export default class AOP2P extends AORouterInterface {
                     existingIndexData[buyersPublicKey];
                 if (
                     existingIndexDataForBuyer &&
-                    existingIndexDataForBuyer.decryptionKey
+                    existingIndexDataForBuyer.decryptionKey &&
+                    existingIndexDataForBuyer.decryptionKey ===
+                        encryptedDecryptionKey
                 ) {
                     debug(
-                        `Decryption key handoff already exists for content ${
+                        `content[${
                             content.title
-                        } and buyer ${buyersPublicKey}`
+                        }] decryption key handoff for buyer[${buyersPublicKey}] already processed, skipping write to indexData`
                     );
                     request.respond({ success: true, alreadyExists: true });
                     return null;
