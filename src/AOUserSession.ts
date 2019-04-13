@@ -425,7 +425,7 @@ export default class AOUserSession {
                 buyContentEvent.buyer.toLowerCase() ===
                 sessionEthAddress.toLowerCase()
             ) {
-                return null;
+                return resolve();
             }
             // 1. Get the corresponding content entry in user db (make sure it is not )
             const contentQuery: AODB_UserContentGet_Data = {
@@ -443,7 +443,7 @@ export default class AOUserSession {
                         //         buyContentEvent.contentHostId
                         //     }] Skip, user is not a host.`
                         // );
-                        return;
+                        return resolve();
                     }
                     const userContent: AOContent = AOContent.fromObject(
                         response.data[0]

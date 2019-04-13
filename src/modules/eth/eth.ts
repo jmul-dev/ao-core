@@ -6,6 +6,7 @@ import Web3 from "web3";
 import SolidityEvent from "web3-legacy/lib/web3/event.js";
 import Debug from "../../AODebug";
 import { IAOStatus } from "../../models/AOStatus";
+import queue, { IQueue } from "queue";
 const AOPurchaseReceipt = require("ao-contracts/build/contracts/AOPurchaseReceipt.json");
 const AOContent = require("ao-contracts/build/contracts/AOContent.json");
 const AOContentHost = require("ao-contracts/build/contracts/AOContentHost.json");
@@ -112,6 +113,7 @@ export default class AOEth extends AORouterInterface {
         lastFetched: null,
         refetchPeriodInMs: 60 * 1000 // 1 min
     };
+    private buyContentEventsQueue: IQueue;
 
     private contracts: {
         // sry no type checking on these bad boys!
@@ -131,6 +133,12 @@ export default class AOEth extends AORouterInterface {
         this.events = {
             BuyContent: undefined
         };
+        // @ts-ignore Types not up to date
+        this.buyContentEventsQueue = queue({
+            concurrency: 2,
+            autostart: true,
+            timeout: 30000 // 30 sec timeout to avoid freezing up the queue
+        });
         this.router.on("/eth/init", this._handleInit.bind(this));
         this.router.on(
             "/eth/settings/taoDbKey",
@@ -505,6 +513,21 @@ export default class AOEth extends AORouterInterface {
         }
     }
 
+    private buyContentEventsQueueHandler(buyContentEvent: BuyContentEvent) {
+        // queue handler must resolve
+        return new Promise((resolve, reject) => {
+            this.router
+                .send("/core/content/incomingPurchase", buyContentEvent)
+                .then(() => {
+                    resolve();
+                })
+                .catch(error => {
+                    debug(error);
+                    resolve();
+                });
+        });
+    }
+
     private listenForBuyContentEvents(): Promise<any> {
         return new Promise((resolve, reject) => {
             try {
@@ -516,13 +539,12 @@ export default class AOEth extends AORouterInterface {
                     .on("data", event => {
                         const buyContentEvent: BuyContentEvent =
                             event.returnValues;
-                        this.router
-                            .send(
-                                "/core/content/incomingPurchase",
+                        this.buyContentEventsQueue.push(
+                            this.buyContentEventsQueueHandler.bind(
+                                this,
                                 buyContentEvent
                             )
-                            .then(() => {})
-                            .catch(debug);
+                        );
                     })
                     .on("error", error => {
                         debug(
