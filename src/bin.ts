@@ -97,6 +97,7 @@ const argv = require("yargs")
             }
         }
     })
-    .default(Core.DEFAULT_OPTIONS).argv;
+    .default(Core.DEFAULT_OPTIONS)
+    .help().argv;
 
 const core = new Core(argv);

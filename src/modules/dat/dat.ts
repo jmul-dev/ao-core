@@ -106,6 +106,7 @@ export default class AODat extends AORouterInterface {
     private _handleInit(request: IAORouterRequest) {
         const { ethNetworkId }: AODat_Init_Data = request.data;
         // 1. Setup & load db (note the db is namespaced based on the current network we are on)
+        debug(`Initializing dat module...`);
         this.datsDb = new Datastore({
             filename: path.resolve(
                 this.storageLocation,
@@ -119,6 +120,7 @@ export default class AODat extends AORouterInterface {
         });
         this.datsDb.loadDatabase((error?: Error) => {
             if (error) {
+                debug(`Failed to load dat module database`);
                 request.reject(error);
                 return;
             }
@@ -129,14 +131,15 @@ export default class AODat extends AORouterInterface {
             this.router
                 .send("/fs/mkdir", fsMakeContentDirData)
                 .then(() => {
+                    debug(
+                        `Content directory exists, proceed to resume dats...`
+                    );
                     // NOTE: resolving early for now in case resumeAll fails
                     // I think it is possible a single dat can become fucked.
                     request.respond({});
                     // 3. Resume dats
                     this._resumeAll()
-                        .then(() => {
-                            debug(`All dats resumed.`);
-                        })
+                        .then(() => {})
                         .catch((error: Error) => {
                             debug(`Error resuming all dats: ${error.message}`);
                         });
@@ -157,6 +160,7 @@ export default class AODat extends AORouterInterface {
                     return;
                 }
                 let datKeyPromises = [];
+                debug(`Attempting to resume ${docs.length} dats...`);
                 docs.forEach((datEntry: DatEntry) => {
                     datKeyPromises.push(this._resume(datEntry));
                 });
@@ -165,6 +169,7 @@ export default class AODat extends AORouterInterface {
                         this.router.send("/core/log", {
                             message: `[AO Dat] All local dats resumed`
                         });
+                        debug(`Resume all Dats succesfull`);
                         resolve();
                     })
                     .catch(reject);
