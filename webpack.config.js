@@ -58,18 +58,18 @@ var config = {
         libraryTarget: "commonjs"
     },
     optimization: {
-         minimize: process.env.NODE_ENV === "production" ? true : false, // <---- disables uglify.
-         minimizer: [
-             new UglifyJsPlugin({
-                 exclude: /modules/, // Need to exclude for string replacement to happen post compile.
-                 parallel: true,
-		sourceMap: true,
-		uglifyOptions: {
-			compress: false,
-		}
-             })
-         ], //if you want to customize it.
-         namedModules: true //enabled for string replacement
+        minimize: process.env.NODE_ENV === "production" ? true : false, // <---- disables uglify.
+        minimizer: [
+            new UglifyJsPlugin({
+                exclude: /modules/, // Need to exclude for string replacement to happen post compile.
+                parallel: true,
+                sourceMap: true,
+                uglifyOptions: {
+                    compress: false
+                }
+            })
+        ], //if you want to customize it.
+        namedModules: true //enabled for string replacement
     },
     resolve: {
         // Add `.ts` and `.tsx` as a resolvable extension.
@@ -108,10 +108,10 @@ var config = {
                         __dirname,
                         "node_modules/aodb/node_modules/eccrypto"
                     ),
-		    path.resolve(
+                    path.resolve(
                         __dirname,
                         "node_modules/eth-crypto/node_modules/eccrypto"
-                    ),
+                    )
                 ],
                 loader: "string-replace-loader",
                 options: {
@@ -155,8 +155,8 @@ var config = {
     },
     plugins: [
         new webpack.IgnorePlugin(/vertx/), // sry
-        new webpack.IgnorePlugin(/^electron$/),  // ignore electron requires (handled at runtime)
-	new webpack.BannerPlugin({ banner: "#!/usr/bin/env node", raw: true }),
+        new webpack.IgnorePlugin(/^electron$/), // ignore electron requires (handled at runtime)
+        new webpack.BannerPlugin({ banner: "#!/usr/bin/env node", raw: true }),
         new CopyWebpackPlugin([
             { from: "node_modules/ffprobe-static/bin", to: "bin" },
             {
@@ -200,7 +200,7 @@ if (process.platform === "win32") {
         "dist/bin/linux/x64/ffprobe"
     );
 }
-if (false && process.platform !== "win32") {
+if (process.platform !== "win32") {
     config.plugins.push(
         new PermissionsOutputPlugin({
             buildFiles: [
