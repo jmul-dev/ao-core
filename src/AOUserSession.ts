@@ -221,6 +221,9 @@ export default class AOUserSession {
                                 request.data;
                             this._handleIncomingContentPurchase(buyContentEvent)
                                 .then(() => {
+                                    debug(
+                                        `sending /core/content/incomingPurchase response`
+                                    );
                                     request.respond({});
                                 })
                                 .catch(error => {
@@ -425,6 +428,7 @@ export default class AOUserSession {
                 buyContentEvent.buyer.toLowerCase() ===
                 sessionEthAddress.toLowerCase()
             ) {
+                debug(`[BuyContent] Skip, user is the buyer.`);
                 return resolve();
             }
             // 1. Get the corresponding content entry in user db (make sure it is not )
@@ -438,11 +442,11 @@ export default class AOUserSession {
                 .then(async (response: IAORouterMessage) => {
                     if (!response.data || response.data.length < 1) {
                         // NOTE: this is most likely a BuyContent event for another user's content / host
-                        // debug(
-                        //     `[BuyContent][contentHostId=${
-                        //         buyContentEvent.contentHostId
-                        //     }] Skip, user is not a host.`
-                        // );
+                        debug(
+                            `[BuyContent][contentHostId=${
+                                buyContentEvent.contentHostId
+                            }] Skip, user is not a host.`
+                        );
                         return resolve();
                     }
                     const userContent: AOContent = AOContent.fromObject(
