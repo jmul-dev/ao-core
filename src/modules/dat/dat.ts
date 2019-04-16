@@ -234,7 +234,6 @@ export default class AODat extends AORouterInterface {
                 });
                 dat.AO_joinedNetwork = true;
                 this.dats[datEntry.key] = dat;
-                resolve();
                 this._updateDatEntry(datEntry);
                 // Finally, if the datEntry is not complete, listen for completion and update our
                 // db.
@@ -253,7 +252,10 @@ export default class AODat extends AORouterInterface {
                         };
                         this._updateDatEntry(updatedDatEntry);
                     });
+                } else {
+                    debug(`Resumed complete dat://${dat.key.toString("hex")}`);
                 }
+                resolve();
             });
         });
     }

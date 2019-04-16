@@ -6,7 +6,8 @@ import AOContent, {
     AOContentState,
     AOContentType,
     AOContentLicense,
-    AODappContent
+    AODappContent,
+    AOContentTypes
 } from "../../models/AOContent";
 import { AODat_Create_Data } from "../../modules/dat/dat";
 import {
@@ -392,6 +393,19 @@ export default (
                     return Promise.resolve();
                 }
             )
+            .then(() => {
+                // Add datignore for DAPP content type (content is unpacked within dat folder)
+                if (contentJson.contentType === AOContentTypes.DAPP) {
+                    debug(`Writing datignore file for dapp content...`);
+                    const contentWriteData: IAOFS_Write_Data = {
+                        writePath: `content/${metadataTempId}/.datignore`,
+                        data: "unpacked"
+                    };
+                    return context.router.send("/fs/write", contentWriteData);
+                } else {
+                    return Promise.resolve();
+                }
+            })
             .then(() => {
                 // 8. Dats are initialized, lets update the contentJson with those dat keys and then write contentJson into metadata dat repo
                 // NOTE: there is an important distinction between the following:
