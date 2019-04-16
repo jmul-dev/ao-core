@@ -242,7 +242,7 @@ export default class AOFS extends AORouterInterface {
         let readStream: ReadStream = requestData.stream;
         let writeStream: WriteStream;
         try {
-            writeStream = fs.createWriteStream(writePath);
+            writeStream = fsExtra.createWriteStream(writePath, { autoClose: true });
         } catch (e) {
             debug("Error opening ReadStream or WriteStream", e);
             rejectAndExit(e);
@@ -257,12 +257,22 @@ export default class AOFS extends AORouterInterface {
                 }] Error on read stream (subprocess fd:3):`,
                 error
             );
+            readStream.unpipe();
+            writeStream.destroy(error);
         });
         readStream.on("close", error => {
             streamDebug(
                 `[${
                     requestData.writePath
                 }] Read stream close (subprocess fd:3):`,
+                error
+            );
+        });
+        readStream.on("end", error => {
+            streamDebug(
+                `[${
+                    requestData.writePath
+                }] Read stream end (subprocess fd:3), this should trigger writeStream end`,
                 error
             );
         });
@@ -273,6 +283,8 @@ export default class AOFS extends AORouterInterface {
                 }] Error on write stream (subprocess):`,
                 error
             );
+            readStream.unpipe();
+            readStream.resume();
             rejectAndExit(error);
         });
         writeStream.on("close", error => {
@@ -281,7 +293,6 @@ export default class AOFS extends AORouterInterface {
                 error
             );
         });
-
         readStream.pipe(writeStream).on("finish", () => {
             debug("Finishing writing to disk");
             const fileStats = fs.statSync(writePath);

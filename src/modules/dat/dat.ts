@@ -505,7 +505,8 @@ export default class AODat extends AORouterInterface {
                     // B1. We do not have this dat in the DB records, let's make sure we didn't try to download it in the past
                     const newDatPath = path.join(this.datDir, key);
                     const removeDatPathData: IAOFS_Unlink_Data = {
-                        removePath: newDatPath
+                        removePath: newDatPath,
+                        isAbsolute: true
                     };
                     this.router
                         .send("/fs/unlink", removeDatPathData)
