@@ -927,6 +927,10 @@ export default class AOUserSession {
             );
             return null;
         }
+        debug(
+            `Attempting to decrypt received indexData:`,
+            content.receivedIndexData
+        );
         // 1. Decrypt the decryption key that we received from seller
         AOCrypto.decryptMessage({
             message: content.receivedIndexData.decryptionKey,
