@@ -85,7 +85,13 @@ export class AOSubprocessRouter extends EventEmitter
             return;
         }
         if (message.data && message.data.stream) {
-            message.data.stream = fs.createReadStream(null, { fd: 3 });
+            try {
+                message.data.stream = fs.createReadStream(null, { fd: 3, autoClose: true });   
+            } catch (error) {
+                console.error(`Error attaching read stream to fd:3, ${error.message}`)
+                this._routeMessageResponse(message, true, {})
+                return;
+            }
         }
         const incomingRequest: IAORouterRequest = {
             id: message.requestId,
@@ -156,7 +162,7 @@ export class AOSubprocessRouter extends EventEmitter
                  * process (core)
                  */
                 const readableStream = data.stream;
-                const outputStream = fs.createWriteStream(null, { fd: 4 });
+                const outputStream = fs.createWriteStream(null, { fd: 4, autoClose: true });
                 readableStream.pipe(outputStream);
                 data.stream = true; // We dont pass the stream object through to the router
             }

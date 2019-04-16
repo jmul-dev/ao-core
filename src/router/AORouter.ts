@@ -308,7 +308,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
                     streamDebug(
                         `[${
                             message.data.writePath
-                        }] Error on read stream (AORouter), closing write stream:`,
+                        }] Error on read stream (AORouter)`,
                         error
                     );
                 });
@@ -323,7 +323,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
                     streamDebug(
                         `[${
                             message.data.writePath
-                        }] Read stream end (AORouter), attempting to end writeStream...`
+                        }] Read stream end (AORouter)...`
                     );
                 });
                 writeStream.on("error", error => {
@@ -339,6 +339,13 @@ export default class AORouter extends AORouterCoreProcessInterface {
                         `[${
                             message.data.writePath
                         }] Write stream close (AORouter):`
+                    );
+                });
+                writeStream.on("finish", () => {
+                    streamDebug(
+                        `[${
+                            message.data.writePath
+                        }] Write stream finish (AORouter)`
                     );
                 });
                 readStream.pipe(writeStream);
