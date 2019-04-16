@@ -54,8 +54,11 @@ export default (
          */
         const contentTempId: string = md5(new Date());
         const metadataTempId: string = md5(new Date() + "-preview");
-        const contentTempPath: string = path.join("content", contentTempId);
-        const metadataTempPath: string = path.join("content", metadataTempId);
+        const contentTempPath: string = path.join("content/tmp", contentTempId);
+        const metadataTempPath: string = path.join(
+            "content/tmp",
+            metadataTempId
+        );
         const metadataFileFields = ["featuredImage", "videoTeaser"];
 
         let contentJson: AOContent = AOContent.fromObject({
@@ -419,14 +422,14 @@ export default (
                     );
                     debug(`Moving content from temp directories...`);
                     const movePreviewDatData: IAOFS_Move_Data = {
-                        srcPath: path.join("content", metadataTempId),
+                        srcPath: metadataTempPath,
                         destPath: path.join(
                             "content",
                             contentJson.metadataDatKey
                         )
                     };
                     const moveContentDatData: IAOFS_Move_Data = {
-                        srcPath: path.join("content", contentTempId),
+                        srcPath: contentTempPath,
                         destPath: path.join("content", contentJson.fileDatKey)
                     };
                     return Promise.all([
