@@ -9,7 +9,10 @@ import AOContent, {
     AODappContent,
     AOContentTypes
 } from "../../models/AOContent";
-import { AODat_Create_Data } from "../../modules/dat/dat";
+import {
+    AODat_Create_Data,
+    AODat_ImportSingle_Data
+} from "../../modules/dat/dat";
 import {
     IAOFS_Mkdir_Data,
     IAOFS_Move_Data,
@@ -359,6 +362,18 @@ export default (
                 });
             })
             .then(() => {
+                // Add datignore for initial dat create importFiles call
+                debug(`Writing datignore file for...`);
+                const datignoreWriteData: IAOFS_Write_Data = {
+                    writePath: `content/${metadataTempId}/.datignore`,
+                    data:
+                        contentJson.contentType === AOContentTypes.DAPP
+                            ? "# ignore\n.dat\nunpacked\n"
+                            : "# ignore\n.dat\n"
+                };
+                return context.router.send("/fs/write", datignoreWriteData);
+            })
+            .then(() => {
                 // 6. Dat intialization, both content and metadata (used in discovery)
                 debug(`Initializing content and metadata Dats...`);
                 const datCreateContentData: AODat_Create_Data = {
@@ -393,19 +408,6 @@ export default (
                     return Promise.resolve();
                 }
             )
-            .then(() => {
-                // Add datignore for DAPP content type (content is unpacked within dat folder)
-                if (contentJson.contentType === AOContentTypes.DAPP) {
-                    debug(`Writing datignore file for dapp content...`);
-                    const contentWriteData: IAOFS_Write_Data = {
-                        writePath: `content/${metadataTempId}/.datignore`,
-                        data: "unpacked"
-                    };
-                    return context.router.send("/fs/write", contentWriteData);
-                } else {
-                    return Promise.resolve();
-                }
-            })
             .then(() => {
                 // 8. Dats are initialized, lets update the contentJson with those dat keys and then write contentJson into metadata dat repo
                 // NOTE: there is an important distinction between the following:
@@ -456,20 +458,39 @@ export default (
                 ([metadataDatMoveResponse, contentDatMoveResponse]: Array<
                     IAORouterMessage
                 >) => {
-                    // 10. We made it!
-                    debug(`Content succesfully uploaded!`);
-                    resolve(contentJson);
-                    // NOTE: processContent handles any side effects that take place after uploading content.
-                    // Currently this only involves unpacking a DAPP.
-                    context.userSession.processContent(contentJson);
-                    context.router.send("/db/logs/insert", {
-                        message: `[${
-                            contentJson.title
-                        }] has been uploaded locally, waiting for content stake transaction before this content becomes part of the AO network`,
-                        userId: context.userSession.ethAddress
-                    });
+                    // 10. Import processed files into dat
+                    const importMetadataDatData: AODat_ImportSingle_Data = {
+                        key: contentJson.metadataDatKey
+                    };
+                    const importFileDatData: AODat_ImportSingle_Data = {
+                        key: contentJson.fileDatKey
+                    };
+                    return Promise.all([
+                        context.router.send(
+                            "/dat/importSingle",
+                            importMetadataDatData
+                        ),
+                        context.router.send(
+                            "/dat/importSingle",
+                            importFileDatData
+                        )
+                    ]);
                 }
             )
+            .then(() => {
+                // 11. We made it!
+                debug(`Content succesfully uploaded!`);
+                resolve(contentJson);
+                // NOTE: processContent handles any side effects that take place after uploading content.
+                // Currently this only involves unpacking a DAPP.
+                context.userSession.processContent(contentJson);
+                context.router.send("/db/logs/insert", {
+                    message: `[${
+                        contentJson.title
+                    }] has been uploaded locally, waiting for content stake transaction before this content becomes part of the AO network`,
+                    userId: context.userSession.ethAddress
+                });
+            })
             .catch((error: Error) => {
                 // TODO: This is a catch all for now, but we may want to do some resource cleanup at this stage!
                 debug(`Error occured during content upload: ${error.message}`);

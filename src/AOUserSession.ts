@@ -1319,27 +1319,7 @@ export default class AOUserSession {
         );
         Promise.resolve()
             .then(() => {
-                // 1. Import all the freaken files.
-                const fileImportDatData: AODat_ImportSingle_Data = {
-                    key: content.fileDatKey
-                };
-                const metaImportDatData: AODat_ImportSingle_Data = {
-                    key: content.metadataDatKey
-                };
-                let importDats = [];
-                importDats.push(
-                    this.router.send("/dat/importSingle", fileImportDatData)
-                );
-                if (content.creatorEthAddress == sessionEthAddress) {
-                    importDats.push(
-                        this.router.send("/dat/importSingle", metaImportDatData)
-                    );
-                }
-                return Promise.all(importDats);
-            })
-            .then(() => {
-                debug("Content dat imports are good, now resuming...");
-                // 2. Ensure the dats are resumed (they may already be, but need to make sure)
+                // 1. Ensure the dats are resumed (they may already be, but need to make sure)
                 const fileResumeDatData: AODat_ResumeSingle_Data = {
                     key: content.fileDatKey
                 };
@@ -1358,7 +1338,7 @@ export default class AOUserSession {
                 return Promise.all(resumeDats);
             })
             .then(() => {
-                // 3. If this is the content creator, we also register the content under their
+                // 2. If this is the content creator, we also register the content under their
                 // namespace
                 if (content.creatorEthAddress == sessionEthAddress) {
                     const contentRegistrationRequest: AOP2P_ContentRegistration_Data = {
@@ -1374,7 +1354,7 @@ export default class AOUserSession {
             })
             .then(() => {
                 debug("Content dats resumed, adding content to discovery...");
-                // 4. Add new discovery
+                // 3. Add new discovery
                 const p2pAddDiscoveryData: AOP2P_Add_Discovery_Data = {
                     content
                 };
@@ -1385,7 +1365,7 @@ export default class AOUserSession {
             })
             .then((response: IAORouterMessage) => {
                 debug("Content has been added to discovery");
-                // 5. Update the content state (mark as Discoverable)
+                // 4. Update the content state (mark as Discoverable)
                 const contentUpdateQuery: AODB_UserContentUpdate_Data = {
                     id: content.id,
                     update: {
@@ -1406,7 +1386,7 @@ export default class AOUserSession {
                 );
             })
             .then((contentUpdateResponse: IAORouterMessage) => {
-                // 6. Finally, done with staked content
+                // 5. Finally, done with staked content
                 const updatedContent: AOContent = AOContent.fromObject(
                     contentUpdateResponse.data
                 );
