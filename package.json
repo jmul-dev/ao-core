@@ -16,7 +16,7 @@
         "test": "mocha --exit -r ts-node/register src/**/*.spec.ts",
         "test-module": "mocha --exit -r ts-node/register src/modules/${MODULE:-**}/*.spec.ts",
         "test-module-eth": "cross-env MODULE=eth npm run test-module",
-        "test-module-dat": "cross-env MODULE=dat npm run test-module",
+        "test-module-dat": "cross-env MODULE=dat DEBUG=dat-node npm run test-module",
         "test-module-fs": "cross-env MODULE=fs npm run test-module",
         "test-module-p2p": "cross-env MODULE=p2p npm run test-module",
         "test-ao-crypto": "mocha --exit -r ts-node/register src/AOCrypto.spec.ts",

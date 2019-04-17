@@ -9,7 +9,7 @@ import AORouterInterface, {
 } from "../../router/AORouterInterface";
 import { IAOFS_Unlink_Data, IAOFS_Mkdir_Data } from "../fs/fs";
 import { NetworkContentHostEntry } from "../p2p/p2p";
-import mirror from "mirror-folder";
+import util from "util";
 const debug = Debug("ao:dat");
 
 export interface AODat_Init_Data {
@@ -199,8 +199,11 @@ export default class AODat extends AORouterInterface {
                     } attempting to resume existing dat instance...`
                 );
                 dat.joinNetwork(err => {
-                    if (err) return resolve(err);
-                    dat.AO_joinedNetwork = true;
+                    if (err)
+                        return debug(
+                            `[${datEntry.key}] error joining network`,
+                            err
+                        );
                     const offline =
                         !dat.network.connected || !dat.network.connecting;
                     debug(
@@ -217,17 +220,18 @@ export default class AODat extends AORouterInterface {
                                 error
                             );
                         });
-                    resolve();
                 });
+                dat.AO_joinedNetwork = true;
+                resolve();
                 return;
             } else {
                 debug(
-                    `[${datEntry.key}][${
+                    `[${datEntry.key}] attempting to resume ${
                         datEntry.complete ? "complete" : "incomplete"
-                    }] attempting to resume dat with no instance...`
+                    } dat with no instance...`
                 );
                 const datDir = path.join(this.datDir, datEntry.key);
-                Dat(datDir, { key: datEntry.key }, (err: Error, dat: Dat) => {
+                Dat(datDir, (err: Error, dat: Dat) => {
                     if (err && dat)
                         dat.close() && delete this.dats[datEntry.key];
                     if (err) return resolve(err);
@@ -237,9 +241,9 @@ export default class AODat extends AORouterInterface {
                                 `[${datEntry.key}] dat instance unobtainable`
                             )
                         );
+                    debug(`[${datEntry.key}] joining network...`);
                     dat.joinNetwork(err => {
                         if (err) return resolve(err);
-                        dat.AO_joinedNetwork = true;
                         const offline =
                             !dat.network.connected || !dat.network.connecting;
                         debug(
@@ -258,8 +262,14 @@ export default class AODat extends AORouterInterface {
                                     );
                                 }
                             );
-                        resolve();
                     });
+                    debug(`[${datEntry.key}] tracking stats`);
+                    dat.trackStats();
+                    dat.AO_isTrackingStats = true;
+                    this._importFiles(dat);
+                    dat.AO_joinedNetwork = true;
+                    this.dats[datEntry.key] = dat;
+                    resolve();
                 });
             }
         });
@@ -274,13 +284,12 @@ export default class AODat extends AORouterInterface {
     private _listenForDatSyncCompletion(dat: Dat): Promise<any> {
         return new Promise((resolve, reject) => {
             // NOTE: this is cheating for now, as multiple versions can exist
-            if (dat.archive._latestVersion > 0) {
+            if (dat.archive._latestVersion > 0 || dat.version > 0) {
                 debug(
                     `[${dat.key.toString(
                         "hex"
-                    )}] fully synced (archive._latestVersion ${
-                        dat.archive._latestVersion
-                    } > 0)!`
+                    )}] fully synced (archive version ${dat.archive
+                        ._latestVersion || dat.version} > 0)!`
                 );
                 this._tagDatAsComplete(dat.key.toString("hex"));
                 return resolve();
@@ -318,7 +327,7 @@ export default class AODat extends AORouterInterface {
             return;
         }
         const datDir = path.join(this.datDir, key);
-        Dat(datDir, { key, createIfMissing: false }, (err: Error, dat: Dat) => {
+        Dat(datDir, { createIfMissing: false }, (err: Error, dat: Dat) => {
             try {
                 if (err) throw err;
                 if (!dat)
@@ -337,6 +346,7 @@ export default class AODat extends AORouterInterface {
     }
     private _importFiles(dat: Dat): Promise<any> {
         return new Promise((resolve, reject) => {
+            if (!dat.writable) return resolve({ success: false });
             const progress = dat.importFiles(err => {
                 if (err) return reject(err);
                 resolve({ success: true });
@@ -354,7 +364,7 @@ export default class AODat extends AORouterInterface {
             { upsert: true },
             (err: Error) => {
                 if (err) {
-                    debug(err);
+                    debug(`Error updating dat entry in dat db:`, err);
                 }
             }
         );
@@ -395,13 +405,14 @@ export default class AODat extends AORouterInterface {
                             requestData.key
                         }`
                     );
-                    request.reject(new Error(`Dat instance not available`));
-                    return;
+                    return request.reject(
+                        new Error(`Dat instance not available`)
+                    );
                 }
                 if (!datInstance.AO_isTrackingStats) {
-                    debug(`[${requestData.key}] tracking stats`);
-                    datInstance.trackStats();
-                    datInstance.AO_isTrackingStats = true;
+                    return request.reject(
+                        new Error(`Dat instance not tracking stats`)
+                    );
                 }
                 const datStats = datInstance.stats.get();
                 let returnValue = {
@@ -422,11 +433,19 @@ export default class AODat extends AORouterInterface {
 
     private _handleResumeSingle(request: IAORouterRequest) {
         const requestData: AODat_ResumeSingle_Data = request.data;
-        this._getDatEntry(requestData.key).then((datEntry: DatEntry) => {
-            this._resume(datEntry)
-                .then(request.respond)
-                .catch(request.reject);
-        });
+        this._getDatEntry(requestData.key)
+            .then((datEntry: DatEntry) => {
+                this._resume(datEntry)
+                    .then((err?: Error) => {
+                        if (err) {
+                            request.reject(err);
+                        } else {
+                            request.respond(datEntry);
+                        }
+                    })
+                    .catch(request.reject);
+            })
+            .catch(request.reject);
     }
 
     private _handleDatStopAll(request: IAORouterRequest) {
@@ -456,7 +475,6 @@ export default class AODat extends AORouterInterface {
                 dat.joinNetwork();
                 this._importFiles(dat)
                     .then(() => {
-                        const datKey = dat.key.toString("hex");
                         debug(
                             `[${dat.key.toString(
                                 "hex"
@@ -467,6 +485,8 @@ export default class AODat extends AORouterInterface {
                         // Leaving network and closing dat, since it will be moved (sry this is tied to the content upload process)
                         dat.leaveNetwork();
                         dat.close(() => {
+                            const datKey = dat.key.toString("hex");
+                            debug(`[${datKey}] dat left network and closed`);
                             const newDatEntry: DatEntry = {
                                 key: datKey,
                                 complete: true,
