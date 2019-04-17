@@ -164,7 +164,7 @@ export default class AODat extends AORouterInterface {
                 let datKeyPromises = [];
                 debug(`Attempting to resume ${docs.length} dats...`);
                 docs.forEach((datEntry: DatEntry) => {
-                    datKeyPromises.push(this._resume(datEntry));
+                    datKeyPromises.push(this._resume(datEntry, false));
                 });
                 Promise.all(datKeyPromises)
                     .then(() => {
@@ -185,7 +185,10 @@ export default class AODat extends AORouterInterface {
      *
      * @param datEntry
      */
-    private _resume(datEntry: DatEntry): Promise<any> {
+    private _resume(
+        datEntry: DatEntry,
+        resolveOnJoinNetwork: boolean = false
+    ): Promise<any> {
         return new Promise((resolve, reject) => {
             let dat = this.dats[datEntry.key];
             if (dat && (dat.AO_joinedNetwork || dat.resumed)) {
@@ -199,11 +202,11 @@ export default class AODat extends AORouterInterface {
                     } attempting to resume existing dat instance...`
                 );
                 dat.joinNetwork(err => {
-                    if (err)
-                        return debug(
-                            `[${datEntry.key}] error joining network`,
-                            err
-                        );
+                    if (err) {
+                        debug(`[${datEntry.key}] error joining network`, err);
+                        resolveOnJoinNetwork && resolve(err);
+                        return;
+                    }
                     const offline =
                         !dat.network.connected || !dat.network.connecting;
                     debug(
@@ -211,6 +214,7 @@ export default class AODat extends AORouterInterface {
                             offline ? "no users online" : "users online"
                         }`
                     );
+                    resolveOnJoinNetwork && resolve();
                     if (!datEntry.complete && !offline)
                         this._listenForDatSyncCompletion(dat).catch(error => {
                             debug(
@@ -222,7 +226,7 @@ export default class AODat extends AORouterInterface {
                         });
                 });
                 dat.AO_joinedNetwork = true;
-                resolve();
+                !resolveOnJoinNetwork && resolve();
                 return;
             } else {
                 debug(
@@ -247,7 +251,10 @@ export default class AODat extends AORouterInterface {
                         }] joining network and tracking stats...`
                     );
                     dat.joinNetwork(err => {
-                        if (err) return resolve(err);
+                        if (err) {
+                            resolveOnJoinNetwork && resolve(err);
+                            return;
+                        }
                         const offline =
                             !dat.network.connected || !dat.network.connecting;
                         debug(
@@ -255,6 +262,7 @@ export default class AODat extends AORouterInterface {
                                 offline ? "no users online" : "users online"
                             }`
                         );
+                        resolveOnJoinNetwork && resolve();
                         if (!datEntry.complete && !offline)
                             this._listenForDatSyncCompletion(dat).catch(
                                 error => {
@@ -272,7 +280,7 @@ export default class AODat extends AORouterInterface {
                     this._importFiles(dat);
                     dat.AO_joinedNetwork = true;
                     this.dats[datEntry.key] = dat;
-                    resolve();
+                    !resolveOnJoinNetwork && resolve();
                 });
             }
         });
@@ -438,7 +446,7 @@ export default class AODat extends AORouterInterface {
         const requestData: AODat_ResumeSingle_Data = request.data;
         this._getDatEntry(requestData.key)
             .then((datEntry: DatEntry) => {
-                this._resume(datEntry)
+                this._resume(datEntry, true)
                     .then((err?: Error) => {
                         if (err) {
                             request.reject(err);
