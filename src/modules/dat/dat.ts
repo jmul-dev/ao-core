@@ -241,7 +241,11 @@ export default class AODat extends AORouterInterface {
                                 `[${datEntry.key}] dat instance unobtainable`
                             )
                         );
-                    debug(`[${datEntry.key}] joining network...`);
+                    debug(
+                        `[${
+                            datEntry.key
+                        }] joining network and tracking stats...`
+                    );
                     dat.joinNetwork(err => {
                         if (err) return resolve(err);
                         const offline =
@@ -263,7 +267,6 @@ export default class AODat extends AORouterInterface {
                                 }
                             );
                     });
-                    debug(`[${datEntry.key}] tracking stats`);
                     dat.trackStats();
                     dat.AO_isTrackingStats = true;
                     this._importFiles(dat);
