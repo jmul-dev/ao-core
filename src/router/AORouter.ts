@@ -325,6 +325,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
                             message.data.writePath
                         }] Read stream end (AORouter)...`
                     );
+                    writeStream.end(null);
                 });
                 writeStream.on("error", error => {
                     streamDebug(
@@ -341,14 +342,13 @@ export default class AORouter extends AORouterCoreProcessInterface {
                         }] Write stream close (AORouter):`
                     );
                 });
-                writeStream.on("finish", () => {
+                readStream.pipe(writeStream).on("finish", () => {
                     streamDebug(
                         `[${
                             message.data.writePath
                         }] Write stream finish (AORouter)`
                     );
-                });
-                readStream.pipe(writeStream);
+                });;
             }
             const startTime = Date.now();
             if (!incomingMessage.routerParams.ignoreLogging) {

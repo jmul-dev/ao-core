@@ -242,7 +242,7 @@ export default class AOFS extends AORouterInterface {
         let readStream: ReadStream = requestData.stream;
         let writeStream: WriteStream;
         try {
-            writeStream = fsExtra.createWriteStream(writePath, { autoClose: true });
+            writeStream = fs.createWriteStream(writePath, { autoClose: false });
         } catch (e) {
             debug("Error opening ReadStream or WriteStream", e);
             rejectAndExit(e);
@@ -258,7 +258,25 @@ export default class AOFS extends AORouterInterface {
                 error
             );
             readStream.unpipe();
-            writeStream.destroy(error);
+            if ( error && error.code !== 'EOF') {
+                writeStream.destroy(error);
+                streamDebug(
+                    `[${
+                        requestData.writePath
+                    }] Destroy write stream (subprocess fd:3):`, error.code
+                );
+            } else {
+                // This is hack
+                writeStream.end();
+                writeStream.close();
+                writeStream.emit("finish");
+                streamDebug(
+                    `[${
+                        requestData.writePath
+                    }] End write stream (subprocess fd:3):`
+                );
+            }
+
         });
         readStream.on("close", error => {
             streamDebug(
@@ -275,6 +293,7 @@ export default class AOFS extends AORouterInterface {
                 }] Read stream end (subprocess fd:3), this should trigger writeStream end`,
                 error
             );
+            writeStream.end();
         });
         writeStream.on("error", error => {
             streamDebug(
@@ -346,7 +365,8 @@ export default class AOFS extends AORouterInterface {
                                         })
                                         .on("finish", () => {
                                             //get stats for the encrypted file.
-                                            //const fileStats = fs.statSync( encryptedPath )
+                                            const fileStats = fs.statSync( encryptedPath )
+                                            debug(fileStats)
 
                                             //remove the original file
                                             fsExtra
@@ -356,7 +376,8 @@ export default class AOFS extends AORouterInterface {
                                                     fsExtra
                                                         .move(
                                                             encryptedPath,
-                                                            writePath
+                                                            writePath,
+                                                            { overwrite: true }
                                                         )
                                                         .then(() => {
                                                             //Get the encrypted checksum

@@ -86,7 +86,7 @@ export class AOSubprocessRouter extends EventEmitter
         }
         if (message.data && message.data.stream) {
             try {
-                message.data.stream = fs.createReadStream(null, { fd: 3, autoClose: true });   
+                message.data.stream = fs.createReadStream(null, { fd: 3, autoClose: false });   
             } catch (error) {
                 console.error(`Error attaching read stream to fd:3, ${error.message}`)
                 this._routeMessageResponse(message, true, {})
