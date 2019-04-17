@@ -216,6 +216,7 @@ export default class AODB {
     }): Promise<any> {
         return new Promise((resolve, reject) => {
             try {
+                debug(`attempting put: ${key}`);
                 let optionsWithSchemaKey = {
                     ...options,
                     schemaKey
@@ -243,7 +244,7 @@ export default class AODB {
                             );
                             reject(err);
                         } else {
-                            debug(`put key[${key}] succesful`);
+                            debug(`put succesful: ${key}`);
                             resolve();
                         }
                     }

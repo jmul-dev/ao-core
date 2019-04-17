@@ -148,6 +148,7 @@ export default class AOFS extends AORouterInterface {
             this.storageLocation,
             requestData.writePath
         );
+        debug(`write to [${writePath}]`);
         fsExtra
             .outputFile(writePath, requestData.data)
             .then(() => {
@@ -242,7 +243,9 @@ export default class AOFS extends AORouterInterface {
         let readStream: ReadStream = requestData.stream;
         let writeStream: WriteStream;
         try {
-            writeStream = fsExtra.createWriteStream(writePath, { autoClose: true });
+            writeStream = fsExtra.createWriteStream(writePath, {
+                autoClose: true
+            });
         } catch (e) {
             debug("Error opening ReadStream or WriteStream", e);
             rejectAndExit(e);
@@ -571,6 +574,7 @@ export default class AOFS extends AORouterInterface {
             this.storageLocation,
             requestData.destPath
         );
+        debug(`Moving [${srcPath}] -> [${destPath}]`);
         fsExtra
             .move(srcPath, destPath)
             .then(() => {

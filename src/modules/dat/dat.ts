@@ -474,8 +474,6 @@ export default class AODat extends AORouterInterface {
         try {
             Dat(datLocation, (err, dat) => {
                 if (err) return request.reject(err);
-                // Only joining network here to ensure dat key is live (had an issue with dat.key changing afterwords)
-                dat.joinNetwork();
                 this._importFiles(dat)
                     .then(() => {
                         debug(
@@ -485,11 +483,9 @@ export default class AODat extends AORouterInterface {
                                 dat.live ? "true" : "false"
                             }`
                         );
-                        // Leaving network and closing dat, since it will be moved (sry this is tied to the content upload process)
-                        dat.leaveNetwork();
                         dat.close(() => {
                             const datKey = dat.key.toString("hex");
-                            debug(`[${datKey}] dat left network and closed`);
+                            debug(`[${datKey}] dat closed`);
                             const newDatEntry: DatEntry = {
                                 key: datKey,
                                 complete: true,

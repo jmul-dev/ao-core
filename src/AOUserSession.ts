@@ -1326,16 +1326,10 @@ export default class AOUserSession {
                 const metaResumeDatData: AODat_ResumeSingle_Data = {
                     key: content.metadataDatKey
                 };
-                let resumeDats = [];
-                resumeDats.push(
-                    this.router.send("/dat/resumeSingle", fileResumeDatData)
-                );
-                if (content.creatorEthAddress == sessionEthAddress) {
-                    resumeDats.push(
-                        this.router.send("/dat/resumeSingle", metaResumeDatData)
-                    );
-                }
-                return Promise.all(resumeDats);
+                return Promise.all([
+                    this.router.send("/dat/resumeSingle", fileResumeDatData),
+                    this.router.send("/dat/resumeSingle", metaResumeDatData)
+                ]);
             })
             .then(() => {
                 // 2. If this is the content creator, we also register the content under their

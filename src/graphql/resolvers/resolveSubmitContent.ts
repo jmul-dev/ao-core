@@ -363,9 +363,10 @@ export default (
             })
             .then(() => {
                 // Add datignore for initial dat create importFiles call
-                debug(`Writing datignore file for...`);
+                // Mainly used for ignoring DAPP unpacked folder
+                debug(`writing datignore file for initial importFiles`);
                 const datignoreWriteData: IAOFS_Write_Data = {
-                    writePath: `content/${metadataTempId}/.datignore`,
+                    writePath: path.join(contentTempPath, `.datignore`),
                     data:
                         contentJson.contentType === AOContentTypes.DAPP
                             ? "# ignore\n.dat\nunpacked\n"
@@ -375,12 +376,13 @@ export default (
             })
             .then(() => {
                 // 6. Dat intialization, both content and metadata (used in discovery)
+                // newDatDir is relative to the content folder, so we cant use contentTempPath
                 debug(`Initializing content and metadata Dats...`);
                 const datCreateContentData: AODat_Create_Data = {
-                    newDatDir: contentTempId
+                    newDatDir: path.join("tmp", contentTempId)
                 };
                 const datCreatePreviewData: AODat_Create_Data = {
-                    newDatDir: metadataTempId
+                    newDatDir: path.join("tmp", metadataTempId)
                 };
                 return Promise.all([
                     context.router.send("/dat/create", datCreateContentData),
@@ -417,7 +419,7 @@ export default (
                     `Writing metadata content.json and inserting content into user db...`
                 );
                 const contentWriteData: IAOFS_Write_Data = {
-                    writePath: `content/${metadataTempId}/content.json`,
+                    writePath: path.join(metadataTempPath, "content.json"),
                     data: JSON.stringify(contentJson.toMetadataJson())
                 };
                 return Promise.all([
