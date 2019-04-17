@@ -612,11 +612,6 @@ export default class AOP2P extends AORouterInterface {
                                     : 0;
                             }
                         );
-                    debug(
-                        `${jsonResults.length} potential hosts for content: ${
-                            content.title
-                        }`
-                    );
                     resolve(jsonResults);
                 })
                 .catch(reject);

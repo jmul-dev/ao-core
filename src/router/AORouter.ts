@@ -348,7 +348,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
                             message.data.writePath
                         }] Write stream finish (AORouter)`
                     );
-                });;
+                });
             }
             const startTime = Date.now();
             if (!incomingMessage.routerParams.ignoreLogging) {
@@ -382,7 +382,9 @@ export default class AORouter extends AORouterCoreProcessInterface {
                             receivingRegistryEntry.name
                         }, ${receivingProcess.listenerCount(
                             "message"
-                        )} message listeners attached, latest event ${event}`
+                        )} message listeners attached, latest event [${
+                            from.name
+                        }] -> ${event}`
                     );
                 }
                 // 6. Match incoming messages to the requestId, this will be our response

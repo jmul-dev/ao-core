@@ -748,7 +748,9 @@ export default class AOUserSession {
                             )
                             .catch(error => {
                                 debug(
-                                    `Error updating user content: ${
+                                    `[${
+                                        content.metadataDatKey
+                                    }] Error updating user content: ${
                                         error.message
                                     }`
                                 );
@@ -756,6 +758,14 @@ export default class AOUserSession {
                     } else {
                         this.processContent(content);
                     }
+                })
+                .catch(error => {
+                    debug(
+                        `[${
+                            content.metadataDatKey
+                        }] error fetching dat stats in DOWNLOADING state:`,
+                        error
+                    );
                 });
         }, 1500);
     }

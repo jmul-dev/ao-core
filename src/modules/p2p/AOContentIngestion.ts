@@ -54,9 +54,9 @@ export default class AOContentIngestion extends EventEmitter {
     private _queueHandler(metadataDatKey: string) {
         return new Promise((resolve, reject) => {
             debug(
-                `Processing discovered network content: ${metadataDatKey} [qlength=${
+                `[${metadataDatKey}] processing discovered network content, position in queue: ${
                     this.processingQueue.length
-                }]`
+                }`
             );
             // 1. Ping the network content db to see if we have already seen this
             const networkContentQuery: AODB_NetworkContentGet_Data = {
@@ -69,7 +69,9 @@ export default class AOContentIngestion extends EventEmitter {
                         const existingNetworkContent: AONetworkContent =
                             contentResponse.data[0];
                         // 2a. Content already exists (TODO: decide if we want to retry?)
-                        debug("Content already exists for: " + metadataDatKey);
+                        debug(
+                            `[${metadataDatKey}] network content already discovered`
+                        );
                         resolve();
                     } else {
                         // 2b. Download the dat file
@@ -111,7 +113,7 @@ export default class AOContentIngestion extends EventEmitter {
                                         } catch (error) {
                                             debug(error);
                                             debug(
-                                                `Unable to add network content ${metadataDatKey}, failed to parse metadata file.`
+                                                `[${metadataDatKey}] failed to parse network content's content.json file`
                                             );
                                         } finally {
                                             // 4. Insert into network content db, marked as failed or imported
@@ -126,7 +128,7 @@ export default class AOContentIngestion extends EventEmitter {
                                                         "imported"
                                                     ) {
                                                         debug(
-                                                            `Succesfully imported ${metadataDatKey}, adding to hosts update queue...`
+                                                            `[${metadataDatKey}] succesfully imported network content, adding to hosts updater queue`
                                                         );
                                                         this.emit(
                                                             AOContentIngestion
@@ -144,7 +146,7 @@ export default class AOContentIngestion extends EventEmitter {
                                     })
                                     .catch(error => {
                                         debug(
-                                            `Unable to add network content ${metadataDatKey}, failed to read metadata file.`,
+                                            `[${metadataDatKey}] unable to add network content, failed to read content.json file.`,
                                             error
                                         );
                                         resolve();
@@ -152,7 +154,7 @@ export default class AOContentIngestion extends EventEmitter {
                             })
                             .catch(error => {
                                 debug(
-                                    `Unable to add network content ${metadataDatKey}, failed to download metadata dat file.`,
+                                    `[${metadataDatKey}] unable to add network content, failed to download metadata dat file.`,
                                     error
                                 );
                                 resolve();
@@ -161,7 +163,7 @@ export default class AOContentIngestion extends EventEmitter {
                 })
                 .catch(error => {
                     debug(
-                        `Unable to add network content ${metadataDatKey}, failed to get network content.`,
+                        `[${metadataDatKey}] unable to add network content, failed to get network content.`,
                         error
                     );
                     resolve();

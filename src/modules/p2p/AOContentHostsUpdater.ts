@@ -9,7 +9,7 @@ import {
     AODB_NetworkContentUpdate_Data
 } from "../db/db";
 import { NetworkContentHostEntry } from "./p2p";
-const debug = Debug("ao:p2p:contentHostsUpdater");
+const debug = Debug("ao:p2p:hostsUpdater");
 
 /**
  * Handles updating of content hosts state within the network.
@@ -52,9 +52,8 @@ export default class AOContentHostsUpdater {
                 resolve();
             };
             debug(
-                `Processing content hosts updater for: ${metadataDatKey} [qlength=${
-                    this.processingQueue.length
-                }]`
+                `[${metadataDatKey}] content hosts updater, position in queue: ${this
+                    .processingQueue.length - 1}`
             );
             // 1. Fetch existing piece of content from the local network content db
             const networkContentQuery: AODB_NetworkContentGet_Data = {
@@ -88,16 +87,20 @@ export default class AOContentHostsUpdater {
                                         }
                                     );
                                     const lastSeen = contentHosts[0]
-                                        ? new Date(
-                                              parseInt(
-                                                  contentHosts[0].timestamp
-                                              )
-                                          ).toLocaleTimeString()
-                                        : "null";
+                                        ? timeSince(
+                                              new Date(
+                                                  parseInt(
+                                                      contentHosts[0].timestamp
+                                                  )
+                                              ).valueOf()
+                                          )
+                                        : "never";
                                     debug(
-                                        `Host count [${
+                                        `[${metadataDatKey}] \n\ttotal host count [${
+                                            contentHosts.length
+                                        }]\n\trecently seen host count [${
                                             recentlySeenHosts.length
-                                        }], last seen [${lastSeen}], ${metadataDatKey}`
+                                        }]\n\tlast host seen [${lastSeen}]`
                                     );
                                     const networkContentUpdate: AODB_NetworkContentUpdate_Data = {
                                         id: existingNetworkContent._id,
@@ -121,7 +124,7 @@ export default class AOContentHostsUpdater {
                                         })
                                         .catch(error => {
                                             debug(
-                                                `Error updating network content hosts information: ${
+                                                `[${metadataDatKey}] Error updating network content hosts information: ${
                                                     error.message
                                                 }`
                                             );
@@ -149,4 +152,29 @@ export default class AOContentHostsUpdater {
                 });
         });
     }
+}
+
+function timeSince(date: number) {
+    var seconds = Math.floor((Date.now() - date) / 1000);
+    var interval = Math.floor(seconds / 31536000);
+    if (interval > 1) {
+        return interval + " years";
+    }
+    interval = Math.floor(seconds / 2592000);
+    if (interval > 1) {
+        return interval + " months";
+    }
+    interval = Math.floor(seconds / 86400);
+    if (interval > 1) {
+        return interval + " days";
+    }
+    interval = Math.floor(seconds / 3600);
+    if (interval > 1) {
+        return interval + " hours";
+    }
+    interval = Math.floor(seconds / 60);
+    if (interval > 1) {
+        return interval + " minutes";
+    }
+    return Math.floor(seconds) + " seconds";
 }
