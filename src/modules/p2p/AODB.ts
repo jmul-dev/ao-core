@@ -64,7 +64,6 @@ export default class AODB {
                 this.aodb.on("ready", () => {
                     // Overwrite the dbKey assigned with whatever aodb has (in case dbKey was undefined or mismatch).
                     // Just ensures a sync between aodb and swarm
-                    debug(`ready, aodb key: ${this.dbKey}`);
                     this.dbKey = this.aodb.key.toString("hex");
                     debug(`ready, aodb derived key: ${this.dbKey}`);
                     this.connectionStatus = "CONNECTED";

@@ -191,7 +191,7 @@ export default class AODat extends AORouterInterface {
     ): Promise<any> {
         return new Promise((resolve, reject) => {
             let dat = this.dats[datEntry.key];
-            if (dat && (dat.AO_joinedNetwork || dat.resumed)) {
+            if (dat && dat.AO_joinedNetwork) {
                 debug(`[${datEntry.key}] already resumed`);
                 resolve();
                 return;

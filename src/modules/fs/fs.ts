@@ -259,12 +259,13 @@ export default class AOFS extends AORouterInterface {
                 error
             );
             readStream.unpipe();
-            if ( error && error.code !== 'EOF') {
+            if (error && error.code !== "EOF") {
                 writeStream.destroy(error);
                 streamDebug(
                     `[${
                         requestData.writePath
-                    }] Destroy write stream (subprocess fd:3):`, error.code
+                    }] Destroy write stream (subprocess fd:3):`,
+                    error.code
                 );
             } else {
                 // This is hack
@@ -277,7 +278,6 @@ export default class AOFS extends AORouterInterface {
                     }] End write stream (subprocess fd:3):`
                 );
             }
-
         });
         readStream.on("close", error => {
             streamDebug(
@@ -366,70 +366,78 @@ export default class AOFS extends AORouterInterface {
                                         })
                                         .on("finish", () => {
                                             //get stats for the encrypted file.
-                                            const fileStats = fs.statSync( encryptedPath )
-                                            debug(fileStats)
-
+                                            const fileStats = fs.statSync(
+                                                encryptedPath
+                                            );
+                                            debug(
+                                                `${writePath}: exists ${fs.existsSync(
+                                                    writePath
+                                                )}`
+                                            );
+                                            debug(
+                                                `${encryptedPath}: exists ${fs.existsSync(
+                                                    encryptedPath
+                                                )}`
+                                            );
                                             //remove the original file
+                                            // fsExtra
+                                            //     .remove(writePath)
+                                            //     .then(() => {
+                                            //finally move the encrypted file to the original path
                                             fsExtra
-                                                .remove(writePath)
+                                                .move(
+                                                    encryptedPath,
+                                                    writePath,
+                                                    { overwrite: true }
+                                                )
                                                 .then(() => {
-                                                    //finally move the encrypted file to the original path
-                                                    fsExtra
-                                                        .move(
-                                                            encryptedPath,
-                                                            writePath,
-                                                            { overwrite: true }
-                                                        )
-                                                        .then(() => {
-                                                            //Get the encrypted checksum
-                                                            checksum.file(
-                                                                writePath,
-                                                                {
-                                                                    algorithm: this
-                                                                        .checksumAlgorithm,
-                                                                    encoding: this
-                                                                        .checksumEncoding
-                                                                },
-                                                                (
-                                                                    err,
-                                                                    encryptedhash
-                                                                ) => {
-                                                                    if (err) {
-                                                                        rejectAndExit(
-                                                                            err
-                                                                        );
-                                                                    } else {
-                                                                        request.respond(
-                                                                            {
-                                                                                fileSize:
-                                                                                    fileStats.size,
-                                                                                filePath: writePath,
-                                                                                key: key,
-                                                                                videoStats: videoStats
-                                                                                    ? videoStats
-                                                                                    : false,
-                                                                                checksum: originalHash,
-                                                                                encryptedChecksum: encryptedhash
-                                                                            }
-                                                                        );
-                                                                        // Single use event, kill process when done
-                                                                        process.exit();
+                                                    //Get the encrypted checksum
+                                                    checksum.file(
+                                                        writePath,
+                                                        {
+                                                            algorithm: this
+                                                                .checksumAlgorithm,
+                                                            encoding: this
+                                                                .checksumEncoding
+                                                        },
+                                                        (
+                                                            err,
+                                                            encryptedhash
+                                                        ) => {
+                                                            if (err) {
+                                                                rejectAndExit(
+                                                                    err
+                                                                );
+                                                            } else {
+                                                                request.respond(
+                                                                    {
+                                                                        fileSize:
+                                                                            fileStats.size,
+                                                                        filePath: writePath,
+                                                                        key: key,
+                                                                        videoStats: videoStats
+                                                                            ? videoStats
+                                                                            : false,
+                                                                        checksum: originalHash,
+                                                                        encryptedChecksum: encryptedhash
                                                                     }
-                                                                }
-                                                            ); //encrypted checksum end.
-                                                        })
-                                                        .catch(rejectAndExit); //Move end
+                                                                );
+                                                                // Single use event, kill process when done
+                                                                process.exit();
+                                                            }
+                                                        }
+                                                    ); //encrypted checksum end.
                                                 })
-                                                .catch(rejectAndExit); //Remove end
+                                                .catch(rejectAndExit); //Move end
+                                            // })
+                                            // .catch(rejectAndExit); //Remove end
                                         }); //Encryption finished
                                 }
                             }
                         ); //checksum end
                     }
                 })
-                .catch(e => {
-                    request.reject(e);
-                });
+                .catch(rejectAndExit);
         });
     }
 
@@ -529,16 +537,19 @@ export default class AOFS extends AORouterInterface {
             requestData.writePath
         );
         try {
+            debug(`[unzip:${readPath}] attempting to unzip`);
             const readStream = fs.createReadStream(readPath);
             const writeStream = unzipper.Extract({ path: writePath });
             readStream.on("open", () => {
                 if (requestData.key) {
+                    debug(`[unzip:${readPath}] decryption piped into unzipper`);
                     const decrypt = crypto.createDecipher(
                         this.encryptionAlgorithm,
                         requestData.key
                     );
                     readStream.pipe(decrypt).pipe(writeStream);
                 } else {
+                    debug(`[unzip:${readPath}] no encryption`);
                     readStream.pipe(writeStream);
                 }
             });
@@ -557,6 +568,10 @@ export default class AOFS extends AORouterInterface {
                 process.exit();
             });
         } catch (error) {
+            debug(
+                `[unzip:${readPath}] caught error while attempting to open read stream`,
+                error
+            );
             request.reject(error);
             process.exit();
         }

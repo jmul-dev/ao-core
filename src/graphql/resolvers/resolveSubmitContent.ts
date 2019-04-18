@@ -496,6 +496,8 @@ export default (
             .catch((error: Error) => {
                 // TODO: This is a catch all for now, but we may want to do some resource cleanup at this stage!
                 debug(`Error occured during content upload: ${error.message}`);
+                // TODO: Remove from user db
+                // TODO: cleanup files
                 reject(error);
             });
     });
@@ -514,9 +516,13 @@ function dappHtmlFileUploadHandler(
         const archive = archiver("zip", {
             zlib: { level: 9 }
         });
+        archive.on("entry", entry => {
+            debug(`appended ${entry.name} to zip`);
+        });
         archive.on("end", () => {
             try {
                 resolve(fs.createReadStream(tmpZipLocation));
+                debug(`zip complete`);
             } catch (error) {
                 debug(`Error creating read stream on temp zip location`);
                 reject(error);

@@ -190,33 +190,60 @@ export default class AOP2P extends AORouterInterface {
      * hyperdb instance changes under the content watch key.
      */
     _handleStartDiscovery(request: IAORouterRequest) {
-        debug(`hyperdb starting discovery...`);
+        debug(`p2p starting, setup watcher and run initial discovery...`);
+        this._watchDiscovery()
+            .then(request.respond)
+            .catch(request.reject);
         this._runDiscovery()
             .then(() => {
-                debug("Initial discovery ran");
-                this._watchDiscovery();
+                debug("initial discovery ran");
             })
-            .catch(debug);
-        request.respond({});
+            .catch(err => {
+                debug(`error running initial discovery:`, err);
+            });
     }
 
-    //For the sake of clean recursive methods.
-    _watchDiscovery() {
-        this.taodb
-            .watch(TaoDB.ContentKey)
-            .then(() => {
-                debug("Something changed in " + TaoDB.ContentKey);
-                this._runDiscovery()
-                    .then(() => {
-                        this._watchDiscovery();
-                    })
-                    .catch(debug);
-            })
-            .catch(debug);
+    _watchDiscovery(): Promise<any> {
+        return new Promise((resolve, reject) => {
+            const watcher = this.taodb.aodb.watch(TaoDB.ContentKey);
+            let startedWatching = false;
+            watcher.on("watching", () => {
+                debug(
+                    `watching aodb for content changes on key: /${
+                        TaoDB.ContentKey
+                    }`
+                );
+                startedWatching = true;
+                resolve();
+            });
+            watcher.on("change", () => {
+                debug(
+                    `aodb watcher detected change on key: ${TaoDB.ContentKey}`
+                );
+                this._runDiscovery().catch(err => {
+                    debug(`error running discovery triggered by watcher:`, err);
+                });
+            });
+            watcher.on("error", err => {
+                debug(`error while watching on key: /${TaoDB.ContentKey}`, err);
+                if (!startedWatching) reject(err);
+            });
+            watcher.on("close", () => {
+                debug(`watcher closed on key: /${TaoDB.ContentKey}`);
+                if (!startedWatching)
+                    reject(
+                        new Error(
+                            `watcher closed before we began watching on key: /${
+                                TaoDB.ContentKey
+                            }`
+                        )
+                    );
+            });
+        });
     }
 
-    _runDiscovery() {
-        debug(`Running discovery...`);
+    _runDiscovery(): Promise<any> {
+        debug(`running discovery...`);
         return Promise.resolve()
             .then(() => {
                 // 1. List all content types
@@ -225,6 +252,11 @@ export default class AOP2P extends AORouterInterface {
                 });
             })
             .then((contentList: Array<AODB_Entry<any>>) => {
+                debug(
+                    `discovery returned content type list of length ${
+                        contentList.length
+                    }`
+                );
                 const contentTypes = contentList.map(
                     (entry: AODB_Entry<any>) => {
                         return entry.splitKey[2]; // /AO/Content/{contentType}
