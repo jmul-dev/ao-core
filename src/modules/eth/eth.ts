@@ -522,7 +522,10 @@ export default class AOEth extends AORouterInterface {
                     resolve();
                 })
                 .catch(error => {
-                    debug(error);
+                    debug(
+                        `BuyContent event queue handler returned an error`,
+                        error
+                    );
                     resolve();
                 });
         });
@@ -537,6 +540,8 @@ export default class AOEth extends AORouterInterface {
                         toBlock: "latest"
                     })
                     .on("data", event => {
+                        debug(`BuyContent event, adding to queue`);
+                        debug(event.returnValues);
                         const buyContentEvent: BuyContentEvent =
                             event.returnValues;
                         this.buyContentEventsQueue.push(

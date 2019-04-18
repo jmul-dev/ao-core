@@ -403,7 +403,7 @@ export default class AODat extends AORouterInterface {
     private _handleGetDatStats(request: IAORouterRequest) {
         const requestData: AODat_GetDatStats_Data = request.data;
         if (!this.dats[requestData.key]) {
-            debug(`No dat instance found for dat://${requestData.key}`);
+            debug(`[${requestData.key}] No dat instance found`);
             request.reject(new Error(`Dat instance not found`));
             return;
         }
@@ -412,42 +412,48 @@ export default class AODat extends AORouterInterface {
                 const datInstance = this.dats[requestData.key];
                 if (!datInstance) {
                     debug(
-                        `Attempting to get datStats, no dat instance found: dat://${
+                        `[${
                             requestData.key
-                        }`
+                        }] attempting to get datStats, no dat instance found`
                     );
                     return request.reject(
                         new Error(`Dat instance not available`)
                     );
                 }
-                if (!datInstance.AO_isTrackingStats) {
+                if (!datInstance.AO_joinedNetwork) {
                     return request.reject(
-                        new Error(`Dat instance not tracking stats`)
+                        new Error(`Dat instance has not joined the network yet`)
                     );
                 }
-                try {
-                    const datStats = datInstance.stats.get();
-                    if (datStats) {
-                        let returnValue = {
-                            ...datStats,
-                            network: {
-                                ...datInstance.stats.network
-                            },
-                            peers: {
-                                ...datInstance.stats.peers
-                            },
-                            complete: datEntry.complete,
-                            joinedNetwork: datInstance.AO_joinedNetwork
-                        };
-                        request.respond(returnValue);
-                    } else {
-                        debug(`[${requestData.key}] stats.get() returned null`);
-                        request.reject(new Error(`Unable to get stats`));
-                    }
-                } catch (error) {
-                    debug(`[${requestData.key}] error getting stats`, error);
-                    request.reject(error);
+                if (
+                    datInstance.AO_joinedNetwork &&
+                    !datInstance.AO_isTrackingStats
+                ) {
+                    debug(
+                        `[${
+                            requestData.key
+                        }] dat has joined network but is not tracking stats, begin tracking now`
+                    );
+                    datInstance.AO_isTrackingStats = true;
+                    datInstance.trackStats();
+                    datInstance.stats.on("update", () => {
+                        datInstance.AO_latestStats = datInstance.stats.get();
+                    });
                 }
+                let datStats = datInstance.AO_latestStats || {};
+                let returnValue = {
+                    ...datStats,
+                    network: {
+                        ...datInstance.stats.network
+                    },
+                    peers: {
+                        ...datInstance.stats.peers
+                    },
+                    complete: datEntry.complete,
+                    joinedNetwork: datInstance.AO_joinedNetwork,
+                    trackingStats: datInstance.AO_isTrackingStats
+                };
+                request.respond(returnValue);
             })
             .catch(request.reject);
     }
@@ -591,7 +597,7 @@ export default class AODat extends AORouterInterface {
             // check for database instance in case the dat is not
             // yet resumed...
             this.datsDb.findOne({ key }, (error: Error, datEntry: DatEntry) => {
-                if (datEntry) {
+                if (datEntry && datEntry.complete) {
                     // We already have the dat
                     debug(`[${key}] Dat already exists, skip download`);
                     resolve(datEntry);
@@ -681,6 +687,7 @@ export default class AODat extends AORouterInterface {
                             dat.AO_isTrackingStats = true;
                             stats.on("update", () => {
                                 const newStats = stats.get();
+                                dat.AO_latestStats = newStats;
                                 let downloadPercentage = (
                                     (newStats.downloaded / newStats.length) *
                                     100

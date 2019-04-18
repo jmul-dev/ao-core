@@ -453,9 +453,11 @@ export default class AOUserSession {
                         response.data[0]
                     );
                     debug(
-                        `Handling incoming purchase, content[${
-                            userContent.title
-                        }]->buyer[${buyContentEvent.publicKey}]`
+                        `[BuyContent][contentHostId=${
+                            buyContentEvent.contentHostId
+                        }][${userContent.title}]->buyer[${
+                            buyContentEvent.publicKey
+                        }] handle incoming purchase`
                     );
                     try {
                         // 2. Generate the encryption key according to spec

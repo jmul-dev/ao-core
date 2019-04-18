@@ -1,5 +1,6 @@
 import EthCrypto from "eth-crypto";
-const AOContentContract = require("ao-contracts/build/contracts/AOContent.json");
+import Debug from "./AODebug";
+const debug = Debug("ao:crypto");
 
 export interface Identity {
     privateKey: string;
@@ -28,14 +29,19 @@ export async function generateContentEncryptionKeyForUser({
     contentRequesterPublicKey,
     contentOwnersPrivateKey
 }) {
+    debug(
+        `generateContentEncryptionKeyForUser: 1-encryptWithPublicKey()\n\tcontentDecryptionKey: ${contentDecryptionKey}\n\t${contentRequesterPublicKey}`
+    );
     const encryptedKey = await EthCrypto.encryptWithPublicKey(
         contentRequesterPublicKey,
         contentDecryptionKey
     );
+    debug(`generateContentEncryptionKeyForUser: 2-cipher.stringify()`);
     const encryptedDecryptionKey = EthCrypto.cipher.stringify(encryptedKey);
     const encryptedDecryptionKeyHash = EthCrypto.hash.keccak256(
         encryptedDecryptionKey
     );
+    debug(`generateContentEncryptionKeyForUser: 3-sign()`);
     const encryptedDecryptionKeySignature = EthCrypto.sign(
         contentOwnersPrivateKey,
         encryptedDecryptionKeyHash
