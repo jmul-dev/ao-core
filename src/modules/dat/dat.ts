@@ -407,7 +407,6 @@ export default class AODat extends AORouterInterface {
             request.reject(new Error(`Dat instance not found`));
             return;
         }
-        debug(`[${requestData.key}] attempting to get datStats...`);
         this._getDatEntry(requestData.key)
             .then((datEntry: DatEntry) => {
                 const datInstance = this.dats[requestData.key];
