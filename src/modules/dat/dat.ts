@@ -407,6 +407,7 @@ export default class AODat extends AORouterInterface {
             request.reject(new Error(`Dat instance not found`));
             return;
         }
+        debug(`[${requestData.key}] attempting to get datStats...`);
         this._getDatEntry(requestData.key)
             .then((datEntry: DatEntry) => {
                 const datInstance = this.dats[requestData.key];
@@ -425,19 +426,29 @@ export default class AODat extends AORouterInterface {
                         new Error(`Dat instance not tracking stats`)
                     );
                 }
-                const datStats = datInstance.stats.get();
-                let returnValue = {
-                    ...datStats,
-                    network: {
-                        ...datInstance.stats.network
-                    },
-                    peers: {
-                        ...datInstance.stats.peers
-                    },
-                    complete: datEntry.complete,
-                    joinedNetwork: datInstance.AO_joinedNetwork
-                };
-                request.respond(returnValue);
+                try {
+                    const datStats = datInstance.stats.get();
+                    if (datStats) {
+                        let returnValue = {
+                            ...datStats,
+                            network: {
+                                ...datInstance.stats.network
+                            },
+                            peers: {
+                                ...datInstance.stats.peers
+                            },
+                            complete: datEntry.complete,
+                            joinedNetwork: datInstance.AO_joinedNetwork
+                        };
+                        request.respond(returnValue);
+                    } else {
+                        debug(`[${requestData.key}] stats.get() returned null`);
+                        request.reject(new Error(`Unable to get stats`));
+                    }
+                } catch (error) {
+                    debug(`[${requestData.key}] error getting stats`, error);
+                    request.reject(error);
+                }
             })
             .catch(request.reject);
     }
