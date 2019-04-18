@@ -194,13 +194,15 @@ export default class AOP2P extends AORouterInterface {
         this._watchDiscovery()
             .then(request.respond)
             .catch(request.reject);
-        this._runDiscovery()
-            .then(() => {
-                debug("initial discovery ran");
-            })
-            .catch(err => {
-                debug(`error running initial discovery:`, err);
-            });
+        setTimeout(() => {
+            this._runDiscovery()
+                .then(() => {
+                    debug("initial discovery ran");
+                })
+                .catch(err => {
+                    debug(`error running initial discovery:`, err);
+                });
+        }, 3000);
     }
 
     _watchDiscovery(): Promise<any> {

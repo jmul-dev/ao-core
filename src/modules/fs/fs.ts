@@ -480,6 +480,7 @@ export default class AOFS extends AORouterInterface {
             this.storageLocation,
             requestData.readPath
         );
+        debug(`read file: ${readPath}`);
         fsExtra.readFile(readPath, "utf8", (err, data) => {
             if (err) {
                 request.reject(err);

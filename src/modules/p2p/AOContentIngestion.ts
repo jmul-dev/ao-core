@@ -27,7 +27,9 @@ export default class AOContentIngestion extends EventEmitter {
     };
     private router: AORouterInterface;
     private processingQueue: IQueue;
-    private datKeysInQueue: Array<string> = [];
+    private datKeysInQueue: {
+        [key: string]: boolean;
+    } = {};
 
     constructor(router: AORouterInterface) {
         super();
@@ -41,18 +43,22 @@ export default class AOContentIngestion extends EventEmitter {
     }
 
     public addDiscoveredMetadataDatKeyToQueue(metadataDatKey: string) {
-        if (this.datKeysInQueue.indexOf(metadataDatKey) === -1) {
+        if (this.datKeysInQueue[metadataDatKey] !== true) {
             this.processingQueue.push(
                 this._queueHandler.bind(this, metadataDatKey)
             );
-            this.datKeysInQueue.push(metadataDatKey);
+            this.datKeysInQueue[metadataDatKey] = true;
         } else {
             //debug('Already added key to ingestion queue: ' + metadataDatKey)
         }
     }
 
     private _queueHandler(metadataDatKey: string) {
-        return new Promise((resolve, reject) => {
+        return new Promise(queueResolver => {
+            const resolve = () => {
+                this.datKeysInQueue[metadataDatKey] = false;
+                queueResolver();
+            };
             debug(
                 `[${metadataDatKey}] processing discovered network content, position in queue: ${
                     this.processingQueue.length

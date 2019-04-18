@@ -599,248 +599,109 @@ export default class AODat extends AORouterInterface {
                     // Assume dat has not been downloaded
                     // 1. We do not have this dat in the DB records, let's make sure we didn't try to download it in the past
                     const newDatPath = path.join(this.datDir, key);
-                    const removeDatPathData: IAOFS_Unlink_Data = {
-                        removePath: newDatPath,
-                        isAbsolute: true
-                    };
-                    this.router
-                        .send("/fs/unlink", removeDatPathData)
-                        .then(() => {
-                            // 2. All good, lets download this key
-                            Dat(newDatPath, { key }, (err, dat) => {
-                                if (err || !dat) {
-                                    if (err.name === "IncompatibleError") {
-                                        // TODO: incompatible metadata issue, hoping to solve elsewhere
-                                        debug("Dat Incompatible Error");
-                                    }
-                                    if (!dat) {
-                                        debug(
-                                            `[${key}] dat instance unobtainable...`,
-                                            dat
-                                        );
-                                    } else {
-                                        debug(`[${key}] dat error, closing...`);
-                                    }
-                                    this.removeDat(key);
-                                    debug(
-                                        `[${key}] failed to download dat`,
-                                        err
-                                    );
-                                    return reject(err);
-                                }
-                                // 3. Dat instance ready to go. Order of operations is kind of wierd here,
-                                // but the archive sync event may emit *before* the joinNetwork callback.
-                                this.dats[key] = dat;
-                                let datEntryInserted = false;
-                                dat.joinNetwork(err => {
-                                    if (err) {
-                                        debug(
-                                            `[${key}] Failed to join network with error`,
-                                            err
-                                        );
-                                        return reject(err);
-                                    }
-                                    if (
-                                        !dat.network.connected ||
-                                        !dat.network.connecting
-                                    ) {
-                                        debug(
-                                            `[${key}] Failed to join network, unable to connect`
-                                        );
-                                        return reject(
-                                            new Error(
-                                                `Unable to connect with peers`
-                                            )
-                                        );
-                                    }
-                                    debug(
-                                        `[${key}] Succesfully joined network and began downloading!`
-                                    );
-                                    dat.AO_joinedNetwork = true;
-                                    if (!datEntryInserted) {
-                                        datEntryInserted = true;
-                                        const newDatEntry: DatEntry = {
-                                            key,
-                                            complete: false,
-                                            updatedAt: new Date(),
-                                            createdAt: new Date()
-                                        };
-                                        this._updateDatEntry(newDatEntry);
-                                        !resolveOnDownloadCompletion &&
-                                            resolve(newDatEntry);
-                                    }
-                                });
-                                this._listenForDatSyncCompletion(dat).then(
-                                    () => {
-                                        dat.AO_joinedNetwork = true;
-                                        const updatedDatEntry: DatEntry = {
-                                            key,
-                                            complete: true,
-                                            updatedAt: new Date()
-                                        };
-                                        resolveOnDownloadCompletion &&
-                                            resolve(updatedDatEntry);
-                                    }
+                    // const removeDatPathData: IAOFS_Unlink_Data = {
+                    //     removePath: newDatPath,
+                    //     isAbsolute: true
+                    // };
+                    // this.router
+                    //     .send("/fs/unlink", removeDatPathData)
+                    //     .then(() => {
+                    // 2. All good, lets download this key
+                    Dat(newDatPath, { key }, (err, dat) => {
+                        if (err || !dat) {
+                            if (err.name === "IncompatibleError") {
+                                // TODO: incompatible metadata issue, hoping to solve elsewhere
+                                debug("Dat Incompatible Error");
+                            }
+                            if (!dat) {
+                                debug(
+                                    `[${key}] dat instance unobtainable...`,
+                                    dat
                                 );
-                                if (!dat.AO_isTrackingStats) {
-                                    debug(`[${key}] Tracking stats`);
-                                    const stats = dat.trackStats();
-                                    dat.AO_isTrackingStats = true;
-                                    stats.on("update", () => {
-                                        const newStats = stats.get();
-                                        let downloadPercentage = (
-                                            (newStats.downloaded /
-                                                newStats.length) *
-                                            100
-                                        ).toFixed(0);
-                                        if (downloadPercentage === "NaN")
-                                            downloadPercentage = `0`;
-                                        // To avoid blowing up the logs, only print at intervals of 10
-                                        if (
-                                            parseInt(downloadPercentage) %
-                                                10 ===
-                                            0
-                                        ) {
-                                            debug(
-                                                `[${key}] downloaded ${downloadPercentage}%`
-                                            );
-                                        }
-                                    });
-                                }
-
-                                // //Dat is super stupid and will exit with its own recommended code when in fact its all okay: https://github.com/datproject/dat-node#downloading-files
-                                // let datDownloadComplete = false;
-                                // try {
-                                //     const datKey = dat.key.toString("hex");
-                                //     this.dats[datKey] = dat;
-                                //     dat.joinNetwork(err => {
-                                //         if (err) {
-                                //             debug(
-                                //                 `[${key}] Failed to join network`,
-                                //                 err
-                                //             );
-                                //             this.removeDat(key);
-                                //             reject(err);
-                                //             return;
-                                //         } else if (
-                                //             (!dat.network.connected ||
-                                //                 !dat.network.connecting) &&
-                                //             !datDownloadComplete
-                                //         ) {
-                                //             debug(
-                                //                 `[${key}] Failed to download, no one is hosting.`
-                                //             );
-                                //             this.removeDat(key);
-                                //             reject(
-                                //                 new Error(
-                                //                     "No users are hosting the requested content"
-                                //                 )
-                                //             );
-                                //             return;
-                                //         } else {
-                                //             debug(
-                                //                 `[${key}] Succesfully joined network and began downloading! connected[${
-                                //                     dat.network.connected
-                                //                 }] connecting[${
-                                //                     dat.network.connecting
-                                //                 }]`
-                                //             );
-                                //             dat.AO_joinedNetwork = true;
-                                //             // Assuming we do not have an existing dat db entry
-                                //             const newDatEntry: DatEntry = {
-                                //                 key: datKey,
-                                //                 complete: datDownloadComplete,
-                                //                 updatedAt: new Date(),
-                                //                 createdAt: new Date()
-                                //             };
-                                //             this._updateDatEntry(newDatEntry);
-                                //             if (!resolveOnDownloadCompletion) {
-                                //                 resolve(newDatEntry);
-                                //             }
-                                //         }
-                                //     });
-
-                                //     // Begin listening for completion & start tracking stats
-                                //     if (!dat.AO_isTrackingStats) {
-                                //         debug(
-                                //             `Tracking Stats fired for ${key}`
-                                //         );
-                                //         const stats = dat.trackStats();
-                                //         dat.AO_isTrackingStats = true;
-                                //         stats.on("update", () => {
-                                //             const newStats = stats.get();
-                                //             let downloadPercentage = (
-                                //                 (newStats.downloaded /
-                                //                     newStats.length) *
-                                //                 100
-                                //             ).toFixed(0);
-                                //             if (downloadPercentage === "NaN")
-                                //                 downloadPercentage = `0`;
-                                //             // To avoid blowing up the logs, only print at intervals of 10
-                                //             if (
-                                //                 parseInt(downloadPercentage) %
-                                //                     10 ===
-                                //                 0
-                                //             ) {
-                                //                 debug(
-                                //                     `[${key}] downloaded ${downloadPercentage}%`
-                                //                 );
-                                //             }
-                                //         });
-                                //     }
-
-                                //     dat.archive.on("sync", () => {
-                                //         if (!datDownloadComplete) {
-                                //             // NOTE: this may actually run before the joinNetwork callback is hit!
-                                //             debug(
-                                //                 `[${key}] Fully downloaded the goods!`
-                                //             );
-                                //             datDownloadComplete = true;
-                                //             const currentDate = new Date();
-                                //             let updatedDatEntry: DatEntry = {
-                                //                 key: key,
-                                //                 complete: datDownloadComplete,
-                                //                 updatedAt: currentDate
-                                //             };
-                                //             //Yaay!  Dat node sux
-                                //             this._getDatEntry(key)
-                                //                 .then((datEntry: DatEntry) => {
-                                //                     this._updateDatEntry(
-                                //                         updatedDatEntry
-                                //                     );
-                                //                 })
-                                //                 .catch((error: Error) => {
-                                //                     updatedDatEntry.createdAt = currentDate;
-                                //                     this._updateDatEntry(
-                                //                         updatedDatEntry
-                                //                     );
-                                //                 });
-                                //             if (resolveOnDownloadCompletion) {
-                                //                 debug(
-                                //                     "Resolving with resolveOnDownloadCompletion"
-                                //                 );
-                                //                 //Gotta wait for that dat node to actually write to disk!
-                                //                 setTimeout(() => {
-                                //                     resolve(updatedDatEntry);
-                                //                 }, 1000);
-                                //             }
-                                //         }
-                                //     });
-                                // } catch (error) {
-                                //     debug(
-                                //         `Dat error while attempting to download...`,
-                                //         error
-                                //     );
-                                //     this.removeDat(key);
-                                //     reject(error);
-                                // }
-                            });
-                        })
-                        .catch(e => {
-                            //FS delete of newDatPath
-                            debug(e);
-                            reject(e);
+                            } else {
+                                debug(`[${key}] dat error, closing...`);
+                            }
+                            this.removeDat(key);
+                            debug(`[${key}] failed to download dat`, err);
+                            return reject(err);
+                        }
+                        // 3. Dat instance ready to go. Order of operations is kind of wierd here,
+                        // but the archive sync event may emit *before* the joinNetwork callback.
+                        this.dats[key] = dat;
+                        let datEntryInserted = false;
+                        dat.joinNetwork(err => {
+                            if (err) {
+                                debug(
+                                    `[${key}] Failed to join network with error`,
+                                    err
+                                );
+                                return reject(err);
+                            }
+                            if (
+                                !dat.network.connected ||
+                                !dat.network.connecting
+                            ) {
+                                debug(
+                                    `[${key}] Failed to join network, unable to connect`
+                                );
+                                return reject(
+                                    new Error(`Unable to connect with peers`)
+                                );
+                            }
+                            debug(
+                                `[${key}] Succesfully joined network and began downloading!`
+                            );
+                            dat.AO_joinedNetwork = true;
+                            if (!datEntryInserted) {
+                                datEntryInserted = true;
+                                const newDatEntry: DatEntry = {
+                                    key,
+                                    complete: false,
+                                    updatedAt: new Date(),
+                                    createdAt: new Date()
+                                };
+                                this._updateDatEntry(newDatEntry);
+                                !resolveOnDownloadCompletion &&
+                                    resolve(newDatEntry);
+                            }
                         });
+                        this._listenForDatSyncCompletion(dat).then(() => {
+                            dat.AO_joinedNetwork = true;
+                            const updatedDatEntry: DatEntry = {
+                                key,
+                                complete: true,
+                                updatedAt: new Date()
+                            };
+                            resolveOnDownloadCompletion &&
+                                resolve(updatedDatEntry);
+                        });
+                        if (!dat.AO_isTrackingStats) {
+                            debug(`[${key}] Tracking stats`);
+                            const stats = dat.trackStats();
+                            dat.AO_isTrackingStats = true;
+                            stats.on("update", () => {
+                                const newStats = stats.get();
+                                let downloadPercentage = (
+                                    (newStats.downloaded / newStats.length) *
+                                    100
+                                ).toFixed(0);
+                                if (downloadPercentage === "NaN")
+                                    downloadPercentage = `0`;
+                                // To avoid blowing up the logs, only print at intervals of 10
+                                if (parseInt(downloadPercentage) % 10 === 0) {
+                                    debug(
+                                        `[${key}] downloaded ${downloadPercentage}%`
+                                    );
+                                }
+                            });
+                        }
+                    });
+                    // })
+                    // .catch(e => {
+                    //     //FS delete of newDatPath
+                    //     debug(e);
+                    //     reject(e);
+                    // });
                 }
             });
         });

@@ -124,7 +124,7 @@ describe("AO Dat module", () => {
             fs.writeFileSync(
                 path.join(newDatDir, ".datignore"),
                 "# ignore\nunpacked\n",
-                { encoding: "utf-8" }
+                { encoding: "utf8" }
             );
             fs.writeFileSync(
                 path.join(newDatDir, "test.json"),
@@ -153,7 +153,7 @@ describe("AO Dat module", () => {
         it("should read test.json", done => {
             try {
                 const data = fs.readFileSync(path.join(datDir, "test.json"), {
-                    encoding: "utf-8"
+                    encoding: "utf8"
                 });
                 const json = JSON.parse(data);
                 expect(json.hello).to.equal("world");
