@@ -458,7 +458,9 @@ export default class AOEth extends AORouterInterface {
                 .totalContentHosts()
                 .call()
                 .then(totalContentHosts => {
-                    this.contentHosts.totalContentHosts = totalContentHosts;
+                    this.contentHosts.totalContentHosts = parseInt(
+                        totalContentHosts
+                    );
                     let stats: IAOETH_Stats = {
                         connectionStatus: this.connectionStatus,
                         networkId: this.networkId,

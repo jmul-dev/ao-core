@@ -4,8 +4,8 @@
     "publisher": "AO",
     "displayName": "AO Dat",
     "description": "AO - Dat package",
-    "main": "dat/dat.js",
-    "bin": "dat.bin.js",
+    "main": "dat.js",
+    "bin": "modules/dat/dat.bin.js",
     "AO": {
         "events": [
             "/dat/init",

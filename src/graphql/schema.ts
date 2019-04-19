@@ -4,9 +4,11 @@ import Debug from "../AODebug";
 import { makeExecutableSchema } from "graphql-tools";
 import resolvers from "./resolvers/resolvers";
 import AOContent from "../models/AOContent";
-const debug = Debug("ao:graphql");
-const graphqlSchema = require("./schema.graphql");
+import "graphql-import-node";
+import * as graphqlSchema from "./schema.graphql";
+// const graphqlSchema = require("./schema.graphql");
 const packageJson = require("../../package.json");
+const debug = Debug("ao:graphql");
 
 export default function() {
     const schema = makeExecutableSchema({
