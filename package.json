@@ -25,7 +25,7 @@
         "test-p2p": "mocha --exit -r ts-node/register src/modules/p2p/p2p.spec.ts",
         "list-native-deps": "node ./node_modules/node-has-native-dependencies/index.js",
         "debug": "node --inspect --nolazy dist/bin.js",
-        "copy-dependencies": "copy-node-modules . dist"
+        "copy-dependencies": "copy-node-modules . dist --concurrency=16"
     },
     "files": [
         "dist",
