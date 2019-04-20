@@ -42,6 +42,10 @@ export default class AODB {
         this.createSwarm();
     }
 
+    public get userPublicKey(): string {
+        return this._userIdentity ? this._userIdentity.publicKey : undefined;
+    }
+
     public start(hyperOptions: IAODB_Args): Promise<string> {
         if (
             this.connectionStatus === "CONNECTED" ||
@@ -308,7 +312,7 @@ export default class AODB {
                         reject(err);
                     } else {
                         let results = [];
-                        if (nodes.length) {
+                        if (nodes && nodes.length) {
                             for (let i = 0; i < nodes.length; i++) {
                                 const node = nodes[i];
                                 results.push({
@@ -347,7 +351,7 @@ export default class AODB {
                         reject(err);
                     } else {
                         let results = [];
-                        if (nodes.length) {
+                        if (nodes && nodes.length) {
                             for (let i = 0; i < nodes.length; i++) {
                                 const node = nodes[i];
                                 results.push(node.key);

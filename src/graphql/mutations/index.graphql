@@ -15,8 +15,8 @@ type Mutation {
     contentRetryHostDiscovery(id: ID!): IContent
     export(inputs: ExportInputs): String
     # Tao related
+    submitNameProfile(inputs: NameProfileInputs): NameProfile
     submitTaoDescription(inputs: TaoDescriptionInputs): TaoDescription
-    submitTaoProfile(inputs: TaoProfileInputs): TaoProfile
     submitTaoThought(inputs: TaoThoughtInputs): TaoThought
 }
 

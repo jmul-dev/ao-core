@@ -21,14 +21,16 @@ import resolveExportData from "./resolveExportData";
 import resolveNodeStatistics from "./resolveNodeStatistics";
 import resolveDappUrl from "./resolveDappUrl";
 import resolveTaoDescription from "./resolveTaoDescription";
-import resolveTaoProfile from "./resolveTaoProfile";
+import resolveNameProfile from "./resolveNameProfile";
 import resolveSubmitTaoDescription from "./resolveSubmitTaoDescription";
-import resolveSubmitTaoProfile from "./resolveSubmitTaoProfile";
+import resolveSubmitNameProfile from "./resolveSubmitNameProfile";
 import resolveTaoThought from "./resolveTaoThought";
 import resolveTaoThoughts from "./resolveTaoThoughts";
 import resolveTaoThoughtsCount from "./resolveTaoThoughtsCount";
 import resolveSubmitTaoThought from "./resolveSubmitTaoThought";
 import resolveTaoDescriptions from "./resolveTaoDescriptions";
+import resolveWriterKey from "./resolveWriterKey";
+import resolveWriterKeySignature from "./resolveWriterKeySignature";
 
 export default {
     // Query resolvers
@@ -43,11 +45,13 @@ export default {
     resolveState,
     resolveNodeStatistics,
     resolveTaoDescription,
-    resolveTaoProfile,
+    resolveNameProfile,
     resolveTaoThought,
     resolveTaoThoughts,
     resolveTaoThoughtsCount,
     resolveTaoDescriptions,
+    resolveWriterKey,
+    resolveWriterKeySignature,
     // Mutation resolvers
     resolveSubmitContent,
     resolveRegister,
@@ -58,8 +62,8 @@ export default {
     resolveContentUploadStakeTransaction,
     resolveContentRetryHostDiscovery,
     resolveExportData,
+    resolveSubmitNameProfile,
     resolveSubmitTaoDescription,
-    resolveSubmitTaoProfile,
     resolveSubmitTaoThought,
     // Field resolvers
     resolveUrl,

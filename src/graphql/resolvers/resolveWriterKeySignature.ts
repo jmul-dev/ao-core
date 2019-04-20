@@ -2,25 +2,24 @@ import { IGraphqlResolverContext } from "../../http";
 import { AOP2P_TaoRequest_Data } from "../../modules/p2p/p2p";
 import { IAORouterMessage } from "../../router/AORouter";
 
-interface ISubmitTaoProfile_Args {
-    inputs: {
-        nameId: string;
-        taoId: string;
-        parentThoughtId?: string;
-        thought: string;
-    };
+interface IWriterKeySignature_Args {
+    nameId: string;
+    nonce: string;
 }
 
 export default (
     obj: any,
-    args: ISubmitTaoProfile_Args,
+    args: IWriterKeySignature_Args,
     context: IGraphqlResolverContext,
     info: any
 ) => {
     return new Promise((resolve, reject) => {
         const taoRequestArgs: AOP2P_TaoRequest_Data = {
-            method: "insertTaoThought",
-            methodArgs: args.inputs
+            method: "getWriterKeySignature",
+            methodArgs: {
+                nameId: args.nameId,
+                nonce: args.nonce
+            }
         };
         context.router
             .send("/p2p/tao", taoRequestArgs)

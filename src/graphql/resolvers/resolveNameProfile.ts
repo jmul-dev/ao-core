@@ -2,19 +2,19 @@ import { IGraphqlResolverContext } from "../../http";
 import { AOP2P_TaoRequest_Data } from "../../modules/p2p/p2p";
 import { IAORouterMessage } from "../../router/AORouter";
 
-interface ITaoProfile_Args {
+interface INameProfile_Args {
     nameId: string;
 }
 
 export default (
     obj: any,
-    args: ITaoProfile_Args,
+    args: INameProfile_Args,
     context: IGraphqlResolverContext,
     info: any
 ) => {
     return new Promise((resolve, reject) => {
         const taoRequestArgs: AOP2P_TaoRequest_Data = {
-            method: "getTaoProfileImage",
+            method: "getNameProfileImage",
             methodArgs: {
                 nameId: args.nameId
             }

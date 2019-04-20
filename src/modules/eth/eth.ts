@@ -261,6 +261,7 @@ export default class AOEth extends AORouterInterface {
                             });
                             let recconectAttempted = false;
                             const reconnectAttempt = (error?: Error) => {
+                                this.connectionStatus = "DISCONNECTED";
                                 if (error) {
                                     errorLog(
                                         `Ethereum provider on:error`,

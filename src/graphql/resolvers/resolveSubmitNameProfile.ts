@@ -17,7 +17,7 @@ export default (
 ) => {
     return new Promise((resolve, reject) => {
         const taoRequestArgs: AOP2P_TaoRequest_Data = {
-            method: "insertTaoProfileImage",
+            method: "insertNameProfileImage",
             methodArgs: {
                 nameId: args.inputs.nameId,
                 imageString: args.inputs.imageString

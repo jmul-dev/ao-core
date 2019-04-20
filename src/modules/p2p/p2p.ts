@@ -78,12 +78,14 @@ export interface AOP2P_TaoRequest_Data {
         | "insertTaoDescription"
         | "getTaoDescription"
         | "getTaoDescriptions"
-        | "insertTaoProfileImage"
-        | "getTaoProfileImage"
+        | "insertNameProfileImage"
+        | "getNameProfileImage"
         | "getTaoThoughts"
         | "getTaoThought"
         | "getTaoThoughtsCount"
-        | "insertTaoThought";
+        | "insertTaoThought"
+        | "getWriterKey"
+        | "getWriterKeySignature";
     methodArgs: any;
 }
 
@@ -775,20 +777,21 @@ export default class AOP2P extends AORouterInterface {
                     taoId: methodArgs["taoId"]
                 });
                 taodbPromise = this.taodb.list(descriptionsKey);
+                break;
             case "insertTaoDescription":
                 taodbPromise = this.taodb.insertTaoDescription({
                     taoId: methodArgs["taoId"],
                     description: methodArgs["description"]
                 });
                 break;
-            case "getTaoProfileImage":
-                let profileImageKey = TaoDB.getTaoProfileImageKey({
+            case "getNameProfileImage":
+                let profileImageKey = TaoDB.getNameProfileImageKey({
                     nameId: methodArgs["nameId"]
                 });
                 taodbPromise = this.taodb.get(profileImageKey);
                 break;
-            case "insertTaoProfileImage":
-                taodbPromise = this.taodb.insertTaoProfileImage({
+            case "insertNameProfileImage":
+                taodbPromise = this.taodb.insertNameProfileImage({
                     nameId: methodArgs["nameId"],
                     imageString: methodArgs["imageString"]
                 });
@@ -800,9 +803,10 @@ export default class AOP2P extends AORouterInterface {
                 taodbPromise = this.taodb.list(taoThoughtsKey);
                 break;
             case "getTaoThought":
-                let taoThoughtKey = TaoDB.getTaoThoughtKey({
+                let taoThoughtKey = TaoDB.getTaoThoughtNameKey({
                     taoId: methodArgs["taoId"],
-                    thoughtId: methodArgs["thoughtId"]
+                    thoughtId: methodArgs["thoughtId"],
+                    nameId: methodArgs["nameId"]
                 });
                 taodbPromise = this.taodb.get(taoThoughtKey);
                 break;
@@ -818,6 +822,17 @@ export default class AOP2P extends AORouterInterface {
                     taoId: methodArgs["taoId"],
                     parentThoughtId: methodArgs["parentThoughtId"],
                     thought: methodArgs["thought"]
+                });
+                break;
+            case "getWriterKey":
+                const writerKey = this.taodb.userPublicKey;
+                return request.respond(writerKey);
+            case "getWriterKeySignature":
+                const nameId = methodArgs["nameId"];
+                const nonce = methodArgs["nonce"];
+                taodbPromise = this.taodb.getWriterKeySignature({
+                    nameId,
+                    nonce
                 });
                 break;
             default:

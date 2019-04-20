@@ -75,7 +75,7 @@ export default class TaoDB extends AODB {
                 keyValidation: ""
             }
         },
-        profileImage: {
+        nameProfileImage: {
             key: "schema/TAO/this/nameId/*/profileImage",
             value: {
                 keySchema: "TAO/this/nameId/*/profileImage",
@@ -99,7 +99,16 @@ export default class TaoDB extends AODB {
                 keyValidation: ""
             }
         },
-        taoNameThought: {
+        taoThoughtName: {
+            key: "schema/TAO/this/taoId/*/thoughts/thoughtId/%number%/nameId/*",
+            value: {
+                keySchema:
+                    "TAO/this/taoId/*/thoughts/thoughtId/%number%/nameId/*",
+                valueValidationKey: "",
+                keyValidation: ""
+            }
+        },
+        taoNameThoughtPointer: {
             key: "schema/TAO/this/nameId/*/taoId/*/thoughts/thoughtId/%number%",
             value: {
                 keySchema:
@@ -128,6 +137,36 @@ export default class TaoDB extends AODB {
 
     public createSignedHash({ privateKey, key, value }) {
         return EthCrypto.sign(privateKey, this.createSignHash(key, value));
+    }
+
+    public async getWriterKeySignature({ nameId, nonce }) {
+        if (!this._userIdentity)
+            throw new Error(`User credentials have not been set`);
+        if (!nameId || !nonce)
+            throw new Error(
+                `Writer key signature requires a nameId and a nonce`
+            );
+        const signHash = EthCrypto.hash.keccak256([
+            {
+                type: "address",
+                value: "0x0000000000000000000000000000000000000000" // TODO (temp until taodb swap)
+            },
+            {
+                type: "address",
+                value: nameId
+            },
+            {
+                type: "address",
+                value: this._userIdentity.address
+            },
+            {
+                type: "uint256",
+                value: nonce
+            }
+        ]);
+        return Promise.resolve(
+            EthCrypto.sign(this._userIdentity.privateKey, signHash)
+        );
     }
 
     /**
@@ -337,17 +376,17 @@ export default class TaoDB extends AODB {
      * TAO Profile Image
      *
      */
-    public static getTaoProfileImageKey({ nameId }) {
+    public static getNameProfileImageKey({ nameId }) {
         return `TAO/this/nameId/${nameId}/profileImage`;
     }
-    public async insertTaoProfileImage({
+    public async insertNameProfileImage({
         nameId,
         imageString
     }: {
         nameId: string;
         imageString: string;
     }): Promise<any> {
-        const key = TaoDB.getTaoProfileImageKey({
+        const key = TaoDB.getNameProfileImageKey({
             nameId
         });
         const value = imageString;
@@ -356,7 +395,7 @@ export default class TaoDB extends AODB {
             key,
             value
         });
-        const schema: ITaoDB_Schema = this.schemas.profileImage;
+        const schema: ITaoDB_Schema = this.schemas.nameProfileImage;
         const schemaExists = await this.exists(schema.key);
         if (!schemaExists) {
             await this.insertSchema(schema);
@@ -420,6 +459,9 @@ export default class TaoDB extends AODB {
     public static getTaoThoughtKey({ taoId, thoughtId }) {
         return `TAO/this/taoId/${taoId}/thoughts/thoughtId/${thoughtId}`;
     }
+    public static getTaoThoughtNameKey({ taoId, thoughtId, nameId }) {
+        return `TAO/this/taoId/${taoId}/thoughts/thoughtId/${thoughtId}/nameId/${nameId}`;
+    }
     public static getTaoThoughtsListKey({ taoId }) {
         return `TAO/this/taoId/${taoId}/thoughts/thoughtId`;
     }
@@ -453,9 +495,10 @@ export default class TaoDB extends AODB {
             const thoughtCount = await this.count(thoughtListKey);
             const thoughtId = thoughtCount + 1;
 
-            const key = TaoDB.getTaoThoughtKey({
+            const key = TaoDB.getTaoThoughtNameKey({
                 taoId,
-                thoughtId
+                thoughtId,
+                nameId
             });
             const value = {
                 nameId,
@@ -468,7 +511,7 @@ export default class TaoDB extends AODB {
                 key,
                 value
             });
-            const schema: ITaoDB_Schema = this.schemas.taoThought;
+            const schema: ITaoDB_Schema = this.schemas.taoThoughtName;
             const schemaExists = await this.exists(schema.key);
             if (!schemaExists) {
                 await this.insertSchema(schema);
@@ -480,7 +523,7 @@ export default class TaoDB extends AODB {
                 writerSignature,
                 schemaKey: schema.key,
                 options: {
-                    pointerSchemaKey: this.schemas.taoNameThought.key,
+                    pointerSchemaKey: this.schemas.taoNameThoughtPointer.key,
                     pointerKey: TaoDB.getTaoNameThoughtKey({
                         taoId,
                         nameId,
