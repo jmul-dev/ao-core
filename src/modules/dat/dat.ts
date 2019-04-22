@@ -698,12 +698,16 @@ export default class AODat extends AORouterInterface {
                         });
                         network.on("error", error => {
                             debug(`[${key}] network error:`, error);
+                            if (error.code === "EADDRINUSE") {
+                                // hit this error when attempting to download multiple dats
+                                // it seems that network will retry with diff port
+                            }
                         });
                         network.on("listening", () => {
                             debug(`[${key}] network listening`);
                         });
+
                         this._listenForDatSyncCompletion(dat).then(() => {
-                            dat.AO_joinedNetwork = true;
                             const updatedDatEntry: DatEntry = {
                                 key,
                                 complete: true,
@@ -712,32 +716,31 @@ export default class AODat extends AORouterInterface {
                             resolveOnDownloadCompletion &&
                                 resolve(updatedDatEntry);
                         });
-                        if (!dat.AO_isTrackingStats) {
-                            debug(`[${key}] Tracking stats`);
-                            const stats = dat.trackStats();
-                            dat.AO_isTrackingStats = true;
-                            let lastPercentage = null;
-                            stats.on("update", () => {
-                                const newStats = stats.get();
-                                dat.AO_latestStats = newStats;
-                                let downloadPercentage = (
-                                    (newStats.downloaded / newStats.length) *
-                                    100
-                                ).toFixed(0);
-                                if (downloadPercentage === "NaN")
-                                    downloadPercentage = `0`;
-                                // To avoid blowing up the logs, only print at intervals of 10
-                                if (
-                                    parseInt(downloadPercentage) % 10 === 0 &&
-                                    downloadPercentage != lastPercentage
-                                ) {
-                                    debug(
-                                        `[${key}] downloaded ${downloadPercentage}%`
-                                    );
-                                }
-                                lastPercentage = downloadPercentage;
-                            });
-                        }
+
+                        const stats = dat.trackStats();
+                        debug(`[${key}] tracking stats`);
+                        dat.AO_isTrackingStats = true;
+                        let lastPercentage = null;
+                        stats.on("update", () => {
+                            const newStats = stats.get();
+                            dat.AO_latestStats = newStats;
+                            let downloadPercentage = (
+                                (newStats.downloaded / newStats.length) *
+                                100
+                            ).toFixed(0);
+                            if (downloadPercentage === "NaN")
+                                downloadPercentage = `0`;
+                            // To avoid blowing up the logs, only print at intervals of 10
+                            if (
+                                parseInt(downloadPercentage) % 10 === 0 &&
+                                downloadPercentage != lastPercentage
+                            ) {
+                                debug(
+                                    `[${key}] downloaded ${downloadPercentage}%`
+                                );
+                            }
+                            lastPercentage = downloadPercentage;
+                        });
                     });
                 }
             });
