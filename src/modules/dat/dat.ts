@@ -299,19 +299,26 @@ export default class AODat extends AORouterInterface {
                 modified: false,
                 nsync: false
             };
+            const listenOnArchiveContent = () => {
+                dat.archive.content.on("clear", () => {
+                    debug(`[${key}] archive clear`);
+                    state.modified = true;
+                });
+                dat.archive.content.on("download", (index, data) => {
+                    state.modified = true;
+                });
+            };
+            if (dat.archive.content) {
+                listenOnArchiveContent();
+            } else {
+                dat.archive.once("content", listenOnArchiveContent);
+            }
             dat.archive.once("error", error => {
                 debug(
                     `[${key}] archive error while listening for sync completion!`,
                     error
                 );
                 reject(error);
-            });
-            dat.archive.content.on("clear", () => {
-                debug(`[${key}] archive clear`);
-                state.modified = true;
-            });
-            dat.archive.content.on("download", (index, data) => {
-                state.modified = true;
             });
             dat.archive.on("syncing", () => {
                 debug(`[${key}] archive syncing`);
