@@ -294,33 +294,47 @@ export default class AODat extends AORouterInterface {
      */
     private _listenForDatSyncCompletion(dat: Dat): Promise<any> {
         return new Promise((resolve, reject) => {
-            // NOTE: this code does not work and will resolve too early if there are more than 1 version
-            // if (dat.archive._latestVersion > 0 || dat.version > 0) {
-            //     debug(
-            //         `[${dat.key.toString(
-            //             "hex"
-            //         )}] fully synced (archive version ${dat.archive
-            //             ._latestVersion || dat.version} > 0)!`
-            //     );
-            //     this._tagDatAsComplete(dat.key.toString("hex"));
-            //     return resolve();
-            // }
-            // dat.archive.once("ready", () => {
-            //     debug(`[${dat.key.toString("hex")}] archive ready...`);
-            // });
+            const key = dat.key.toString("hex");
+            let state = {
+                modified: false,
+                nsync: false
+            };
             dat.archive.once("error", error => {
                 debug(
-                    `[${dat.key.toString(
-                        "hex"
-                    )}] archive error while listening for sync completion!`,
+                    `[${key}] archive error while listening for sync completion!`,
                     error
                 );
                 reject(error);
             });
-            dat.archive.once("sync", () => {
-                debug(`[${dat.key.toString("hex")}] fully synced!`);
-                this._tagDatAsComplete(dat.key.toString("hex"));
-                resolve();
+            dat.archive.content.on("clear", () => {
+                debug(`[${key}] archive clear`);
+                state.modified = true;
+            });
+            dat.archive.content.on("download", (index, data) => {
+                state.modified = true;
+            });
+            dat.archive.on("syncing", () => {
+                debug(`[${key}] archive syncing`);
+                state.nsync = false;
+            });
+            dat.archive.on("update", () => {
+                debug(`[${key}] archive update`);
+            });
+            dat.archive.on("sync", () => {
+                debug(`[${key}] archive sync`, dat.AO_latestStats);
+                state.nsync = true;
+                // if we are supposed to exit, do so if we've pulled changes or have given the network the desired wait time
+                if (state.modified) {
+                    this._tagDatAsComplete(key);
+                    return resolve();
+                }
+                if (dat.archive.version === 0) {
+                    // TODO: deal with this.
+                    // Sync sometimes fires early when it should wait for update.
+                    debug(
+                        `[${dat.key}] archive sync, but version still === 0?`
+                    );
+                }
             });
         });
     }
@@ -639,17 +653,7 @@ export default class AODat extends AORouterInterface {
                         // but the archive sync event may emit *before* the joinNetwork callback.
                         this.dats[key] = dat;
                         let datEntryInserted = false;
-                        this._listenForDatSyncCompletion(dat).then(() => {
-                            dat.AO_joinedNetwork = true;
-                            const updatedDatEntry: DatEntry = {
-                                key,
-                                complete: true,
-                                updatedAt: new Date()
-                            };
-                            resolveOnDownloadCompletion &&
-                                resolve(updatedDatEntry);
-                        });
-                        dat.joinNetwork(err => {
+                        const network = dat.joinNetwork(err => {
                             if (err) {
                                 debug(
                                     `[${key}] Failed to join network with error`,
@@ -685,10 +689,27 @@ export default class AODat extends AORouterInterface {
                                     resolve(newDatEntry);
                             }
                         });
+                        network.on("error", error => {
+                            debug(`[${key}] network error:`, error);
+                        });
+                        network.on("listening", () => {
+                            debug(`[${key}] network listening`);
+                        });
+                        this._listenForDatSyncCompletion(dat).then(() => {
+                            dat.AO_joinedNetwork = true;
+                            const updatedDatEntry: DatEntry = {
+                                key,
+                                complete: true,
+                                updatedAt: new Date()
+                            };
+                            resolveOnDownloadCompletion &&
+                                resolve(updatedDatEntry);
+                        });
                         if (!dat.AO_isTrackingStats) {
                             debug(`[${key}] Tracking stats`);
                             const stats = dat.trackStats();
                             dat.AO_isTrackingStats = true;
+                            let lastPercentage = null;
                             stats.on("update", () => {
                                 const newStats = stats.get();
                                 dat.AO_latestStats = newStats;
@@ -699,11 +720,15 @@ export default class AODat extends AORouterInterface {
                                 if (downloadPercentage === "NaN")
                                     downloadPercentage = `0`;
                                 // To avoid blowing up the logs, only print at intervals of 10
-                                if (parseInt(downloadPercentage) % 10 === 0) {
+                                if (
+                                    parseInt(downloadPercentage) % 10 === 0 &&
+                                    downloadPercentage != lastPercentage
+                                ) {
                                     debug(
                                         `[${key}] downloaded ${downloadPercentage}%`
                                     );
                                 }
+                                lastPercentage = downloadPercentage;
                             });
                         }
                     });
