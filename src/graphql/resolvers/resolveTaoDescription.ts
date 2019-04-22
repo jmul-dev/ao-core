@@ -4,6 +4,7 @@ import { IAORouterMessage } from "../../router/AORouter";
 
 interface ITaoDescription_Args {
     taoId: string;
+    timestamp: number;
 }
 
 export default (
@@ -16,7 +17,8 @@ export default (
         const taoRequestArgs: AOP2P_TaoRequest_Data = {
             method: "getTaoDescription",
             methodArgs: {
-                taoId: args.taoId
+                taoId: args.taoId,
+                timestamp: args.timestamp
             }
         };
         context.router

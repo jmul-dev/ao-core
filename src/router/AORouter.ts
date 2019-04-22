@@ -404,7 +404,10 @@ export default class AORouter extends AORouterCoreProcessInterface {
                                 }][${event}]`
                             );
                         }
-                        if (!incomingMessage.routerParams.ignoreLogging) {
+                        if (
+                            response.error ||
+                            !incomingMessage.routerParams.ignoreLogging
+                        ) {
                             debug(
                                 `  [${message.routerMessageId}][${event}]: ${
                                     from.name

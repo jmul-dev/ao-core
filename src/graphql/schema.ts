@@ -6,7 +6,6 @@ import resolvers from "./resolvers/resolvers";
 import AOContent from "../models/AOContent";
 import "graphql-import-node";
 import * as graphqlSchema from "./schema.graphql";
-// const graphqlSchema = require("./schema.graphql");
 const packageJson = require("../../package.json");
 const debug = Debug("ao:graphql");
 
@@ -66,12 +65,14 @@ export default function() {
                 networkContent: resolvers.resolveNetworkContent,
                 userContent: resolvers.resolveUserContent,
                 statistics: resolvers.resolveNodeStatistics,
-                taoProfile: resolvers.resolveTaoProfile,
-                taoDescription: resolvers.resolveTaoDescription,
+                nameProfile: resolvers.resolveNameProfile,
                 taoThought: resolvers.resolveTaoThought,
                 taoThoughts: resolvers.resolveTaoThoughts,
                 taoThoughtsCount: resolvers.resolveTaoThoughtsCount,
-                taoDescriptions: resolvers.resolveTaoDescriptions
+                taoDescription: resolvers.resolveTaoDescription,
+                taoDescriptions: resolvers.resolveTaoDescriptions,
+                writerKey: resolvers.resolveWriterKey,
+                writerKeySignature: resolvers.resolveWriterKeySignature
             },
             Mutation: {
                 register: resolvers.resolveRegister,
@@ -87,8 +88,8 @@ export default function() {
                 contentRetryHostDiscovery:
                     resolvers.resolveContentRetryHostDiscovery,
                 export: resolvers.resolveExportData,
+                submitNameProfile: resolvers.resolveSubmitNameProfile,
                 submitTaoDescription: resolvers.resolveSubmitTaoDescription,
-                submitTaoProfile: resolvers.resolveSubmitTaoProfile,
                 submitTaoThought: resolvers.resolveSubmitTaoThought
             }
         },

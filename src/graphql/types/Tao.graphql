@@ -1,9 +1,9 @@
-# Tao profile
-type TaoProfile {
+# Name profile
+type NameProfile {
     nameId: ID!
     imageString: String
 }
-input TaoProfileInputs {
+input NameProfileInputs {
     nameId: ID!
     imageString: String!
 }
@@ -35,7 +35,7 @@ interface IAodbEntry {
     key: String!
     splitKey: [String]!
     pointerKey: String!
-    schemaKey: String!    
+    schemaKey: String!
     deleted: Boolean
     writerSignature: String!
     writerAddress: String!
@@ -44,7 +44,7 @@ type TaoProfileAodbEntry implements IAodbEntry {
     key: String!
     splitKey: [String]!
     pointerKey: String!
-    schemaKey: String!    
+    schemaKey: String!
     deleted: Boolean
     writerSignature: String!
     writerAddress: String!
@@ -55,7 +55,7 @@ type TaoDescriptionAodbEntry implements IAodbEntry {
     key: String!
     splitKey: [String]!
     pointerKey: String!
-    schemaKey: String!    
+    schemaKey: String!
     deleted: Boolean
     writerSignature: String!
     writerAddress: String!
@@ -66,7 +66,7 @@ type TaoThoughtAodbEntry implements IAodbEntry {
     key: String!
     splitKey: [String]!
     pointerKey: String!
-    schemaKey: String!    
+    schemaKey: String!
     deleted: Boolean
     writerSignature: String!
     writerAddress: String!

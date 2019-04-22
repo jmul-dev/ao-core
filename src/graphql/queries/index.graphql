@@ -15,14 +15,21 @@ type Query {
     node: NodeIdentity
     statistics: NodeStatistics
     wallet: Wallet
-    networkContent(id: ID, query: String, contentType: ContentType, contentLicense: ContentLicense): [IContent]
+    networkContent(
+        id: ID
+        query: String
+        contentType: ContentType
+        contentLicense: ContentLicense
+    ): [IContent]
     userContent(id: ID!): IContent
     settings: Settings!
-    # Tao related
-    taoProfile(nameId: ID!): TaoProfile
-    taoDescription(taoId: ID!): TaoDescription
+    # Tao/Name related
+    nameProfile(nameId: ID!): NameProfile
+    taoDescription(taoId: ID!, timestamp: Int!): TaoDescription
     taoDescriptions(taoId: ID!): [TaoDescriptionAodbEntry]
     taoThoughtsCount(taoId: ID!): Int
     taoThoughts(taoId: ID!): [TaoThoughtAodbEntry]
-    taoThought(taoId: ID!, thoughtId: ID!): TaoThought
+    taoThought(taoId: ID!, thoughtId: ID!, nameId: ID!): TaoThought
+    writerKey: String
+    writerKeySignature(nameId: ID!, nonce: String!): String
 }
