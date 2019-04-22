@@ -121,6 +121,7 @@ export default class AOContentIngestion extends EventEmitter {
                                             debug(
                                                 `[${metadataDatKey}] failed to parse network content's content.json file`
                                             );
+                                            // TODO: remove the dat completely (maybe failed/wierd state)
                                         } finally {
                                             // 4. Insert into network content db, marked as failed or imported
                                             this.router
