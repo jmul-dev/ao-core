@@ -294,17 +294,29 @@ export default class AODat extends AORouterInterface {
      */
     private _listenForDatSyncCompletion(dat: Dat): Promise<any> {
         return new Promise((resolve, reject) => {
-            // NOTE: this is cheating for now, as multiple versions can exist
-            if (dat.archive._latestVersion > 0 || dat.version > 0) {
+            // NOTE: this code does not work and will resolve too early if there are more than 1 version
+            // if (dat.archive._latestVersion > 0 || dat.version > 0) {
+            //     debug(
+            //         `[${dat.key.toString(
+            //             "hex"
+            //         )}] fully synced (archive version ${dat.archive
+            //             ._latestVersion || dat.version} > 0)!`
+            //     );
+            //     this._tagDatAsComplete(dat.key.toString("hex"));
+            //     return resolve();
+            // }
+            // dat.archive.once("ready", () => {
+            //     debug(`[${dat.key.toString("hex")}] archive ready...`);
+            // });
+            dat.archive.once("error", error => {
                 debug(
                     `[${dat.key.toString(
                         "hex"
-                    )}] fully synced (archive version ${dat.archive
-                        ._latestVersion || dat.version} > 0)!`
+                    )}] archive error while listening for sync completion!`,
+                    error
                 );
-                this._tagDatAsComplete(dat.key.toString("hex"));
-                return resolve();
-            }
+                reject(error);
+            });
             dat.archive.once("sync", () => {
                 debug(`[${dat.key.toString("hex")}] fully synced!`);
                 this._tagDatAsComplete(dat.key.toString("hex"));
@@ -603,16 +615,8 @@ export default class AODat extends AORouterInterface {
                     resolve(datEntry);
                 } else {
                     // Assume dat has not been downloaded
-                    // 1. We do not have this dat in the DB records, let's make sure we didn't try to download it in the past
+                    // 1. We do not have this dat in the DB records, proceed with download
                     const newDatPath = path.join(this.datDir, key);
-                    // const removeDatPathData: IAOFS_Unlink_Data = {
-                    //     removePath: newDatPath,
-                    //     isAbsolute: true
-                    // };
-                    // this.router
-                    //     .send("/fs/unlink", removeDatPathData)
-                    //     .then(() => {
-                    // 2. All good, lets download this key
                     Dat(newDatPath, { key }, (err, dat) => {
                         if (err || !dat) {
                             if (err.name === "IncompatibleError") {
@@ -631,10 +635,20 @@ export default class AODat extends AORouterInterface {
                             debug(`[${key}] failed to download dat`, err);
                             return reject(err);
                         }
-                        // 3. Dat instance ready to go. Order of operations is kind of wierd here,
+                        // 2. Dat instance ready to go. Order of operations is kind of wierd here,
                         // but the archive sync event may emit *before* the joinNetwork callback.
                         this.dats[key] = dat;
                         let datEntryInserted = false;
+                        this._listenForDatSyncCompletion(dat).then(() => {
+                            dat.AO_joinedNetwork = true;
+                            const updatedDatEntry: DatEntry = {
+                                key,
+                                complete: true,
+                                updatedAt: new Date()
+                            };
+                            resolveOnDownloadCompletion &&
+                                resolve(updatedDatEntry);
+                        });
                         dat.joinNetwork(err => {
                             if (err) {
                                 debug(
@@ -671,16 +685,6 @@ export default class AODat extends AORouterInterface {
                                     resolve(newDatEntry);
                             }
                         });
-                        this._listenForDatSyncCompletion(dat).then(() => {
-                            dat.AO_joinedNetwork = true;
-                            const updatedDatEntry: DatEntry = {
-                                key,
-                                complete: true,
-                                updatedAt: new Date()
-                            };
-                            resolveOnDownloadCompletion &&
-                                resolve(updatedDatEntry);
-                        });
                         if (!dat.AO_isTrackingStats) {
                             debug(`[${key}] Tracking stats`);
                             const stats = dat.trackStats();
@@ -703,12 +707,6 @@ export default class AODat extends AORouterInterface {
                             });
                         }
                     });
-                    // })
-                    // .catch(e => {
-                    //     //FS delete of newDatPath
-                    //     debug(e);
-                    //     reject(e);
-                    // });
                 }
             });
         });
