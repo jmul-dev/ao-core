@@ -164,7 +164,14 @@ export default class AODat extends AORouterInterface {
                 let datKeyPromises = [];
                 debug(`Attempting to resume ${docs.length} dats...`);
                 docs.forEach((datEntry: DatEntry) => {
-                    datKeyPromises.push(this._resume(datEntry, false));
+                    datKeyPromises.push(
+                        this._resume(datEntry, false).catch(error => {
+                            debug(
+                                `[${datEntry.key}] error during resume:`,
+                                error
+                            );
+                        })
+                    );
                 });
                 Promise.all(datKeyPromises)
                     .then(() => {
@@ -277,8 +284,10 @@ export default class AODat extends AORouterInterface {
                     });
                     dat.trackStats();
                     dat.AO_isTrackingStats = true;
-                    this._importFiles(dat);
                     dat.AO_joinedNetwork = true;
+                    if (dat.writable) {
+                        this._importFiles(dat);
+                    }
                     this.dats[datEntry.key] = dat;
                     !resolveOnJoinNetwork && resolve();
                 });
