@@ -165,11 +165,17 @@ export default class AODat extends AORouterInterface {
                 debug(`Attempting to resume ${docs.length} dats...`);
                 docs.forEach((datEntry: DatEntry) => {
                     datKeyPromises.push(
-                        this._resume(datEntry, false).catch(error => {
-                            debug(
-                                `[${datEntry.key}] error during resume:`,
-                                error
-                            );
+                        this._resume(datEntry, false).then((error?) => {
+                            if (error) {
+                                debug(
+                                    `[${datEntry.key}] error during resume:`,
+                                    error
+                                );
+                                if (!datEntry.complete) {
+                                    this.removeDat(datEntry.key);
+                                }
+                            }
+                            return Promise.resolve();
                         })
                     );
                 });

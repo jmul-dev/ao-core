@@ -96,11 +96,7 @@ export default class AOContentHostsUpdater {
                                           )
                                         : "never";
                                     debug(
-                                        `[${metadataDatKey}] \n\ttotal host count [${
-                                            contentHosts.length
-                                        }]\n\trecently seen host count [${
-                                            recentlySeenHosts.length
-                                        }]\n\tlast host seen [${lastSeen}]`
+                                        `[${metadataDatKey}] last host seen [${lastSeen}]`
                                     );
                                     const networkContentUpdate: AODB_NetworkContentUpdate_Data = {
                                         id: existingNetworkContent._id,
