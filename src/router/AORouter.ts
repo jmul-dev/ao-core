@@ -376,7 +376,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
                     reject(error);
                     return;
                 }
-                if (receivingProcess.listenerCount("message") > 16) {
+                if (receivingProcess.listenerCount("message") > 32) {
                     debug(
                         `${
                             receivingRegistryEntry.name
