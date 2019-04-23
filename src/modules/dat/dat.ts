@@ -867,6 +867,8 @@ export default class AODat extends AORouterInterface {
                 this.dats[key].pause();
                 this.dats[key].close(async () => {
                     try {
+                        // NOTE: wait until dat releases fd
+                        await sleep(1000);
                         await this._removeDat(key);
                     } catch (error) {}
                     resolve();
@@ -913,4 +915,10 @@ export default class AODat extends AORouterInterface {
             })
             .catch(request.reject);
     }
+}
+
+function sleep(ms) {
+    return new Promise(resolve => {
+        setTimeout(resolve, ms);
+    });
 }
