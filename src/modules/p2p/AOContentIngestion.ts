@@ -152,6 +152,16 @@ export default class AOContentIngestion extends EventEmitter {
                                         }
                                     })
                                     .catch(error => {
+                                        this.router
+                                            .send("/dat/remove", {
+                                                key: metadataDatKey
+                                            })
+                                            .catch(error => {
+                                                debug(
+                                                    `[${metadataDatKey}] error removing dat after failed read of content.json`,
+                                                    error
+                                                );
+                                            });
                                         debug(
                                             `[${metadataDatKey}] unable to add network content, failed to read content.json file.`,
                                             error
@@ -164,6 +174,7 @@ export default class AOContentIngestion extends EventEmitter {
                                     `[${metadataDatKey}] unable to add network content, failed to download metadata dat file.`,
                                     error
                                 );
+
                                 resolve();
                             });
                     }

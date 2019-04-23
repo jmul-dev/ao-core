@@ -13,6 +13,7 @@
             "/dat/importSingle",
             "/dat/stopAll",
             "/dat/create",
+            "/dat/remove",
             "/dat/exists",
             "/dat/stats",
             "/dat/download",
