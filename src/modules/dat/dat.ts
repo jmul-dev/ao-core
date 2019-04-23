@@ -84,7 +84,7 @@ export default class AODat extends AORouterInterface {
     private datsDb: Datastore;
 
     constructor(args: AORouterSubprocessArgs) {
-        super(args);
+        super({ ...args, debug });
         this.storageLocation = args.storageLocation;
         this.datSecretsDir = path.join(args.storageLocation, ".dat");
         this.datDir = path.resolve(this.storageLocation, "content");

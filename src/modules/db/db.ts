@@ -119,7 +119,7 @@ export default class AODB extends AORouterInterface {
     } = {};
 
     constructor(args: AORouterSubprocessArgs) {
-        super(args);
+        super({ ...args, debug });
         this.storageLocation = args.storageLocation;
         this.router.on("/db/init", this._init.bind(this));
         this.router.on("/db/logs/get", this._logsGet.bind(this));
