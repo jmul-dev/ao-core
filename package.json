@@ -9,7 +9,7 @@
     "scripts": {
         "compile": "npm run compile-patch && tsc && node scripts/copy-non-ts-files.js",
         "compile-patch": "rimraf node_modules/@types/bn.js",
-        "start": "cross-env NODE_ENV=development DEBUG=ao:* node dist/bin.js --ethNetworkRpc wss://rinkeby.infura.io/ws",
+        "start": "cross-env NODE_ENV=development DEBUG=ao:*,dat-node node dist/bin.js --ethNetworkRpc wss://rinkeby.infura.io/ws",
         "start:mainnet": "cross-env DEBUG=ao:* node dist/bin.js --ethNetworkRpc wss://mainnet.infura.io/ws",
         "build": "npm run clean && npm run compile && npm run copy-dependencies",
         "clean": "rimraf dist",

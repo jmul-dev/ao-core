@@ -78,6 +78,9 @@ export default class AODat extends AORouterInterface {
     private dats: {
         [key: string]: Dat;
     };
+    private activelyDownloadingDats: {
+        [key: string]: boolean;
+    };
     private datsDb: Datastore;
 
     constructor(args: AORouterSubprocessArgs) {
@@ -105,6 +108,7 @@ export default class AODat extends AORouterInterface {
         this.router.on("/dat/exists", this._handleDatExists.bind(this));
         this.router.on("/dat/stats", this._handleGetDatStats.bind(this));
         this.dats = {};
+        this.activelyDownloadingDats = {};
         debug(`started`);
     }
 
@@ -672,8 +676,26 @@ export default class AODat extends AORouterInterface {
      * @returns {Promise<DatEntry>}
      */
     private downloadDat(key, resolveOnDownloadCompletion): Promise<DatEntry> {
-        return new Promise((resolve, reject) => {
+        return new Promise((_resolve, _reject) => {
+            if (this.activelyDownloadingDats[key] === true) {
+                debug(`[${key}] dat instance is already downloading`);
+                return _reject(
+                    new Error(`Attempting to download an already active dat `)
+                );
+            }
+            const resolve = (datEntry: DatEntry) => {
+                delete this.activelyDownloadingDats[key];
+                _resolve(datEntry);
+            };
+            const reject = async error => {
+                delete this.activelyDownloadingDats[key];
+                try {
+                    await this.removeDat(key);
+                } catch (error) {}
+                _reject(error);
+            };
             debug(`[${key}] Attempting to download dat`);
+            this.activelyDownloadingDats[key] = true;
             // Quick check to see if the dat is already complete.
             // check for database instance in case the dat is not
             // yet resumed...
@@ -708,9 +730,6 @@ export default class AODat extends AORouterInterface {
                                     } else {
                                         debug(`[${key}] dat error, closing...`);
                                     }
-                                    try {
-                                        await this.removeDat(key);
-                                    } catch (error) {}
                                     debug(
                                         `[${key}] failed to download dat`,
                                         err
@@ -743,9 +762,8 @@ export default class AODat extends AORouterInterface {
                                     }
                                     if (!connectedWithPeers) {
                                         debug(
-                                            `[${key}] Failed to join network, unable to connect`
+                                            `[${key}] failed to join network, no peers or connection issue`
                                         );
-                                        this.removeDat(key);
                                         return reject(
                                             new Error(
                                                 `Unable to connect with peers`
@@ -753,19 +771,11 @@ export default class AODat extends AORouterInterface {
                                         );
                                     }
                                     debug(
-                                        `[${key}] Succesfully joined network and began downloading!
-                                        \n\tconnected[${dat.network.connected}] 
-                                        \n\tconnecting[${
-                                            dat.network.connecting
-                                        }]
-                                        \n\tconnections[${
-                                            dat.network.connections.length
-                                        }]
-                                        \n\tpeers[${
+                                        `[${key}] joined network, began downloading with ${
                                             dat.stats
                                                 ? dat.stats.peers.total
                                                 : 0
-                                        }]`
+                                        } peers...`
                                     );
                                     dat.AO_joinedNetwork = true;
                                     if (!datEntryInserted) {
@@ -788,10 +798,9 @@ export default class AODat extends AORouterInterface {
                                         // it seems that network will retry with diff port
                                     }
                                 });
-                                network.on("listening", () => {
-                                    debug(`[${key}] network listening`);
-                                });
-
+                                // network.on("listening", () => {
+                                //     debug(`[${key}] network listening`);
+                                // });
                                 this._listenForDatSyncCompletion(dat).then(
                                     () => {
                                         const updatedDatEntry: DatEntry = {
