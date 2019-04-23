@@ -263,11 +263,13 @@ export default class AOP2P extends AORouterInterface {
                 });
             })
             .then((contentList: Array<AODB_Entry<any>>) => {
-                const contentTypes = contentList.map(
-                    (entry: AODB_Entry<any>) => {
-                        return entry.splitKey[2]; // /AO/Content/{contentType}
+                let contentTypes = [];
+                contentList.forEach((entry: AODB_Entry<any>) => {
+                    const key = entry.splitKey[2]; // /AO/Content/{contentType}
+                    if (contentTypes.indexOf(key) === -1) {
+                        contentTypes.push(key);
                     }
-                );
+                });
                 debug(
                     `discovery returned content type list: ${contentTypes.join(
                         ", "
@@ -294,11 +296,12 @@ export default class AOP2P extends AORouterInterface {
                         }
                     });
                 });
+                debug(`discovery found ${contentKeys.length} content keys`);
                 return Promise.resolve(contentKeys);
             })
             .then((networkContentKeys: Array<string>) => {
                 debug(
-                    `discovery found ${networkContentKeys.length} content keys`
+                    `attempting to match keys found in discovery with already discovered keys...`
                 );
                 // 3. Pull all content keys found in the user's *local* network db (content already discovered)
                 return new Promise((localResolve, localReject) => {
