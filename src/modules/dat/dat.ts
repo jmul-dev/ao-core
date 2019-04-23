@@ -703,10 +703,10 @@ export default class AODat extends AORouterInterface {
                 _resolve(datEntry);
             };
             const reject = async error => {
-                delete this.activelyDownloadingDats[key];
                 try {
                     await this.removeDat(key);
                 } catch (error) {}
+                delete this.activelyDownloadingDats[key];
                 _reject(error);
             };
             debug(`[${key}] Attempting to download dat`);
@@ -725,7 +725,7 @@ export default class AODat extends AORouterInterface {
                         // Delete the folder in case a previous attempt at downloading this dat failed
                         const newDatPath = path.join(this.datDir, key);
                         try {
-                            await fsExtra.removeSync(newDatPath);
+                            await this.removeDat(key);
                         } catch (error) {}
                         // 1. We do not have this dat in the DB records, proceed with download
                         Dat(
@@ -883,18 +883,26 @@ export default class AODat extends AORouterInterface {
     }
     //Thanks dat-node, the worst package ever!
     private async _removeDat(key: string) {
-        const datPath = path.join(this.datDir, key);
-        // remove dat instance if exists
-        delete this.dats[key];
-        // remove db entry
-        this.datsDb.remove({ key: key });
-        // cleanup disk
         try {
+            const datPath = path.join(this.datDir, key);
+            // remove dat instance if exists
+            delete this.dats[key];
+            // remove db entry
+            await this._asyncRemove(key);
+            // cleanup disk
             await fsExtra.remove(datPath);
         } catch (error) {
             debug(`[${key}] failed to remove dat dir: ${error.message}`);
         }
         debug(`[${key}] dat removed`);
+    }
+
+    private _asyncRemove(key: string): Promise<any> {
+        return new Promise(resolve => {
+            this.datsDb.remove({ key: key }, {}, (err, numRemoved) => {
+                resolve();
+            });
+        });
     }
 
     private _handleDatExists(request: IAORouterRequest) {
