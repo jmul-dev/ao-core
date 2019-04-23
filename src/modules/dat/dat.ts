@@ -843,15 +843,19 @@ export default class AODat extends AORouterInterface {
     }
 
     private async removeDat(key: string) {
-        return new Promise((resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
             try {
                 this.dats[key].pause();
-                this.dats[key].close(() => {
-                    this._removeDat(key);
+                this.dats[key].close(async () => {
+                    try {
+                        await this._removeDat(key);
+                    } catch (error) {}
                     resolve();
                 });
             } catch (e) {
-                this._removeDat(key);
+                try {
+                    await this._removeDat(key);
+                } catch (error) {}
                 resolve();
             }
         });
