@@ -563,6 +563,11 @@ export default class AORouter extends AORouterCoreProcessInterface {
                 ethNetworkRpc: this.args.ethNetworkRpc
             };
             let processArgs = [processLocation];
+
+            // TODO: remove!
+            if (process.env.NODE_ENV === "development")
+                processArgs.push("--inspect");
+
             // Went this route for type checking
             for (const key in subprocessArgs) {
                 if (subprocessArgs.hasOwnProperty(key)) {
