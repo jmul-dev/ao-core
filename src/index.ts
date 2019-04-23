@@ -107,6 +107,7 @@ export default class Core extends EventEmitter {
     private coreRouter: AORouter;
     private http: Http;
     private userSession: AOUserSession;
+    private unhandledRejections: Map<Promise<any>, any>;
 
     // current state of the core
     private state: String;
@@ -141,6 +142,9 @@ export default class Core extends EventEmitter {
             if (this.coreRouter) {
                 this.coreRouter.shutdown(); //Ensure that all child processes are killed
             }
+            this.unhandledRejections.forEach((p, reason) => {
+                debugLog("Unhandled Rejection at:", p, "reason:", reason);
+            });
             debugLog("Core process exiting...");
         });
         process.on("SIGINT", () => {
@@ -151,6 +155,13 @@ export default class Core extends EventEmitter {
         });
         process.on("warning", function(w) {
             console.log(w.stack || w);
+        });
+        this.unhandledRejections = new Map();
+        process.on("unhandledRejection", (reason, p) => {
+            this.unhandledRejections.set(p, reason);
+        });
+        process.on("rejectionHandled", p => {
+            this.unhandledRejections.delete(p);
         });
         this.state = AOCoreState.INITIAL_STATE;
         this.stateChangeHandler(AOCoreState.INITIAL_STATE);
