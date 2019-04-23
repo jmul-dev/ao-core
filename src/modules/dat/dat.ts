@@ -739,7 +739,6 @@ export default class AODat extends AORouterInterface {
                                 // 2. Dat instance ready to go. Order of operations is kind of wierd here,
                                 // but the archive sync event may emit *before* the joinNetwork callback.
                                 this.dats[key] = dat;
-                                let datEntryInserted = false;
                                 const network = dat.joinNetwork(err => {
                                     if (err) {
                                         debug(
@@ -770,16 +769,23 @@ export default class AODat extends AORouterInterface {
                                             )
                                         );
                                     }
-                                    debug(
-                                        `[${key}] joined network, began downloading with ${
-                                            dat.stats
-                                                ? dat.stats.peers.total
-                                                : 0
-                                        } peers...`
-                                    );
-                                    dat.AO_joinedNetwork = true;
-                                    if (!datEntryInserted) {
-                                        datEntryInserted = true;
+                                    // NOTE: in my experience, during an active download
+                                    // this callback is not hit until the download is complete!
+                                    // It is mostly useful for initial connection errors/peer count
+                                    debug(`[${key}] joinNetwork callback`);
+                                });
+                                network.on("error", error => {
+                                    debug(`[${key}] network error:`, error);
+                                    if (error.code === "EADDRINUSE") {
+                                        // hit this error when attempting to download multiple dats
+                                        // it seems that network will retry with diff port
+                                    }
+                                });
+                                let firstConnection = false;
+                                network.on("connection", () => {
+                                    if (!firstConnection) {
+                                        firstConnection = true;
+                                        dat.AO_joinedNetwork = true;
                                         const newDatEntry: DatEntry = {
                                             key,
                                             complete: false,
@@ -791,16 +797,6 @@ export default class AODat extends AORouterInterface {
                                             resolve(newDatEntry);
                                     }
                                 });
-                                network.on("error", error => {
-                                    debug(`[${key}] network error:`, error);
-                                    if (error.code === "EADDRINUSE") {
-                                        // hit this error when attempting to download multiple dats
-                                        // it seems that network will retry with diff port
-                                    }
-                                });
-                                // network.on("listening", () => {
-                                //     debug(`[${key}] network listening`);
-                                // });
                                 this._listenForDatSyncCompletion(dat).then(
                                     () => {
                                         const updatedDatEntry: DatEntry = {
