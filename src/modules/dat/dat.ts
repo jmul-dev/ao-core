@@ -745,6 +745,7 @@ export default class AODat extends AORouterInterface {
                                         debug(
                                             `[${key}] Failed to join network, unable to connect`
                                         );
+                                        this.removeDat(key);
                                         return reject(
                                             new Error(
                                                 `Unable to connect with peers`
