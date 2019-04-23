@@ -687,7 +687,7 @@ export default class AODat extends AORouterInterface {
                             .send("/fs/unlink", unlinkParams)
                             .then(() => {
                                 // 1. We do not have this dat in the DB records, proceed with download
-                                Dat(newDatPath, { key }, (err, dat) => {
+                                Dat(newDatPath, { key }, async (err, dat) => {
                                     if (err || !dat) {
                                         if (err.name === "IncompatibleError") {
                                             // TODO: incompatible metadata issue, hoping to solve elsewhere
@@ -703,7 +703,9 @@ export default class AODat extends AORouterInterface {
                                                 `[${key}] dat error, closing...`
                                             );
                                         }
-                                        this.removeDat(key);
+                                        try {
+                                            await this.removeDat(key);
+                                        } catch (error) {}
                                         debug(
                                             `[${key}] failed to download dat`,
                                             err
@@ -816,16 +818,12 @@ export default class AODat extends AORouterInterface {
     private async removeDat(key: string) {
         return new Promise((resolve, reject) => {
             try {
+                this.dats[key].pause();
                 this.dats[key].close(() => {
                     this._removeDat(key);
                     resolve();
                 });
             } catch (e) {
-                debug(
-                    `[${key}] caught error while attempting to call close() method on dat instance: ${
-                        e.message
-                    }`
-                );
                 this._removeDat(key);
                 resolve();
             }
