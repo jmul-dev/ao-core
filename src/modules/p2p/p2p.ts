@@ -97,7 +97,7 @@ export default class AOP2P extends AORouterInterface {
     private contentHostsUpdater: AOContentHostsUpdater;
 
     constructor(args: AORouterSubprocessArgs) {
-        super(args);
+        super({ ...args, debug });
         this.storageLocation = args.storageLocation;
 
         this.contentHostsUpdater = new AOContentHostsUpdater(
@@ -224,9 +224,16 @@ export default class AOP2P extends AORouterInterface {
                 debug(
                     `aodb watcher detected change on key: ${TaoDB.ContentKey}`
                 );
-                this._runDiscovery().catch(err => {
-                    debug(`error running discovery triggered by watcher:`, err);
-                });
+                this._runDiscovery()
+                    .then(() => {
+                        debug(`discovery complete after change on aodb`);
+                    })
+                    .catch(err => {
+                        debug(
+                            `error running discovery triggered by watcher:`,
+                            err
+                        );
+                    });
             });
             watcher.on("error", err => {
                 debug(`error while watching on key: /${TaoDB.ContentKey}`, err);
@@ -256,18 +263,13 @@ export default class AOP2P extends AORouterInterface {
                 });
             })
             .then((contentList: Array<AODB_Entry<any>>) => {
-                debug(
-                    `discovery returned content type list of length ${
-                        contentList.length
-                    }`
-                );
                 const contentTypes = contentList.map(
                     (entry: AODB_Entry<any>) => {
                         return entry.splitKey[2]; // /AO/Content/{contentType}
                     }
                 );
                 debug(
-                    `Content types found in network db: ${contentTypes.join(
+                    `discovery returned content type list: ${contentTypes.join(
                         ", "
                     )}`
                 );
@@ -295,6 +297,9 @@ export default class AOP2P extends AORouterInterface {
                 return Promise.resolve(contentKeys);
             })
             .then((networkContentKeys: Array<string>) => {
+                debug(
+                    `discovery found ${networkContentKeys.length} content keys`
+                );
                 // 3. Pull all content keys found in the user's *local* network db (content already discovered)
                 return new Promise((localResolve, localReject) => {
                     const networkContentQuery: AODB_NetworkContentGet_Data = {

@@ -483,17 +483,25 @@ export default class AORouter extends AORouterCoreProcessInterface {
     private spawnCoreProcesses(): Promise<any> {
         return new Promise((resolve, reject) => {
             let spawns = [];
-            Object.keys(this.registry).forEach((entryName: string) => {
-                const registryEntry: IRegistryEntry = this.registry[entryName];
-                if (registryEntry.AO.runUnderCore) {
-                    spawns.push(() => this.bindCoreProcess(registryEntry));
-                } else if (
-                    !registryEntry.AO.activationEvents ||
-                    registryEntry.AO.activationEvents.length === 0
-                ) {
-                    spawns.push(() => this.spawnProcessForEntry(registryEntry));
+            Object.keys(this.registry).forEach(
+                (entryName: string, index: number) => {
+                    const registryEntry: IRegistryEntry = this.registry[
+                        entryName
+                    ];
+                    if (registryEntry.AO.runUnderCore) {
+                        spawns.push(() => this.bindCoreProcess(registryEntry));
+                    } else if (
+                        !registryEntry.AO.activationEvents ||
+                        registryEntry.AO.activationEvents.length === 0
+                    ) {
+                        spawns.push(() =>
+                            this.spawnProcessForEntry(registryEntry, {
+                                inspectPort: 9229 + index
+                            })
+                        );
+                    }
                 }
-            });
+            );
             this._promiseSerial(spawns)
                 .then(() => {
                     resolve();
@@ -544,7 +552,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
 
     private spawnProcessForEntry(
         entry: IRegistryEntry,
-        options?: { isActivationEvent: boolean }
+        options?: { isActivationEvent?: boolean; inspectPort?: number }
     ): Promise<ChildProcess | null> {
         return new Promise((resolve, reject) => {
             let processLocation = path.join(__dirname, "..", entry.bin);
@@ -565,8 +573,8 @@ export default class AORouter extends AORouterCoreProcessInterface {
             let processArgs = [processLocation];
 
             // TODO: remove!
-            if (process.env.NODE_ENV === "development")
-                processArgs.push("--inspect");
+            if (process.env.NODE_ENV === "development" && options)
+                processArgs.unshift("--inspect=" + options.inspectPort);
 
             // Went this route for type checking
             for (const key in subprocessArgs) {

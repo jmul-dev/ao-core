@@ -112,7 +112,7 @@ export default class AOFS extends AORouterInterface {
     private checksumEncoding: string = "hex";
 
     constructor(args: AORouterSubprocessArgs) {
-        super(args);
+        super({ ...args, debug });
         this.storageLocation = args.storageLocation;
         this.ffprobeBin = args.ffprobeBin;
         this.router.on("/fs/write", this._handleWrite.bind(this));

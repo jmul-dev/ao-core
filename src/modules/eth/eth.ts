@@ -128,7 +128,7 @@ export default class AOEth extends AORouterInterface {
     };
 
     constructor(args: AORouterSubprocessArgs) {
-        super(args);
+        super({ ...args, debug });
         this.rpcEndpoint = args.ethNetworkRpc;
         this.events = {
             BuyContent: undefined

@@ -56,7 +56,7 @@ export class AOSubprocessRouter extends EventEmitter
             .toString(36)
             .substring(5);
         this.process = process;
-        this.process.setMaxListeners(16);
+        this.process.setMaxListeners(32);
         this.process.on("message", this._routeMessage.bind(this));
         this.process.on("warning", function(w) {
             console.log(w.stack || w);
@@ -86,10 +86,15 @@ export class AOSubprocessRouter extends EventEmitter
         }
         if (message.data && message.data.stream) {
             try {
-                message.data.stream = fs.createReadStream(null, { fd: 3, autoClose: false });   
+                message.data.stream = fs.createReadStream(null, {
+                    fd: 3,
+                    autoClose: false
+                });
             } catch (error) {
-                console.error(`Error attaching read stream to fd:3, ${error.message}`)
-                this._routeMessageResponse(message, true, {})
+                console.error(
+                    `Error attaching read stream to fd:3, ${error.message}`
+                );
+                this._routeMessageResponse(message, true, {});
                 return;
             }
         }
@@ -162,7 +167,10 @@ export class AOSubprocessRouter extends EventEmitter
                  * process (core)
                  */
                 const readableStream = data.stream;
-                const outputStream = fs.createWriteStream(null, { fd: 4, autoClose: true });
+                const outputStream = fs.createWriteStream(null, {
+                    fd: 4,
+                    autoClose: true
+                });
                 readableStream.pipe(outputStream);
                 data.stream = true; // We dont pass the stream object through to the router
             }
@@ -311,6 +319,7 @@ export interface AORouterSubprocessArgs {
     corePort: number;
     ffprobeBin: string;
     ethNetworkRpc: string;
+    debug?: Function;
 }
 
 /**
@@ -321,9 +330,38 @@ export interface AORouterSubprocessArgs {
  */
 export default abstract class AORouterSubprocessInterface {
     router: AOSubprocessRouter;
+    private unhandledRejections: Map<Promise<any>, any>;
 
     constructor(routerArgs: AORouterSubprocessArgs) {
         this.router = new AOSubprocessRouter();
+        this.unhandledRejections = new Map();
+        process.on("unhandledRejection", (reason, p) => {
+            this.unhandledRejections.set(p, reason);
+        });
+        process.on("rejectionHandled", p => {
+            this.unhandledRejections.delete(p);
+        });
+        process.on("SIGINT", () => {
+            process.exit();
+        });
+        process.on("SIGTERM", () => {
+            process.exit();
+        });
+        process.on("exit", () => {
+            this.unhandledRejections.forEach((p, reason) => {
+                routerArgs.debug(
+                    "Unhandled Rejection at:",
+                    p,
+                    "reason:",
+                    reason
+                );
+            });
+            routerArgs.debug(
+                `process exiting with ${
+                    this.unhandledRejections.keys.length
+                } unhandled rejections.`
+            );
+        });
     }
 }
 
