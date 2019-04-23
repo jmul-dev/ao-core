@@ -145,7 +145,11 @@ export default class Core extends EventEmitter {
             this.unhandledRejections.forEach((p, reason) => {
                 debugLog("Unhandled Rejection at:", p, "reason:", reason);
             });
-            debugLog("Core process exiting...");
+            debugLog(
+                `Core process exiting with ${
+                    this.unhandledRejections.keys.length
+                } unhandled rejections.`
+            );
         });
         process.on("SIGINT", () => {
             process.exit();
