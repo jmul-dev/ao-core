@@ -73,6 +73,7 @@ export interface DatStats {
 
 export default class AODat extends AORouterInterface {
     private storageLocation: string;
+    private datSecretsDir: string;
     private datDir: string;
     private dats: {
         [key: string]: Dat;
@@ -82,6 +83,7 @@ export default class AODat extends AORouterInterface {
     constructor(args: AORouterSubprocessArgs) {
         super(args);
         this.storageLocation = args.storageLocation;
+        this.datSecretsDir = path.join(args.storageLocation, ".dat");
         this.datDir = path.resolve(this.storageLocation, "content");
         this.router.on("/dat/init", this._handleInit.bind(this));
         this.router.on(
@@ -127,28 +129,17 @@ export default class AODat extends AORouterInterface {
                 return;
             }
             // 2. Ensure the content directory exists
-            const fsMakeContentDirData: IAOFS_Mkdir_Data = {
-                dirPath: path.join("content")
-            };
-            this.router
-                .send("/fs/mkdir", fsMakeContentDirData)
-                .then(() => {
-                    debug(
-                        `Content directory exists, proceed to resume dats...`
-                    );
-                    // NOTE: resolving early for now in case resumeAll fails
-                    // I think it is possible a single dat can become fucked.
-                    request.respond({});
-                    // 3. Resume dats
-                    this._resumeAll()
-                        .then(() => {})
-                        .catch((error: Error) => {
-                            debug(`Error resuming all dats: ${error.message}`);
-                        });
-                })
+            fsExtra.ensureDirSync(this.datDir);
+            fsExtra.ensureDirSync(this.datSecretsDir);
+            debug(`Dat directories exists, proceed to resume dats...`);
+            // NOTE: resolving early for now in case resumeAll fails
+            // I think it is possible a single dat can become fucked.
+            request.respond({});
+            // 3. Resume dats
+            this._resumeAll()
+                .then(() => {})
                 .catch((error: Error) => {
-                    debug("Error making dat content directory", error);
-                    request.reject(error);
+                    debug(`Error resuming all dats: ${error.message}`);
                 });
         });
     }
@@ -272,55 +263,62 @@ export default class AODat extends AORouterInterface {
                     }] attempting to resume complete dat with no instance...`
                 );
                 const datDir = path.join(this.datDir, datEntry.key);
-                Dat(datDir, (err: Error, dat: Dat) => {
-                    if (err && dat)
-                        dat.close() && delete this.dats[datEntry.key];
-                    if (err) return resolve(err);
-                    if (!dat)
-                        return resolve(
-                            new Error(
-                                `[${datEntry.key}] dat instance unobtainable`
-                            )
-                        );
-                    debug(
-                        `[${
-                            datEntry.key
-                        }] joining network and tracking stats...`
-                    );
-                    dat.joinNetwork(err => {
-                        if (err) {
-                            resolveOnJoinNetwork && resolve(err);
-                            return;
-                        }
-                        const offline =
-                            !dat.network.connected || !dat.network.connecting;
-                        debug(
-                            `[${datEntry.key}] joined network with ${
-                                offline ? "no users online" : "users online"
-                            }`
-                        );
-                        resolveOnJoinNetwork && resolve();
-                        if (!datEntry.complete && !offline)
-                            this._listenForDatSyncCompletion(dat).catch(
-                                error => {
-                                    debug(
-                                        `[${
-                                            datEntry.key
-                                        }] error listening for sync complete:`,
-                                        error
-                                    );
-                                }
+                Dat(
+                    datDir,
+                    { secretDir: this.datSecretsDir },
+                    (err: Error, dat: Dat) => {
+                        if (err && dat)
+                            dat.close() && delete this.dats[datEntry.key];
+                        if (err) return resolve(err);
+                        if (!dat)
+                            return resolve(
+                                new Error(
+                                    `[${
+                                        datEntry.key
+                                    }] dat instance unobtainable`
+                                )
                             );
-                    });
-                    dat.trackStats();
-                    dat.AO_isTrackingStats = true;
-                    dat.AO_joinedNetwork = true;
-                    if (dat.writable) {
-                        this._importFiles(dat);
+                        debug(
+                            `[${
+                                datEntry.key
+                            }] joining network and tracking stats...`
+                        );
+                        dat.joinNetwork(err => {
+                            if (err) {
+                                resolveOnJoinNetwork && resolve(err);
+                                return;
+                            }
+                            const offline =
+                                !dat.network.connected ||
+                                !dat.network.connecting;
+                            debug(
+                                `[${datEntry.key}] joined network with ${
+                                    offline ? "no users online" : "users online"
+                                }`
+                            );
+                            resolveOnJoinNetwork && resolve();
+                            if (!datEntry.complete && !offline)
+                                this._listenForDatSyncCompletion(dat).catch(
+                                    error => {
+                                        debug(
+                                            `[${
+                                                datEntry.key
+                                            }] error listening for sync complete:`,
+                                            error
+                                        );
+                                    }
+                                );
+                        });
+                        dat.trackStats();
+                        dat.AO_isTrackingStats = true;
+                        dat.AO_joinedNetwork = true;
+                        if (dat.writable) {
+                            this._importFiles(dat);
+                        }
+                        this.dats[datEntry.key] = dat;
+                        !resolveOnJoinNetwork && resolve();
                     }
-                    this.dats[datEntry.key] = dat;
-                    !resolveOnJoinNetwork && resolve();
-                });
+                );
             }
         });
     }
@@ -410,22 +408,27 @@ export default class AODat extends AORouterInterface {
             return;
         }
         const datDir = path.join(this.datDir, key);
-        Dat(datDir, { createIfMissing: false }, (err: Error, dat: Dat) => {
-            try {
-                if (err) throw err;
-                if (!dat)
-                    throw new Error(
-                        `[${key}] No dat instance returned during import attempt.`
-                    );
-                if (!existingInstance) this.dats[dat.key.toString("hex")] = dat;
-                this._importFiles(dat)
-                    .then(request.respond)
-                    .catch(request.reject);
-            } catch (error) {
-                debug(`[${key}] Error during dat import:`, error);
-                request.reject(error);
+        Dat(
+            datDir,
+            { createIfMissing: false, secretDir: this.datSecretsDir },
+            (err: Error, dat: Dat) => {
+                try {
+                    if (err) throw err;
+                    if (!dat)
+                        throw new Error(
+                            `[${key}] No dat instance returned during import attempt.`
+                        );
+                    if (!existingInstance)
+                        this.dats[dat.key.toString("hex")] = dat;
+                    this._importFiles(dat)
+                        .then(request.respond)
+                        .catch(request.reject);
+                } catch (error) {
+                    debug(`[${key}] Error during dat import:`, error);
+                    request.reject(error);
+                }
             }
-        });
+        );
     }
     private _importFiles(dat: Dat): Promise<any> {
         return new Promise((resolve, reject) => {
@@ -568,7 +571,7 @@ export default class AODat extends AORouterInterface {
         const requestData: AODat_Create_Data = request.data;
         const datLocation = path.join(this.datDir, requestData.newDatDir);
         try {
-            Dat(datLocation, (err, dat) => {
+            Dat(datLocation, { secretDir: this.datSecretsDir }, (err, dat) => {
                 if (err) return request.reject(err);
                 this._importFiles(dat)
                     .then(() => {
@@ -687,86 +690,120 @@ export default class AODat extends AORouterInterface {
                             .send("/fs/unlink", unlinkParams)
                             .then(() => {
                                 // 1. We do not have this dat in the DB records, proceed with download
-                                Dat(newDatPath, { key }, async (err, dat) => {
-                                    if (err || !dat) {
-                                        if (err.name === "IncompatibleError") {
-                                            // TODO: incompatible metadata issue, hoping to solve elsewhere
-                                            debug("Dat Incompatible Error");
-                                        }
-                                        if (!dat) {
+                                Dat(
+                                    newDatPath,
+                                    { key, secretDir: this.datSecretsDir },
+                                    async (err, dat) => {
+                                        if (err || !dat) {
+                                            if (
+                                                err.name === "IncompatibleError"
+                                            ) {
+                                                // TODO: incompatible metadata issue, hoping to solve elsewhere
+                                                debug("Dat Incompatible Error");
+                                            }
+                                            if (!dat) {
+                                                debug(
+                                                    `[${key}] dat instance unobtainable...`,
+                                                    dat
+                                                );
+                                            } else {
+                                                debug(
+                                                    `[${key}] dat error, closing...`
+                                                );
+                                            }
+                                            try {
+                                                await this.removeDat(key);
+                                            } catch (error) {}
                                             debug(
-                                                `[${key}] dat instance unobtainable...`,
-                                                dat
-                                            );
-                                        } else {
-                                            debug(
-                                                `[${key}] dat error, closing...`
-                                            );
-                                        }
-                                        try {
-                                            await this.removeDat(key);
-                                        } catch (error) {}
-                                        debug(
-                                            `[${key}] failed to download dat`,
-                                            err
-                                        );
-                                        return reject(err);
-                                    }
-                                    // 2. Dat instance ready to go. Order of operations is kind of wierd here,
-                                    // but the archive sync event may emit *before* the joinNetwork callback.
-                                    this.dats[key] = dat;
-                                    let datEntryInserted = false;
-                                    const network = dat.joinNetwork(err => {
-                                        if (err) {
-                                            debug(
-                                                `[${key}] Failed to join network with error`,
+                                                `[${key}] failed to download dat`,
                                                 err
                                             );
                                             return reject(err);
                                         }
-                                        if (
-                                            !dat.network.connected ||
-                                            !dat.network.connecting
-                                        ) {
-                                            debug(
-                                                `[${key}] Failed to join network, unable to connect`
-                                            );
-                                            return reject(
-                                                new Error(
-                                                    `Unable to connect with peers`
+                                        // 2. Dat instance ready to go. Order of operations is kind of wierd here,
+                                        // but the archive sync event may emit *before* the joinNetwork callback.
+                                        this.dats[key] = dat;
+                                        let datEntryInserted = false;
+                                        const network = dat.joinNetwork(err => {
+                                            if (err) {
+                                                debug(
+                                                    `[${key}] Failed to join network with error`,
+                                                    err
+                                                );
+                                                return reject(err);
+                                            }
+                                            let connectedWithPeers = false;
+                                            if (
+                                                dat.network.connected &&
+                                                dat.network.connecting
+                                            ) {
+                                                // check for peers
+                                                if (
+                                                    dat.stats &&
+                                                    dat.stats.peers.total > 0
                                                 )
+                                                    connectedWithPeers = true;
+                                            }
+                                            if (!connectedWithPeers) {
+                                                debug(
+                                                    `[${key}] Failed to join network, unable to connect`
+                                                );
+                                                return reject(
+                                                    new Error(
+                                                        `Unable to connect with peers`
+                                                    )
+                                                );
+                                            }
+                                            debug(
+                                                `[${key}] Succesfully joined network and began downloading!
+                                            \n\tconnected[${
+                                                dat.network.connected
+                                            }] 
+                                            \n\tconnecting[${
+                                                dat.network.connecting
+                                            }]
+                                            \n\tconnections[${
+                                                dat.network.connections.length
+                                            }]
+                                            \n\tpeers[${
+                                                dat.stats
+                                                    ? dat.stats.peers.total
+                                                    : 0
+                                            }]`
                                             );
-                                        }
-                                        debug(
-                                            `[${key}] Succesfully joined network and began downloading!`
-                                        );
-                                        dat.AO_joinedNetwork = true;
-                                        if (!datEntryInserted) {
-                                            datEntryInserted = true;
-                                            const newDatEntry: DatEntry = {
-                                                key,
-                                                complete: false,
-                                                updatedAt: new Date(),
-                                                createdAt: new Date()
-                                            };
-                                            this._updateDatEntry(newDatEntry);
-                                            !resolveOnDownloadCompletion &&
-                                                resolve(newDatEntry);
-                                        }
-                                    });
-                                    network.on("error", error => {
-                                        debug(`[${key}] network error:`, error);
-                                        if (error.code === "EADDRINUSE") {
-                                            // hit this error when attempting to download multiple dats
-                                            // it seems that network will retry with diff port
-                                        }
-                                    });
-                                    network.on("listening", () => {
-                                        debug(`[${key}] network listening`);
-                                    });
+                                            dat.AO_joinedNetwork = true;
+                                            if (!datEntryInserted) {
+                                                datEntryInserted = true;
+                                                const newDatEntry: DatEntry = {
+                                                    key,
+                                                    complete: false,
+                                                    updatedAt: new Date(),
+                                                    createdAt: new Date()
+                                                };
+                                                this._updateDatEntry(
+                                                    newDatEntry
+                                                );
+                                                !resolveOnDownloadCompletion &&
+                                                    resolve(newDatEntry);
+                                            }
+                                        });
+                                        network.on("error", error => {
+                                            debug(
+                                                `[${key}] network error:`,
+                                                error
+                                            );
+                                            if (error.code === "EADDRINUSE") {
+                                                // hit this error when attempting to download multiple dats
+                                                // it seems that network will retry with diff port
+                                            }
+                                        });
+                                        network.on("listening", () => {
+                                            debug(`[${key}] network listening`);
+                                        });
 
-                                    this._listenForDatSyncCompletion(dat).then(
-                                        () => {
+                                        this._listenForDatSyncCompletion(
+                                            dat
+                                        ).then(() => {
                                             const updatedDatEntry: DatEntry = {
                                                 key,
                                                 complete: true,
@@ -774,36 +811,37 @@ export default class AODat extends AORouterInterface {
                                             };
                                             resolveOnDownloadCompletion &&
                                                 resolve(updatedDatEntry);
-                                        }
-                                    );
-                                    const stats = dat.trackStats();
-                                    debug(`[${key}] tracking stats`);
-                                    dat.AO_isTrackingStats = true;
-                                    let lastPercentage = null;
-                                    stats.on("update", () => {
-                                        const newStats = stats.get();
-                                        dat.AO_latestStats = newStats;
-                                        let downloadPercentage = (
-                                            (newStats.downloaded /
-                                                newStats.length) *
-                                            100
-                                        ).toFixed(0);
-                                        if (downloadPercentage === "NaN")
-                                            downloadPercentage = `0`;
-                                        // To avoid blowing up the logs, only print at intervals of 10
-                                        if (
-                                            parseInt(downloadPercentage) %
-                                                10 ===
-                                                0 &&
-                                            downloadPercentage != lastPercentage
-                                        ) {
-                                            debug(
-                                                `[${key}] downloaded ${downloadPercentage}%`
-                                            );
-                                        }
-                                        lastPercentage = downloadPercentage;
-                                    });
-                                });
+                                        });
+                                        const stats = dat.trackStats();
+                                        debug(`[${key}] tracking stats`);
+                                        dat.AO_isTrackingStats = true;
+                                        let lastPercentage = null;
+                                        stats.on("update", () => {
+                                            const newStats = stats.get();
+                                            dat.AO_latestStats = newStats;
+                                            let downloadPercentage = (
+                                                (newStats.downloaded /
+                                                    newStats.length) *
+                                                100
+                                            ).toFixed(0);
+                                            if (downloadPercentage === "NaN")
+                                                downloadPercentage = `0`;
+                                            // To avoid blowing up the logs, only print at intervals of 10
+                                            if (
+                                                parseInt(downloadPercentage) %
+                                                    10 ===
+                                                    0 &&
+                                                downloadPercentage !=
+                                                    lastPercentage
+                                            ) {
+                                                debug(
+                                                    `[${key}] downloaded ${downloadPercentage}%`
+                                                );
+                                            }
+                                            lastPercentage = downloadPercentage;
+                                        });
+                                    }
+                                );
                             })
                             .catch(error => {
                                 debug(`[${key}] error during unlink`, error);
