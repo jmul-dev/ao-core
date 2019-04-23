@@ -7,9 +7,7 @@ import AORouterInterface, {
     IAORouterRequest,
     AORouterSubprocessArgs
 } from "../../router/AORouterInterface";
-import { IAOFS_Unlink_Data, IAOFS_Mkdir_Data } from "../fs/fs";
 import { NetworkContentHostEntry } from "../p2p/p2p";
-import util from "util";
 const debug = Debug("ao:dat");
 
 export interface AODat_Init_Data {
@@ -75,6 +73,8 @@ export default class AODat extends AORouterInterface {
     private storageLocation: string;
     private datSecretsDir: string;
     private datDir: string;
+    private lastUsedPort = 3200;
+    private swarmPortRange = [3200, 3400];
     private dats: {
         [key: string]: Dat;
     };
@@ -110,6 +110,13 @@ export default class AODat extends AORouterInterface {
         this.dats = {};
         this.activelyDownloadingDats = {};
         debug(`started`);
+    }
+
+    private get swarmPort(): number {
+        let port = this.lastUsedPort + 1;
+        if (port > this.swarmPortRange[1]) port = this.swarmPortRange[0];
+        this.lastUsedPort = port;
+        return port;
     }
 
     private _handleInit(request: IAORouterRequest) {
@@ -267,7 +274,7 @@ export default class AODat extends AORouterInterface {
                 const datDir = path.join(this.datDir, datEntry.key);
                 Dat(
                     datDir,
-                    { secretDir: this.datSecretsDir },
+                    { secretDir: this.datSecretsDir, port: this.swarmPort },
                     (err: Error, dat: Dat) => {
                         if (err && dat)
                             dat.close() && delete this.dats[datEntry.key];
@@ -412,7 +419,11 @@ export default class AODat extends AORouterInterface {
         const datDir = path.join(this.datDir, key);
         Dat(
             datDir,
-            { createIfMissing: false, secretDir: this.datSecretsDir },
+            {
+                createIfMissing: false,
+                secretDir: this.datSecretsDir,
+                port: this.swarmPort
+            },
             (err: Error, dat: Dat) => {
                 try {
                     if (err) throw err;
@@ -573,35 +584,39 @@ export default class AODat extends AORouterInterface {
         const requestData: AODat_Create_Data = request.data;
         const datLocation = path.join(this.datDir, requestData.newDatDir);
         try {
-            Dat(datLocation, { secretDir: this.datSecretsDir }, (err, dat) => {
-                if (err) return request.reject(err);
-                this._importFiles(dat)
-                    .then(() => {
-                        debug(
-                            `[${dat.key.toString(
-                                "hex"
-                            )}] initialized and imported files! live=${
-                                dat.live ? "true" : "false"
-                            }`
-                        );
-                        dat.close(() => {
-                            const datKey = dat.key.toString("hex");
-                            debug(`[${datKey}] dat closed`);
-                            const newDatEntry: DatEntry = {
-                                key: datKey,
-                                complete: true,
-                                updatedAt: new Date(),
-                                createdAt: new Date()
-                            };
-                            this._updateDatEntry(newDatEntry);
-                            request.respond({
-                                ...newDatEntry,
-                                dir: requestData.newDatDir
+            Dat(
+                datLocation,
+                { secretDir: this.datSecretsDir, port: this.swarmPort },
+                (err, dat) => {
+                    if (err) return request.reject(err);
+                    this._importFiles(dat)
+                        .then(() => {
+                            debug(
+                                `[${dat.key.toString(
+                                    "hex"
+                                )}] initialized and imported files! live=${
+                                    dat.live ? "true" : "false"
+                                }`
+                            );
+                            dat.close(() => {
+                                const datKey = dat.key.toString("hex");
+                                debug(`[${datKey}] dat closed`);
+                                const newDatEntry: DatEntry = {
+                                    key: datKey,
+                                    complete: true,
+                                    updatedAt: new Date(),
+                                    createdAt: new Date()
+                                };
+                                this._updateDatEntry(newDatEntry);
+                                request.respond({
+                                    ...newDatEntry,
+                                    dir: requestData.newDatDir
+                                });
                             });
-                        });
-                    })
-                    .catch(request.reject);
-            });
+                        })
+                        .catch(request.reject);
+                }
+            );
         } catch (error) {
             debug(
                 `Caught error while attempting to create dat: ${
@@ -715,7 +730,11 @@ export default class AODat extends AORouterInterface {
                         // 1. We do not have this dat in the DB records, proceed with download
                         Dat(
                             newDatPath,
-                            { key, secretDir: this.datSecretsDir },
+                            {
+                                key,
+                                secretDir: this.datSecretsDir,
+                                port: this.swarmPort
+                            },
                             async (err, dat) => {
                                 if (err || !dat) {
                                     if (err.name === "IncompatibleError") {
