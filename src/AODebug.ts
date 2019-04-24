@@ -7,6 +7,8 @@ const argv = minimist(process.argv.slice(2));
 const dataPath = argv.storageLocation ? argv.storageLocation : "data";
 const { combine, timestamp, label, colorize } = format;
 export const debugLogFile = "debug.log";
+export const exceptionsLogFile = "exceptions.log";
+export const maxDebugFileSize = 1000 * 1000 * 5; // 5MB
 
 const developmentLogger = Debug;
 
@@ -50,11 +52,15 @@ const fileLogger = (prefix: string): any => {
         transports: [
             new transports.File({
                 filename: path.resolve(dataPath, debugLogFile),
-                level: prefix
+                level: prefix,
+                handleExceptions: true,
+                maxsize: maxDebugFileSize,
+                maxFiles: 1 // Log is simply erased once maxsize is reached
             }),
             new transports.Console({
                 level: prefix,
-                format: combine(colorize(), debugFormat)
+                format: combine(colorize(), debugFormat),
+                handleExceptions: true
             })
         ]
     });

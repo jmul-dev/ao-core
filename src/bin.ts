@@ -6,98 +6,109 @@ const packageJson = require("../package.json");
 
 const argv = require("yargs")
     .version(packageJson.version)
-    .option("ethAddress", {
-        description: "Ethereum account you would like to run ao-core under",
-        type: "string"
-    })
-    .option("ethNetworkRpc", {
-        description:
-            "Override the default ethereum network rpc endpoint. At this time, the rpc endpoint must support the ws interface.",
-        type: "string",
-        default:
-            process.env.NODE_ENV === "production"
-                ? "wss://mainnet.infura.io/ws"
-                : "wss://rinkeby.infura.io/ws"
-    })
-    .required("ethNetworkRpc")
-    .option("disableHttpInterface", {
-        description: "Disables the HTTP interface",
-        type: "boolean"
-    })
-    .option("corePort", {
-        alias: "port",
-        description: "Port that ao-core will run on",
-        type: "number"
-    })
-    .option("coreOrigin", {
-        description: "Domain that ao-core will run on",
-        type: "string"
-        //Add coerce to validate as URL.
-    })
-    .option("httpOrigin", {
-        description:
-            "Origin that will be accessing ao-core's http interface from (CORS)",
-        type: "string"
-    })
-    .option("storageLocation", {
-        alias: "s",
-        description: "Directory that ao-core will use for storage",
-        type: "string",
-        coerce: arg => {
-            //If you use coerce, the default options don't get passed as it goes through this.
-            return fsExtra.pathExistsSync(arg)
-                ? arg
-                : Core.DEFAULT_OPTIONS.storageLocation;
+    .command({
+        command: "start",
+        aliases: ["run"],
+        desc: "Start ao-core",
+        builder: yargs =>
+            yargs
+                .option("ethAddress", {
+                    description:
+                        "Ethereum account you would like to run ao-core under",
+                    type: "string"
+                })
+                .option("ethNetworkRpc", {
+                    description:
+                        "Override the default ethereum network rpc endpoint. At this time, the rpc endpoint must support the ws interface.",
+                    type: "string",
+                    default:
+                        process.env.NODE_ENV === "production"
+                            ? "wss://mainnet.infura.io/ws"
+                            : "wss://rinkeby.infura.io/ws"
+                })
+                .required("ethNetworkRpc")
+                .option("disableHttpInterface", {
+                    description: "Disables the HTTP interface",
+                    type: "boolean"
+                })
+                .option("corePort", {
+                    alias: "port",
+                    description: "Port that ao-core will run on",
+                    type: "number"
+                })
+                .option("coreOrigin", {
+                    description: "Domain that ao-core will run on",
+                    type: "string"
+                    //Add coerce to validate as URL.
+                })
+                .option("httpOrigin", {
+                    description:
+                        "Origin that will be accessing ao-core's http interface from (CORS)",
+                    type: "string"
+                })
+                .option("storageLocation", {
+                    alias: "s",
+                    description: "Directory that ao-core will use for storage",
+                    type: "string",
+                    coerce: arg => {
+                        //If you use coerce, the default options don't get passed as it goes through this.
+                        return fsExtra.pathExistsSync(arg)
+                            ? arg
+                            : Core.DEFAULT_OPTIONS.storageLocation;
+                    }
+                })
+                .option("desktopLocation", {
+                    description: "Users desktop path (used for exporting)",
+                    type: "string",
+                    coerce: arg => {
+                        //If you use coerce, the default options don't get passed as it goes through this.
+                        return fsExtra.pathExistsSync(arg)
+                            ? arg
+                            : Core.DEFAULT_OPTIONS.desktopLocation;
+                    }
+                })
+                .option("nodeBin", {
+                    description: "Node binary to use",
+                    type: "string",
+                    coerce: arg => {
+                        return fsExtra.pathExistsSync(arg)
+                            ? arg
+                            : Core.DEFAULT_OPTIONS.nodeBin;
+                    }
+                })
+                .option("exportData", {
+                    description: "Exports a data to a defined path",
+                    type: "string",
+                    coerce: arg => {
+                        if (fsExtra.pathExistsSync(arg)) {
+                            return arg;
+                        } else {
+                            // console.log(
+                            //     "Path does not exist for export. Please specify a path that exists"
+                            // );
+                            return "";
+                        }
+                    }
+                })
+                .option("importData", {
+                    description:
+                        "Imports a zip file created through the export process",
+                    type: "string",
+                    coerce: arg => {
+                        if (fsExtra.pathExistsSync(arg)) {
+                            return arg;
+                        } else {
+                            // console.log(
+                            //     "File does not exist for import. Please specify a File that exists"
+                            // );
+                            return "";
+                        }
+                    }
+                })
+                .default(Core.DEFAULT_OPTIONS),
+        handler: argv => {
+            const core = new Core(argv);
         }
     })
-    .option("desktopLocation", {
-        description: "Users desktop path (used for exporting)",
-        type: "string",
-        coerce: arg => {
-            //If you use coerce, the default options don't get passed as it goes through this.
-            return fsExtra.pathExistsSync(arg)
-                ? arg
-                : Core.DEFAULT_OPTIONS.desktopLocation;
-        }
-    })
-    .option("nodeBin", {
-        description: "Node binary to use",
-        type: "string",
-        coerce: arg => {
-            return fsExtra.pathExistsSync(arg)
-                ? arg
-                : Core.DEFAULT_OPTIONS.nodeBin;
-        }
-    })
-    .option("exportData", {
-        description: "Exports a data to a defined path",
-        type: "string",
-        coerce: arg => {
-            if (fsExtra.pathExistsSync(arg)) {
-                return arg;
-            } else {
-                // console.log(
-                //     "Path does not exist for export. Please specify a path that exists"
-                // );
-                return "";
-            }
-        }
-    })
-    .option("importData", {
-        description: "Imports a zip file created through the export process",
-        type: "string",
-        coerce: arg => {
-            if (fsExtra.pathExistsSync(arg)) {
-                return arg;
-            } else {
-                // console.log(
-                //     "File does not exist for import. Please specify a File that exists"
-                // );
-                return "";
-            }
-        }
-    })
-    .default(Core.DEFAULT_OPTIONS)
+    .demandCommand()
     .help().argv;
-
-const core = new Core(argv);

@@ -196,7 +196,7 @@ export default class AODB {
                     );
                 });
             } else {
-                debug(remotePeerKey.toString("hex"), "authorized");
+                debug(remotePeerKey.toString("hex"), "already authorized");
             }
         });
     }
