@@ -295,10 +295,13 @@ export default class AODB extends AORouterInterface {
                     { $set: { recentlySeenHostsCount: 0 } },
                     { multi: true },
                     error => {
+                        if(error) {
+                            errorLog(`error resetting network content hosts count`, error)
+                        }
                         this.db.networkContent.persistence.compactDatafile();
+                        request.respond({});
                     }
                 );
-                request.respond({});
             }
         });
     }
