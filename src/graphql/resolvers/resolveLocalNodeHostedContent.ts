@@ -33,11 +33,6 @@ export default (
                 creatorNodePublicKey: {
                     $ne: nodeIdentity.publicKey
                 },
-                state: args.inputs.incomplete
-                    ? {
-                          $in: getListOfContentIncompleteStates()
-                      }
-                    : undefined,
                 contentType: args.inputs.contentType,
                 contentLicense: args.inputs.contentLicense
             }
@@ -55,6 +50,28 @@ export default (
                 userContent = userContent.sort((a, b) => {
                     return parseInt(b.createdAt) - parseInt(a.createdAt);
                 });
+                if (args.inputs.incomplete) {
+                    let recentlyCompletedDate = new Date();
+                    recentlyCompletedDate.setMinutes(-30);
+                    const recentlyCompletedDateTimestampe = recentlyCompletedDate.getTime();
+                    userContent = userContent.filter(content => {
+                        if (
+                            content.state !== "DISCOVERED" &&
+                            content.state !== "DISCOVERABLE"
+                        ) {
+                            return true;
+                        }
+                        // NOTE: we are including recently completed content specifically
+                        // for the frontend notification bar.
+                        if (
+                            parseInt(content.hostedAt) >
+                            recentlyCompletedDateTimestampe
+                        ) {
+                            return true;
+                        }
+                        return false;
+                    });
+                }
                 resolve(userContent);
             })
             .catch(error => {

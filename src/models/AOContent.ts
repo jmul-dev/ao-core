@@ -123,6 +123,7 @@ export default abstract class AOContent {
     public profitSplitPercentage: number;
     public adSupport: boolean;
     public createdAt: string;
+    public hostedAt: string;
     public transactions?: {
         purchaseTx: string;
         stakeTx: string;

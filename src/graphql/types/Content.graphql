@@ -115,6 +115,7 @@ interface IContent {
     adSupport: Boolean
     # Network
     createdAt: String
+    hostedAt: String
     transactions: ContentTransactions
     purchaseReceiptId: String
     lastSeenContentHost: NetworkContentHostEntry
@@ -181,6 +182,7 @@ type VideoContent implements IContent {
     adSupport: Boolean
     # Network
     createdAt: String
+    hostedAt: String
     transactions: ContentTransactions
     purchaseReceiptId: String
     lastSeenContentHost: NetworkContentHostEntry
@@ -233,6 +235,7 @@ type DappContent implements IContent {
     adSupport: Boolean
     # Network
     createdAt: String
+    hostedAt: String
     transactions: ContentTransactions
     purchaseReceiptId: String
     lastSeenContentHost: NetworkContentHostEntry
@@ -286,6 +289,7 @@ type PdfContent implements IContent {
     adSupport: Boolean
     # Network
     createdAt: String
+    hostedAt: String
     transactions: ContentTransactions
     purchaseReceiptId: String
     lastSeenContentHost: NetworkContentHostEntry
