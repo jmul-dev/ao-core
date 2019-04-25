@@ -1,8 +1,8 @@
 import crypto from "crypto";
 import Debug from "../../AODebug";
 import ffprobe from "ffprobe";
-import fs, { ReadStream, WriteStream } from "fs";
-import fsExtra from "fs-extra";
+import { ReadStream, WriteStream } from "fs";
+import fs from "fs-extra";
 import archiver from "archiver";
 import checksum from "checksum";
 import md5 from "md5";
@@ -149,8 +149,7 @@ export default class AOFS extends AORouterInterface {
             requestData.writePath
         );
         debug(`write to [${writePath}]`);
-        fsExtra
-            .outputFile(writePath, requestData.data)
+        fs.outputFile(writePath, requestData.data)
             .then(() => {
                 //fs.readFile(full_path) will return the file
             })
@@ -215,11 +214,11 @@ export default class AOFS extends AORouterInterface {
             request.respond({
                 success: true
             });
-            process.exit();
+            process.nextTick(process.exit);
         });
         archive.on("error", function(err) {
             request.reject(err);
-            process.exit();
+            process.nextTick(process.exit);
         });
         archive.pipe(zippedWriteStream);
         archive.append(readStream, { name: requestData.filenameWithinZip });
@@ -237,7 +236,7 @@ export default class AOFS extends AORouterInterface {
             // TODO: this should really attempt to cleanup resource already written (or attempted to write)
             debug(`rejectAndExit`, error);
             request.reject(error);
-            process.exit();
+            process.nextTick(process.exit);
         };
         debug("writing stream to: " + writePath);
         let readStream: ReadStream = requestData.stream;
@@ -324,7 +323,7 @@ export default class AOFS extends AORouterInterface {
                             filePath: writePath,
                             videoStats: videoStats ? videoStats : false
                         });
-                        process.exit();
+                        process.nextTick(process.exit);
                     } else {
                         const key = this.newEncryptionKey();
                         const encrypt = crypto.createCipher(
@@ -380,16 +379,13 @@ export default class AOFS extends AORouterInterface {
                                                 )}`
                                             );
                                             //remove the original file
-                                            // fsExtra
+                                            // fs
                                             //     .remove(writePath)
                                             //     .then(() => {
                                             //finally move the encrypted file to the original path
-                                            fsExtra
-                                                .move(
-                                                    encryptedPath,
-                                                    writePath,
-                                                    { overwrite: true }
-                                                )
+                                            fs.move(encryptedPath, writePath, {
+                                                overwrite: true
+                                            })
                                                 .then(() => {
                                                     //Get the encrypted checksum
                                                     checksum.file(
@@ -423,7 +419,9 @@ export default class AOFS extends AORouterInterface {
                                                                     }
                                                                 );
                                                                 // Single use event, kill process when done
-                                                                process.exit();
+                                                                process.nextTick(
+                                                                    process.exit
+                                                                );
                                                             }
                                                         }
                                                     ); //encrypted checksum end.
@@ -481,7 +479,7 @@ export default class AOFS extends AORouterInterface {
             requestData.readPath
         );
         debug(`read file: ${readPath}`);
-        fsExtra.readFile(readPath, "utf8", (err, data) => {
+        fs.readFile(readPath, "utf8", (err, data) => {
             if (err) {
                 request.reject(err);
             }
@@ -512,18 +510,18 @@ export default class AOFS extends AORouterInterface {
         });
         readStream.on("error", err => {
             request.reject(err);
-            process.exit();
+            process.nextTick(process.exit);
         });
 
         receiver.on("finish", () => {
             debug(`writeStream::close`);
             request.respond({});
-            process.exit();
+            process.nextTick(process.exit);
         });
         receiver.on("error", (error: Error) => {
             debug(`Error during write to fd WritableStream`, error);
             request.reject(error);
-            process.exit();
+            process.nextTick(process.exit);
         });
     }
 
@@ -556,17 +554,17 @@ export default class AOFS extends AORouterInterface {
             });
             readStream.on("error", err => {
                 request.reject(err);
-                process.exit();
+                process.nextTick(process.exit);
             });
             writeStream.on("finish", () => {
                 debug(`writeStream::close`);
                 request.respond({});
-                process.exit();
+                process.nextTick(process.exit);
             });
             writeStream.on("error", (error: Error) => {
                 debug(`Error during write to fd WritableStream`, error);
                 request.reject(error);
-                process.exit();
+                process.nextTick(process.exit);
             });
         } catch (error) {
             debug(
@@ -574,14 +572,14 @@ export default class AOFS extends AORouterInterface {
                 error
             );
             request.reject(error);
-            process.exit();
+            process.nextTick(process.exit);
         }
     }
 
     _handlePathExists(request: IAORouterRequest) {
         const requestData: IAOFS_PathExists_Data = request.data;
         const checkPath = path.resolve(this.storageLocation, requestData.path);
-        fsExtra.pathExists(checkPath, (err, exists) => {
+        fs.pathExists(checkPath, (err, exists) => {
             if (err) {
                 request.reject(err);
             } else {
@@ -593,8 +591,7 @@ export default class AOFS extends AORouterInterface {
     _handleMkdir(request: IAORouterRequest) {
         const requestData: IAOFS_Mkdir_Data = request.data;
         const dirPath = path.resolve(this.storageLocation, requestData.dirPath);
-        fsExtra
-            .ensureDir(dirPath)
+        fs.ensureDir(dirPath)
             .then(() => {
                 request.respond({});
             })
@@ -610,8 +607,7 @@ export default class AOFS extends AORouterInterface {
             requestData.destPath
         );
         debug(`Moving [${srcPath}] -> [${destPath}]`);
-        fsExtra
-            .move(srcPath, destPath)
+        fs.move(srcPath, destPath)
             .then(() => {
                 request.respond({});
             })
@@ -623,7 +619,7 @@ export default class AOFS extends AORouterInterface {
         const removePath = requestData.isAbsolute
             ? requestData.removePath
             : path.resolve(this.storageLocation, requestData.removePath);
-        fsExtra.remove(removePath, err => {
+        fs.remove(removePath, err => {
             if (err) {
                 request.reject(err);
             }
@@ -646,7 +642,11 @@ export default class AOFS extends AORouterInterface {
     _handleDecryptChecksum(request: IAORouterRequest) {
         const requestData: IAOFS_DecryptCheck_Data = request.data;
         const filePath = path.resolve(this.storageLocation, requestData.path);
-
+        debug(
+            `[${
+                requestData.path
+            }] attempting to decrypt and checksum content...`
+        );
         fs.stat(filePath, (err, stat) => {
             if (!err && !stat.isFile()) err = new Error("Not a file");
             if (err) request.reject(err);
@@ -665,12 +665,13 @@ export default class AOFS extends AORouterInterface {
                 { end: false }
             );
             readStream.on("end", () => {
+                debug(`[${requestData.path}] decrypted, read hash`);
                 hash.end();
                 request.respond({
                     checksum: hash.read()
                 });
                 // Single use event, kill process when done
-                process.exit();
+                process.nextTick(process.exit);
             });
         });
     }
@@ -715,14 +716,14 @@ export default class AOFS extends AORouterInterface {
                             });
                         }
                         // Single use event, kill process when done
-                        process.exit();
+                        process.nextTick(process.exit);
                     }
                 );
             })
             .on("error", err => {
                 debug(err);
                 // single use process, lets exit
-                process.exit();
+                process.nextTick(process.exit);
             });
     }
 
@@ -744,7 +745,7 @@ export default class AOFS extends AORouterInterface {
             debug("Data export complete");
             request.respond({ exportPath: exportFullPath });
             // single use process, lets exit
-            process.exit();
+            process.nextTick(process.exit);
         });
         output.on("end", () => {
             debug("Export data fully fed");
@@ -763,7 +764,7 @@ export default class AOFS extends AORouterInterface {
         archive.on("error", err => {
             request.reject(err);
             // single use process, lets exit
-            process.exit();
+            process.nextTick(process.exit);
         });
 
         //Feed the data through
@@ -776,7 +777,7 @@ export default class AOFS extends AORouterInterface {
         debug("Starting Data Import Process");
         const { inputPath }: IAOFS_DataImport_Data = request.data;
         //Yeah, this is a brave operation
-        fsExtra.remove(this.storageLocation, err => {
+        fs.remove(this.storageLocation, err => {
             if (err) {
                 request.reject(err);
                 return;
@@ -788,18 +789,18 @@ export default class AOFS extends AORouterInterface {
                 debug("Unzip input error: ", error);
                 request.reject(error);
                 // single use process, lets exit
-                process.exit();
+                process.nextTick(process.exit);
             });
             unzip.on("close", () => {
                 request.respond({});
                 // single use process, lets exit
-                process.exit();
+                process.nextTick(process.exit);
             });
             unzip.on("error", error => {
                 debug("Unzip error: ", error);
                 request.reject(error);
                 // single use process, lets exit
-                process.exit();
+                process.nextTick(process.exit);
             });
         });
     }

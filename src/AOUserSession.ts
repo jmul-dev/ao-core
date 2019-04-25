@@ -453,13 +453,21 @@ export default class AOUserSession {
                         response.data[0]
                     );
                     debug(
-                        `[BuyContent][contentHostId=${
-                            buyContentEvent.contentHostId
-                        }][${userContent.title}]->buyer[${
-                            buyContentEvent.publicKey
-                        }] handle incoming purchase`
+                        `[${
+                            userContent.id
+                        }] BuyContent event handler, purchased by ${
+                            buyContentEvent.buyer
+                        } (eth address)`
                     );
                     try {
+                        if (!buyContentEvent.publicKey)
+                            throw new Error(
+                                `BuyContent event does not have a public key`
+                            );
+                        if (!userContent.decryptionKey)
+                            throw new Error(
+                                `User content does not have a decryptionKey`
+                            );
                         // 2. Generate the encryption key according to spec
                         const contentDecryptParams = {
                             contentDecryptionKey: userContent.decryptionKey,
@@ -488,18 +496,16 @@ export default class AOUserSession {
                             )
                             .then((response: IAORouterMessage) => {
                                 if (response.data.alreadyExists) {
-                                    debug(
-                                        `Incoming purchase already handled, content[${
-                                            userContent.id
-                                        }]->buyer[${buyContentEvent.buyer}]`
-                                    );
+                                    // debug(
+                                    //     `Incoming purchase already handled, content[${
+                                    //         userContent.id
+                                    //     }]->buyer[${buyContentEvent.buyer}]`
+                                    // );
                                 } else if (response.data.success) {
                                     debug(
-                                        `Succesfully handled content purchase with: contentHostId[${
-                                            buyContentEvent.contentHostId
-                                        }], purchaseReceiptId[${
-                                            buyContentEvent.purchaseReceiptId
-                                        }]`
+                                        `[${
+                                            userContent.id
+                                        }] BuyContent event handler, wrote decryption key to indexData`
                                     );
                                     this.router.send("/db/logs/insert", {
                                         message: `Sold ${
@@ -511,7 +517,9 @@ export default class AOUserSession {
                                     });
                                 } else {
                                     debug(
-                                        `Failed to handle content purhcase, writing to discovery resolved without success`
+                                        `[${
+                                            userContent.id
+                                        }] BuyContent event handler, failed to write decryption key to indexData`
                                     );
                                     this.router.send("/db/logs/insert", {
                                         message: `Sold ${
@@ -526,14 +534,18 @@ export default class AOUserSession {
                             })
                             .catch(error => {
                                 debug(
-                                    `Failed to handle content purhcase`,
+                                    `[${
+                                        userContent.id
+                                    }] Failed to handle content purhcase`,
                                     error
                                 );
                                 reject(error);
                             });
                     } catch (error) {
                         debug(
-                            `Error generating content decryption key for user: ${
+                            `[${
+                                userContent.id
+                            }] Error generating content decryption key for user: ${
                                 error.message
                             }`,
                             error
@@ -897,10 +909,12 @@ export default class AOUserSession {
     private _listenForContentDecryptionKey(content: AOContent) {
         const sessionEthAddress = this.ethAddress;
         const sessionIdentity = this.identity;
-        debug("starting to listen for content decryption keys");
+        debug(`[${content.id}] starting to listen for content decryption keys`);
         if (content.state !== AOContentState.PURCHASED) {
             debug(
-                `Warning: _listenForContentDecryptionKey called with content state = ${
+                `[${
+                    content.id
+                }] Warning: _listenForContentDecryptionKey called with content state = ${
                     content.state
                 }, expected PURCHASED`
             );
@@ -917,13 +931,15 @@ export default class AOUserSession {
                     // TODO: we currently do not have a method of stopping /p2p/watchAndGetIndexData. There is a chance
                     // that the user has changed within this time frame and we dont want
                     debug(
-                        `Warning, user has changed we are skipping content update to state DECRYPTION_KEY_RECEIVED`
+                        `[${
+                            content.id
+                        }] Warning, user has changed we are skipping content update to state DECRYPTION_KEY_RECEIVED`
                     );
                     return null;
                 }
                 const indexData: ITaoDB_ContentHost_IndexData_Entry =
                     response.data;
-                if (indexData) {
+                if (indexData && indexData.decryptionKey) {
                     let contentUpdateQuery: AODB_UserContentUpdate_Data = {
                         id: content.id,
                         update: {
@@ -937,9 +953,9 @@ export default class AOUserSession {
                         .send("/db/user/content/update", contentUpdateQuery)
                         .then((contentUpdateResponse: IAORouterMessage) => {
                             debug(
-                                `Succesfully received decryption key for purchased content with id[${
+                                `[${
                                     content.id
-                                }]`
+                                }] Succesfully received decryption key for purchased content`
                             );
                             const updatedContent: AOContent = AOContent.fromObject(
                                 contentUpdateResponse.data
@@ -955,7 +971,9 @@ export default class AOUserSession {
                         .catch(debug);
                 } else {
                     debug(
-                        `Error listening for decryption key, no index data returned`
+                        `[${
+                            content.id
+                        }] Error listening for decryption key, no index data returned`
                     );
                 }
             })
@@ -975,12 +993,18 @@ export default class AOUserSession {
         const sessionIdentity = this.identity;
         if (!content.receivedIndexData) {
             debug(
-                `Warning: calling _handleContentDecryptionKeyReceived without receivedIndexData from p2p/hyperdb`
+                `[${
+                    content.id
+                }] Warning: calling _handleContentDecryptionKeyReceived without receivedIndexData from p2p/hyperdb`
             );
             return null;
         }
+        if (!content.receivedIndexData.decryptionKey) {
+            debug(`[${content.id}] indexData does not have a decryption key.`);
+            return;
+        }
         debug(
-            `Attempting to decrypt received indexData:`,
+            `[${content.id}] Attempting to decrypt received indexData:`,
             content.receivedIndexData
         );
         // 1. Decrypt the decryption key that we received from seller
@@ -1004,7 +1028,9 @@ export default class AOUserSession {
                             nextContentState =
                                 AOContentState.VERIFICATION_FAILED;
                             debug(
-                                `Checksum of decrypted file does not match the purchased content's checksum`
+                                `[${
+                                    content.id
+                                }] Checksum of decrypted file does not match the purchased content's checksum`
                             );
                         }
                         this.router.send("/db/logs/insert", {
@@ -1040,11 +1066,21 @@ export default class AOUserSession {
                             )
                             .catch(debug);
                     })
-                    .catch(debug);
+                    .catch(error => {
+                        debug(
+                            `[${
+                                content.id
+                            }] Error attempting to decrypt & checksum for verification: ${
+                                error.message
+                            }`
+                        );
+                    });
             })
             .catch(error => {
                 debug(
-                    `Error attempting to decrypt content encryption key: ${
+                    `[${
+                        content.id
+                    }] Error attempting to decrypt content encryption key: ${
                         error.message
                     }`
                 );
@@ -1061,6 +1097,7 @@ export default class AOUserSession {
     private _handleContentVerified(content: AOContent) {
         const sessionEthAddress = this.ethAddress;
         const sessionIdentity = this.identity;
+        debug(`[${content.id}] content is verified, attempt to re-encrypt`);
         // 1. Get the decryption key again
         AOCrypto.decryptMessage({
             message: content.receivedIndexData.decryptionKey,
@@ -1098,7 +1135,9 @@ export default class AOUserSession {
                                     reencryptionResponse.data.encryptedChecksum;
                                 if (!newDecrytionKey) {
                                     debug(
-                                        "Error re-encrypting file: No new decryption key"
+                                        `[${
+                                            content.id
+                                        }] Error re-encrypting file: No new decryption key`
                                     );
                                     cleanupTmpContent();
                                     return null;
@@ -1106,7 +1145,9 @@ export default class AOUserSession {
                                 if (!content.baseChallenge) {
                                     // Sanity check
                                     debug(
-                                        `Attempting to sign the baseChallenge for content, baseChallenge does not exist!`
+                                        `[${
+                                            content.id
+                                        }] Attempting to sign the baseChallenge for content, baseChallenge does not exist!`
                                     );
                                     cleanupTmpContent();
                                     return null;
@@ -1157,7 +1198,9 @@ export default class AOUserSession {
                                     })
                                     .catch(error => {
                                         debug(
-                                            `Bad news, there was an error generating content base challenge and signature: ${
+                                            `[${
+                                                content.id
+                                            }] Bad news, there was an error generating content base challenge and signature: ${
                                                 error
                                                     ? error.message
                                                     : "(error not an object)"
@@ -1169,7 +1212,11 @@ export default class AOUserSession {
                             })
                             .catch((error: Error) => {
                                 debug(
-                                    `Error re-encrypting file: ${error.message}`
+                                    `[${
+                                        content.id
+                                    }] Error re-encrypting file: ${
+                                        error.message
+                                    }`
                                 );
                                 cleanupTmpContent();
                             }); // Reencryption/copy

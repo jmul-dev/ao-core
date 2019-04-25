@@ -556,7 +556,6 @@ export default class AORouter extends AORouterCoreProcessInterface {
     ): Promise<ChildProcess | null> {
         return new Promise((resolve, reject) => {
             let processLocation = path.join(__dirname, "..", entry.bin);
-            //processLocation = processLocation.replace('app.asar', 'app.asar.unpacked');  // Sry, but if running within electron the paths are off
             debug(
                 `Attempting to spawn process ${
                     entry.name
@@ -571,10 +570,6 @@ export default class AORouter extends AORouterCoreProcessInterface {
                 ethNetworkRpc: this.args.ethNetworkRpc
             };
             let processArgs = [processLocation];
-
-            // TODO: remove!
-            if (process.env.NODE_ENV === "development" && options)
-                processArgs.unshift("--inspect=" + options.inspectPort);
 
             // Went this route for type checking
             for (const key in subprocessArgs) {

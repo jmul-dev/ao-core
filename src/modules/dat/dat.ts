@@ -258,8 +258,10 @@ export default class AODat extends AORouterInterface {
                     datDir,
                     { secretDir: this.datSecretsDir, port: this.swarmPort },
                     (err: Error, dat: Dat) => {
-                        if (err && dat)
-                            dat.close() && delete this.dats[datEntry.key];
+                        if (err && dat) {
+                            dat.close();
+                            this.dats[datEntry.key] = null;
+                        }
                         if (err) return resolve(err);
                         if (!dat)
                             return resolve(
@@ -820,6 +822,11 @@ export default class AODat extends AORouterInterface {
     private async removeDat(key: string) {
         return new Promise(async (resolve, reject) => {
             try {
+                const datInstance = this.dats[key];
+                if (!datInstance)
+                    throw new Error(
+                        `Cannot close Dat, instance does not exist`
+                    );
                 this.dats[key].close(async () => {
                     try {
                         // NOTE: wait until dat releases fd
@@ -841,7 +848,7 @@ export default class AODat extends AORouterInterface {
         try {
             const datPath = path.join(this.datDir, key);
             // remove dat instance if exists
-            delete this.dats[key];
+            this.dats[key] = null;
             // remove db entry
             await this._asyncRemoveDat(key);
             // cleanup disk

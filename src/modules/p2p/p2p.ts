@@ -693,8 +693,8 @@ export default class AOP2P extends AORouterInterface {
                                     existingIndexData
                                 ).length;
                                 debug(
-                                    `content[${
-                                        content.title
+                                    `[${
+                                        content.id
                                     }] has been sold ${existingBuyerCount} times`
                                 );
                                 localResolve(existingIndexData);
@@ -709,8 +709,8 @@ export default class AOP2P extends AORouterInterface {
                                     `Warning, expected indexData key not found in aodb: ${indexDataKey}. Proceeding with write anyway.`
                                 );
                                 debug(
-                                    `content[${
-                                        content.title
+                                    `[${
+                                        content.id
                                     }] has not been sold, indexData not found`
                                 );
                                 localResolve({});
@@ -730,8 +730,8 @@ export default class AOP2P extends AORouterInterface {
                         encryptedDecryptionKey
                 ) {
                     debug(
-                        `content[${
-                            content.title
+                        `[${
+                            content.id
                         }] decryption key handoff for buyer[${buyersPublicKey}] already processed, skipping write to indexData`
                     );
                     request.respond({ success: true, alreadyExists: true });

@@ -593,7 +593,7 @@ export default class AOEth extends AORouterInterface {
                 } else {
                     debug(`Unsubscribed from BuyContent event.`);
                 }
-                delete this.events.BuyContent;
+                this.events.BuyContent = null;
             });
         }
     }
