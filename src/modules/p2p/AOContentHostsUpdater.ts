@@ -51,16 +51,18 @@ export default class AOContentHostsUpdater {
                 this.datKeysInQueue[metadataDatKey] = false;
                 resolve();
             };
-            debug(
-                `[${metadataDatKey}] content hosts updater, position in queue: ${this
-                    .processingQueue.length - 1}`
-            );
+            // debug(
+            //     `[${metadataDatKey}] content hosts updater, position in queue: ${this
+            //         .processingQueue.length - 1}`
+            // );
             // 1. Fetch existing piece of content from the local network content db
             const networkContentQuery: AODB_NetworkContentGet_Data = {
                 query: { _id: metadataDatKey }
             };
             this.router
-                .send("/db/network/content/get", networkContentQuery)
+                .send("/db/network/content/get", networkContentQuery, {
+                    ignoreLogging: true
+                })
                 .then((contentResponse: IAORouterMessage) => {
                     if (contentResponse.data && contentResponse.data[0]) {
                         const existingNetworkContent: AONetworkContent =
@@ -113,7 +115,8 @@ export default class AOContentHostsUpdater {
                                     this.router
                                         .send(
                                             "/db/network/content/update",
-                                            networkContentUpdate
+                                            networkContentUpdate,
+                                            { ignoreLogging: true }
                                         )
                                         .then(() => {
                                             resolver();
