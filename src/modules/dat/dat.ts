@@ -78,9 +78,6 @@ export default class AODat extends AORouterInterface {
     private dats: {
         [key: string]: Dat;
     };
-    private activelyDownloadingDats: {
-        [key: string]: boolean;
-    };
     private datsDb: Datastore;
 
     constructor(args: AORouterSubprocessArgs) {
@@ -108,7 +105,6 @@ export default class AODat extends AORouterInterface {
         this.router.on("/dat/exists", this._handleDatExists.bind(this));
         this.router.on("/dat/stats", this._handleGetDatStats.bind(this));
         this.dats = {};
-        this.activelyDownloadingDats = {};
         debug(`started`);
     }
 
@@ -144,15 +140,10 @@ export default class AODat extends AORouterInterface {
             fsExtra.ensureDirSync(this.datDir);
             fsExtra.ensureDirSync(this.datSecretsDir);
             debug(`Dat directories exists, proceed to resume dats...`);
-            // NOTE: resolving early for now in case resumeAll fails
-            // I think it is possible a single dat can become fucked.
-            request.respond({});
             // 3. Resume dats
             this._resumeAll()
-                .then(() => {})
-                .catch((error: Error) => {
-                    debug(`Error resuming all dats: ${error.message}`);
-                });
+                .then(request.respond)
+                .catch(request.reject);
         });
     }
 
@@ -165,30 +156,41 @@ export default class AODat extends AORouterInterface {
                     return;
                 }
                 let datKeyPromises = [];
-                debug(`Attempting to resume ${docs.length} dats...`);
+                let incompleteCount = 0;
+                let completeCount = 0;
                 docs.forEach((datEntry: DatEntry) => {
-                    const resumePromise = this._resume(datEntry, false).then(
-                        (error?) => {
-                            if (error) {
-                                debug(
-                                    `[${
-                                        datEntry.key
-                                    }] resume returned an error: ${
-                                        error.message
-                                    }`
-                                );
+                    let resumePromise = null;
+                    if (datEntry.complete) {
+                        completeCount++;
+                        resumePromise = this._resume(datEntry, false).then(
+                            (error?) => {
+                                if (error) {
+                                    debug(
+                                        `[${
+                                            datEntry.key
+                                        }] resume returned an error: ${
+                                            error.message
+                                        }`
+                                    );
+                                }
+                                return Promise.resolve();
                             }
-                            return Promise.resolve();
-                        }
-                    );
+                        );
+                    } else {
+                        // Dat has a real hard time picking up where it left off, so instead of
+                        // resuming incomplete dats, we remove them with the assumption that the
+                        // downloaded will be triggered again from the content ingestion or downloads
+                        resumePromise = this.removeDat(datEntry.key);
+                        incompleteCount++;
+                    }
                     datKeyPromises.push(resumePromise);
                 });
+                debug(
+                    `resuming ${completeCount} dats, removing ${incompleteCount} incomplete dats...`
+                );
                 Promise.all(datKeyPromises)
                     .then(() => {
-                        this.router.send("/core/log", {
-                            message: `[AO Dat] All local dats resumed`
-                        });
-                        debug(`Resume all Dats succesfull`);
+                        debug(`resume all dats succesfull`);
                         resolve();
                     })
                     .catch(reject);
@@ -206,7 +208,10 @@ export default class AODat extends AORouterInterface {
         datEntry: DatEntry,
         resolveOnJoinNetwork: boolean = false
     ): Promise<any> {
-        return new Promise(async (resolve, reject) => {
+        return new Promise(async (resolve, _reject) => {
+            if (!datEntry.complete) {
+                return resolve(new Error(`cannot resume incomplete dat`));
+            }
             let dat = this.dats[datEntry.key];
             if (dat && dat.AO_joinedNetwork) {
                 debug(`[${datEntry.key}] already resumed`);
@@ -214,12 +219,12 @@ export default class AODat extends AORouterInterface {
                 return;
             } else if (dat) {
                 debug(
-                    `[${datEntry.key}]${
-                        datEntry.complete ? "complete" : "incomplete"
-                    } attempting to resume existing dat instance...`
+                    `[${
+                        datEntry.key
+                    }] attempting to resume existing dat instance...`
                 );
-                dat.joinNetwork(err => {
-                    if (err) {
+                const network = dat.joinNetwork(err => {
+                    if (err || !dat) {
                         debug(`[${datEntry.key}] error joining network`, err);
                         resolveOnJoinNetwork && resolve(err);
                         return;
@@ -231,46 +236,23 @@ export default class AODat extends AORouterInterface {
                             offline ? "no users online" : "users online"
                         }`
                     );
+                    dat.AO_joinedNetwork = true;
                     resolveOnJoinNetwork && resolve();
-                    if (!datEntry.complete && !offline)
-                        this._listenForDatSyncCompletion(dat).catch(error => {
-                            debug(
-                                `[${
-                                    datEntry.key
-                                }] error listening for sync complete:`,
-                                error
-                            );
-                        });
                 });
-                dat.AO_joinedNetwork = true;
                 !resolveOnJoinNetwork && resolve();
-                return;
-            } else if (datEntry.complete === false) {
-                // NOTE: there is a big assumtion that an incomplete dat must have been a download
-                // since the dats generated locally start in a complete state.
-                debug(
-                    `[${
-                        datEntry.key
-                    }] attempting to resume incomplete dat, remove and retry download`
-                );
-                try {
-                    debug(
-                        `[${
-                            datEntry.key
-                        }] removing existing dat before download`
-                    );
-                    await this.removeDat(datEntry.key);
-                    await this.downloadDat(datEntry.key, false);
-                    return resolve();
-                } catch (error) {
-                    resolve(error);
-                }
+                network.on("error", error => {
+                    if (error.code === "EADDRINUSE") {
+                        // hit this error when attempting to download multiple dats
+                        // it seems that network will retry with diff port
+                        debug(
+                            `[${datEntry.key}] port in use, trying another...`
+                        );
+                    } else {
+                        debug(`[${datEntry.key}] network error:`, error);
+                    }
+                });
             } else {
-                debug(
-                    `[${
-                        datEntry.key
-                    }] attempting to resume complete dat with no instance...`
-                );
+                debug(`[${datEntry.key}] attempting to resume complete dat...`);
                 const datDir = path.join(this.datDir, datEntry.key);
                 Dat(
                     datDir,
@@ -292,7 +274,9 @@ export default class AODat extends AORouterInterface {
                                 datEntry.key
                             }] joining network and tracking stats...`
                         );
-                        dat.joinNetwork(err => {
+                        this.dats[datEntry.key] = dat;
+                        // Join network
+                        const network = dat.joinNetwork(err => {
                             if (err) {
                                 resolveOnJoinNetwork && resolve(err);
                                 return;
@@ -305,26 +289,29 @@ export default class AODat extends AORouterInterface {
                                     offline ? "no users online" : "users online"
                                 }`
                             );
+                            dat.AO_joinedNetwork = true;
                             resolveOnJoinNetwork && resolve();
-                            if (!datEntry.complete && !offline)
-                                this._listenForDatSyncCompletion(dat).catch(
-                                    error => {
-                                        debug(
-                                            `[${
-                                                datEntry.key
-                                            }] error listening for sync complete:`,
-                                            error
-                                        );
-                                    }
-                                );
                         });
-                        dat.trackStats();
-                        dat.AO_isTrackingStats = true;
-                        dat.AO_joinedNetwork = true;
+                        network.on("error", error => {
+                            if (error.code === "EADDRINUSE") {
+                                // hit this error when attempting to download multiple dats
+                                // it seems that network will retry with diff port
+                                debug(
+                                    `[${
+                                        datEntry.key
+                                    }] port in use, trying another...`
+                                );
+                            } else {
+                                debug(
+                                    `[${datEntry.key}] network error:`,
+                                    error
+                                );
+                            }
+                        });
+                        // Import files if writable
                         if (dat.writable) {
                             this._importFiles(dat);
                         }
-                        this.dats[datEntry.key] = dat;
                         !resolveOnJoinNetwork && resolve();
                     }
                 );
@@ -376,9 +363,7 @@ export default class AODat extends AORouterInterface {
             dat.archive.on("sync", () => {
                 debug(`[${key}] archive sync`, dat.AO_latestStats);
                 state.nsync = true;
-                // if we are supposed to exit, do so if we've pulled changes or have given the network the desired wait time
                 if (state.modified) {
-                    this._tagDatAsComplete(key);
                     return resolve();
                 }
                 if (dat.archive.version === 0) {
@@ -390,15 +375,6 @@ export default class AODat extends AORouterInterface {
                 }
             });
         });
-    }
-
-    private _tagDatAsComplete(key: string) {
-        const updatedDatEntry: DatEntry = {
-            key,
-            complete: true,
-            updatedAt: new Date()
-        };
-        this._updateDatEntry(updatedDatEntry);
     }
 
     /**
@@ -456,17 +432,20 @@ export default class AODat extends AORouterInterface {
         });
     }
 
-    private _updateDatEntry(datEntry: DatEntry) {
-        this.datsDb.update(
-            { key: datEntry.key },
-            datEntry,
-            { upsert: true },
-            (err: Error) => {
-                if (err) {
-                    debug(`Error updating dat entry in dat db:`, err);
+    private _updateDatEntry(datEntry: DatEntry): Promise<any> {
+        return new Promise((resolve, reject) => {
+            this.datsDb.update(
+                { key: datEntry.key },
+                datEntry,
+                { upsert: true },
+                (err: Error) => {
+                    if (err) {
+                        debug(`Error updating dat entry in dat db:`, err);
+                    }
+                    resolve();
                 }
-            }
-        );
+            );
+        });
     }
 
     private _getDatEntry(datKey: string): Promise<any> {
@@ -504,9 +483,7 @@ export default class AODat extends AORouterInterface {
                             requestData.key
                         }] attempting to get datStats, no dat instance found`
                     );
-                    return request.reject(
-                        new Error(`Dat instance not available`)
-                    );
+                    return request.reject(new Error(`Dat instance not found`));
                 }
                 if (!datInstance.AO_joinedNetwork) {
                     return request.reject(
@@ -691,170 +668,149 @@ export default class AODat extends AORouterInterface {
      * @returns {Promise<DatEntry>}
      */
     private downloadDat(key, resolveOnDownloadCompletion): Promise<DatEntry> {
-        return new Promise((_resolve, _reject) => {
-            if (this.activelyDownloadingDats[key] === true) {
-                debug(`[${key}] dat instance is already downloading`);
-                return _reject(
-                    new Error(`Attempting to download an already active dat `)
-                );
-            }
-            const resolve = (datEntry: DatEntry) => {
-                delete this.activelyDownloadingDats[key];
-                _resolve(datEntry);
-            };
-            const reject = async error => {
+        return new Promise(async (resolve, reject) => {
+            const removeAndReject = async error => {
                 try {
                     await this.removeDat(key);
                 } catch (error) {}
-                delete this.activelyDownloadingDats[key];
-                _reject(error);
+                reject(error);
             };
-            debug(`[${key}] Attempting to download dat`);
-            this.activelyDownloadingDats[key] = true;
-            // Quick check to see if the dat is already complete.
-            // check for database instance in case the dat is not
-            // yet resumed...
-            this.datsDb.findOne(
-                { key },
-                async (error: Error, datEntry: DatEntry) => {
-                    if (datEntry && datEntry.complete) {
-                        // We already have the dat
-                        debug(`[${key}] dat already exists, skip download`);
-                        resolve(datEntry);
-                    } else {
-                        // Delete the folder in case a previous attempt at downloading this dat failed
-                        const newDatPath = path.join(this.datDir, key);
+            // 1. Check if we are already downloading (or have downloaded) this dat
+            try {
+                const datEntry: DatEntry = await this._getDatEntry(key);
+                debug(
+                    `[${key}] dat already exists in ${
+                        datEntry.complete ? "an incomplete" : "a completed"
+                    } state`
+                );
+                reject(
+                    new Error(
+                        `attempting to download dat that is already downloading`
+                    )
+                );
+            } catch (error) {
+                /* Catching this error means we do not have this dat yet and can proceed */
+            }
+
+            // 2. Ensure the target directory is clean (may have failed to remove previously)
+            try {
+                await this.removeDat(key);
+            } catch (error) {}
+
+            // 3. Insert this dat into dats.db, marked as incomplete
+            let datEntry: DatEntry = {
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                key,
+                complete: false
+            };
+            await this._updateDatEntry(datEntry);
+
+            // 4. Finally initialize the dat
+            const newDatPath = path.join(this.datDir, key);
+            Dat(
+                newDatPath,
+                {
+                    key,
+                    secretDir: this.datSecretsDir,
+                    port: this.swarmPort
+                },
+                async (err, dat) => {
+                    if (err || !dat) {
+                        if (err.name === "IncompatibleError") {
+                            // TODO: incompatible metadata issue, hoping to solve elsewhere
+                            debug("Dat Incompatible Error");
+                        }
+                        if (!dat) {
+                            debug(`[${key}] dat instance unobtainable...`, dat);
+                        } else {
+                            debug(`[${key}] dat error, closing...`);
+                        }
+                        debug(`[${key}] failed to download dat`, err);
+                        return removeAndReject(err);
+                    }
+
+                    // 5. Dat lifecycle is pretty weird.
+                    //      - joinNetwork callback is fired if there is no connection OR the download is complete
+                    //      - archive 'sync' event may be triggered before the joinNetwork callback
+                    this.dats[key] = dat;
+                    const network = dat.joinNetwork(err => {
+                        if (err) {
+                            debug(
+                                `[${key}] Failed to join network with error`,
+                                err
+                            );
+                            return removeAndReject(err);
+                        }
+                        let connectedWithPeers = false;
+                        if (dat.network.connected && dat.network.connecting) {
+                            // check for peers
+                            if (dat.stats && dat.stats.peers.total > 0)
+                                connectedWithPeers = true;
+                        }
+                        if (!connectedWithPeers) {
+                            debug(
+                                `[${key}] failed to join network, no peers or connection issue`
+                            );
+                            return removeAndReject(
+                                new Error(`Unable to connect with peers`)
+                            );
+                        }
+                        debug(`[${key}] joinNetwork callback`);
+                    });
+                    network.on("error", error => {
+                        if (error.code === "EADDRINUSE") {
+                            // hit this error when attempting to download multiple dats
+                            // it seems that network will retry with diff port
+                            debug(`[${key}] port in use, trying another...`);
+                        } else {
+                            debug(`[${key}] network error:`, error);
+                        }
+                    });
+                    network.once("connection", async () => {
+                        debug(`[${key}] network connection made`);
+                        dat.AO_joinedNetwork = true;
+                        if (!resolveOnDownloadCompletion) resolve(datEntry);
+
+                        // 6. Now that we have made a connection, begin monitoring stats & sync
                         try {
-                            await this.removeDat(key);
-                        } catch (error) {}
-                        // 1. We do not have this dat in the DB records, proceed with download
-                        Dat(
-                            newDatPath,
-                            {
-                                key,
-                                secretDir: this.datSecretsDir,
-                                port: this.swarmPort
-                            },
-                            async (err, dat) => {
-                                if (err || !dat) {
-                                    if (err.name === "IncompatibleError") {
-                                        // TODO: incompatible metadata issue, hoping to solve elsewhere
-                                        debug("Dat Incompatible Error");
-                                    }
-                                    if (!dat) {
-                                        debug(
-                                            `[${key}] dat instance unobtainable...`,
-                                            dat
-                                        );
-                                    } else {
-                                        debug(`[${key}] dat error, closing...`);
-                                    }
-                                    debug(
-                                        `[${key}] failed to download dat`,
-                                        err
-                                    );
-                                    return reject(err);
-                                }
-                                // 2. Dat instance ready to go. Order of operations is kind of wierd here,
-                                // but the archive sync event may emit *before* the joinNetwork callback.
-                                this.dats[key] = dat;
-                                const network = dat.joinNetwork(err => {
-                                    if (err) {
-                                        debug(
-                                            `[${key}] Failed to join network with error`,
-                                            err
-                                        );
-                                        return reject(err);
-                                    }
-                                    let connectedWithPeers = false;
-                                    if (
-                                        dat.network.connected &&
-                                        dat.network.connecting
-                                    ) {
-                                        // check for peers
-                                        if (
-                                            dat.stats &&
-                                            dat.stats.peers.total > 0
-                                        )
-                                            connectedWithPeers = true;
-                                    }
-                                    if (!connectedWithPeers) {
-                                        debug(
-                                            `[${key}] failed to join network, no peers or connection issue`
-                                        );
-                                        return reject(
-                                            new Error(
-                                                `Unable to connect with peers`
-                                            )
-                                        );
-                                    }
-                                    // NOTE: in my experience, during an active download
-                                    // this callback is not hit until the download is complete!
-                                    // It is mostly useful for initial connection errors/peer count
-                                    debug(`[${key}] joinNetwork callback`);
-                                });
-                                network.on("error", error => {
-                                    debug(`[${key}] network error:`, error);
-                                    if (error.code === "EADDRINUSE") {
-                                        // hit this error when attempting to download multiple dats
-                                        // it seems that network will retry with diff port
-                                    }
-                                });
-                                let firstConnection = false;
-                                network.on("connection", () => {
-                                    if (!firstConnection) {
-                                        firstConnection = true;
-                                        dat.AO_joinedNetwork = true;
-                                        const newDatEntry: DatEntry = {
-                                            key,
-                                            complete: false,
-                                            updatedAt: new Date(),
-                                            createdAt: new Date()
-                                        };
-                                        this._updateDatEntry(newDatEntry);
-                                        !resolveOnDownloadCompletion &&
-                                            resolve(newDatEntry);
-                                    }
-                                });
-                                this._listenForDatSyncCompletion(dat).then(
-                                    () => {
-                                        const updatedDatEntry: DatEntry = {
-                                            key,
-                                            complete: true,
-                                            updatedAt: new Date()
-                                        };
-                                        resolveOnDownloadCompletion &&
-                                            resolve(updatedDatEntry);
-                                    }
+                            logDownloadStats(dat);
+                            await this._listenForDatSyncCompletion(dat);
+                            datEntry.complete = true;
+                            datEntry.updatedAt = new Date();
+                            await this._updateDatEntry(datEntry);
+                            if (resolveOnDownloadCompletion) resolve(datEntry);
+                            debug(`[${key}] download complete!`);
+                        } catch (error) {
+                            removeAndReject(error);
+                        }
+                    });
+
+                    function logDownloadStats(dat) {
+                        const stats = dat.trackStats();
+                        debug(`[${key}] tracking stats`);
+                        dat.AO_isTrackingStats = true;
+                        let lastPercentage = null;
+                        stats.on("update", () => {
+                            const newStats = stats.get();
+                            dat.AO_latestStats = newStats;
+                            let downloadPercentage = (
+                                (newStats.downloaded / newStats.length) *
+                                100
+                            ).toFixed(0);
+                            if (downloadPercentage === "NaN")
+                                downloadPercentage = `0`;
+                            // To avoid blowing up the logs, only print at intervals of 10
+                            if (
+                                parseInt(downloadPercentage) % 10 === 0 &&
+                                downloadPercentage != lastPercentage
+                            ) {
+                                debug(
+                                    `[${key}] downloaded ${downloadPercentage}%`
                                 );
-                                const stats = dat.trackStats();
-                                debug(`[${key}] tracking stats`);
-                                dat.AO_isTrackingStats = true;
-                                let lastPercentage = null;
-                                stats.on("update", () => {
-                                    const newStats = stats.get();
-                                    dat.AO_latestStats = newStats;
-                                    let downloadPercentage = (
-                                        (newStats.downloaded /
-                                            newStats.length) *
-                                        100
-                                    ).toFixed(0);
-                                    if (downloadPercentage === "NaN")
-                                        downloadPercentage = `0`;
-                                    // To avoid blowing up the logs, only print at intervals of 10
-                                    if (
-                                        parseInt(downloadPercentage) % 10 ===
-                                            0 &&
-                                        downloadPercentage != lastPercentage
-                                    ) {
-                                        debug(
-                                            `[${key}] downloaded ${downloadPercentage}%`
-                                        );
-                                    }
-                                    lastPercentage = downloadPercentage;
-                                });
                             }
-                        );
+                            lastPercentage = downloadPercentage;
+                        });
                     }
                 }
             );
@@ -864,31 +820,30 @@ export default class AODat extends AORouterInterface {
     private async removeDat(key: string) {
         return new Promise(async (resolve, reject) => {
             try {
-                this.dats[key].pause();
                 this.dats[key].close(async () => {
                     try {
                         // NOTE: wait until dat releases fd
-                        await sleep(1000);
-                        await this._removeDat(key);
+                        await sleep(500);
+                        await this._removeDatFromDisk(key);
                     } catch (error) {}
                     resolve();
                 });
             } catch (e) {
                 try {
-                    await this._removeDat(key);
+                    await this._removeDatFromDisk(key);
                 } catch (error) {}
                 resolve();
             }
         });
     }
     //Thanks dat-node, the worst package ever!
-    private async _removeDat(key: string) {
+    private async _removeDatFromDisk(key: string) {
         try {
             const datPath = path.join(this.datDir, key);
             // remove dat instance if exists
             delete this.dats[key];
             // remove db entry
-            await this._asyncRemove(key);
+            await this._asyncRemoveDat(key);
             // cleanup disk
             await fsExtra.remove(datPath);
         } catch (error) {
@@ -897,7 +852,7 @@ export default class AODat extends AORouterInterface {
         debug(`[${key}] dat removed`);
     }
 
-    private _asyncRemove(key: string): Promise<any> {
+    private _asyncRemoveDat(key: string): Promise<any> {
         return new Promise(resolve => {
             this.datsDb.remove({ key: key }, {}, (err, numRemoved) => {
                 resolve();

@@ -768,6 +768,46 @@ export default class AOUserSession {
                         }] error fetching dat stats in DOWNLOADING state:`,
                         error
                     );
+                    if (error && error.message === "Dat instance not found") {
+                        // This specific scenario occurs when a piece of content was still in the
+                        // DOWNLOADING state and then removed on the next start of ao-core (since
+                        // dat module wipes incomplete dats). We roll back to HOST_DISCOVERY so
+                        // we can retry the download.
+                        debug(
+                            `[${
+                                content.metadataDatKey
+                            }] failed to finish download, rolling back to HOST_DISCOVERY.`
+                        );
+                        let userContentUpdate: AODB_UserContentUpdate_Data = {
+                            id: content.id,
+                            update: {
+                                $set: {
+                                    state: AOContentState.HOST_DISCOVERY
+                                }
+                            }
+                        };
+                        this.router
+                            .send("/db/user/content/update", userContentUpdate)
+                            .then(
+                                (
+                                    userContentUpdateResponse: IAORouterMessage
+                                ) => {
+                                    let updatedContent = AOContent.fromObject(
+                                        userContentUpdateResponse.data
+                                    );
+                                    this.processContent(updatedContent);
+                                }
+                            )
+                            .catch(error => {
+                                debug(
+                                    `[${
+                                        content.metadataDatKey
+                                    }] Error updating user content: ${
+                                        error.message
+                                    }`
+                                );
+                            });
+                    }
                 });
         }, 1500);
     }
