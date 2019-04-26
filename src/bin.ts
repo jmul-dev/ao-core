@@ -13,8 +13,7 @@ export const DEFAULT_OPTIONS = {
     storageLocation: path.resolve(__dirname, "..", "data"),
     desktopLocation: undefined,
     nodeBin: process.execPath,
-    exportData: "", // Takes a path for where the data is exported to
-    importData: "" // Takes a path to the zip file
+    exportData: "" // Takes a path for where the data is exported to
 };
 
 // TODO: see commandDir for modularizing the commands (args and commands can live in same file)
@@ -105,21 +104,6 @@ require("yargs")
                         }
                     }
                 })
-                .option("importData", {
-                    description:
-                        "Imports a zip file created through the export process",
-                    type: "string",
-                    coerce: arg => {
-                        if (fsExtra.pathExistsSync(arg)) {
-                            return arg;
-                        } else {
-                            // console.log(
-                            //     "File does not exist for import. Please specify a File that exists"
-                            // );
-                            return "";
-                        }
-                    }
-                })
                 .default(DEFAULT_OPTIONS);
         },
         handler: argv => {
@@ -156,6 +140,31 @@ require("yargs")
         handler: async argv => {
             const importer = require("./commands/importer.js").default;
             await importer(argv, argv.path);
+        }
+    })
+    .command({
+        command: "export <path>",
+        desc:
+            "Exports ao-cores entire data folder as a zip file to the desired path",
+        builder: yargs => {
+            return yargs
+                .option("$0", {
+                    aliases: ["path", "p"],
+                    description:
+                        "The location that the zipped export will be saved",
+                    type: "string"
+                })
+                .demandOption("path")
+                .option("storageLocation", {
+                    alias: "s",
+                    description: "Directory that ao-core uses for storage",
+                    type: "string",
+                    default: () => DEFAULT_OPTIONS.storageLocation
+                });
+        },
+        handler: async argv => {
+            const exporter = require("./commands/exporter.js").default;
+            await exporter(argv, argv.path);
         }
     })
     .demandCommand()

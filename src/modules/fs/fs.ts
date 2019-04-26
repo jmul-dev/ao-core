@@ -14,6 +14,7 @@ import AORouterInterface, {
 } from "../../router/AORouterInterface";
 import unzipper from "unzipper";
 import dataImport from "./DataImport";
+import dataExport from "./DataExport";
 const debug = Debug("ao:fs");
 
 export interface IAOFS_WriteStream_Data {
@@ -731,47 +732,20 @@ export default class AOFS extends AORouterInterface {
     _handleDataExport(request: IAORouterRequest) {
         debug("Started Data Export Process");
         const { outputPath }: IAOFS_DataExport_Data = request.data;
-        const exportFilename = md5(new Date()) + "-export.zip";
-        const exportFullPath = path.join(outputPath, exportFilename);
-        //Setup output
-        const output = fs.createWriteStream(exportFullPath);
-        //Setup arhiver
-        const archive = archiver("zip", {
-            zlib: { level: 9 }
-        });
 
-        //Define output events
-        output.on("close", () => {
-            debug(archive.pointer() + " total bytes zipped");
-            debug("Data export complete");
-            request.respond({ exportPath: exportFullPath });
-            // single use process, lets exit
-            process.nextTick(process.exit);
-        });
-        output.on("end", () => {
-            debug("Export data fully fed");
-        });
-
-        //Setup archive events
-        archive.on("warning", err => {
-            if (err.code === "ENOENT") {
-                debug(err);
-            } else {
-                // throw error
-                request.reject(err);
-                return;
-            }
-        });
-        archive.on("error", err => {
-            request.reject(err);
-            // single use process, lets exit
-            process.nextTick(process.exit);
-        });
-
-        //Feed the data through
-        archive.pipe(output);
-        archive.directory(this.storageLocation, false);
-        archive.finalize();
+        dataExport({
+            storageLocation: this.storageLocation,
+            outputPath
+        })
+            .then(exportPath => {
+                request.respond({ exportPath });
+                // single use process, lets exit
+                process.nextTick(process.exit);
+            })
+            .catch(error => {
+                request.reject(error);
+                process.nextTick(process.exit);
+            });
     }
 
     _handleDataImport(request: IAORouterRequest) {

@@ -37,7 +37,6 @@ export interface ICoreOptions {
     storageLocation: string;
     nodeBin: string;
     exportData: string;
-    importData: string;
 }
 
 export interface AOCore_Log_Data {
@@ -598,7 +597,7 @@ export default class Core extends EventEmitter {
     }
 
     private processCommandLineArgs(args: ICoreOptions) {
-        const { exportData, importData, ethAddress } = args;
+        const { exportData, ethAddress } = args;
         const context: IGraphqlResolverContext = {
             router: this.coreRouter.router,
             options: this.options,
@@ -634,25 +633,6 @@ export default class Core extends EventEmitter {
                 })
                 .catch(error => {
                     errorLog("Bad news, export failed: ", error);
-                });
-        }
-
-        //Imports data
-        if (importData.length) {
-            const importArgs: IContentImport_Args = {
-                inputs: {
-                    importPath: importData,
-                    commandLine: true
-                }
-            };
-            importDataResolver(empty, importArgs, context, empty)
-                .then(() => {
-                    debugLog("Import finished. Please restart AO!");
-                    this.coreRouter.shutdown();
-                    process.exit(0);
-                })
-                .catch(error => {
-                    errorLog("Really bad news, import failed: ", error);
                 });
         }
     }
