@@ -13,6 +13,7 @@ import AORouterInterface, {
     AORouterSubprocessArgs
 } from "../../router/AORouterInterface";
 import unzipper from "unzipper";
+import dataImport from "./DataImport";
 const debug = Debug("ao:fs");
 
 export interface IAOFS_WriteStream_Data {
@@ -777,31 +778,19 @@ export default class AOFS extends AORouterInterface {
         debug("Starting Data Import Process");
         const { inputPath }: IAOFS_DataImport_Data = request.data;
         //Yeah, this is a brave operation
-        fs.remove(this.storageLocation, err => {
-            if (err) {
-                request.reject(err);
-                return;
-            }
-            const unzip = unzipper.Extract({ path: this.storageLocation });
-            const input = fs.createReadStream(inputPath);
-            input.pipe(unzip);
-            input.on("error", error => {
-                debug("Unzip input error: ", error);
-                request.reject(error);
-                // single use process, lets exit
-                process.nextTick(process.exit);
-            });
-            unzip.on("close", () => {
+        dataImport({
+            storageLocation: this.storageLocation,
+            inputPath
+        })
+            .then(() => {
                 request.respond({});
                 // single use process, lets exit
                 process.nextTick(process.exit);
-            });
-            unzip.on("error", error => {
-                debug("Unzip error: ", error);
+            })
+            .catch(error => {
                 request.reject(error);
                 // single use process, lets exit
                 process.nextTick(process.exit);
             });
-        });
     }
 }

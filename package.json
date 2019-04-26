@@ -43,7 +43,7 @@
         "casual": "^1.5.19",
         "checksum": "^0.1.1",
         "cors": "^2.8.4",
-        "dat-node": "^3.5.11",
+        "dat-node": "3.5.11",
         "debug": "^3.1.0",
         "discovery-swarm": "^5.1.2",
         "eth-crypto": "1.2.3",
@@ -66,12 +66,14 @@
         "web3-legacy": "git://github.com/nharlow89/web3.js.git#legacy",
         "web3-utils": "^1.0.0-beta.50",
         "winston": "^3.1.0",
-        "yargs": "^12.0.2"
+        "yargs": "^12.0.2",
+        "yesno": "^0.2.0"
     },
     "devDependencies": {
         "@types/chai": "^4.1.4",
         "@types/debug": "0.0.30",
         "@types/express": "^4.16.0",
+        "@types/fs-extra": "^5.0.5",
         "@types/graphql": "^0.13.1",
         "@types/minimist": "^1.2.0",
         "@types/mocha": "^5.2.5",

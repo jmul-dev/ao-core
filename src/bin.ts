@@ -1,17 +1,32 @@
 #!/usr/local/bin/node
 "use strict";
-import Core, { ICoreOptions } from "./index";
 import fsExtra from "fs-extra";
+import path from "path";
 const packageJson = require("../package.json");
 
-const argv = require("yargs")
+export const DEFAULT_OPTIONS = {
+    ethAddress: "",
+    disableHttpInterface: false,
+    corePort: 3003,
+    coreOrigin: "http://localhost",
+    httpOrigin: "http://localhost:3000",
+    storageLocation: path.resolve(__dirname, "..", "data"),
+    desktopLocation: undefined,
+    nodeBin: process.execPath,
+    exportData: "", // Takes a path for where the data is exported to
+    importData: "" // Takes a path to the zip file
+};
+
+// TODO: see commandDir for modularizing the commands (args and commands can live in same file)
+
+require("yargs")
     .version(packageJson.version)
     .command({
         command: "start",
         aliases: ["run"],
         desc: "Start ao-core",
-        builder: yargs =>
-            yargs
+        builder: yargs => {
+            return yargs
                 .option("ethAddress", {
                     description:
                         "Ethereum account you would like to run ao-core under",
@@ -54,7 +69,7 @@ const argv = require("yargs")
                         //If you use coerce, the default options don't get passed as it goes through this.
                         return fsExtra.pathExistsSync(arg)
                             ? arg
-                            : Core.DEFAULT_OPTIONS.storageLocation;
+                            : DEFAULT_OPTIONS.storageLocation;
                     }
                 })
                 .option("desktopLocation", {
@@ -64,7 +79,7 @@ const argv = require("yargs")
                         //If you use coerce, the default options don't get passed as it goes through this.
                         return fsExtra.pathExistsSync(arg)
                             ? arg
-                            : Core.DEFAULT_OPTIONS.desktopLocation;
+                            : DEFAULT_OPTIONS.desktopLocation;
                     }
                 })
                 .option("nodeBin", {
@@ -73,7 +88,7 @@ const argv = require("yargs")
                     coerce: arg => {
                         return fsExtra.pathExistsSync(arg)
                             ? arg
-                            : Core.DEFAULT_OPTIONS.nodeBin;
+                            : DEFAULT_OPTIONS.nodeBin;
                     }
                 })
                 .option("exportData", {
@@ -105,9 +120,42 @@ const argv = require("yargs")
                         }
                     }
                 })
-                .default(Core.DEFAULT_OPTIONS),
+                .default(DEFAULT_OPTIONS);
+        },
         handler: argv => {
+            const Core = require("./index").default;
             const core = new Core(argv);
+        }
+    })
+    .command({
+        command: "import <path>",
+        desc: "Imports an existing data folder to seed this node",
+        builder: yargs => {
+            return yargs
+                .option("$0", {
+                    aliases: ["path", "p"],
+                    description:
+                        "The location of the zipped export that will be used to import",
+                    type: "string",
+                    coerce: arg => {
+                        if (fsExtra.pathExistsSync(arg)) {
+                            return path.resolve(arg);
+                        } else {
+                            return null;
+                        }
+                    }
+                })
+                .demandOption("path")
+                .option("storageLocation", {
+                    alias: "s",
+                    description: "Directory that ao-core uses for storage",
+                    type: "string",
+                    default: () => DEFAULT_OPTIONS.storageLocation
+                });
+        },
+        handler: async argv => {
+            const importer = require("./commands/importer.js").default;
+            await importer(argv, argv.path);
         }
     })
     .demandCommand()

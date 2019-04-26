@@ -21,6 +21,7 @@ import Debug, { debugLogFile } from "./AODebug";
 import { IAOETH_Init_Data } from "./modules/eth/eth";
 import { AOP2P_Init_Data } from "./modules/p2p/p2p";
 import { AODB_NetworkInit_Data } from "./modules/db/db";
+import { DEFAULT_OPTIONS } from "./bin";
 
 const debugLog = Debug("ao:core");
 const errorLog = Debug("ao:core:error");
@@ -116,18 +117,7 @@ export default class Core extends EventEmitter {
         [key: string]: boolean;
     } = {};
     private runningUnderElectron: boolean;
-    public static DEFAULT_OPTIONS = {
-        ethAddress: "",
-        disableHttpInterface: false,
-        corePort: 3003,
-        coreOrigin: "http://localhost",
-        httpOrigin: "http://localhost:3000",
-        storageLocation: path.resolve(__dirname, "..", "data"),
-        desktopLocation: undefined,
-        nodeBin: process.execPath,
-        exportData: "", // Takes a path for where the data is exported to
-        importData: "" // Takes a path to the zip file
-    };
+    public static DEFAULT_OPTIONS = DEFAULT_OPTIONS;
 
     constructor(args: ICoreOptions) {
         super();
