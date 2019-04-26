@@ -1,10 +1,10 @@
 {
     "name": "ao-core",
-    "version": "1.0.19",
+    "version": "1.0.20",
     "description": "AO - Core",
     "main": "dist/index.js",
     "bin": {
-        "ao-core": "bin/bin.js"
+        "ao-core": "dist/bin.js"
     },
     "scripts": {
         "compile": "npm run compile-patch && tsc && node scripts/copy-non-ts-files.js",
