@@ -736,7 +736,9 @@ export default class AODat extends AORouterInterface {
                     //      - joinNetwork callback is fired if there is no connection OR the download is complete
                     //      - archive 'sync' event may be triggered before the joinNetwork callback
                     this.dats[key] = dat;
+                    let downloadPercent = 0;
                     const network = dat.joinNetwork(err => {
+                        debug(`[${key}] joinNetwork callback`);
                         if (err) {
                             debug(
                                 `[${key}] Failed to join network with error`,
@@ -746,11 +748,11 @@ export default class AODat extends AORouterInterface {
                         }
                         let connectedWithPeers = false;
                         if (dat.network.connected && dat.network.connecting) {
-                            // check for peers
+                            // check for peers (dat.stats may not exist in this callback since we dont run trackStats until connection event)
                             if (dat.stats && dat.stats.peers.total > 0)
                                 connectedWithPeers = true;
                         }
-                        if (!connectedWithPeers) {
+                        if (!connectedWithPeers && downloadPercent === 0) {
                             debug(
                                 `[${key}] failed to join network, no peers or connection issue`
                             );
@@ -758,7 +760,6 @@ export default class AODat extends AORouterInterface {
                                 new Error(`Unable to connect with peers`)
                             );
                         }
-                        debug(`[${key}] joinNetwork callback`);
                     });
                     network.on("error", error => {
                         if (error.code === "EADDRINUSE") {
@@ -812,6 +813,7 @@ export default class AODat extends AORouterInterface {
                                 );
                             }
                             lastPercentage = downloadPercentage;
+                            downloadPercent = parseInt(lastPercentage);
                         });
                     }
                 }
