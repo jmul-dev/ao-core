@@ -8,6 +8,8 @@ import AORouterInterface, {
     AORouterSubprocessArgs
 } from "../../router/AORouterInterface";
 import { NetworkContentHostEntry } from "../p2p/p2p";
+import mirror from "mirror-folder";
+import ram from "random-access-memory";
 const debug = Debug("ao:dat");
 
 export interface AODat_Init_Data {
@@ -218,28 +220,26 @@ export default class AODat extends AORouterInterface {
                 resolve();
                 return;
             } else if (dat) {
-                debug(
-                    `[${
-                        datEntry.key
-                    }] attempting to resume existing dat instance...`
-                );
+                // debug(
+                //     `[${datEntry.key}] attempting to resume existing dat instance...`
+                // );
                 const network = dat.joinNetwork(err => {
                     if (err || !dat) {
                         debug(`[${datEntry.key}] error joining network`, err);
                         resolveOnJoinNetwork && resolve(err);
                         return;
                     }
-                    const offline =
-                        !dat.network.connected || !dat.network.connecting;
-                    debug(
-                        `[${datEntry.key}] joined network with ${
-                            offline ? "no users online" : "users online"
-                        }`
-                    );
+                    // const offline = !dat.network.connected || !dat.network.connecting;
+                    // debug(
+                    //     `[${datEntry.key}] joined network with ${
+                    //     offline ? "no users online" : "users online"
+                    //     }`
+                    // );
+                });
+                network.once("connection", () => {
                     dat.AO_joinedNetwork = true;
                     resolveOnJoinNetwork && resolve();
                 });
-                !resolveOnJoinNetwork && resolve();
                 network.on("error", error => {
                     if (error.code === "EADDRINUSE") {
                         // hit this error when attempting to download multiple dats
@@ -251,6 +251,7 @@ export default class AODat extends AORouterInterface {
                         debug(`[${datEntry.key}] network error:`, error);
                     }
                 });
+                !resolveOnJoinNetwork && resolve();
             } else {
                 debug(`[${datEntry.key}] attempting to resume complete dat...`);
                 const datDir = path.join(this.datDir, datEntry.key);
@@ -271,11 +272,7 @@ export default class AODat extends AORouterInterface {
                                     }] dat instance unobtainable`
                                 )
                             );
-                        debug(
-                            `[${
-                                datEntry.key
-                            }] joining network and tracking stats...`
-                        );
+                        debug(`[${datEntry.key}] joining network...`);
                         this.dats[datEntry.key] = dat;
                         // Join network
                         const network = dat.joinNetwork(err => {
@@ -283,14 +280,16 @@ export default class AODat extends AORouterInterface {
                                 resolveOnJoinNetwork && resolve(err);
                                 return;
                             }
-                            const offline =
-                                !dat.network.connected ||
-                                !dat.network.connecting;
-                            debug(
-                                `[${datEntry.key}] joined network with ${
-                                    offline ? "no users online" : "users online"
-                                }`
-                            );
+                            // const offline = !dat.network.connected || !dat.network.connecting;
+                            // if ( offline ) {
+                            //     debug(
+                            //         `[${datEntry.key}] joined network with ${
+                            //         offline ? "no users online" : "users online"
+                            //         }`
+                            //     );
+                            // }
+                        });
+                        network.once("connection", () => {
                             dat.AO_joinedNetwork = true;
                             resolveOnJoinNetwork && resolve();
                         });
@@ -429,7 +428,9 @@ export default class AODat extends AORouterInterface {
                 resolve({ success: true });
             });
             progress.on("put", (src, dest) => {
-                debug(`[${dat.key.toString("hex")}] added file: ${dest.name}`);
+                debug(
+                    `[${dat.key.toString("hex")}] imported file: ${dest.name}`
+                );
             });
         });
     }
@@ -478,49 +479,62 @@ export default class AODat extends AORouterInterface {
         }
         this._getDatEntry(requestData.key)
             .then((datEntry: DatEntry) => {
-                const datInstance = this.dats[requestData.key];
-                if (!datInstance) {
+                try {
+                    const datInstance = this.dats[requestData.key];
+                    if (!datInstance) {
+                        debug(
+                            `[${
+                                requestData.key
+                            }] attempting to get datStats, no dat instance found`
+                        );
+                        return request.reject(
+                            new Error(`Dat instance not found`)
+                        );
+                    }
+                    if (!datInstance.AO_joinedNetwork) {
+                        return request.reject(
+                            new Error(
+                                `Dat instance has not joined the network yet`
+                            )
+                        );
+                    }
+                    if (
+                        datInstance.AO_joinedNetwork &&
+                        !datInstance.AO_isTrackingStats
+                    ) {
+                        debug(
+                            `[${
+                                requestData.key
+                            }] dat has joined network but is not tracking stats, begin tracking now`
+                        );
+                        datInstance.AO_isTrackingStats = true;
+                        datInstance.trackStats();
+                        datInstance.stats.on("update", () => {
+                            datInstance.AO_latestStats = datInstance.stats.get();
+                        });
+                    }
+                    let datStats = datInstance.AO_latestStats || {};
+
+                    let returnValue = {
+                        ...datStats,
+                        network: {
+                            ...datInstance.stats.network
+                        },
+                        peers: {
+                            ...datInstance.stats.peers
+                        },
+                        complete: datEntry.complete,
+                        joinedNetwork: datInstance.AO_joinedNetwork,
+                        trackingStats: datInstance.AO_isTrackingStats
+                    };
+                    request.respond(returnValue);
+                } catch (error) {
                     debug(
-                        `[${
-                            requestData.key
-                        }] attempting to get datStats, no dat instance found`
+                        `[${requestData.key}] error returning dat stats:`,
+                        error
                     );
-                    return request.reject(new Error(`Dat instance not found`));
+                    request.respond(null);
                 }
-                if (!datInstance.AO_joinedNetwork) {
-                    return request.reject(
-                        new Error(`Dat instance has not joined the network yet`)
-                    );
-                }
-                if (
-                    datInstance.AO_joinedNetwork &&
-                    !datInstance.AO_isTrackingStats
-                ) {
-                    debug(
-                        `[${
-                            requestData.key
-                        }] dat has joined network but is not tracking stats, begin tracking now`
-                    );
-                    datInstance.AO_isTrackingStats = true;
-                    datInstance.trackStats();
-                    datInstance.stats.on("update", () => {
-                        datInstance.AO_latestStats = datInstance.stats.get();
-                    });
-                }
-                let datStats = datInstance.AO_latestStats || {};
-                let returnValue = {
-                    ...datStats,
-                    network: {
-                        ...datInstance.stats.network
-                    },
-                    peers: {
-                        ...datInstance.stats.peers
-                    },
-                    complete: datEntry.complete,
-                    joinedNetwork: datInstance.AO_joinedNetwork,
-                    trackingStats: datInstance.AO_isTrackingStats
-                };
-                request.respond(returnValue);
             })
             .catch(request.reject);
     }
@@ -573,9 +587,7 @@ export default class AODat extends AORouterInterface {
                             debug(
                                 `[${dat.key.toString(
                                     "hex"
-                                )}] initialized and imported files! live=${
-                                    dat.live ? "true" : "false"
-                                }`
+                                )}] initialized and imported files!`
                             );
                             dat.close(() => {
                                 const datKey = dat.key.toString("hex");
@@ -711,10 +723,11 @@ export default class AODat extends AORouterInterface {
             // 4. Finally initialize the dat
             const newDatPath = path.join(this.datDir, key);
             Dat(
-                newDatPath,
+                ram,
                 {
                     key,
                     secretDir: this.datSecretsDir,
+                    sparse: true,
                     port: this.swarmPort
                 },
                 async (err, dat) => {
@@ -761,6 +774,7 @@ export default class AODat extends AORouterInterface {
                             );
                         }
                     });
+
                     network.on("error", error => {
                         if (error.code === "EADDRINUSE") {
                             // hit this error when attempting to download multiple dats
@@ -774,20 +788,64 @@ export default class AODat extends AORouterInterface {
                         debug(`[${key}] network connection made`);
                         dat.AO_joinedNetwork = true;
                         if (!resolveOnDownloadCompletion) resolve(datEntry);
-
+                        logDownloadStats(dat);
                         // 6. Now that we have made a connection, begin monitoring stats & sync
-                        try {
-                            logDownloadStats(dat);
-                            await this._listenForDatSyncCompletion(dat);
-                            datEntry.complete = true;
-                            datEntry.updatedAt = new Date();
-                            await this._updateDatEntry(datEntry);
-                            if (resolveOnDownloadCompletion) resolve(datEntry);
-                            debug(`[${key}] download complete!`);
-                        } catch (error) {
-                            removeAndReject(error);
-                        }
+                        // try {
+                        //     logDownloadStats(dat);
+                        //     await this._listenForDatSyncCompletion(dat);
+                        //     datEntry.complete = true;
+                        //     datEntry.updatedAt = new Date();
+                        //     await this._updateDatEntry(datEntry);
+                        //     if (resolveOnDownloadCompletion) resolve(datEntry);
+                        //     debug(`[${key}] download complete!`);
+                        // } catch (error) {
+                        //     removeAndReject(error);
+                        // }
                     });
+
+                    const download = () => {
+                        var progress = mirror(
+                            { fs: dat.archive, name: "/" },
+                            newDatPath,
+                            async err => {
+                                try {
+                                    if (err) throw err;
+                                    // Super hacky, but mirror does the ram/mirror
+                                    // route does not store the .dat folder
+                                    await new Promise((resolve, reject) => {
+                                        Dat(newDatPath, { key }, (err, dat) => {
+                                            fsExtra.exists(
+                                                path.join(newDatPath, ".dat"),
+                                                exists => {
+                                                    if (exists) resolve();
+                                                    else
+                                                        reject(
+                                                            new Error(
+                                                                `.dat folder does not exist`
+                                                            )
+                                                        );
+                                                    dat && dat.close();
+                                                    dat = null;
+                                                }
+                                            );
+                                        });
+                                    });
+                                    datEntry.complete = true;
+                                    datEntry.updatedAt = new Date();
+                                    await this._updateDatEntry(datEntry);
+                                    if (resolveOnDownloadCompletion)
+                                        resolve(datEntry);
+                                    debug(`[${key}] download complete!`);
+                                } catch (error) {
+                                    removeAndReject(error);
+                                }
+                            }
+                        );
+                        progress.on("put", function(src) {
+                            console.log("Downloading", src.name);
+                        });
+                    };
+                    dat.archive.metadata.update(download);
 
                     function logDownloadStats(dat) {
                         const stats = dat.trackStats();
