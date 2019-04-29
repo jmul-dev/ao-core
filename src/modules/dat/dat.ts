@@ -114,7 +114,6 @@ export default class AODat extends AORouterInterface {
         let port = this.lastUsedPort + 1;
         if (port > this.swarmPortRange[1]) port = this.swarmPortRange[0];
         this.lastUsedPort = port;
-        debug(`swarmPort getter: ${port}`);
         return port;
     }
 
@@ -226,21 +225,27 @@ export default class AODat extends AORouterInterface {
                         datEntry.key
                     }] attempting to resume existing dat instance...`
                 );
-                const network = dat.joinNetwork(err => {
-                    if (err || !dat) {
-                        debug(`[${datEntry.key}] error joining network`, err);
-                        resolveOnJoinNetwork && resolve(err);
-                        return;
+                const network = dat.joinNetwork(
+                    { port: this.swarmPort },
+                    err => {
+                        if (err || !dat) {
+                            debug(
+                                `[${datEntry.key}] error joining network`,
+                                err
+                            );
+                            resolveOnJoinNetwork && resolve(err);
+                            return;
+                        }
+                        dat.AO_joinedNetwork = true;
+                        resolveOnJoinNetwork && resolve();
+                        // const offline = !dat.network.connected || !dat.network.connecting;
+                        // debug(
+                        //     `[${datEntry.key}] joined network with ${
+                        //     offline ? "no users online" : "users online"
+                        //     }`
+                        // );
                     }
-                    dat.AO_joinedNetwork = true;
-                    resolveOnJoinNetwork && resolve();
-                    // const offline = !dat.network.connected || !dat.network.connecting;
-                    // debug(
-                    //     `[${datEntry.key}] joined network with ${
-                    //     offline ? "no users online" : "users online"
-                    //     }`
-                    // );
-                });
+                );
                 network.on("error", error => {
                     if (error.code === "EADDRINUSE") {
                         // hit this error when attempting to download multiple dats
@@ -258,7 +263,7 @@ export default class AODat extends AORouterInterface {
                 const datDir = path.join(this.datDir, datEntry.key);
                 Dat(
                     datDir,
-                    { secretDir: this.datSecretsDir, port: this.swarmPort },
+                    { secretDir: this.datSecretsDir },
                     (err: Error, dat: Dat) => {
                         if (err && dat) {
                             dat.close();
@@ -276,22 +281,25 @@ export default class AODat extends AORouterInterface {
                         debug(`[${datEntry.key}] joining network...`);
                         this.dats[datEntry.key] = dat;
                         // Join network
-                        const network = dat.joinNetwork(err => {
-                            if (err) {
-                                resolveOnJoinNetwork && resolve(err);
-                                return;
+                        const network = dat.joinNetwork(
+                            { port: this.swarmPort },
+                            err => {
+                                if (err) {
+                                    resolveOnJoinNetwork && resolve(err);
+                                    return;
+                                }
+                                dat.AO_joinedNetwork = true;
+                                resolveOnJoinNetwork && resolve();
+                                // const offline = !dat.network.connected || !dat.network.connecting;
+                                // if ( offline ) {
+                                //     debug(
+                                //         `[${datEntry.key}] joined network with ${
+                                //         offline ? "no users online" : "users online"
+                                //         }`
+                                //     );
+                                // }
                             }
-                            dat.AO_joinedNetwork = true;
-                            resolveOnJoinNetwork && resolve();
-                            // const offline = !dat.network.connected || !dat.network.connecting;
-                            // if ( offline ) {
-                            //     debug(
-                            //         `[${datEntry.key}] joined network with ${
-                            //         offline ? "no users online" : "users online"
-                            //         }`
-                            //     );
-                            // }
-                        });
+                        );
                         network.on("error", error => {
                             if (error.code === "EADDRINUSE") {
                                 // hit this error when attempting to download multiple dats
@@ -407,8 +415,7 @@ export default class AODat extends AORouterInterface {
             datDir,
             {
                 createIfMissing: false,
-                secretDir: this.datSecretsDir,
-                port: this.swarmPort
+                secretDir: this.datSecretsDir
             },
             (err: Error, dat: Dat) => {
                 try {
@@ -586,37 +593,33 @@ export default class AODat extends AORouterInterface {
         const requestData: AODat_Create_Data = request.data;
         const datLocation = path.join(this.datDir, requestData.newDatDir);
         try {
-            Dat(
-                datLocation,
-                { secretDir: this.datSecretsDir, port: this.swarmPort },
-                (err, dat) => {
-                    if (err) return request.reject(err);
-                    this._importFiles(dat)
-                        .then(() => {
-                            debug(
-                                `[${dat.key.toString(
-                                    "hex"
-                                )}] initialized and imported files!`
-                            );
-                            dat.close(() => {
-                                const datKey = dat.key.toString("hex");
-                                debug(`[${datKey}] dat closed`);
-                                const newDatEntry: DatEntry = {
-                                    key: datKey,
-                                    complete: true,
-                                    updatedAt: new Date(),
-                                    createdAt: new Date()
-                                };
-                                this._updateDatEntry(newDatEntry);
-                                request.respond({
-                                    ...newDatEntry,
-                                    dir: requestData.newDatDir
-                                });
+            Dat(datLocation, { secretDir: this.datSecretsDir }, (err, dat) => {
+                if (err) return request.reject(err);
+                this._importFiles(dat)
+                    .then(() => {
+                        debug(
+                            `[${dat.key.toString(
+                                "hex"
+                            )}] initialized and imported files!`
+                        );
+                        dat.close(() => {
+                            const datKey = dat.key.toString("hex");
+                            debug(`[${datKey}] dat closed`);
+                            const newDatEntry: DatEntry = {
+                                key: datKey,
+                                complete: true,
+                                updatedAt: new Date(),
+                                createdAt: new Date()
+                            };
+                            this._updateDatEntry(newDatEntry);
+                            request.respond({
+                                ...newDatEntry,
+                                dir: requestData.newDatDir
                             });
-                        })
-                        .catch(request.reject);
-                }
-            );
+                        });
+                    })
+                    .catch(request.reject);
+            });
         } catch (error) {
             debug(
                 `Caught error while attempting to create dat: ${
@@ -738,8 +741,7 @@ export default class AODat extends AORouterInterface {
                 {
                     key,
                     secretDir: this.datSecretsDir,
-                    sparse: true,
-                    port: this.swarmPort
+                    sparse: true
                 },
                 async (err, dat) => {
                     if (err || !dat) {
@@ -761,34 +763,40 @@ export default class AODat extends AORouterInterface {
                     //      - archive 'sync' event may be triggered before the joinNetwork callback
                     this.dats[key] = dat;
                     let downloadPercent = 0;
-                    const network = dat.joinNetwork(err => {
-                        debug(`[${key}] joinNetwork callback`);
-                        if (err) {
-                            debug(
-                                `[${key}] Failed to join network with error`,
-                                err
-                            );
-                            return removeAndReject(err);
+                    const network = dat.joinNetwork(
+                        { port: this.swarmPort },
+                        err => {
+                            debug(`[${key}] joinNetwork callback`);
+                            if (err) {
+                                debug(
+                                    `[${key}] Failed to join network with error`,
+                                    err
+                                );
+                                return removeAndReject(err);
+                            }
+                            let connectedWithPeers = false;
+                            if (
+                                dat.network.connected &&
+                                dat.network.connecting
+                            ) {
+                                // check for peers (dat.stats may not exist in this callback since we dont run trackStats until connection event)
+                                if (dat.stats && dat.stats.peers.total > 0)
+                                    connectedWithPeers = true;
+                            }
+                            if (
+                                !connectedWithPeers &&
+                                downloadPercent === 0 &&
+                                !dat.AO_joinedNetwork
+                            ) {
+                                debug(
+                                    `[${key}] failed to join network, no peers or connection issue`
+                                );
+                                return removeAndReject(
+                                    new Error(`Unable to connect with peers`)
+                                );
+                            }
                         }
-                        let connectedWithPeers = false;
-                        if (dat.network.connected && dat.network.connecting) {
-                            // check for peers (dat.stats may not exist in this callback since we dont run trackStats until connection event)
-                            if (dat.stats && dat.stats.peers.total > 0)
-                                connectedWithPeers = true;
-                        }
-                        if (
-                            !connectedWithPeers &&
-                            downloadPercent === 0 &&
-                            !dat.AO_joinedNetwork
-                        ) {
-                            debug(
-                                `[${key}] failed to join network, no peers or connection issue`
-                            );
-                            return removeAndReject(
-                                new Error(`Unable to connect with peers`)
-                            );
-                        }
-                    });
+                    );
 
                     network.on("error", error => {
                         if (error.code === "EADDRINUSE") {
