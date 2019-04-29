@@ -65,7 +65,9 @@ export default class Http {
             cors({
                 origin: corsOrigin
             }),
-            json(),
+            json({
+                limit: "1mb"
+            }),
             graphqlUploadExpress({ maxFieldSize: "1gb" }),
             graphqlExpress({
                 schema: graphqlSchema,
