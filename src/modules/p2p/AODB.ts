@@ -138,7 +138,7 @@ export default class AODB {
      * @param peer
      */
     private onConnection(peer) {
-        debug("swarm peer connected: " + peer.id.toString("hex"));
+        // debug("swarm peer connected: " + peer.id.toString("hex"));
         if (!peer.remoteUserData) {
             debug("peer missing user data");
             return;
@@ -190,13 +190,13 @@ export default class AODB {
                         debug(`Failed to authorize remote peer:`, err);
                         return;
                     }
-                    debug(
-                        remotePeerKey.toString("hex"),
-                        "was just authorized!"
-                    );
+                    // debug(
+                    //     remotePeerKey.toString("hex"),
+                    //     "was just authorized!"
+                    // );
                 });
             } else {
-                debug(remotePeerKey.toString("hex"), "already authorized");
+                // debug(remotePeerKey.toString("hex"), "already authorized");
             }
         });
     }
