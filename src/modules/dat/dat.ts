@@ -774,7 +774,11 @@ export default class AODat extends AORouterInterface {
                             if (dat.stats && dat.stats.peers.total > 0)
                                 connectedWithPeers = true;
                         }
-                        if (!connectedWithPeers && downloadPercent === 0) {
+                        if (
+                            !connectedWithPeers &&
+                            downloadPercent === 0 &&
+                            !dat.AO_joinedNetwork
+                        ) {
                             debug(
                                 `[${key}] failed to join network, no peers or connection issue`
                             );
