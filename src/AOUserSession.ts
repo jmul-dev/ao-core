@@ -1414,8 +1414,9 @@ export default class AOUserSession {
     private _handleContentStaked(content: AOContent) {
         const sessionEthAddress = this.ethAddress;
         debug(
-            "Content staked, begin process of making discoverable...",
-            content.fileDatKey
+            `[${
+                content.metadataDatKey
+            }] Content staked, begin process of making discoverable...`
         );
         Promise.resolve()
             .then(() => {

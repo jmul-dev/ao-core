@@ -114,6 +114,7 @@ export default class AODat extends AORouterInterface {
         let port = this.lastUsedPort + 1;
         if (port > this.swarmPortRange[1]) port = this.swarmPortRange[0];
         this.lastUsedPort = port;
+        debug(`swarmPort getter: ${port}`);
         return port;
     }
 
@@ -221,7 +222,9 @@ export default class AODat extends AORouterInterface {
                 return;
             } else if (dat) {
                 debug(
-                    `[${datEntry.key}] attempting to resume existing dat instance...`
+                    `[${
+                        datEntry.key
+                    }] attempting to resume existing dat instance...`
                 );
                 const network = dat.joinNetwork(err => {
                     if (err || !dat) {
@@ -229,16 +232,14 @@ export default class AODat extends AORouterInterface {
                         resolveOnJoinNetwork && resolve(err);
                         return;
                     }
+                    dat.AO_joinedNetwork = true;
+                    resolveOnJoinNetwork && resolve();
                     // const offline = !dat.network.connected || !dat.network.connecting;
                     // debug(
                     //     `[${datEntry.key}] joined network with ${
                     //     offline ? "no users online" : "users online"
                     //     }`
                     // );
-                });
-                network.once("connection", () => {
-                    dat.AO_joinedNetwork = true;
-                    resolveOnJoinNetwork && resolve();
                 });
                 network.on("error", error => {
                     if (error.code === "EADDRINUSE") {
@@ -280,6 +281,8 @@ export default class AODat extends AORouterInterface {
                                 resolveOnJoinNetwork && resolve(err);
                                 return;
                             }
+                            dat.AO_joinedNetwork = true;
+                            resolveOnJoinNetwork && resolve();
                             // const offline = !dat.network.connected || !dat.network.connecting;
                             // if ( offline ) {
                             //     debug(
@@ -288,10 +291,6 @@ export default class AODat extends AORouterInterface {
                             //         }`
                             //     );
                             // }
-                        });
-                        network.once("connection", () => {
-                            dat.AO_joinedNetwork = true;
-                            resolveOnJoinNetwork && resolve();
                         });
                         network.on("error", error => {
                             if (error.code === "EADDRINUSE") {
@@ -311,7 +310,17 @@ export default class AODat extends AORouterInterface {
                         });
                         // Import files if writable
                         if (dat.writable) {
-                            this._importFiles(dat);
+                            try {
+                                this._importFiles(dat);
+                            } catch (error) {
+                                debug(
+                                    `[${
+                                        datEntry.key
+                                    }] error importing files on resume: ${
+                                        error.message
+                                    }`
+                                );
+                            }
                         }
                         !resolveOnJoinNetwork && resolve();
                     }
@@ -804,6 +813,7 @@ export default class AODat extends AORouterInterface {
                     });
 
                     const download = () => {
+                        debug(`[${key}] download initiated...`);
                         var progress = mirror(
                             { fs: dat.archive, name: "/" },
                             newDatPath,
