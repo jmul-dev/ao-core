@@ -1,6 +1,6 @@
 {
     "name": "ao-core",
-    "version": "1.0.20",
+    "version": "1.0.21",
     "description": "AO - Core",
     "main": "dist/index.js",
     "bin": {
