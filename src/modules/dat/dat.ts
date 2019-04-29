@@ -812,6 +812,7 @@ export default class AODat extends AORouterInterface {
                         dat.AO_joinedNetwork = true;
                         if (!resolveOnDownloadCompletion) resolve(datEntry);
                         logDownloadStats(dat);
+                        dat.archive.metadata.update(download);
                         // 6. Now that we have made a connection, begin monitoring stats & sync
                         // try {
                         //     logDownloadStats(dat);
@@ -869,7 +870,6 @@ export default class AODat extends AORouterInterface {
                             console.log("Downloading", src.name);
                         });
                     };
-                    dat.archive.metadata.update(download);
 
                     function logDownloadStats(dat) {
                         const stats = dat.trackStats();
