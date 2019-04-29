@@ -703,7 +703,7 @@ export default class AODat extends AORouterInterface {
                 const datEntry: DatEntry = await this._getDatEntry(key);
                 debug(
                     `[${key}] dat already exists in ${
-                        datEntry.complete ? "an incomplete" : "a completed"
+                        datEntry.complete ? "a completed" : "an incomplete"
                     } state`
                 );
                 reject(
@@ -711,6 +711,7 @@ export default class AODat extends AORouterInterface {
                         `attempting to download dat that is already downloading`
                     )
                 );
+                return null;
             } catch (error) {
                 /* Catching this error means we do not have this dat yet and can proceed */
             }
