@@ -174,7 +174,6 @@ export default class AOContentIngestion extends EventEmitter {
                                     `[${metadataDatKey}] unable to add network content, failed to download metadata dat file.`,
                                     error
                                 );
-
                                 resolve();
                             });
                     }

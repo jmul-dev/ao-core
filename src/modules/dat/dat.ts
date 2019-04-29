@@ -706,12 +706,13 @@ export default class AODat extends AORouterInterface {
                         datEntry.complete ? "a completed" : "an incomplete"
                     } state`
                 );
-                reject(
-                    new Error(
-                        `attempting to download dat that is already downloading`
-                    )
-                );
-                return null;
+                if (datEntry.complete) return resolve(datEntry);
+                else
+                    return reject(
+                        new Error(
+                            `attempting to download dat that is already downloading`
+                        )
+                    );
             } catch (error) {
                 /* Catching this error means we do not have this dat yet and can proceed */
             }
