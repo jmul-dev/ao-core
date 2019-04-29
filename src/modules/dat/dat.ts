@@ -221,7 +221,9 @@ export default class AODat extends AORouterInterface {
                 return;
             } else if (dat) {
                 debug(
-                    `[${datEntry.key}] attempting to resume existing dat instance...`
+                    `[${
+                        datEntry.key
+                    }] attempting to resume existing dat instance...`
                 );
                 const network = dat.joinNetwork(err => {
                     if (err || !dat) {
