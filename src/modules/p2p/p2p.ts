@@ -737,6 +737,15 @@ export default class AOP2P extends AORouterInterface {
                     request.respond({ success: true, alreadyExists: true });
                     return null;
                 }
+                if (existingIndexDataForBuyer) {
+                    debug(
+                        `[${
+                            content.id
+                        }] existing entry, decryption key mismatch: prev[${
+                            existingIndexDataForBuyer.decryptionKey
+                        }] cur[${encryptedDecryptionKey}]`
+                    );
+                }
                 let updatedIndexData: ITaoDB_ContentHost_IndexData = Object.assign(
                     {},
                     existingIndexData
@@ -760,7 +769,10 @@ export default class AOP2P extends AORouterInterface {
         const { content }: AOP2P_Update_Node_Timestamp_Data = request.data;
         this.taodb
             .insertContentHostTimestamp({ content })
-            .then(request.respond)
+            .then(() => {
+                this.contentHostsUpdater.addContentKeyToQueue(content.id);
+                request.respond({});
+            })
             .catch(request.reject);
     }
 
