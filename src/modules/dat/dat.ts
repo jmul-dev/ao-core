@@ -845,15 +845,28 @@ export default class AODat extends AORouterInterface {
                                             fsExtra.exists(
                                                 path.join(newDatPath, ".dat"),
                                                 exists => {
-                                                    if (exists) resolve();
-                                                    else
+                                                    if (exists) {
+                                                        debug(
+                                                            `[${key}] .dat folder succesfully created`
+                                                        );
+                                                        resolve();
+                                                    } else {
+                                                        debug(
+                                                            `[${key}] .dat folder does not exist after download`
+                                                        );
                                                         reject(
                                                             new Error(
                                                                 `.dat folder does not exist`
                                                             )
                                                         );
-                                                    dat && dat.close();
-                                                    dat = null;
+                                                    }
+                                                    if (dat) {
+                                                        dat.close(() => {
+                                                            dat = null;
+                                                        });
+                                                    } else {
+                                                        dat = null;
+                                                    }
                                                 }
                                             );
                                         });
