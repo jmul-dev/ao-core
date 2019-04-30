@@ -1357,7 +1357,7 @@ export default class AOUserSession {
                             state: AOContentState.STAKED,
                             contentHostId: hostContentEvent.contentHostId,
                             stakeId: hostContentEvent.stakedContentId,
-                            hostedAt: new Date()
+                            hostedAt: Date.now().toString()
                         }
                     };
                 } else {
