@@ -17,6 +17,7 @@ import TaoDB, {
     ITaoDB_ContentHost_IndexData_Entry
 } from "./TaoDB";
 import EthCrypto from "eth-crypto";
+import AOUserSession from "../../AOUserSession";
 const debug = Debug("ao:p2p");
 
 export interface AOP2P_Init_Data {
@@ -55,6 +56,7 @@ export interface AOP2P_Write_Decryption_Key_Data {
 
 export interface AOP2P_Update_Node_Timestamp_Data {
     content: AOContent;
+    hostPublicKey: string;
 }
 
 export interface AOP2P_GetContentHosts_Data {
@@ -775,15 +777,38 @@ export default class AOP2P extends AORouterInterface {
             .catch(request.reject);
     }
 
-    _handleNodeUpdate(request: IAORouterRequest) {
-        const { content }: AOP2P_Update_Node_Timestamp_Data = request.data;
-        this.taodb
-            .insertContentHostTimestamp({ content })
-            .then(() => {
-                this.contentHostsUpdater.addContentKeyToQueue(content.id);
-                request.respond({});
-            })
-            .catch(request.reject);
+    async _handleNodeUpdate(request: IAORouterRequest) {
+        const {
+            content,
+            hostPublicKey
+        }: AOP2P_Update_Node_Timestamp_Data = request.data;
+        const timestampKey = TaoDB.getContentHostTimestampKey({
+            hostsPublicKey: hostPublicKey,
+            contentType: content.contentType,
+            contentMetadataDatKey: content.metadataDatKey
+        });
+        try {
+            let timestampEntry = await this.taodb.get(timestampKey);
+            if (timestampEntry) {
+                // If timestamp entry is recent, avoid additional write
+                let recentThreshold =
+                    AOUserSession.CONTENT_DISCOVERY_UPDATE_INTERVAL / 2;
+                if (timestampEntry.timestamp > Date.now() - recentThreshold) {
+                    debug(
+                        `[${
+                            content.id
+                        }] skipping host timestamp update, already updated recently`
+                    );
+                    return request.respond({});
+                }
+            }
+            // proceed to update
+            await this.taodb.insertContentHostTimestamp({ content });
+            this.contentHostsUpdater.addContentKeyToQueue(content.id);
+            request.respond({});
+        } catch (error) {
+            request.reject(error);
+        }
     }
 
     /**

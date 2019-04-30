@@ -282,7 +282,8 @@ export default class AOUserSession {
                     // 2. Ping p2p/discovery to update the timestamp of last seen
                     response.data.forEach(contentObj => {
                         let updateNodeParams: AOP2P_Update_Node_Timestamp_Data = {
-                            content: AOContent.fromObject(contentObj)
+                            content: AOContent.fromObject(contentObj),
+                            hostPublicKey: this.publicKey
                         };
                         this.router
                             .send("/p2p/updateNode", updateNodeParams)
