@@ -30,7 +30,7 @@ export default class AOContentHostsUpdater {
         this.getContentHostsFormatted = getContentHostsFormatted;
         // @ts-ignore Types not up to date
         this.processingQueue = queue({
-            concurrency: 2,
+            concurrency: 4,
             autostart: true,
             timeout: 30000 // 30 sec timeout to avoid freezing up the queue
         });
