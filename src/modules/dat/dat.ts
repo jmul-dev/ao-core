@@ -722,8 +722,11 @@ export default class AODat extends AORouterInterface {
 
             // 2. Ensure the target directory is clean (may have failed to remove previously)
             try {
+                debug(`[${key}] removing dat before download...`);
                 await this.removeDat(key);
-            } catch (error) {}
+            } catch (error) {
+                debug(`[${key}] error removing dat: ${error.message}`);
+            }
 
             // 3. Insert this dat into dats.db, marked as incomplete
             let datEntry: DatEntry = {
@@ -906,12 +909,13 @@ export default class AODat extends AORouterInterface {
     private async removeDat(key: string) {
         return new Promise(async (resolve, reject) => {
             try {
+                debug(`[${key}] attempting to remove dat...`);
                 const datInstance = this.dats[key];
                 if (!datInstance)
                     throw new Error(
                         `Cannot close Dat, instance does not exist`
                     );
-                this.dats[key].close(async () => {
+                datInstance.close(async () => {
                     try {
                         // NOTE: wait until dat releases fd
                         await sleep(500);
@@ -928,15 +932,18 @@ export default class AODat extends AORouterInterface {
         });
     }
     //Thanks dat-node, the worst package ever!
-    private async _removeDatFromDisk(key: string) {
+    private async _removeDatFromDisk(key: string): Promise<any> {
         try {
+            debug(`[${key}] attempting to remove dat from disk...`);
             const datPath = path.join(this.datDir, key);
             // remove dat instance if exists
             this.dats[key] = null;
             // remove db entry
             await this._asyncRemoveDat(key);
             // cleanup disk
-            await fsExtra.remove(datPath);
+            if (fsExtra.existsSync(datPath)) {
+                await fsExtra.remove(datPath);
+            }
         } catch (error) {
             debug(`[${key}] failed to remove dat dir: ${error.message}`);
         }

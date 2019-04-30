@@ -86,7 +86,7 @@ export default class AODB {
             this.swarm.leave(this.dbKey);
             this.swarm.destroy(() => {
                 debug(`existing discovery swarm closed`);
-                this.swarm = undefined;
+                this.swarm = null;
                 this.createSwarm();
             });
             return;

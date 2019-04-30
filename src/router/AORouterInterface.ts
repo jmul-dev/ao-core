@@ -345,6 +345,9 @@ export default abstract class AORouterSubprocessInterface {
         process.on("rejectionHandled", p => {
             this.unhandledRejections.delete(p);
         });
+        process.on("uncaughtException", error => {
+            routerArgs.debug("Uncaught exception:", error);
+        });
         process.on("SIGINT", () => {
             process.exit();
         });
