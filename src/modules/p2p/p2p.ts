@@ -94,7 +94,7 @@ export interface AOP2P_TaoRequest_Data {
 
 export default class AOP2P extends AORouterInterface {
     public taodb: TaoDB;
-
+    private discoveryRunning: boolean = false;
     private storageLocation: string;
     private contentIngestion: AOContentIngestion;
     private contentHostsUpdater: AOContentHostsUpdater;
@@ -202,9 +202,11 @@ export default class AOP2P extends AORouterInterface {
         setTimeout(() => {
             this._runDiscovery()
                 .then(() => {
+                    this.discoveryRunning = false;
                     debug("initial discovery ran");
                 })
                 .catch(err => {
+                    this.discoveryRunning = false;
                     debug(`error running initial discovery:`, err);
                 });
         }, 3000);
@@ -229,9 +231,11 @@ export default class AOP2P extends AORouterInterface {
                 );
                 this._runDiscovery()
                     .then(() => {
+                        this.discoveryRunning = false;
                         debug(`discovery complete after change on aodb`);
                     })
                     .catch(err => {
+                        this.discoveryRunning = false;
                         debug(
                             `error running discovery triggered by watcher:`,
                             err
@@ -242,7 +246,7 @@ export default class AOP2P extends AORouterInterface {
                 debug(`error while watching on key: /${TaoDB.ContentKey}`, err);
                 if (!startedWatching) reject(err);
             });
-            watcher.on("close", () => {
+            watcher.on("close", async () => {
                 debug(`watcher closed on key: /${TaoDB.ContentKey}`);
                 if (!startedWatching)
                     reject(
@@ -252,6 +256,15 @@ export default class AOP2P extends AORouterInterface {
                             }`
                         )
                     );
+                // restart the watcher?
+                try {
+                    debug(`attempting to restart discovery watcher...`);
+                    await this._watchDiscovery();
+                } catch (error) {
+                    debug(
+                        `error restarting discovery watcher: ${error.message}`
+                    );
+                }
             });
         });
     }
@@ -259,6 +272,15 @@ export default class AOP2P extends AORouterInterface {
     _runDiscovery(): Promise<any> {
         debug(`running discovery...`);
         return Promise.resolve()
+            .then(() => {
+                if (this.discoveryRunning) {
+                    return Promise.reject(
+                        new Error(`discovery already running`)
+                    );
+                }
+                this.discoveryRunning = true;
+                return Promise.resolve();
+            })
             .then(() => {
                 // 1. List all content types
                 return this.taodb.list(TaoDB.ContentKey, {
