@@ -16,6 +16,7 @@ import TaoDB, {
     ITaoDB_ContentHost_IndexData,
     ITaoDB_ContentHost_IndexData_Entry
 } from "./TaoDB";
+import EthCrypto from "eth-crypto";
 const debug = Debug("ao:p2p");
 
 export interface AOP2P_Init_Data {
@@ -723,21 +724,30 @@ export default class AOP2P extends AORouterInterface {
             .then((existingIndexData: ITaoDB_ContentHost_IndexData) => {
                 const existingIndexDataForBuyer =
                     existingIndexData[buyersPublicKey];
-                if (
-                    existingIndexDataForBuyer &&
-                    existingIndexDataForBuyer.decryptionKey &&
-                    existingIndexDataForBuyer.decryptionKey ===
-                        encryptedDecryptionKey
-                ) {
-                    debug(
-                        `[${
-                            content.id
-                        }] decryption key handoff for buyer[${buyersPublicKey}] already processed, skipping write to indexData`
-                    );
-                    request.respond({ success: true, alreadyExists: true });
-                    return null;
-                }
                 if (existingIndexDataForBuyer) {
+                    // Validate the signature, if incorrect overwrite the entry
+                    const signer = EthCrypto.recoverPublicKey(
+                        existingIndexDataForBuyer.signature,
+                        EthCrypto.hash.keccak256(
+                            existingIndexDataForBuyer.decryptionKey
+                        )
+                    );
+                    if (signer === hostsPublicKey) {
+                        debug(
+                            `[${
+                                content.id
+                            }] decryption key handoff for buyer[${buyersPublicKey}] already processed, skipping write to indexData`
+                        );
+                        request.respond({ success: true, alreadyExists: true });
+                        return null;
+                    } else {
+                        debug(
+                            `[${
+                                content.id
+                            }] found invalid signature for decryption key, proceeding to overwrite indexData with fresh value`
+                        );
+                    }
+
                     debug(
                         `[${
                             content.id
