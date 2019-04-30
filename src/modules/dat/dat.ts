@@ -2,7 +2,7 @@ import Dat from "dat-node";
 import Debug from "../../AODebug";
 import Datastore from "nedb";
 import path from "path";
-import fsExtra from "fs-extra";
+import fsExtra, { statSync } from "fs-extra";
 import AORouterInterface, {
     IAORouterRequest,
     AORouterSubprocessArgs
@@ -836,6 +836,7 @@ export default class AODat extends AORouterInterface {
                             { fs: dat.archive, name: "/" },
                             newDatPath,
                             async err => {
+                                debug(`[${key}] dat archive mirror callback`);
                                 try {
                                     if (err) throw err;
                                     // Super hacky, but mirror does the ram/mirror
@@ -892,7 +893,10 @@ export default class AODat extends AORouterInterface {
                         debug(`[${key}] tracking stats`);
                         dat.AO_isTrackingStats = true;
                         let lastPercentage = null;
-                        stats.on("update", () => {
+
+                        stats.on("update", onStatsUpdate);
+
+                        function onStatsUpdate() {
                             const newStats = stats.get();
                             dat.AO_latestStats = newStats;
                             let downloadPercentage = (
@@ -910,9 +914,17 @@ export default class AODat extends AORouterInterface {
                                     `[${key}] downloaded ${downloadPercentage}%`
                                 );
                             }
+                            if (parseInt(downloadPercentage) >= 100) {
+                                stats.removeEventListener(
+                                    "update",
+                                    onStatsUpdate
+                                );
+                                dat.stats = null;
+                                dat.AO_isTrackingStats = false;
+                            }
                             lastPercentage = downloadPercentage;
                             downloadPercent = parseInt(lastPercentage);
-                        });
+                        }
                     }
                 }
             );
