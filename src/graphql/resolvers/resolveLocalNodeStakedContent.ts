@@ -18,6 +18,10 @@ export default (
             resolve([]);
             return null;
         }
+        if (!nodeIdentity.ethAddress)
+            nodeIdentity.ethAddress = context.userSession.ethAddress;
+        if (!nodeIdentity.publicKey)
+            nodeIdentity.publicKey = context.userSession.publicKey;
         const contentQueryParams: AODB_UserContentGet_Data = {
             userId: nodeIdentity.ethAddress,
             query: {

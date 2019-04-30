@@ -243,7 +243,10 @@ export default class AOP2P extends AORouterInterface {
                     });
             });
             watcher.on("error", err => {
-                debug(`error while watching on key: /${TaoDB.ContentKey}`, err);
+                debug(
+                    `error while watching on key: /${TaoDB.ContentKey}`,
+                    err || "undefined"
+                );
                 if (!startedWatching) reject(err);
             });
             watcher.on("close", async () => {
