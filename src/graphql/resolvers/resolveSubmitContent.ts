@@ -32,8 +32,6 @@ export interface ISubmitContent_Args {
         contentType: AOContentType;
         contentLicense: AOContentLicense;
         contentAttribution?: string;
-        ethAddress: string;
-        creatorNameId: string;
         content: Promise<any>;
         videoTeaser?: Promise<any>;
         featuredImage: Promise<any>;
@@ -71,7 +69,7 @@ export default (
             nodeEthAddress: context.userSession.ethAddress,
             creatorNodePublicKey: context.userSession.publicKey,
             creatorEthAddress: context.userSession.ethAddress,
-            creatorNameId: args.inputs.creatorNameId,
+            creatorNameId: context.userSession.aoNameId,
             taoId: args.inputs.taoId,
             contentType: args.inputs.contentType,
             contentLicense: args.inputs.contentLicense,

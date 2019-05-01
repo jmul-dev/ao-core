@@ -108,6 +108,14 @@ export default class AOContentIngestion extends EventEmitter {
                                                 readResponse.data
                                             );
                                             if (contentJson) {
+                                                if (
+                                                    !AOContent.isValidForImport(
+                                                        contentJson
+                                                    )
+                                                )
+                                                    throw new Error(
+                                                        `content.json missing required content fields, rendering content invalid`
+                                                    );
                                                 networkContent.status =
                                                     "imported";
                                                 networkContent.content = AOContent.fromObject(
@@ -117,9 +125,9 @@ export default class AOContentIngestion extends EventEmitter {
                                                     AOContentState.DISCOVERED;
                                             }
                                         } catch (error) {
-                                            debug(error);
                                             debug(
-                                                `[${metadataDatKey}] failed to parse network content's content.json file`
+                                                `[${metadataDatKey}] failed to parse network content's content.json file`,
+                                                error
                                             );
                                             // TODO: remove the dat completely (maybe failed/wierd state)
                                         } finally {
