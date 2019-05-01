@@ -19,6 +19,7 @@ import { IAOETH_Init_Data } from "./modules/eth/eth";
 import { AOP2P_Init_Data } from "./modules/p2p/p2p";
 import AORouter, { IAORouterMessage } from "./router/AORouter";
 import { IAORouterRequest } from "./router/AORouterInterface";
+import { isAddress } from "web3-utils";
 
 const debugLog = Debug("ao:core");
 const errorLog = Debug("ao:core:error");
@@ -33,7 +34,6 @@ export interface ICoreOptions {
     httpOrigin: string;
     storageLocation: string;
     nodeBin: string;
-    exportData: string;
 }
 
 export interface AOCore_Log_Data {
@@ -596,42 +596,37 @@ export default class Core extends EventEmitter {
     }
 
     private processCommandLineArgs(args: ICoreOptions) {
-        const { exportData, ethAddress } = args;
+        const { ethAddress } = args;
         const context: IGraphqlResolverContext = {
             router: this.coreRouter.router,
             options: this.options,
             userSession: this.userSession
         };
-        const empty: object = {}; //Need an empty object?
-
-        if (ethAddress.length) {
-            const registerArgs: IRegister_Args = {
-                inputs: {
-                    ethAddress: ethAddress
-                }
-            };
-            registerResolver(empty, registerArgs, context, empty)
-                .then(() => {
-                    debugLog(`ethAddress set: ${ethAddress}`);
+        if (isAddress(ethAddress)) {
+            // Pull ao name id (required for registration)
+            this.coreRouter.router
+                .send("/eth/nameId", { ethAddress })
+                .then((response: IAORouterMessage) => {
+                    const registerArgs: IRegister_Args = {
+                        inputs: {
+                            ethAddress: ethAddress,
+                            aoNameId: response.data.nameId
+                        }
+                    };
+                    registerResolver({}, registerArgs, context, {})
+                        .then(() => {
+                            debugLog(
+                                `Registration succesfull!\n\tethAddress: ${ethAddress}\n\tnameId: ${
+                                    response.data.nameId
+                                }`
+                            );
+                        })
+                        .catch(error => {
+                            errorLog(error);
+                        });
                 })
                 .catch(error => {
-                    errorLog(error);
-                });
-        }
-
-        //Exports data
-        if (exportData.length) {
-            const exportArgs: IContentExport_Args = {
-                inputs: { exportPath: exportData }
-            };
-            exportDataResolver(empty, exportArgs, context, empty)
-                .then(() => {
-                    debugLog(
-                        "Export finished. Export should be at: " + exportData
-                    );
-                })
-                .catch(error => {
-                    errorLog("Bad news, export failed: ", error);
+                    this.handleShutdown(error);
                 });
         }
     }

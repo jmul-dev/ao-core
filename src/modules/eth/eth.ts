@@ -13,6 +13,7 @@ const AOContentHost = require("ao-contracts/build/contracts/AOContentHost.json")
 const AOStakedContent = require("ao-contracts/build/contracts/AOStakedContent.json");
 const AOIon = require("ao-contracts/build/contracts/AOIon.json");
 const AOSetting = require("ao-contracts/build/contracts/AOSetting.json");
+const NameFactory = require("ao-contracts/build/contracts/NameFactory.json");
 const debug = Debug("ao:eth");
 const errorLog = Debug("ao:eth:error");
 
@@ -121,6 +122,7 @@ export default class AOEth extends AORouterInterface {
         aoPurchaseReceipt: any;
         aoContentHost: any;
         aoSetting: any;
+        nameFactory: any;
     };
 
     private events: {
@@ -145,6 +147,7 @@ export default class AOEth extends AORouterInterface {
             this._handleGetTaoDbKey.bind(this)
         );
         this.router.on("/eth/stats", this._handleStats.bind(this));
+        this.router.on("/eth/nameId", this._handleNameId.bind(this));
         this.router.on("/eth/network/get", this._handleNetworkGet.bind(this));
         this.router.on("/eth/tx", this._handleTx.bind(this));
         this.router.on(
@@ -405,6 +408,10 @@ export default class AOEth extends AORouterInterface {
                 aoSetting: new this.web3.eth.Contract(
                     AOSetting.abi,
                     AOSetting.networks[this.networkId].address
+                ),
+                nameFactory: new this.web3.eth.Contract(
+                    NameFactory.abi,
+                    NameFactory.networks[this.networkId].address
                 )
             };
             return true;
@@ -435,6 +442,23 @@ export default class AOEth extends AORouterInterface {
             })
             .catch((error: Error) => {
                 debug(`Error fetching taoDbKey`, error);
+                request.reject(error);
+            });
+    }
+
+    private _handleNameId(request: IAORouterRequest) {
+        this.contracts.nameFactory.methods
+            .ethAddressToNameId(request.ethAddress)
+            .call()
+            .then((nameId: string) => {
+                if (
+                    !nameId ||
+                    nameId === "0x0000000000000000000000000000000000000000"
+                )
+                    request.reject(new Error(`Name id not found`));
+                else request.respond({ nameId });
+            })
+            .catch((error: Error) => {
                 request.reject(error);
             });
     }
