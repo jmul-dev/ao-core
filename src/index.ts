@@ -1,27 +1,24 @@
 "use strict";
 import { AO_CONSTANTS } from "ao-library";
-import AORouter, { IAORouterMessage } from "./router/AORouter";
-import { IAORouterRequest } from "./router/AORouterInterface";
-import Http, { IGraphqlResolverContext } from "./http";
 import { EventEmitter } from "events";
-import readline from "readline";
+import fsExtra from "fs-extra";
 import path from "path";
+import readline from "readline";
+import Debug, { debugLogFile } from "./AODebug";
 import AOUserSession from "./AOUserSession";
+import { DEFAULT_OPTIONS } from "./bin";
 import exportDataResolver, {
     IContentExport_Args
 } from "./graphql/resolvers/resolveExportData";
-import importDataResolver, {
-    IContentImport_Args
-} from "./graphql/resolvers/resolveImportData";
 import registerResolver, {
     IRegister_Args
 } from "./graphql/resolvers/resolveRegister";
-import fsExtra from "fs-extra";
-import Debug, { debugLogFile } from "./AODebug";
+import Http, { IGraphqlResolverContext } from "./http";
+import { AODB_NetworkInit_Data } from "./modules/db/db";
 import { IAOETH_Init_Data } from "./modules/eth/eth";
 import { AOP2P_Init_Data } from "./modules/p2p/p2p";
-import { AODB_NetworkInit_Data } from "./modules/db/db";
-import { DEFAULT_OPTIONS } from "./bin";
+import AORouter, { IAORouterMessage } from "./router/AORouter";
+import { IAORouterRequest } from "./router/AORouterInterface";
 
 const debugLog = Debug("ao:core");
 const errorLog = Debug("ao:core:error");
@@ -503,13 +500,14 @@ export default class Core extends EventEmitter {
                 let taoDbKey = response.data.taoDbKey;
 
                 // TODO: remove once taodb key has been moved to contracts
-                debugLog(`WARNING, HARDCODED TAODB KEY`);
-                taoDbKey =
-                    "1e49bba118a52b8c668b546a47e4de78669904569ab85f2beae8da990f401c00";
+                // debugLog(`WARNING, HARDCODED TAODB KEY`);
+                // taoDbKey =
+                //     "1e49bba118a52b8c668b546a47e4de78669904569ab85f2beae8da990f401c00";
 
                 // 2. Spin up p2p module with the fetched taoDbKey
                 const p2pInitData: AOP2P_Init_Data = {
-                    dbKey: taoDbKey
+                    dbKey: taoDbKey,
+                    ethNetworkId: this.ethNetworkId
                 };
                 this.coreRouter.router
                     .send("/p2p/init", p2pInitData)

@@ -20,7 +20,7 @@
         "test-module-fs": "cross-env MODULE=fs npm run test-module",
         "test-module-p2p": "cross-env MODULE=p2p npm run test-module",
         "test-ao-crypto": "mocha --exit -r ts-node/register src/AOCrypto.spec.ts",
-        "test-aodb": "mocha --exit -r ts-node/register src/modules/p2p/AODB.spec.ts",
+        "test-taodb-wrapper": "mocha --exit -r ts-node/register src/modules/p2p/TAODBWrapper.spec.ts",
         "test-taodb": "mocha --exit -r ts-node/register src/modules/p2p/TaoDB.spec.ts",
         "test-p2p": "mocha --exit -r ts-node/register src/modules/p2p/p2p.spec.ts",
         "list-native-deps": "node ./node_modules/node-has-native-dependencies/index.js",
@@ -32,9 +32,8 @@
         "src"
     ],
     "dependencies": {
-        "ao-contracts": "git+ssh://git@git.y-designs.com:ao/ao-contracts.git#v1.0.11",
+        "ao-contracts": "git+ssh://git@git.y-designs.com:ao/ao-contracts.git#v1.0.15",
         "ao-library": "git+ssh://git@git.y-designs.com:ao/ao-library.git",
-        "aodb": "^1.1.4",
         "apollo-server-express": "^1.3.6",
         "archiver": "^3.0.0",
         "assert": "^1.4.1",
@@ -61,6 +60,7 @@
         "minimist": "^1.2.0",
         "nedb": "^1.8.0",
         "queue": "^4.5.0",
+        "taodb": "git+ssh://git@gitlab.paramation.com:22022/AO-core/taodb.git#v1.0.1",
         "unzipper": "^0.9.3",
         "web3": "^1.0.0-beta.33",
         "web3-legacy": "git://github.com/nharlow89/web3.js.git#legacy",

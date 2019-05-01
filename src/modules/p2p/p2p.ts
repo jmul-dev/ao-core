@@ -11,7 +11,7 @@ import { AODB_NetworkContentGet_Data } from "../db/db";
 import { IAOFS_Mkdir_Data } from "../fs/fs";
 import AOContentHostsUpdater from "./AOContentHostsUpdater";
 import AOContentIngestion from "./AOContentIngestion";
-import { AODB_Entry, IAODB_Args } from "./AODB";
+import { ITAODB_Entry, ITAODB_Args } from "./TAODBWrapper";
 import TaoDB, {
     ITaoDB_ContentHost_IndexData,
     ITaoDB_ContentHost_IndexData_Entry
@@ -21,6 +21,7 @@ const debug = Debug("ao:p2p");
 export interface AOP2P_Init_Data {
     dbKey: string;
     dbPath?: Function | string;
+    ethNetworkId: string;
 }
 
 export interface AOP2P_ContentRegistration_Data {
@@ -152,7 +153,7 @@ export default class AOP2P extends AORouterInterface {
     }
 
     _init(request: IAORouterRequest) {
-        const { dbKey, dbPath }: AOP2P_Init_Data = request.data;
+        const { dbKey, dbPath, ethNetworkId }: AOP2P_Init_Data = request.data;
         let resolvedDbPath: Function | string;
         Promise.resolve()
             .then(() => {
@@ -174,9 +175,10 @@ export default class AOP2P extends AORouterInterface {
             })
             .then(() => {
                 debug(`Attempting to spin up taodb...`);
-                const aodbArgs: IAODB_Args = {
+                const aodbArgs: ITAODB_Args = {
                     dbKey,
-                    dbPath: resolvedDbPath
+                    dbPath: resolvedDbPath,
+                    ethNetworkId
                 };
                 this.taodb = new TaoDB();
                 return this.taodb.start(aodbArgs);
@@ -209,7 +211,7 @@ export default class AOP2P extends AORouterInterface {
 
     _watchDiscovery(): Promise<any> {
         return new Promise((resolve, reject) => {
-            const watcher = this.taodb.aodb.watch(TaoDB.ContentKey);
+            const watcher = this.taodb.taodb.watch(TaoDB.ContentKey);
             let startedWatching = false;
             watcher.on("watching", () => {
                 debug(
@@ -262,9 +264,9 @@ export default class AOP2P extends AORouterInterface {
                     recursive: false
                 });
             })
-            .then((contentList: Array<AODB_Entry<any>>) => {
+            .then((contentList: Array<ITAODB_Entry<any>>) => {
                 let contentTypes = [];
-                contentList.forEach((entry: AODB_Entry<any>) => {
+                contentList.forEach((entry: ITAODB_Entry<any>) => {
                     const key = entry.splitKey[2]; // /AO/Content/{contentType}
                     if (contentTypes.indexOf(key) === -1) {
                         contentTypes.push(key);
@@ -284,11 +286,11 @@ export default class AOP2P extends AORouterInterface {
                 });
                 return Promise.all(contentListPromises);
             })
-            .then((contentLists: Array<Array<AODB_Entry<any>>>) => {
+            .then((contentLists: Array<Array<ITAODB_Entry<any>>>) => {
                 // Lets merge all the content keys into a single array
                 let contentKeys: Array<string> = [];
                 contentLists.forEach(contentList => {
-                    contentList.forEach((entry: AODB_Entry<any>) => {
+                    contentList.forEach((entry: ITAODB_Entry<any>) => {
                         // sanity check to make sure entry is a Dat key
                         const key = entry.splitKey[3];
                         if (key.length === 64) {
@@ -459,7 +461,7 @@ export default class AOP2P extends AORouterInterface {
                         content.title
                     }]->[${buyersPublicKey}] _handleWatchAndGetIndexData did not find index data on first try, watching...`
                 );
-                const watcher = this.taodb.aodb.watch(indexDataKey);
+                const watcher = this.taodb.taodb.watch(indexDataKey);
                 return Promise.resolve(watcher);
             })
             .then(watcher => {
@@ -612,12 +614,12 @@ export default class AOP2P extends AORouterInterface {
         return new Promise((resolve, reject) => {
             this.taodb
                 .listContentHosts({ content })
-                .then((results: Array<AODB_Entry<any>>) => {
+                .then((results: Array<ITAODB_Entry<any>>) => {
                     /**
                      * Results needs quite a bit of formatting
                      */
                     let jsonResults = results
-                        .map((entry: AODB_Entry<any>) => {
+                        .map((entry: ITAODB_Entry<any>) => {
                             // 1. Convert entry value data to json
                             if (entry && entry.value) {
                                 return {
