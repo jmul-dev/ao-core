@@ -3,6 +3,7 @@ import { IGraphqlResolverContext } from "../../http";
 export interface IRegister_Args {
     inputs: {
         ethAddress: string;
+        aoNameId?: string;
     };
 }
 
@@ -14,11 +15,12 @@ export default (
 ) => {
     return new Promise((resolve, reject) => {
         context.userSession
-            .register(args.inputs.ethAddress)
+            .register(args.inputs.ethAddress, args.inputs.aoNameId)
             .then(() => {
                 resolve({
                     id: args.inputs.ethAddress,
-                    ethAddress: args.inputs.ethAddress
+                    ethAddress: args.inputs.ethAddress,
+                    aoNameId: args.inputs.aoNameId
                 });
             })
             .catch(reject);
