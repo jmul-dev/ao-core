@@ -65,7 +65,7 @@ export default class TAODBWrapper {
                     this.dbKey,
                     this._userIdentity.privateKey
                 );
-                this.taodb.ready(async error => {
+                this.taodb.db.ready(async error => {
                     if (error) return reject(error);
                     // Overwrite the dbKey assigned with whatever taodb has (in case dbKey was undefined or mismatch).
                     // Just ensures a sync between taodb and swarm
