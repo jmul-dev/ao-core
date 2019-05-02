@@ -12,8 +12,7 @@ export const DEFAULT_OPTIONS = {
     httpOrigin: "http://localhost:3000",
     storageLocation: path.resolve(__dirname, "..", "data"),
     desktopLocation: undefined,
-    nodeBin: process.execPath,
-    exportData: "" // Takes a path for where the data is exported to
+    nodeBin: process.execPath
 };
 
 // TODO: see commandDir for modularizing the commands (args and commands can live in same file)
@@ -88,20 +87,6 @@ require("yargs")
                         return fsExtra.pathExistsSync(arg)
                             ? arg
                             : DEFAULT_OPTIONS.nodeBin;
-                    }
-                })
-                .option("exportData", {
-                    description: "Exports a data to a defined path",
-                    type: "string",
-                    coerce: arg => {
-                        if (fsExtra.pathExistsSync(arg)) {
-                            return arg;
-                        } else {
-                            // console.log(
-                            //     "Path does not exist for export. Please specify a path that exists"
-                            // );
-                            return "";
-                        }
                     }
                 })
                 .default(DEFAULT_OPTIONS);

@@ -1,6 +1,5 @@
-import AODB, { AODB_Entry } from "./AODB";
+import TAODBWrapper, { ITAODB_Entry } from "./TAODBWrapper";
 import EthCrypto from "eth-crypto";
-import { Identity } from "../../AOCrypto";
 import AOContent from "../../models/AOContent";
 import Debug from "../../AODebug";
 const debug = Debug("ao:taodb");
@@ -37,7 +36,7 @@ export interface ITaoDB_ContentHost_Timestamp {
  * Additional layer on top of AODB that adds schema helpers, schema
  * aware inserts, and user identity context.
  */
-export default class TaoDB extends AODB {
+export default class TaoDB extends TAODBWrapper {
     public static ContentKey = "AO/Content";
 
     public schemas: { [key: string]: ITaoDB_Schema } = {
@@ -119,22 +118,6 @@ export default class TaoDB extends AODB {
         }
     };
 
-    private async insertSchema(schema: ITaoDB_Schema): Promise<any> {
-        if (!this._userIdentity) {
-            throw new Error(`Attempt to insert schema without user identity`);
-        }
-        return this.addSchema({
-            key: schema.key,
-            value: schema.value,
-            writerAddress: this._userIdentity.publicKey,
-            writerSignature: this.createSignedHash({
-                privateKey: this._userIdentity.privateKey,
-                key: schema.key,
-                value: schema.value
-            })
-        });
-    }
-
     public createSignedHash({ privateKey, key, value }) {
         return EthCrypto.sign(privateKey, this.createSignHash(key, value));
     }
@@ -193,21 +176,14 @@ export default class TaoDB extends AODB {
             contentMetadataDatKey: content.metadataDatKey
         });
         const value = content.baseChallengeSignature;
-        const writerSignature = this.createSignedHash({
-            privateKey: this._userIdentity.privateKey,
-            key,
-            value
-        });
         const schema: ITaoDB_Schema = this.schemas.userContent;
         const schemaExists = await this.exists(schema.key);
         if (!schemaExists) {
-            await this.insertSchema(schema);
+            throw new Error(`Schema does not exist`);
         }
         return this.insert({
             key,
             value,
-            writerAddress: this._userIdentity.publicKey,
-            writerSignature,
             schemaKey: schema.key
         });
     }
@@ -238,21 +214,14 @@ export default class TaoDB extends AODB {
             contentDatKey: content.fileDatKey
         });
         const value = content.baseChallengeSignature;
-        const writerSignature = this.createSignedHash({
-            privateKey: this._userIdentity.privateKey,
-            key,
-            value
-        });
         const schema: ITaoDB_Schema = this.schemas.contentHostSignature;
         const schemaExists = await this.exists(schema.key);
         if (!schemaExists) {
-            await this.insertSchema(schema);
+            throw new Error(`Schema does not exist`);
         }
         return this.insert({
             key,
             value,
-            writerAddress: this._userIdentity.publicKey,
-            writerSignature,
             schemaKey: schema.key
         });
     }
@@ -285,21 +254,14 @@ export default class TaoDB extends AODB {
             contentDatKey: content.fileDatKey
         });
         const value = indexData;
-        const writerSignature = this.createSignedHash({
-            privateKey: this._userIdentity.privateKey,
-            key,
-            value
-        });
         const schema: ITaoDB_Schema = this.schemas.contentHostIndexData;
         const schemaExists = await this.exists(schema.key);
         if (!schemaExists) {
-            await this.insertSchema(schema);
+            throw new Error(`Schema does not exist`);
         }
         return this.insert({
             key,
             value,
-            writerAddress: this._userIdentity.publicKey,
-            writerSignature,
             schemaKey: schema.key
         });
     }
@@ -332,21 +294,14 @@ export default class TaoDB extends AODB {
             contentHostId: content.contentHostId,
             contentDatKey: content.fileDatKey
         };
-        const writerSignature = this.createSignedHash({
-            privateKey: this._userIdentity.privateKey,
-            key,
-            value
-        });
         const schema: ITaoDB_Schema = this.schemas.contentHostTimestamp;
         const schemaExists = await this.exists(schema.key);
         if (!schemaExists) {
-            await this.insertSchema(schema);
+            throw new Error(`Schema does not exist`);
         }
         return this.insert({
             key,
             value,
-            writerAddress: this._userIdentity.publicKey,
-            writerSignature,
             schemaKey: schema.key
         });
     }
@@ -363,7 +318,7 @@ export default class TaoDB extends AODB {
         content
     }: {
         content: AOContent;
-    }): Promise<Array<AODB_Entry<any>>> {
+    }): Promise<Array<ITAODB_Entry<any>>> {
         const key = TaoDB.getContentHostsKey({
             contentType: content.contentType,
             contentMetadataDatKey: content.metadataDatKey
@@ -390,21 +345,14 @@ export default class TaoDB extends AODB {
             nameId
         });
         const value = imageString;
-        const writerSignature = this.createSignedHash({
-            privateKey: this._userIdentity.privateKey,
-            key,
-            value
-        });
         const schema: ITaoDB_Schema = this.schemas.nameProfileImage;
         const schemaExists = await this.exists(schema.key);
         if (!schemaExists) {
-            await this.insertSchema(schema);
+            throw new Error(`Schema does not exist`);
         }
         return this.insert({
             key,
             value,
-            writerAddress: this._userIdentity.publicKey,
-            writerSignature,
             schemaKey: schema.key
         });
     }
@@ -432,21 +380,14 @@ export default class TaoDB extends AODB {
             timestamp: Math.round(new Date().getTime() / 1000)
         });
         const value = description;
-        const writerSignature = this.createSignedHash({
-            privateKey: this._userIdentity.privateKey,
-            key,
-            value
-        });
         const schema: ITaoDB_Schema = this.schemas.taoDescription;
         const schemaExists = await this.exists(schema.key);
         if (!schemaExists) {
-            await this.insertSchema(schema);
+            throw new Error(`Schema does not exist`);
         }
         return this.insert({
             key,
             value,
-            writerAddress: this._userIdentity.publicKey,
-            writerSignature,
             schemaKey: schema.key
         });
     }
@@ -506,21 +447,14 @@ export default class TaoDB extends AODB {
                 thought,
                 timestamp: Math.round(new Date().getTime() / 1000)
             };
-            const writerSignature = this.createSignedHash({
-                privateKey: this._userIdentity.privateKey,
-                key,
-                value
-            });
             const schema: ITaoDB_Schema = this.schemas.taoThoughtName;
             const schemaExists = await this.exists(schema.key);
             if (!schemaExists) {
-                await this.insertSchema(schema);
+                throw new Error(`Schema does not exist`);
             }
             await this.insert({
                 key,
                 value,
-                writerAddress: this._userIdentity.publicKey,
-                writerSignature,
                 schemaKey: schema.key,
                 options: {
                     pointerSchemaKey: this.schemas.taoNameThoughtPointer.key,

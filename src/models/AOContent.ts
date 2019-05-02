@@ -96,6 +96,7 @@ export default abstract class AOContent {
     public nodeEthAddress: string;
     public creatorNodePublicKey: string;
     public creatorEthAddress: string;
+    public creatorNameId: string;
     public taoId: string;
     public contentType: AOContentType;
     public mimetype: string;
@@ -173,6 +174,32 @@ export default abstract class AOContent {
         );
     }
 
+    public static isValidForImport(object): boolean | string {
+        const keys = Object.keys(object);
+        const minRequiredFields = [
+            "id",
+            "metadataDatKey",
+            "stakeId",
+            "creatorNodePublicKey",
+            "creatorEthAddress",
+            "creatorNameId",
+            "contentType",
+            "mimetype",
+            "contentLicense",
+            "fileName",
+            "fileDatKey",
+            "fileUrl",
+            "fileChecksum",
+            "encryptionAlgorithm",
+            "title"
+        ];
+        for (let i = 0; i < minRequiredFields.length; i++) {
+            const fieldName = minRequiredFields[i];
+            if (keys.indexOf(fieldName) === -1) return fieldName;
+        }
+        return true;
+    }
+
     public getFilePath(): string {
         return path.join("content", this.fileDatKey, this.fileName);
     }
@@ -207,6 +234,7 @@ export default abstract class AOContent {
             "stakeId",
             "creatorNodePublicKey",
             "creatorEthAddress",
+            "creatorNameId",
             "taoId",
             "contentType",
             "mimetype",

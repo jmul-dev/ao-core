@@ -295,8 +295,11 @@ export default class AODB extends AORouterInterface {
                     { $set: { recentlySeenHostsCount: 0 } },
                     { multi: true },
                     error => {
-                        if(error) {
-                            errorLog(`error resetting network content hosts count`, error)
+                        if (error) {
+                            errorLog(
+                                `error resetting network content hosts count`,
+                                error
+                            );
                         }
                         this.db.networkContent.persistence.compactDatafile();
                         request.respond({});
@@ -662,7 +665,7 @@ export default class AODB extends AORouterInterface {
 
     private _insertNetworkContent(request: IAORouterRequest) {
         const requestData: AODB_NetworkContentInsert_Data = request.data;
-        this.db.networkContent.insert(requestData, (err, doc) => {
+        this.db.networkContent.update(requestData, (err, doc) => {
             if (err) {
                 request.reject(err);
             } else {
@@ -676,7 +679,7 @@ export default class AODB extends AORouterInterface {
         this.db.networkContent.update(
             { _id: requestData.id },
             requestData.update,
-            { returnUpdatedDocs: true, multi: false },
+            { returnUpdatedDocs: true, multi: false, upsert: true },
             (error: Error, numAffected, updatedDoc, upsert) => {
                 if (error) {
                     request.reject(error);

@@ -33,6 +33,7 @@ input ContentUploadStakeTransactionInputs {
 input RegisterInputs {
     ethAddress: String!
     networkId: String!
+    aoNameId: String
 }
 
 input SetNetworkInputs {

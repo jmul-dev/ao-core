@@ -67,6 +67,10 @@ export default class AOContentHostsUpdater {
                     if (contentResponse.data && contentResponse.data[0]) {
                         const existingNetworkContent: AONetworkContent =
                             contentResponse.data[0];
+                        if (existingNetworkContent.status === "failed")
+                            throw new Error(
+                                `Skipping host updater for content that failed to import`
+                            );
                         this.getContentHostsFormatted(
                             existingNetworkContent.content
                         )
@@ -147,6 +151,7 @@ export default class AOContentHostsUpdater {
                     }
                 })
                 .catch(error => {
+                    debug(error);
                     resolver();
                 });
         });

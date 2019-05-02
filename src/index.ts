@@ -1,27 +1,25 @@
 "use strict";
 import { AO_CONSTANTS } from "ao-library";
-import AORouter, { IAORouterMessage } from "./router/AORouter";
-import { IAORouterRequest } from "./router/AORouterInterface";
-import Http, { IGraphqlResolverContext } from "./http";
 import { EventEmitter } from "events";
-import readline from "readline";
+import fsExtra from "fs-extra";
 import path from "path";
+import readline from "readline";
+import Debug, { debugLogFile } from "./AODebug";
 import AOUserSession from "./AOUserSession";
+import { DEFAULT_OPTIONS } from "./bin";
 import exportDataResolver, {
     IContentExport_Args
 } from "./graphql/resolvers/resolveExportData";
-import importDataResolver, {
-    IContentImport_Args
-} from "./graphql/resolvers/resolveImportData";
 import registerResolver, {
     IRegister_Args
 } from "./graphql/resolvers/resolveRegister";
-import fsExtra from "fs-extra";
-import Debug, { debugLogFile } from "./AODebug";
+import Http, { IGraphqlResolverContext } from "./http";
+import { AODB_NetworkInit_Data } from "./modules/db/db";
 import { IAOETH_Init_Data } from "./modules/eth/eth";
 import { AOP2P_Init_Data } from "./modules/p2p/p2p";
-import { AODB_NetworkInit_Data } from "./modules/db/db";
-import { DEFAULT_OPTIONS } from "./bin";
+import AORouter, { IAORouterMessage } from "./router/AORouter";
+import { IAORouterRequest } from "./router/AORouterInterface";
+import { isAddress } from "web3-utils";
 
 const debugLog = Debug("ao:core");
 const errorLog = Debug("ao:core:error");
@@ -36,7 +34,6 @@ export interface ICoreOptions {
     httpOrigin: string;
     storageLocation: string;
     nodeBin: string;
-    exportData: string;
 }
 
 export interface AOCore_Log_Data {
@@ -503,13 +500,16 @@ export default class Core extends EventEmitter {
                 let taoDbKey = response.data.taoDbKey;
 
                 // TODO: remove once taodb key has been moved to contracts
-                debugLog(`WARNING, HARDCODED TAODB KEY`);
+                debugLog(`WARNING, HARDCODED TAODB KEY!`);
+                debugLog(`taodb key found in contracts: ${taoDbKey}`);
                 taoDbKey =
-                    "1e49bba118a52b8c668b546a47e4de78669904569ab85f2beae8da990f401c00";
+                    "b95d3ba6b1d193341313ce745c7a951dddfa8f7c287700ec6f7d104091d7c4a2";
+                debugLog(`taodb key override: ${taoDbKey}`);
 
                 // 2. Spin up p2p module with the fetched taoDbKey
                 const p2pInitData: AOP2P_Init_Data = {
-                    dbKey: taoDbKey
+                    dbKey: taoDbKey,
+                    ethNetworkId: this.ethNetworkId
                 };
                 this.coreRouter.router
                     .send("/p2p/init", p2pInitData)
@@ -597,42 +597,37 @@ export default class Core extends EventEmitter {
     }
 
     private processCommandLineArgs(args: ICoreOptions) {
-        const { exportData, ethAddress } = args;
+        const { ethAddress } = args;
         const context: IGraphqlResolverContext = {
             router: this.coreRouter.router,
             options: this.options,
             userSession: this.userSession
         };
-        const empty: object = {}; //Need an empty object?
-
-        if (ethAddress.length) {
-            const registerArgs: IRegister_Args = {
-                inputs: {
-                    ethAddress: ethAddress
-                }
-            };
-            registerResolver(empty, registerArgs, context, empty)
-                .then(() => {
-                    debugLog(`ethAddress set: ${ethAddress}`);
+        if (isAddress(ethAddress)) {
+            // Pull ao name id (required for registration)
+            this.coreRouter.router
+                .send("/eth/nameId", { ethAddress })
+                .then((response: IAORouterMessage) => {
+                    const registerArgs: IRegister_Args = {
+                        inputs: {
+                            ethAddress: ethAddress,
+                            aoNameId: response.data.nameId
+                        }
+                    };
+                    registerResolver({}, registerArgs, context, {})
+                        .then(() => {
+                            debugLog(
+                                `Registration succesfull!\n\tethAddress: ${ethAddress}\n\tnameId: ${
+                                    response.data.nameId
+                                }`
+                            );
+                        })
+                        .catch(error => {
+                            errorLog(error);
+                        });
                 })
                 .catch(error => {
-                    errorLog(error);
-                });
-        }
-
-        //Exports data
-        if (exportData.length) {
-            const exportArgs: IContentExport_Args = {
-                inputs: { exportPath: exportData }
-            };
-            exportDataResolver(empty, exportArgs, context, empty)
-                .then(() => {
-                    debugLog(
-                        "Export finished. Export should be at: " + exportData
-                    );
-                })
-                .catch(error => {
-                    errorLog("Bad news, export failed: ", error);
+                    this.handleShutdown(error);
                 });
         }
     }

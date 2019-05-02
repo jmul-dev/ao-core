@@ -11,6 +11,7 @@
             "/eth/init",
             "/eth/settings/taoDbKey",
             "/eth/stats",
+            "/eth/nameId",
             "/eth/network/get",
             "/eth/tx",
             "/eth/tx/BuyContent",

@@ -64,6 +64,7 @@ const debug = Debug("ao:userSession");
 export default class AOUserSession {
     private router: AORouterInterface;
     public ethAddress: string;
+    public aoNameId: string;
     private isListeningForIncomingContent: boolean = false;
     private isSubscribedToBuyContentEvents: boolean = false;
     private usersContentDiscoveryUpdateInterval: NodeJS.Timer;
@@ -80,6 +81,10 @@ export default class AOUserSession {
 
     public get publicKey() {
         return this.identity ? this.identity.publicKey : null;
+    }
+
+    public get publicAddress() {
+        return this.identity ? this.identity.address : null;
     }
 
     public getContentBaseChallengeSignature({
@@ -110,161 +115,131 @@ export default class AOUserSession {
         });
     }
 
-    public register(ethAddress: string): Promise<{ ethAddress: string }> {
-        return new Promise((resolve, reject) => {
-            if (this.ethAddress === ethAddress) {
-                return resolve({ ethAddress });
+    public async register(
+        ethAddress: string,
+        aoNameId?: string
+    ): Promise<{ ethAddress: string }> {
+        // 1. Valid eth address?
+        if (!isAddress(ethAddress))
+            throw new Error("ethAddress format rejected");
+        // 2. Register called more than once for same user?
+        if (this.ethAddress === ethAddress) {
+            // last minute addition, but frontend may call register twice
+            // once on metamask sign in, another on nameId registration
+            if (this.aoNameId !== aoNameId) {
+                this.aoNameId = aoNameId;
+                this._resume();
             }
-            if (!isAddress(ethAddress)) {
-                return reject(new Error("ethAddress format rejected"));
-            }
-            this.ethAddress = ethAddress;
-            // 1. Make sure the user/ethadd directory exist
-            const fsMakeEthDirData: IAOFS_Mkdir_Data = {
-                dirPath: path.join("users", ethAddress)
-            };
-            this.router
-                .send("/fs/mkdir", fsMakeEthDirData)
-                .then(() => {
-                    // 2. Make sure user db has been setup for this user
-                    const userDbInitData: AODB_UserInit_Data = {
-                        ethAddress
-                    };
-                    this.router
-                        .send("/db/user/init", userDbInitData)
-                        .then(() => {
-                            this.router.send("/core/log", {
-                                message: `[AO Core] Registered as user ${ethAddress}`
-                            });
-                            // 3. Pull user identity
-                            this.router
-                                .send("/db/user/getIdentity")
-                                .then((response: IAORouterMessage) => {
-                                    if (
-                                        !response.data ||
-                                        !response.data.identity
-                                    ) {
-                                        // 4A. Create user identity
-                                        const identity: AOCrypto.Identity = AOCrypto.createUserIdentity();
-                                        this.identity = identity;
-                                        const storeIdentityData: AODB_UserInsert_Data = {
-                                            object: {
-                                                id: "identity",
-                                                ...identity
-                                            }
-                                        };
-                                        this.router
-                                            .send(
-                                                "/db/user/insert",
-                                                storeIdentityData
-                                            )
-                                            .then(
-                                                (
-                                                    response: IAORouterMessage
-                                                ) => {
-                                                    // 6. Listeners that make this app work
-                                                    debug(
-                                                        `User identity generated, public key: ${
-                                                            identity.publicKey
-                                                        }`
-                                                    );
-                                                    resolve({ ethAddress });
-                                                    this._resume();
-                                                }
-                                            )
-                                            .catch(reject);
-                                    } else {
-                                        // 4B: User identity already exists
-                                        this.identity = response.data.identity;
-                                        // 5. Listeners that make this app work
-                                        resolve({ ethAddress });
-                                        this._resume();
-                                    }
-                                })
-                                .catch(reject);
-                        })
-                        .catch(reject);
-                })
-                .catch(reject);
+            return { ethAddress };
+        }
+        this.ethAddress = ethAddress;
+        this.aoNameId = aoNameId;
+        // 3. New eth address, make sure paths exist
+        const fsMakeEthDirData: IAOFS_Mkdir_Data = {
+            dirPath: path.join("users", ethAddress)
+        };
+        await this.router.send("/fs/mkdir", fsMakeEthDirData);
+        // 4. Make sure user db has been setup for this user
+        const userDbInitData: AODB_UserInit_Data = {
+            ethAddress
+        };
+        await this.router.send("/db/user/init", userDbInitData);
+        this.router.send("/core/log", {
+            message: `[AO Core] Registered as user ${ethAddress}`
         });
+        // 5. Fetch existing local user identity
+        const identityResponse: IAORouterMessage = await this.router.send(
+            "/db/user/getIdentity"
+        );
+        if (!identityResponse.data || !identityResponse.data.identity) {
+            // 5a. Generate new identity
+            const identity: AOCrypto.Identity = AOCrypto.createUserIdentity();
+            this.identity = identity;
+            const storeIdentityData: AODB_UserInsert_Data = {
+                object: {
+                    id: "identity",
+                    ...identity
+                }
+            };
+            await this.router.send("/db/user/insert", storeIdentityData);
+            debug(`User identity generated, public key: ${identity.publicKey}`);
+        } else {
+            // 5b. Have existing user identity
+            this.identity = identityResponse.data.identity;
+        }
+        // 6. Update the identity in taodb/p2p module
+        await this.router.send("/p2p/setUserIdentity", {
+            userIdentity: this.identity
+        });
+        if (this.aoNameId) {
+            this._resume();
+        }
+        return { ethAddress };
     }
 
     /**
      * Resume, picks up where the user left off. Handles content in all states.
+     * Note that resume should only be called once we have the `aoNameId` context,
+     * otherwise the user would have no content.
      */
     private _resume() {
-        // Register the taodb schemas
+        // Content resume
         this.router
-            .send("/p2p/setUserIdentity", {
-                userIdentity: this.identity
-            })
-            .then(() => {
-                // Content resume
-                this.router
-                    .send("/db/user/content/get")
-                    .then((response: IAORouterMessage) => {
-                        const userContent = response.data;
-                        userContent.forEach(contentJson => {
-                            const content: AOContent = AOContent.fromObject(
-                                contentJson
-                            );
-                            this.processContent(content);
-                        });
-                    });
-                // Incoming content resume
-                if (!this.isListeningForIncomingContent) {
-                    this.isListeningForIncomingContent = true;
-                    this.router.on(
-                        "/core/content/incomingPurchase",
-                        (request: IAORouterRequest) => {
-                            const buyContentEvent: BuyContentEvent =
-                                request.data;
-                            this._handleIncomingContentPurchase(buyContentEvent)
-                                .then(() => {
-                                    debug(
-                                        `sending /core/content/incomingPurchase response`
-                                    );
-                                    request.respond({});
-                                })
-                                .catch(error => {
-                                    debug(error);
-                                    request.reject(error);
-                                });
-                        }
+            .send("/db/user/content/get")
+            .then((response: IAORouterMessage) => {
+                const userContent = response.data;
+                userContent.forEach(contentJson => {
+                    const content: AOContent = AOContent.fromObject(
+                        contentJson
                     );
-                }
-                // Updates p2p content timestamps periodically
-                if (!this.usersContentDiscoveryUpdateInterval) {
-                    this.usersContentDiscoveryUpdateInterval = setInterval(
-                        this._usersContentDiscoveryUpdate.bind(this),
-                        AOUserSession.CONTENT_DISCOVERY_UPDATE_INTERVAL
-                    );
-                    this._usersContentDiscoveryUpdate();
-                }
-                // Listen for content purchases on Eth network
-                if (this.isSubscribedToBuyContentEvents) {
-                    this.router
-                        .send("/eth/events/BuyContent/unsubscribe")
-                        .then(() => {
-                            this.router.send(
-                                "/eth/events/BuyContent/subscribe"
-                            );
-                        });
-                } else {
-                    this.router.send("/eth/events/BuyContent/subscribe");
-                }
-                this.isSubscribedToBuyContentEvents = true;
-            })
-            .catch((error: Error) => {
-                debug(`Error registering taodb schemas: ${error.message}`);
+                    this.processContent(content);
+                });
             });
+        // Incoming content resume
+        if (!this.isListeningForIncomingContent) {
+            this.isListeningForIncomingContent = true;
+            this.router.on(
+                "/core/content/incomingPurchase",
+                (request: IAORouterRequest) => {
+                    const buyContentEvent: BuyContentEvent = request.data;
+                    this._handleIncomingContentPurchase(buyContentEvent)
+                        .then(() => {
+                            debug(
+                                `sending /core/content/incomingPurchase response`
+                            );
+                            request.respond({});
+                        })
+                        .catch(error => {
+                            debug(error);
+                            request.reject(error);
+                        });
+                }
+            );
+        }
+        // Updates p2p content timestamps periodically
+        if (!this.usersContentDiscoveryUpdateInterval) {
+            this.usersContentDiscoveryUpdateInterval = setInterval(
+                this._usersContentDiscoveryUpdate.bind(this),
+                AOUserSession.CONTENT_DISCOVERY_UPDATE_INTERVAL
+            );
+            this._usersContentDiscoveryUpdate();
+        }
+        // Listen for content purchases on Eth network
+        if (this.isSubscribedToBuyContentEvents) {
+            this.router.send("/eth/events/BuyContent/unsubscribe").then(() => {
+                this.router.send("/eth/events/BuyContent/subscribe");
+            });
+        } else {
+            this.router.send("/eth/events/BuyContent/subscribe");
+        }
+        this.isSubscribedToBuyContentEvents = true;
     }
 
     private _usersContentDiscoveryUpdate() {
         // Safety check
         if (!this.ethAddress) {
             clearInterval(this.usersContentDiscoveryUpdateInterval);
-            this.usersContentDiscoveryUpdateInterval = undefined;
+            this.usersContentDiscoveryUpdateInterval = null;
             return debug(
                 `Clearing users content discovery update interval (no longer have user address)`
             );
@@ -425,11 +400,8 @@ export default class AOUserSession {
             const sessionEthAddress = this.ethAddress;
             const sessionIdentity = this.identity;
             // 0. Disregard if the BuyContent event is from the current user
-            if (
-                buyContentEvent.buyer.toLowerCase() ===
-                sessionEthAddress.toLowerCase()
-            ) {
-                // debug(`[BuyContent] Skip, user is the buyer.`);
+            if (buyContentEvent.buyer === this.aoNameId || !this.aoNameId) {
+                // debug(`[BuyContent] Skip, user is the buyer or not registered.`);
                 return resolve();
             }
             // 1. Get the corresponding content entry in user db (make sure it is not )
@@ -458,7 +430,7 @@ export default class AOUserSession {
                             userContent.id
                         }] BuyContent event handler, purchased by ${
                             buyContentEvent.buyer
-                        } (eth address)`
+                        } (nameId)`
                     );
                     try {
                         if (!buyContentEvent.publicKey)
@@ -511,7 +483,7 @@ export default class AOUserSession {
                                     this.router.send("/db/logs/insert", {
                                         message: `Sold ${
                                             userContent.title
-                                        } to user ${
+                                        } to name id ${
                                             buyContentEvent.buyer
                                         }, decryption key handoff successful`,
                                         userId: sessionEthAddress
@@ -525,7 +497,7 @@ export default class AOUserSession {
                                     this.router.send("/db/logs/insert", {
                                         message: `Sold ${
                                             userContent.title
-                                        } to user ${
+                                        } to name id ${
                                             buyContentEvent.buyer
                                         }, decryption key handoff unsuccessful`,
                                         userId: sessionEthAddress

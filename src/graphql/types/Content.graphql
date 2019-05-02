@@ -85,6 +85,7 @@ interface IContent {
     nodeEthAddress: ID
     creatorNodePublicKey: ID!
     creatorEthAddress: ID!
+    creatorNameId: ID!
     taoId: ID
     contentType: ContentType!
     mimetype: String!
@@ -103,7 +104,7 @@ interface IContent {
     encChallenge: String
     metadataDatKey: ID!
     metadataDatStats: DatStats
-    title: String
+    title: String!
     description: String
     teaserUrl: String
     featuredImageUrl: String
@@ -125,7 +126,6 @@ interface IContent {
 }
 
 input ContentSubmissionInputs {
-    ethAddress: String!
     content: Upload!
     contentType: ContentType!
     videoTeaser: Upload
@@ -152,6 +152,7 @@ type VideoContent implements IContent {
     nodeEthAddress: ID
     creatorNodePublicKey: ID!
     creatorEthAddress: ID!
+    creatorNameId: ID!
     taoId: ID
     contentType: ContentType!
     mimetype: String!
@@ -170,7 +171,7 @@ type VideoContent implements IContent {
     encChallenge: String
     metadataDatKey: ID!
     metadataDatStats: DatStats
-    title: String
+    title: String!
     description: String
     teaserUrl: String
     featuredImageUrl: String
@@ -205,6 +206,7 @@ type DappContent implements IContent {
     nodeEthAddress: ID
     creatorNodePublicKey: ID!
     creatorEthAddress: ID!
+    creatorNameId: ID!
     taoId: ID
     contentType: ContentType!
     mimetype: String!
@@ -223,7 +225,7 @@ type DappContent implements IContent {
     encChallenge: String
     metadataDatKey: ID!
     metadataDatStats: DatStats
-    title: String
+    title: String!
     description: String
     teaserUrl: String
     featuredImageUrl: String
@@ -259,6 +261,7 @@ type PdfContent implements IContent {
     nodeEthAddress: ID
     creatorNodePublicKey: ID!
     creatorEthAddress: ID!
+    creatorNameId: ID!
     taoId: ID
     contentType: ContentType!
     mimetype: String!
@@ -277,7 +280,7 @@ type PdfContent implements IContent {
     encChallenge: String
     metadataDatKey: ID!
     metadataDatStats: DatStats
-    title: String
+    title: String!
     description: String
     teaserUrl: String
     featuredImageUrl: String

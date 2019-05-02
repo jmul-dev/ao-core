@@ -846,15 +846,10 @@ export default class AODat extends AORouterInterface {
                                             fsExtra.exists(
                                                 path.join(newDatPath, ".dat"),
                                                 exists => {
+                                                    // TODO: dat.archive.version === 0
                                                     if (exists) {
-                                                        debug(
-                                                            `[${key}] .dat folder succesfully created`
-                                                        );
                                                         resolve();
                                                     } else {
-                                                        debug(
-                                                            `[${key}] .dat folder does not exist after download`
-                                                        );
                                                         reject(
                                                             new Error(
                                                                 `.dat folder does not exist`
