@@ -440,7 +440,14 @@ export default class AODat extends AORouterInterface {
     }
     private _importFiles(dat: Dat): Promise<any> {
         return new Promise((resolve, reject) => {
-            if (!dat.writable) return resolve({ success: false });
+            if (!dat.writable) {
+                debug(
+                    `[${dat.key.toString(
+                        "hex"
+                    )}] attempt to import files on non-writable dat`
+                );
+                return resolve({ success: false });
+            }
             const progress = dat.importFiles(err => {
                 if (err) return reject(err);
                 resolve({ success: true });
@@ -746,7 +753,7 @@ export default class AODat extends AORouterInterface {
                 {
                     key,
                     secretDir: this.datSecretsDir,
-                    sparse: true
+                    sparse: false
                 },
                 async (err, dat) => {
                     if (err || !dat) {
