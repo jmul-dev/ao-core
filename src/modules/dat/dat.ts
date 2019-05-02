@@ -841,6 +841,7 @@ export default class AODat extends AORouterInterface {
                                             fsExtra.exists(
                                                 path.join(newDatPath, ".dat"),
                                                 exists => {
+                                                    // TODO: dat.archive.version === 0
                                                     if (exists) resolve();
                                                     else
                                                         reject(

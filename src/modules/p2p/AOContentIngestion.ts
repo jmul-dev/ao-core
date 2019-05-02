@@ -7,7 +7,10 @@ import { IAORouterMessage } from "../../router/AORouter";
 import { AORouterInterface } from "../../router/AORouterInterface";
 import { AODat_Download_Data } from "../dat/dat";
 import { IAOFS_Read_Data } from "../fs/fs";
-import { AODB_NetworkContentGet_Data } from "../db/db";
+import {
+    AODB_NetworkContentGet_Data,
+    AODB_NetworkContentUpdate_Data
+} from "../db/db";
 import { EventEmitter } from "events";
 const debug = Debug("ao:p2p:contentIngestion");
 
@@ -153,10 +156,14 @@ export default class AOContentIngestion extends EventEmitter {
                                         }
                                     } finally {
                                         // 4. Insert into network content db, marked as failed or imported
+                                        const updateArgs: AODB_NetworkContentUpdate_Data = {
+                                            update: networkContent,
+                                            id: metadataDatKey
+                                        };
                                         this.router
                                             .send(
-                                                "/db/network/content/insert",
-                                                networkContent
+                                                "/db/network/content/update",
+                                                updateArgs
                                             )
                                             .then(() => {
                                                 if (
