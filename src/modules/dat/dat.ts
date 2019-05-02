@@ -861,6 +861,9 @@ export default class AODat extends AORouterInterface {
                                                 newDatPath,
                                                 { key },
                                                 (err, dat) => {
+                                                    debug(
+                                                        `[${key}] Dat instance created, checking for .dat folder...`
+                                                    );
                                                     fsExtra.pathExists(
                                                         path.join(
                                                             newDatPath,
@@ -918,7 +921,7 @@ export default class AODat extends AORouterInterface {
                                 }
                             );
                             progress.on("put", function(src, dst) {
-                                debug(`[${key}] adding ${dst.name}`);
+                                debug(`[${key}] adding ${src.name}`);
                             });
                         } catch (error) {
                             debug(`[${key}] error mirroring dat folder`, error);

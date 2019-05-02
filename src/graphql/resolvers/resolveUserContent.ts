@@ -16,6 +16,7 @@ export default (
     info: any
 ) => {
     return new Promise((resolve, reject) => {
+        if (!context.userSession || !context.userSession.id) return resolve([]);
         let userDbQuery: AODB_UserContentGet_Data = {
             query: {
                 id: args.id
