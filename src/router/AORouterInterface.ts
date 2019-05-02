@@ -95,7 +95,7 @@ export class AOSubprocessRouter extends EventEmitter
                     autoClose: false
                 });
             } catch (error) {
-                console.error(
+                console.log(
                     `Error attaching read stream to fd:3, ${error.message}`
                 );
                 this._routeMessageResponse(message, true, {});
@@ -365,7 +365,7 @@ export default abstract class AORouterSubprocessInterface {
             });
             routerArgs.debug(
                 `process exiting with ${
-                    this.unhandledRejections.keys.length
+                    this.unhandledRejections.size
                 } unhandled rejections.`
             );
         });

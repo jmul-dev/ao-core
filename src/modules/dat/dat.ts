@@ -264,9 +264,11 @@ export default class AODat extends AORouterInterface {
                 Dat(
                     datDir,
                     { secretDir: this.datSecretsDir },
-                    (err: Error, dat: Dat) => {
+                    async (err: Error, dat: Dat) => {
                         if (err && dat) {
-                            dat.close();
+                            try {
+                                dat.close();
+                            } catch (error) {}
                             this.dats[datEntry.key] = null;
                         }
                         if (err) return resolve(err);
@@ -319,7 +321,7 @@ export default class AODat extends AORouterInterface {
                         // Import files if writable
                         if (dat.writable) {
                             try {
-                                this._importFiles(dat);
+                                await this._importFiles(dat);
                             } catch (error) {
                                 debug(
                                     `[${
@@ -758,7 +760,8 @@ export default class AODat extends AORouterInterface {
                             debug(`[${key}] dat error, closing...`);
                         }
                         debug(`[${key}] failed to download dat`, err);
-                        return removeAndReject(err);
+                        await removeAndReject(err);
+                        return null;
                     }
 
                     // 5. Dat lifecycle is pretty weird.
@@ -768,14 +771,15 @@ export default class AODat extends AORouterInterface {
                     let downloadPercent = 0;
                     const network = dat.joinNetwork(
                         { port: this.swarmPort },
-                        err => {
+                        async err => {
                             debug(`[${key}] joinNetwork callback`);
                             if (err) {
                                 debug(
                                     `[${key}] Failed to join network with error`,
                                     err
                                 );
-                                return removeAndReject(err);
+                                await removeAndReject(err);
+                                return null;
                             }
                             let connectedWithPeers = false;
                             if (
@@ -794,9 +798,10 @@ export default class AODat extends AORouterInterface {
                                 debug(
                                     `[${key}] failed to join network, no peers or connection issue`
                                 );
-                                return removeAndReject(
+                                await removeAndReject(
                                     new Error(`Unable to connect with peers`)
                                 );
+                                return null;
                             }
                         }
                     );
@@ -811,11 +816,18 @@ export default class AODat extends AORouterInterface {
                         }
                     });
                     network.once("connection", async () => {
-                        debug(`[${key}] network connection made`);
-                        dat.AO_joinedNetwork = true;
-                        if (!resolveOnDownloadCompletion) resolve(datEntry);
-                        logDownloadStats(dat);
-                        dat.archive.metadata.update(download);
+                        try {
+                            debug(`[${key}] network connection made`);
+                            dat.AO_joinedNetwork = true;
+                            if (!resolveOnDownloadCompletion) resolve(datEntry);
+                            logDownloadStats(dat);
+                            dat.archive.metadata.update(download);
+                        } catch (error) {
+                            debug(
+                                `[${key}] error starting download after connection was made`,
+                                error
+                            );
+                        }
                         // 6. Now that we have made a connection, begin monitoring stats & sync
                         // try {
                         //     logDownloadStats(dat);
@@ -832,55 +844,85 @@ export default class AODat extends AORouterInterface {
 
                     const download = () => {
                         debug(`[${key}] download initiated...`);
-                        var progress = mirror(
-                            { fs: dat.archive, name: "/" },
-                            newDatPath,
-                            async err => {
-                                debug(`[${key}] dat archive mirror callback`);
-                                try {
-                                    if (err) throw err;
-                                    // Super hacky, but mirror does the ram/mirror
-                                    // route does not store the .dat folder
-                                    await new Promise((resolve, reject) => {
-                                        Dat(newDatPath, { key }, (err, dat) => {
-                                            fsExtra.exists(
-                                                path.join(newDatPath, ".dat"),
-                                                exists => {
-                                                    // TODO: dat.archive.version === 0
-                                                    if (exists) {
-                                                        resolve();
-                                                    } else {
-                                                        reject(
-                                                            new Error(
-                                                                `.dat folder does not exist`
-                                                            )
-                                                        );
-                                                    }
-                                                    if (dat) {
-                                                        dat.close(() => {
-                                                            dat = null;
-                                                        });
-                                                    } else {
-                                                        dat = null;
-                                                    }
+                        try {
+                            var progress = mirror(
+                                { fs: dat.archive, name: "/" },
+                                newDatPath,
+                                async err => {
+                                    debug(
+                                        `[${key}] dat archive mirror callback`
+                                    );
+                                    try {
+                                        if (err) throw err;
+                                        // Super hacky, but mirror does the ram/mirror
+                                        // route does not store the .dat folder
+                                        await new Promise((resolve, reject) => {
+                                            Dat(
+                                                newDatPath,
+                                                { key },
+                                                (err, dat) => {
+                                                    fsExtra.pathExists(
+                                                        path.join(
+                                                            newDatPath,
+                                                            ".dat"
+                                                        ),
+                                                        (err, exists) => {
+                                                            if (err)
+                                                                debug(
+                                                                    `[${key}] error checking if .dat folder exists: ${
+                                                                        err.message
+                                                                    }`,
+                                                                    err
+                                                                );
+                                                            // TODO: dat.archive.version === 0
+                                                            if (exists) {
+                                                                resolve();
+                                                            } else {
+                                                                reject(
+                                                                    new Error(
+                                                                        `.dat folder does not exist`
+                                                                    )
+                                                                );
+                                                            }
+                                                            if (dat) {
+                                                                try {
+                                                                    dat.close(
+                                                                        () => {
+                                                                            dat = null;
+                                                                        }
+                                                                    );
+                                                                } catch (error) {
+                                                                    debug(
+                                                                        `[${key}] error closing dat`,
+                                                                        error
+                                                                    );
+                                                                    dat = null;
+                                                                }
+                                                            } else {
+                                                                dat = null;
+                                                            }
+                                                        }
+                                                    );
                                                 }
                                             );
                                         });
-                                    });
-                                    datEntry.complete = true;
-                                    datEntry.updatedAt = new Date();
-                                    await this._updateDatEntry(datEntry);
-                                    if (resolveOnDownloadCompletion)
-                                        resolve(datEntry);
-                                    debug(`[${key}] download complete!`);
-                                } catch (error) {
-                                    removeAndReject(error);
+                                        datEntry.complete = true;
+                                        datEntry.updatedAt = new Date();
+                                        await this._updateDatEntry(datEntry);
+                                        if (resolveOnDownloadCompletion)
+                                            resolve(datEntry);
+                                        debug(`[${key}] download complete!`);
+                                    } catch (error) {
+                                        removeAndReject(error);
+                                    }
                                 }
-                            }
-                        );
-                        progress.on("put", function(src) {
-                            console.log("Downloading", src.name);
-                        });
+                            );
+                            progress.on("put", function(src, dst) {
+                                debug(`[${key}] adding ${dst.name}`);
+                            });
+                        } catch (error) {
+                            debug(`[${key}] error mirroring dat folder`, error);
+                        }
                     };
 
                     function logDownloadStats(dat) {
@@ -892,33 +934,37 @@ export default class AODat extends AORouterInterface {
                         stats.on("update", onStatsUpdate);
 
                         function onStatsUpdate() {
-                            const newStats = stats.get();
-                            dat.AO_latestStats = newStats;
-                            let downloadPercentage = (
-                                (newStats.downloaded / newStats.length) *
-                                100
-                            ).toFixed(0);
-                            if (downloadPercentage === "NaN")
-                                downloadPercentage = `0`;
-                            // To avoid blowing up the logs, only print at intervals of 10
-                            if (
-                                parseInt(downloadPercentage) % 10 === 0 &&
-                                downloadPercentage != lastPercentage
-                            ) {
-                                debug(
-                                    `[${key}] downloaded ${downloadPercentage}%`
-                                );
+                            try {
+                                const newStats = stats.get();
+                                dat.AO_latestStats = newStats;
+                                let downloadPercentage = (
+                                    (newStats.downloaded / newStats.length) *
+                                    100
+                                ).toFixed(0);
+                                if (downloadPercentage === "NaN")
+                                    downloadPercentage = `0`;
+                                // To avoid blowing up the logs, only print at intervals of 10
+                                if (
+                                    parseInt(downloadPercentage) % 10 === 0 &&
+                                    downloadPercentage != lastPercentage
+                                ) {
+                                    debug(
+                                        `[${key}] downloaded ${downloadPercentage}%`
+                                    );
+                                }
+                                if (parseInt(downloadPercentage) >= 100) {
+                                    stats.removeEventListener(
+                                        "update",
+                                        onStatsUpdate
+                                    );
+                                    dat.stats = null;
+                                    dat.AO_isTrackingStats = false;
+                                }
+                                lastPercentage = downloadPercentage;
+                                downloadPercent = parseInt(lastPercentage);
+                            } catch (error) {
+                                debug(`[${key}] error in stats update`, error);
                             }
-                            if (parseInt(downloadPercentage) >= 100) {
-                                stats.removeEventListener(
-                                    "update",
-                                    onStatsUpdate
-                                );
-                                dat.stats = null;
-                                dat.AO_isTrackingStats = false;
-                            }
-                            lastPercentage = downloadPercentage;
-                            downloadPercent = parseInt(lastPercentage);
                         }
                     }
                 }

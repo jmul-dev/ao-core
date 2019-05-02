@@ -62,7 +62,8 @@ const fileLogger = (prefix: string): any => {
                 format: combine(colorize(), debugFormat),
                 handleExceptions: true
             })
-        ]
+        ],
+        exitOnError: false
     });
     return logMessage => {
         let logMessageStringified: string;
@@ -70,6 +71,7 @@ const fileLogger = (prefix: string): any => {
             try {
                 logMessageStringified = JSON.stringify(logMessage, null, 2);
             } catch (e) {
+                logMessageStringified = "(failed to stringify log message)";
                 console.log(e);
             }
         }

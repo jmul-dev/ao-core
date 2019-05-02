@@ -123,7 +123,7 @@ export default class TAODBWrapper {
      * @param options
      */
     public get(key: string, options?: object): Promise<any> {
-        return this.taodb.get(key, options);
+        return this.taodb.query(key, options);
     }
 
     public exists(key: string): Promise<boolean> {
