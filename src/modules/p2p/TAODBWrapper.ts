@@ -53,6 +53,10 @@ export default class TAODBWrapper {
         return this._userIdentity ? this._userIdentity.publicKey : undefined;
     }
 
+    public get userPublicAddress(): string {
+        return this._userIdentity ? this._userIdentity.address : undefined;
+    }
+
     public start(args: ITAODB_Args): Promise<string> {
         if (
             this.connectionStatus === "CONNECTED" ||
