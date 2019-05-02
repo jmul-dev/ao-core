@@ -13,6 +13,7 @@ type NodeIdentity {
     publicKey: String
     publicAddress: String
     ethAddress: ID
+    aoNameId: ID
     datProfile: ID
     datStorage: ID
     # Local node specific

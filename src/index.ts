@@ -504,6 +504,7 @@ export default class Core extends EventEmitter {
                 debugLog(`taodb key found in contracts: ${taoDbKey}`);
                 taoDbKey =
                     "b95d3ba6b1d193341313ce745c7a951dddfa8f7c287700ec6f7d104091d7c4a2";
+                debugLog(`taodb key override: ${taoDbKey}`);
 
                 // 2. Spin up p2p module with the fetched taoDbKey
                 const p2pInitData: AOP2P_Init_Data = {

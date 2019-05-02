@@ -83,6 +83,10 @@ export default class AOUserSession {
         return this.identity ? this.identity.publicKey : null;
     }
 
+    public get publicAddress() {
+        return this.identity ? this.identity.address : null;
+    }
+
     public getContentBaseChallengeSignature({
         contentChecksum
     }): Promise<string> {
@@ -118,8 +122,6 @@ export default class AOUserSession {
         // 1. Valid eth address?
         if (!isAddress(ethAddress))
             throw new Error("ethAddress format rejected");
-        this.ethAddress = ethAddress;
-        this.aoNameId = aoNameId;
         // 2. Register called more than once for same user?
         if (this.ethAddress === ethAddress) {
             // last minute addition, but frontend may call register twice
@@ -130,6 +132,8 @@ export default class AOUserSession {
             }
             return { ethAddress };
         }
+        this.ethAddress = ethAddress;
+        this.aoNameId = aoNameId;
         // 3. New eth address, make sure paths exist
         const fsMakeEthDirData: IAOFS_Mkdir_Data = {
             dirPath: path.join("users", ethAddress)

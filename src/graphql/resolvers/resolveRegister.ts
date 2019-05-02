@@ -18,9 +18,11 @@ export default (
             .register(args.inputs.ethAddress, args.inputs.aoNameId)
             .then(() => {
                 resolve({
-                    id: args.inputs.ethAddress,
-                    ethAddress: args.inputs.ethAddress,
-                    aoNameId: args.inputs.aoNameId
+                    id: context.userSession.ethAddress,
+                    ethAddress: context.userSession.ethAddress,
+                    publicKey: context.userSession.publicKey,
+                    publicAddress: context.userSession.publicAddress,
+                    aoNameId: context.userSession.aoNameId
                 });
             })
             .catch(reject);

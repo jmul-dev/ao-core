@@ -211,7 +211,7 @@ export default class AOP2P extends AORouterInterface {
 
     _watchDiscovery(): Promise<any> {
         return new Promise((resolve, reject) => {
-            const watcher = this.taodb.taodb.watch(TaoDB.ContentKey);
+            const watcher = this.taodb.watcher(TaoDB.ContentKey);
             let startedWatching = false;
             watcher.on("watching", () => {
                 debug(
@@ -308,15 +308,17 @@ export default class AOP2P extends AORouterInterface {
                 // 3. Pull all content keys found in the user's *local* network db (content already discovered)
                 return new Promise((localResolve, localReject) => {
                     const networkContentQuery: AODB_NetworkContentGet_Data = {
-                        projection: { _id: 1 }
+                        projection: { _id: 1, status: 1 }
                     }; // Only return _ids = metadataDatKey
                     this.router
                         .send("/db/network/content/get", networkContentQuery)
                         .then((networkContentResponse: IAORouterMessage) => {
                             localResolve({
-                                contentKeysAlreadyDiscovered: networkContentResponse.data.map(
-                                    entry => entry._id
-                                ),
+                                contentKeysAlreadyDiscovered: networkContentResponse.data
+                                    .filter(
+                                        entry => entry.status === "imported"
+                                    )
+                                    .map(entry => entry._id),
                                 contentKeysFoundInDiscovery: networkContentKeys
                             });
                         })

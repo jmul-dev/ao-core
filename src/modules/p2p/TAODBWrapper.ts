@@ -22,6 +22,14 @@ export interface ITAODB_Entry<T> {
     writerAddress: string;
 }
 
+export interface ITAODB_Watcher {
+    on: (
+        event: "watching" | "change" | "close" | "error",
+        callback: (err?: Error) => void
+    ) => void;
+    destroy: () => void;
+}
+
 export default class TAODBWrapper {
     public taodb: taodb;
     private dbKey: string;
@@ -45,7 +53,7 @@ export default class TAODBWrapper {
         return this._userIdentity ? this._userIdentity.publicKey : undefined;
     }
 
-    public start(hyperOptions: ITAODB_Args): Promise<string> {
+    public start(args: ITAODB_Args): Promise<string> {
         if (
             this.connectionStatus === "CONNECTED" ||
             this.connectionStatus === "CONNECTING"
@@ -58,8 +66,8 @@ export default class TAODBWrapper {
         this.connectionStatus = "CONNECTING";
         return new Promise((resolve, reject) => {
             try {
-                this.dbKey = hyperOptions.dbKey;
-                this.dbPath = hyperOptions.dbPath;
+                this.dbKey = args.dbKey;
+                this.dbPath = args.dbPath;
                 this.taodb = new taodb(
                     this.dbPath,
                     this.dbKey,
@@ -69,17 +77,23 @@ export default class TAODBWrapper {
                     if (error) return reject(error);
                     // Overwrite the dbKey assigned with whatever taodb has (in case dbKey was undefined or mismatch).
                     // Just ensures a sync between taodb and swarm
-                    this.dbKey = this.taodb.key.toString("hex");
+                    this.dbKey = this.taodb.db.key.toString("hex");
                     try {
                         debug(
-                            `taodb db initialized, setting ethereum network id...`
+                            `taodb db initialized, setting ethereum network id to ${
+                                args.ethNetworkId
+                            }...`
                         );
-                        await taodb.setNetworkId(hyperOptions.ethNetworkId);
-                        this.swarm = swarm(taodb);
+                        await this.taodb.setNetworkId(
+                            parseInt(args.ethNetworkId)
+                        );
+                        this.swarm = swarm(this.taodb);
                         this.connectionStatus = "CONNECTED";
                         debug(`taodb ready`);
                         resolve(this.dbKey);
                     } catch (error) {
+                        this.connectionStatus = "ERROR";
+                        debug(error);
                         reject(error);
                     }
                 });
@@ -203,6 +217,20 @@ export default class TAODBWrapper {
      */
     public watch(key: string): Promise<any> {
         return this.taodb.watch(key);
+    }
+
+    /**
+     * This method returns the watcher itself, and the caller must handle cleanup.
+     *      watcher.on("watching")
+     *      watcher.on("change")
+     *      watcher.on("close")
+     *      watcher.destroy()
+     *
+     * @param key
+     * @returns {Object} Hyperdb watcher
+     */
+    public watcher(key: string): ITAODB_Watcher {
+        return this.taodb.db.watch(key);
     }
 
     public delete({ key }): Promise<any> {

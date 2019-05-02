@@ -74,117 +74,137 @@ export default class AOContentIngestion extends EventEmitter {
                     if (contentResponse.data && contentResponse.data[0]) {
                         const existingNetworkContent: AONetworkContent =
                             contentResponse.data[0];
-                        // 2a. Content already exists (TODO: decide if we want to retry?)
-                        debug(
-                            `[${metadataDatKey}] network content already discovered`
-                        );
-                        resolve();
-                    } else {
-                        // 2b. Download the dat file
-                        const datDownloadParams: AODat_Download_Data = {
-                            key: metadataDatKey,
-                            resolveOnDownloadCompletion: true
-                        };
-                        this.router
-                            .send("/dat/download", datDownloadParams)
-                            .then((downloadResponse: IAORouterMessage) => {
-                                const readContentJson: IAOFS_Read_Data = {
-                                    readPath: path.join(
-                                        "content",
-                                        metadataDatKey,
-                                        "content.json"
-                                    )
-                                };
-                                // 3. Read the content.json (metadata)
-                                this.router
-                                    .send("/fs/read", readContentJson)
-                                    .then((readResponse: IAORouterMessage) => {
-                                        let networkContent: AONetworkContent = {
-                                            _id: metadataDatKey,
-                                            status: "failed"
-                                        };
-                                        try {
-                                            const contentJson = JSON.parse(
-                                                readResponse.data
+                        if (existingNetworkContent.status === "imported") {
+                            // 2a. Content already exists (TODO: decide if we want to retry?)
+                            debug(
+                                `[${metadataDatKey}] network content already discovered`
+                            );
+                            return resolve();
+                        } else if (existingNetworkContent.importAttempts > 2) {
+                            debug(
+                                `[${metadataDatKey}] skipping content import, hit max attempts`
+                            );
+                            return resolve();
+                        } else {
+                            debug(
+                                `[${metadataDatKey}] import attempt #${
+                                    existingNetworkContent.importAttempts
+                                }`
+                            );
+                        }
+                    }
+                    // 2b. Download the dat file
+                    const datDownloadParams: AODat_Download_Data = {
+                        key: metadataDatKey,
+                        resolveOnDownloadCompletion: true
+                    };
+                    this.router
+                        .send("/dat/download", datDownloadParams)
+                        .then((downloadResponse: IAORouterMessage) => {
+                            const readContentJson: IAOFS_Read_Data = {
+                                readPath: path.join(
+                                    "content",
+                                    metadataDatKey,
+                                    "content.json"
+                                )
+                            };
+                            // 3. Read the content.json (metadata)
+                            this.router
+                                .send("/fs/read", readContentJson)
+                                .then((readResponse: IAORouterMessage) => {
+                                    let networkContent: AONetworkContent = {
+                                        _id: metadataDatKey,
+                                        status: "failed"
+                                    };
+                                    try {
+                                        const contentJson = JSON.parse(
+                                            readResponse.data
+                                        );
+                                        if (contentJson) {
+                                            let isValidOrFieldName = AOContent.isValidForImport(
+                                                contentJson
                                             );
-                                            if (contentJson) {
-                                                if (
-                                                    !AOContent.isValidForImport(
-                                                        contentJson
-                                                    )
-                                                )
-                                                    throw new Error(
-                                                        `content.json missing required content fields, rendering content invalid`
-                                                    );
-                                                networkContent.status =
-                                                    "imported";
-                                                networkContent.content = AOContent.fromObject(
-                                                    contentJson
+                                            if (isValidOrFieldName !== true)
+                                                throw new Error(
+                                                    `missing field ${isValidOrFieldName}`
                                                 );
-                                                networkContent.content.state =
-                                                    AOContentState.DISCOVERED;
-                                            }
-                                        } catch (error) {
-                                            debug(
-                                                `[${metadataDatKey}] failed to parse network content's content.json file`,
-                                                error
+                                            networkContent.status = "imported";
+                                            networkContent.content = AOContent.fromObject(
+                                                contentJson
                                             );
-                                            // TODO: remove the dat completely (maybe failed/wierd state)
-                                        } finally {
-                                            // 4. Insert into network content db, marked as failed or imported
-                                            this.router
-                                                .send(
-                                                    "/db/network/content/insert",
-                                                    networkContent
-                                                )
-                                                .then(() => {
-                                                    if (
-                                                        networkContent.status ===
-                                                        "imported"
-                                                    ) {
-                                                        debug(
-                                                            `[${metadataDatKey}] succesfully imported network content, adding to hosts updater queue`
-                                                        );
-                                                        this.emit(
-                                                            AOContentIngestion
-                                                                .Events
-                                                                .CONTENT_INGESTED,
-                                                            metadataDatKey
-                                                        );
-                                                    }
-                                                    resolve();
-                                                })
-                                                .catch(e => {
-                                                    debug(e);
-                                                });
+                                            networkContent.content.state =
+                                                AOContentState.DISCOVERED;
                                         }
-                                    })
-                                    .catch(error => {
+                                    } catch (error) {
+                                        debug(
+                                            `[${metadataDatKey}] failed to parse network content's content.json file`,
+                                            error
+                                        );
+                                        // cleanup
                                         this.router
                                             .send("/dat/remove", {
                                                 key: metadataDatKey
                                             })
-                                            .catch(error => {
-                                                debug(
-                                                    `[${metadataDatKey}] error removing dat after failed read of content.json`,
-                                                    error
-                                                );
+                                            .catch(debug);
+                                        if (networkContent.importAttempts > 0) {
+                                            networkContent.importAttempts++;
+                                        } else {
+                                            networkContent.importAttempts = 1;
+                                        }
+                                    } finally {
+                                        // 4. Insert into network content db, marked as failed or imported
+                                        this.router
+                                            .send(
+                                                "/db/network/content/insert",
+                                                networkContent
+                                            )
+                                            .then(() => {
+                                                if (
+                                                    networkContent.status ===
+                                                    "imported"
+                                                ) {
+                                                    debug(
+                                                        `[${metadataDatKey}] succesfully imported network content, adding to hosts updater queue`
+                                                    );
+                                                    this.emit(
+                                                        AOContentIngestion
+                                                            .Events
+                                                            .CONTENT_INGESTED,
+                                                        metadataDatKey
+                                                    );
+                                                }
+                                                resolve();
+                                            })
+                                            .catch(e => {
+                                                debug(e);
                                             });
-                                        debug(
-                                            `[${metadataDatKey}] unable to add network content, failed to read content.json file.`,
-                                            error
-                                        );
-                                        resolve();
-                                    });
-                            })
-                            .catch(error => {
-                                debug(
-                                    `[${metadataDatKey}] unable to add network content, failed to download metadata dat file.`,
-                                    error
-                                );
-                                resolve();
-                            });
-                    }
+                                    }
+                                })
+                                .catch(error => {
+                                    this.router
+                                        .send("/dat/remove", {
+                                            key: metadataDatKey
+                                        })
+                                        .catch(error => {
+                                            debug(
+                                                `[${metadataDatKey}] error removing dat after failed read of content.json`,
+                                                error
+                                            );
+                                        });
+                                    debug(
+                                        `[${metadataDatKey}] unable to add network content, failed to read content.json file.`,
+                                        error
+                                    );
+                                    resolve();
+                                });
+                        })
+                        .catch(error => {
+                            debug(
+                                `[${metadataDatKey}] unable to add network content, failed to download metadata dat file.`,
+                                error
+                            );
+                            resolve();
+                        });
                 })
                 .catch(error => {
                     debug(

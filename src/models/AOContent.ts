@@ -174,7 +174,7 @@ export default abstract class AOContent {
         );
     }
 
-    public static isValidForImport(object): boolean {
+    public static isValidForImport(object): boolean | string {
         const keys = Object.keys(object);
         const minRequiredFields = [
             "id",
@@ -195,7 +195,7 @@ export default abstract class AOContent {
         ];
         for (let i = 0; i < minRequiredFields.length; i++) {
             const fieldName = minRequiredFields[i];
-            if (keys.indexOf(fieldName) === -1) return false;
+            if (keys.indexOf(fieldName) === -1) return fieldName;
         }
         return true;
     }
