@@ -58,7 +58,20 @@ export default class AOContentIngestion extends EventEmitter {
 
     private _queueHandler(metadataDatKey: string) {
         return new Promise(queueResolver => {
-            const resolve = () => {
+            // failedAttempt = dat was downloaded but failed to import
+            // If dat was unreachable we do not consider that failed attempt
+            // at this time (node could be offline and we dont want to hit max attempts)
+            const resolve = (failedAttempt = false) => {
+                if (failedAttempt) {
+                    this.router
+                        .send("/db/network/content/update", {
+                            id: metadataDatKey,
+                            update: {
+                                $inc: { importAttempts: 1 }
+                            }
+                        })
+                        .catch(debug);
+                }
                 this.datKeysInQueue[metadataDatKey] = false;
                 queueResolver();
             };
@@ -149,11 +162,9 @@ export default class AOContentIngestion extends EventEmitter {
                                                 key: metadataDatKey
                                             })
                                             .catch(debug);
-                                        if (networkContent.importAttempts > 0) {
-                                            networkContent.importAttempts++;
-                                        } else {
-                                            networkContent.importAttempts = 1;
-                                        }
+                                        networkContent["$inc"] = {
+                                            importAttempts: 1
+                                        };
                                     } finally {
                                         // 4. Insert into network content db, marked as failed or imported
                                         const updateArgs: AODB_NetworkContentUpdate_Data = {
@@ -202,7 +213,7 @@ export default class AOContentIngestion extends EventEmitter {
                                         `[${metadataDatKey}] unable to add network content, failed to read content.json file.`,
                                         error
                                     );
-                                    resolve();
+                                    resolve(true);
                                 });
                         })
                         .catch(error => {
