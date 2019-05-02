@@ -516,10 +516,7 @@ export default class AODat extends AORouterInterface {
                             )
                         );
                     }
-                    if (
-                        datInstance.AO_joinedNetwork &&
-                        !datInstance.AO_isTrackingStats
-                    ) {
+                    if (datInstance.AO_joinedNetwork && !datInstance.stats) {
                         debug(
                             `[${
                                 requestData.key
@@ -528,7 +525,8 @@ export default class AODat extends AORouterInterface {
                         datInstance.AO_isTrackingStats = true;
                         datInstance.trackStats();
                         datInstance.stats.on("update", () => {
-                            datInstance.AO_latestStats = datInstance.stats.get();
+                            if (datInstance.stats)
+                                datInstance.AO_latestStats = datInstance.stats.get();
                         });
                     }
                     let datStats = datInstance.AO_latestStats || {};
@@ -746,7 +744,7 @@ export default class AODat extends AORouterInterface {
                 {
                     key,
                     secretDir: this.datSecretsDir,
-                    sparse: true
+                    sparse: false
                 },
                 async (err, dat) => {
                     if (err || !dat) {
@@ -929,8 +927,8 @@ export default class AODat extends AORouterInterface {
                     };
 
                     function logDownloadStats(dat) {
-                        const stats = dat.trackStats();
                         debug(`[${key}] tracking stats`);
+                        const stats = dat.trackStats();
                         dat.AO_isTrackingStats = true;
                         let lastPercentage = null;
 
@@ -986,6 +984,7 @@ export default class AODat extends AORouterInterface {
                     );
                 datInstance.close(async () => {
                     try {
+                        debug(`[${key}] dat instance closed`);
                         // NOTE: wait until dat releases fd
                         await sleep(500);
                         await this._removeDatFromDisk(key);
@@ -1047,7 +1046,7 @@ export default class AODat extends AORouterInterface {
     }
 }
 
-function sleep(ms) {
+async function sleep(ms) {
     return new Promise(resolve => {
         setTimeout(resolve, ms);
     });
