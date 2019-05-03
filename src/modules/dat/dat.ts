@@ -2,7 +2,7 @@ import Dat from "dat-node";
 import Debug from "../../AODebug";
 import Datastore from "nedb";
 import path from "path";
-import fsExtra, { statSync } from "fs-extra";
+import fsExtra from "fs-extra";
 import AORouterInterface, {
     IAORouterRequest,
     AORouterSubprocessArgs
@@ -132,20 +132,22 @@ export default class AODat extends AORouterInterface {
             fieldName: "key",
             unique: true
         });
-        this.datsDb.loadDatabase((error?: Error) => {
+        this.datsDb.loadDatabase(async (error?: Error) => {
             if (error) {
                 debug(`Failed to load dat module database`);
                 request.reject(error);
                 return;
             }
-            // 2. Ensure the content directory exists
-            fsExtra.ensureDirSync(this.datDir);
-            fsExtra.ensureDirSync(this.datSecretsDir);
-            debug(`Dat directories exists, proceed to resume dats...`);
-            // 3. Resume dats
-            this._resumeAll()
-                .then(request.respond)
-                .catch(request.reject);
+            try {
+                // 2. Ensure the content directory exists
+                await fsExtra.ensureDir(this.datDir);
+                await fsExtra.ensureDir(this.datSecretsDir);
+                debug(`Dat directories exists, proceed to resume dats...`);
+                // 3. Resume dats
+                this._resumeAll()
+                    .then(request.respond)
+                    .catch(request.reject);
+            } catch (error) {}
         });
     }
 
@@ -402,6 +404,7 @@ export default class AODat extends AORouterInterface {
      * updating content.
      *
      * @param request
+     * @returns request.response({filesImported: number})
      */
     private _handleImportSingle(request: IAORouterRequest) {
         const { key }: AODat_ImportSingle_Data = request.data;
@@ -438,7 +441,7 @@ export default class AODat extends AORouterInterface {
             }
         );
     }
-    private _importFiles(dat: Dat): Promise<any> {
+    private _importFiles(dat: Dat): Promise<{ filesImported: number }> {
         return new Promise((resolve, reject) => {
             if (!dat.writable) {
                 debug(
@@ -446,13 +449,15 @@ export default class AODat extends AORouterInterface {
                         "hex"
                     )}] attempt to import files on non-writable dat`
                 );
-                return resolve({ success: false });
+                return resolve({ filesImported: 0 });
             }
+            let filesImported = 0;
             const progress = dat.importFiles(err => {
                 if (err) return reject(err);
-                resolve({ success: true });
+                resolve({ filesImported });
             });
             progress.on("put", (src, dest) => {
+                filesImported++;
                 debug(
                     `[${dat.key.toString("hex")}] imported file: ${dest.name}`
                 );
@@ -502,64 +507,57 @@ export default class AODat extends AORouterInterface {
             request.reject(new Error(`Dat instance not found`));
             return;
         }
-        this._getDatEntry(requestData.key)
-            .then((datEntry: DatEntry) => {
-                try {
-                    const datInstance = this.dats[requestData.key];
-                    if (!datInstance) {
-                        debug(
-                            `[${
-                                requestData.key
-                            }] attempting to get datStats, no dat instance found`
-                        );
-                        return request.reject(
-                            new Error(`Dat instance not found`)
-                        );
-                    }
-                    if (!datInstance.AO_joinedNetwork) {
-                        return request.reject(
-                            new Error(
-                                `Dat instance has not joined the network yet`
-                            )
-                        );
-                    }
-                    if (datInstance.AO_joinedNetwork && !datInstance.stats) {
-                        debug(
-                            `[${
-                                requestData.key
-                            }] dat has joined network but is not tracking stats, begin tracking now`
-                        );
-                        datInstance.AO_isTrackingStats = true;
-                        datInstance.trackStats();
-                        datInstance.stats.on("update", () => {
-                            if (datInstance.stats)
-                                datInstance.AO_latestStats = datInstance.stats.get();
-                        });
-                    }
-                    let datStats = datInstance.AO_latestStats || {};
+        let returnValue = null;
+        try {
+            const datInstance = this.dats[requestData.key];
+            if (!datInstance) {
+                debug(
+                    `[${
+                        requestData.key
+                    }] attempting to get datStats, no dat instance found`
+                );
+                return request.reject(new Error(`Dat instance not found`));
+            }
+            if (!datInstance.AO_joinedNetwork) {
+                return request.reject(
+                    new Error(`Dat instance has not joined the network yet`)
+                );
+            }
+            if (datInstance.AO_joinedNetwork && !datInstance.stats) {
+                debug(
+                    `[${
+                        requestData.key
+                    }] dat has joined network but is not tracking stats, begin tracking now`
+                );
+                datInstance.AO_isTrackingStats = true;
+                datInstance.trackStats();
+                datInstance.stats.on("update", () => {
+                    if (datInstance.stats)
+                        datInstance.AO_latestStats = datInstance.stats.get();
+                });
+                datInstance.AO_latestStats = datInstance.stats.get();
+            }
+            let datStats = datInstance.AO_latestStats || {};
 
-                    let returnValue = {
-                        ...datStats,
-                        network: {
-                            ...datInstance.stats.network
-                        },
-                        peers: {
-                            ...datInstance.stats.peers
-                        },
-                        complete: datEntry.complete,
-                        joinedNetwork: datInstance.AO_joinedNetwork,
-                        trackingStats: datInstance.AO_isTrackingStats
-                    };
-                    request.respond(returnValue);
-                } catch (error) {
-                    debug(
-                        `[${requestData.key}] error returning dat stats:`,
-                        error
-                    );
-                    request.respond(null);
-                }
-            })
-            .catch(request.reject);
+            returnValue = Object.assign({}, datStats);
+            returnValue = Object.assign(returnValue, {
+                network: datStats.network || {}
+            });
+            returnValue = Object.assign(returnValue, {
+                peers: datStats.peers || {}
+            });
+            returnValue = Object.assign(returnValue, {
+                complete: datStats.downloaded >= datStats.files,
+                joinedNetwork: datInstance.AO_joinedNetwork,
+                trackingStats: datInstance.AO_isTrackingStats
+            });
+        } catch (error) {
+            debug(`caught error in /dat/stats`);
+            debug(error);
+            // debug(`[${requestData.key}] error returning dat stats:`, error);
+            returnValue = null;
+        }
+        request.respond(returnValue);
     }
 
     private _handleResumeSingle(request: IAORouterRequest) {
@@ -625,7 +623,10 @@ export default class AODat extends AORouterInterface {
                             });
                         });
                     })
-                    .catch(request.reject);
+                    .catch(err => {
+                        dat && dat.close();
+                        request.reject(err);
+                    });
             });
         } catch (error) {
             debug(
@@ -961,7 +962,7 @@ export default class AODat extends AORouterInterface {
                                     );
                                 }
                                 if (parseInt(downloadPercentage) >= 100) {
-                                    stats.removeEventListener(
+                                    stats.removeListener(
                                         "update",
                                         onStatsUpdate
                                     );
@@ -1016,7 +1017,8 @@ export default class AODat extends AORouterInterface {
             // remove db entry
             await this._asyncRemoveDat(key);
             // cleanup disk
-            if (fsExtra.existsSync(datPath)) {
+            const exists = await fsExtra.pathExists(datPath);
+            if (exists) {
                 await fsExtra.remove(datPath);
             }
         } catch (error) {
