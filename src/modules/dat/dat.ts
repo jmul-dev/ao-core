@@ -292,6 +292,7 @@ export default class AODat extends AORouterInterface {
                                     resolveOnJoinNetwork && resolve(err);
                                     return;
                                 }
+                                debug(`[${datEntry.key}] joinNetwork callback`);
                                 dat.AO_joinedNetwork = true;
                                 resolveOnJoinNetwork && resolve();
                                 // const offline = !dat.network.connected || !dat.network.connecting;
@@ -452,10 +453,18 @@ export default class AODat extends AORouterInterface {
                 return resolve({ filesImported: 0 });
             }
             let filesImported = 0;
-            const progress = dat.importFiles(err => {
-                if (err) return reject(err);
-                resolve({ filesImported });
-            });
+            const progress = dat.importFiles(
+                { keepExisting: true, count: false },
+                err => {
+                    if (err) return reject(err);
+                    debug(
+                        `[${dat.key.toString(
+                            "hex"
+                        )}] ${filesImported} imported files!`
+                    );
+                    resolve({ filesImported });
+                }
+            );
             progress.on("put", (src, dest) => {
                 filesImported++;
                 debug(
@@ -1000,6 +1009,7 @@ export default class AODat extends AORouterInterface {
                     resolve();
                 });
             } catch (e) {
+                debug(`[${key}] close dat error: ${e.message}`);
                 try {
                     await this._removeDatFromDisk(key);
                 } catch (error) {}

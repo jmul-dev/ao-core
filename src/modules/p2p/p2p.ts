@@ -909,7 +909,7 @@ export default class AOP2P extends AORouterInterface {
                 });
                 break;
             case "getWriterKey":
-                const writerKey = this.taodb.userPublicKey;
+                const writerKey = this.taodb.userPublicAddress;
                 return request.respond(writerKey);
             case "getWriterKeySignature":
                 const nameId = methodArgs["nameId"];

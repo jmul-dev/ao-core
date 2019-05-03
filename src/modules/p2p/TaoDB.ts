@@ -132,7 +132,7 @@ export default class TaoDB extends TAODBWrapper {
         const signHash = EthCrypto.hash.keccak256([
             {
                 type: "address",
-                value: "0x0000000000000000000000000000000000000000" // TODO (temp until taodb swap)
+                value: this.taodb.namePublicKey._address
             },
             {
                 type: "address",
@@ -422,12 +422,12 @@ export default class TaoDB extends TAODBWrapper {
     }): Promise<any> {
         try {
             // 1. If parentThoughtId was passed, check that it exists
-            if (parentThoughtId) {
+            if (parseInt(parentThoughtId) > 0) {
                 const parentThoughtKey = TaoDB.getTaoThoughtKey({
                     taoId,
                     thoughtId: parentThoughtId
                 });
-                const parentThoughtExist = await this.exists(parentThoughtKey);
+                const parentThoughtExist = await this.count(parentThoughtKey);
                 if (!parentThoughtExist) {
                     throw new Error(`Parent thought does not exist`);
                 }
