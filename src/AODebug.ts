@@ -35,7 +35,10 @@ const fileLogger = (prefix: string): any => {
     let color = "bold " + colors[Math.abs(hash) % colors.length];
 
     const colorLevels = {
-        levels: {},
+        levels: {
+            error: "red",
+            warning: "yellow"
+        },
         colors: {}
     };
     colorLevels.levels[prefix] = 0;
