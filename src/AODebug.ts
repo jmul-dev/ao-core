@@ -35,11 +35,8 @@ const fileLogger = (prefix: string): any => {
     let color = "bold " + colors[Math.abs(hash) % colors.length];
 
     const colorLevels = {
-        levels: {
-            error: "red",
-            warning: "yellow"
-        },
-        colors: {}
+        levels: Object.assign({}, winston.config.npm.levels),
+        colors: Object.assign({}, winston.config.npm.colors)
     };
     colorLevels.levels[prefix] = 0;
     colorLevels.colors[prefix] = color;
