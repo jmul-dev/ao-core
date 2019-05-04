@@ -153,52 +153,40 @@ export default class AODat extends AORouterInterface {
 
     private _resumeAll(): Promise<any> {
         return new Promise((resolve, reject) => {
-            this.datsDb.find({}).exec((error: Error, docs) => {
-                if (error) {
-                    debug("Error loading dats from datsDb", error);
-                    reject(error);
-                    return;
-                }
-                let datKeyPromises = [];
-                let incompleteCount = 0;
-                let completeCount = 0;
-                docs.forEach((datEntry: DatEntry) => {
-                    let resumePromise = null;
-                    if (datEntry.complete) {
-                        completeCount++;
-                        resumePromise = this._resume(datEntry, false).then(
-                            (error?) => {
-                                if (error) {
-                                    debug(
-                                        `[${
-                                            datEntry.key
-                                        }] resume returned an error: ${
-                                            error.message
-                                        }`
-                                    );
-                                }
-                                return Promise.resolve();
-                            }
-                        );
-                    } else {
-                        // Dat has a real hard time picking up where it left off, so instead of
-                        // resuming incomplete dats, we remove them with the assumption that the
-                        // downloaded will be triggered again from the content ingestion or downloads
-                        resumePromise = this.removeDat(datEntry.key);
-                        incompleteCount++;
+            this.datsDb
+                .find({})
+                .exec(async (error: Error, docs: Array<DatEntry>) => {
+                    if (error) {
+                        debug("Error loading dats from datsDb", error);
+                        reject(error);
+                        return;
                     }
-                    datKeyPromises.push(resumePromise);
+                    for (let i = 0; i < docs.length; i++) {
+                        const datEntry: DatEntry = docs[i];
+                        try {
+                            if (datEntry.complete) {
+                                const resumeError = await this._resume(
+                                    datEntry,
+                                    true
+                                );
+                                if (resumeError) throw resumeError;
+                            } else {
+                                // Dat has a real hard time picking up where it left off, so instead of
+                                // resuming incomplete dats, we remove them with the assumption that the
+                                // downloaded will be triggered again from the content ingestion or downloads
+                                await this.removeDat(datEntry.key);
+                            }
+                        } catch (error) {
+                            debug(
+                                `[${datEntry.key}] resume returned an error: ${
+                                    error.message
+                                }`
+                            );
+                        }
+                    }
+                    debug(`resume all dats succesfull`);
+                    resolve();
                 });
-                debug(
-                    `resuming ${completeCount} dats, removing ${incompleteCount} incomplete dats...`
-                );
-                Promise.all(datKeyPromises)
-                    .then(() => {
-                        debug(`resume all dats succesfull`);
-                        resolve();
-                    })
-                    .catch(reject);
-            });
         });
     }
 
@@ -321,20 +309,20 @@ export default class AODat extends AORouterInterface {
                                 );
                             }
                         });
-                        // Import files if writable
-                        if (dat.writable) {
-                            try {
-                                await this._importFiles(dat);
-                            } catch (error) {
-                                debug(
-                                    `[${
-                                        datEntry.key
-                                    }] error importing files on resume: ${
-                                        error.message
-                                    }`
-                                );
-                            }
-                        }
+                        // Import files if writable (Do not think this is necessary, call importSingle)
+                        // if (dat.writable) {
+                        //     try {
+                        //         await this._importFiles(dat);
+                        //     } catch (error) {
+                        //         debug(
+                        //             `[${
+                        //                 datEntry.key
+                        //             }] error importing files on resume: ${
+                        //                 error.message
+                        //             }`
+                        //         );
+                        //     }
+                        // }
                         !resolveOnJoinNetwork && resolve();
                     }
                 );
@@ -666,6 +654,8 @@ export default class AODat extends AORouterInterface {
             resolveOnNetworkJoined,
             resolveOnDownloadCompletion
         }: AODat_Download_Data = request.data;
+
+        // return request.reject(new Error(`temp download restriction`));
         this.downloadDat(key, resolveOnDownloadCompletion)
             .then((datEntry: DatEntry) => {
                 request.respond(datEntry);
@@ -712,7 +702,9 @@ export default class AODat extends AORouterInterface {
      */
     private downloadDat(key, resolveOnDownloadCompletion): Promise<DatEntry> {
         return new Promise(async (resolve, reject) => {
+            let rejected = false;
             const removeAndReject = async error => {
+                rejected = true;
                 try {
                     await this.removeDat(key);
                 } catch (error) {}
@@ -832,6 +824,10 @@ export default class AODat extends AORouterInterface {
                     });
                     network.once("connection", async () => {
                         try {
+                            if (rejected)
+                                throw new Error(
+                                    `connection event received after rejection`
+                                );
                             debug(`[${key}] network connection made`);
                             dat.AO_joinedNetwork = true;
                             if (!resolveOnDownloadCompletion) resolve(datEntry);
@@ -940,6 +936,7 @@ export default class AODat extends AORouterInterface {
                             });
                         } catch (error) {
                             debug(`[${key}] error mirroring dat folder`, error);
+                            removeAndReject(error);
                         }
                     };
 
@@ -953,6 +950,10 @@ export default class AODat extends AORouterInterface {
 
                         function onStatsUpdate() {
                             try {
+                                if (rejected)
+                                    throw new Error(
+                                        `stats:update event triggered after rejection`
+                                    );
                                 const newStats = stats.get();
                                 dat.AO_latestStats = newStats;
                                 let downloadPercentage = (

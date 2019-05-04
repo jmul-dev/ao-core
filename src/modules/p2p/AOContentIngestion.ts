@@ -39,9 +39,12 @@ export default class AOContentIngestion extends EventEmitter {
         this.router = router;
         // @ts-ignore Types not up to date
         this.processingQueue = queue({
-            concurrency: 4,
+            concurrency: 1,
             autostart: true,
-            timeout: 5 * 60000 // 5 min timeout to avoid freezing up the queue
+            timeout: 3 * 60000 // 3 min timeout to avoid freezing up the queue
+        });
+        this.processingQueue.on("end", err => {
+            debug(`processing key end event`, err);
         });
     }
 
