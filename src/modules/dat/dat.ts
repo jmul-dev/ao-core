@@ -710,6 +710,7 @@ export default class AODat extends AORouterInterface {
                 datStats = null;
 
             const removeAndReject = async error => {
+                if (rejected) return null;
                 rejected = true;
                 try {
                     if (datProgress) datProgress.destroy();
@@ -762,7 +763,7 @@ export default class AODat extends AORouterInterface {
                 {
                     key,
                     secretDir: this.datSecretsDir,
-                    sparse: false
+                    sparse: true
                 },
                 async (err, dat) => {
                     if (err || !dat) {
@@ -839,14 +840,16 @@ export default class AODat extends AORouterInterface {
                                     `connection event received after rejection`
                                 );
                             debug(`[${key}] network connection made`);
-                            dat.AO_joinedNetwork = true;
+                            datInstance.AO_joinedNetwork = true;
                             if (!resolveOnDownloadCompletion) resolve(datEntry);
                             logDownloadStats(dat);
-                            dat.archive.metadata.update(download);
+                            datInstance.archive.metadata.update(download);
                         } catch (error) {
-                            debug(
-                                `[${key}] error starting download after connection was made`,
-                                error
+                            removeAndReject(
+                                error ||
+                                    new Error(
+                                        `error starting download after connection was made`
+                                    )
                             );
                         }
                         // 6. Now that we have made a connection, begin monitoring stats & sync
