@@ -703,9 +703,17 @@ export default class AODat extends AORouterInterface {
     private downloadDat(key, resolveOnDownloadCompletion): Promise<DatEntry> {
         return new Promise(async (resolve, reject) => {
             let rejected = false;
+            let datProgress,
+                datNetwork,
+                datInstance,
+                datStats = null;
+
             const removeAndReject = async error => {
                 rejected = true;
                 try {
+                    if (datProgress) datProgress.destroy();
+                    if (datNetwork) datNetwork.leaveNetwork();
+                    datStats = null;
                     await this.removeDat(key);
                 } catch (error) {}
                 reject(error);
@@ -775,8 +783,9 @@ export default class AODat extends AORouterInterface {
                     //      - joinNetwork callback is fired if there is no connection OR the download is complete
                     //      - archive 'sync' event may be triggered before the joinNetwork callback
                     this.dats[key] = dat;
+                    datInstance = dat;
                     let downloadPercent = 0;
-                    const network = dat.joinNetwork(
+                    datNetwork = dat.joinNetwork(
                         { port: this.swarmPort },
                         async err => {
                             debug(`[${key}] joinNetwork callback`);
@@ -813,7 +822,7 @@ export default class AODat extends AORouterInterface {
                         }
                     );
 
-                    network.on("error", error => {
+                    datNetwork.on("error", error => {
                         if (error.code === "EADDRINUSE") {
                             // hit this error when attempting to download multiple dats
                             // it seems that network will retry with diff port
@@ -822,7 +831,7 @@ export default class AODat extends AORouterInterface {
                             debug(`[${key}] network error:`, error);
                         }
                     });
-                    network.once("connection", async () => {
+                    datNetwork.once("connection", async () => {
                         try {
                             if (rejected)
                                 throw new Error(
@@ -856,7 +865,7 @@ export default class AODat extends AORouterInterface {
                     const download = () => {
                         debug(`[${key}] download initiated...`);
                         try {
-                            var progress = mirror(
+                            var datProgress = mirror(
                                 { fs: dat.archive, name: "/" },
                                 newDatPath,
                                 async err => {
@@ -931,8 +940,21 @@ export default class AODat extends AORouterInterface {
                                     }
                                 }
                             );
-                            progress.on("put", function(src, dst) {
-                                debug(`[${key}] adding ${src.name}`);
+                            datProgress.on("put", function(src, dst) {
+                                debug(`[${key}] mirror adding ${src.name}`);
+                            });
+                            datProgress.on("ignore", function(src, dst) {
+                                debug(`[${key}] mirror ignoring ${src.name}`);
+                            });
+                            datProgress.on("skip", function(src, dst) {
+                                debug(`[${key}] mirror skipping ${src.name}`);
+                            });
+                            datProgress.on("end", function() {
+                                debug(`[${key}] mirror end`);
+                            });
+                            datProgress.on("error", function(error) {
+                                debug(`[${key}] mirror error:`, error);
+                                removeAndReject(error);
                             });
                         } catch (error) {
                             debug(`[${key}] error mirroring dat folder`, error);
@@ -942,11 +964,11 @@ export default class AODat extends AORouterInterface {
 
                     function logDownloadStats(dat) {
                         debug(`[${key}] tracking stats`);
-                        const stats = dat.trackStats();
                         dat.AO_isTrackingStats = true;
                         let lastPercentage = null;
+                        datStats = dat.trackStats();
 
-                        stats.on("update", onStatsUpdate);
+                        datStats.on("update", onStatsUpdate);
 
                         function onStatsUpdate() {
                             try {
@@ -954,7 +976,7 @@ export default class AODat extends AORouterInterface {
                                     throw new Error(
                                         `stats:update event triggered after rejection`
                                     );
-                                const newStats = stats.get();
+                                const newStats = datStats.get();
                                 dat.AO_latestStats = newStats;
                                 let downloadPercentage = (
                                     (newStats.downloaded / newStats.length) *
@@ -972,7 +994,7 @@ export default class AODat extends AORouterInterface {
                                     );
                                 }
                                 if (parseInt(downloadPercentage) >= 100) {
-                                    stats.removeListener(
+                                    datStats.removeListener(
                                         "update",
                                         onStatsUpdate
                                     );
