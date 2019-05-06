@@ -372,7 +372,7 @@ export default abstract class AORouterSubprocessInterface {
         // Keep subprocess running even if event loop empties
         // This prevents from early termination of a process
         // that may still handle/receive events while being idle.
-        process.stdin.resume();
+        // process.stdin.resume();
     }
 }
 

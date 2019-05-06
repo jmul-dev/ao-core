@@ -107,6 +107,7 @@ export default class AODat extends AORouterInterface {
         this.router.on("/dat/exists", this._handleDatExists.bind(this));
         this.router.on("/dat/stats", this._handleGetDatStats.bind(this));
         this.dats = {};
+        setInterval(() => {}, 1 << 30); // slight hack to prevent event loop from ending
         debug(`started`);
     }
 
