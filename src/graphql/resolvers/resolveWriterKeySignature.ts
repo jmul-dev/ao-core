@@ -1,6 +1,7 @@
 import { IGraphqlResolverContext } from "../../http";
 import { AOP2P_TaoRequest_Data } from "../../modules/p2p/p2p";
 import { IAORouterMessage } from "../../router/AORouter";
+import EthCrypto from "eth-crypto";
 
 interface IWriterKeySignature_Args {
     nameId: string;
@@ -24,7 +25,7 @@ export default (
         context.router
             .send("/p2p/tao", taoRequestArgs)
             .then((response: IAORouterMessage) => {
-                resolve(response.data);
+                resolve(EthCrypto.vrs.fromString(response.data));
             })
             .catch(reject);
     });

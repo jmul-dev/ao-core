@@ -31,5 +31,5 @@ type Query {
     taoThoughts(taoId: ID!): [TaoThoughtAodbEntry]
     taoThought(taoId: ID!, thoughtId: ID!, nameId: ID!): TaoThought
     writerKey: String
-    writerKeySignature(nameId: ID!, nonce: String!): String
+    writerKeySignature(nameId: ID!, nonce: String!): Signature
 }
