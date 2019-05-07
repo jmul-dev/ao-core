@@ -1022,10 +1022,7 @@ export default class AODat extends AORouterInterface {
             try {
                 debug(`[${key}] attempting to remove dat...`);
                 const datInstance = this.dats[key];
-                if (!datInstance)
-                    throw new Error(
-                        `Cannot close Dat, instance does not exist`
-                    );
+                if (!datInstance) throw new Error(`no dat instance available`);
                 datInstance.close(async () => {
                     try {
                         debug(`[${key}] dat instance closed`);

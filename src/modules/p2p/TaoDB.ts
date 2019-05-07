@@ -129,10 +129,10 @@ export default class TaoDB extends TAODBWrapper {
             throw new Error(
                 `Writer key signature requires a nameId and a nonce`
             );
-        const signHash = EthCrypto.hash.keccak256([
+        const hashArgs = [
             {
                 type: "address",
-                value: this.taodb.namePublicKey._address
+                value: this.taodb.namePublicKey.address
             },
             {
                 type: "address",
@@ -146,7 +146,8 @@ export default class TaoDB extends TAODBWrapper {
                 type: "uint256",
                 value: nonce
             }
-        ]);
+        ];
+        const signHash = EthCrypto.hash.keccak256(hashArgs);
         return Promise.resolve(
             EthCrypto.sign(this._userIdentity.privateKey, signHash)
         );

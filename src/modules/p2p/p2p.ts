@@ -379,6 +379,7 @@ export default class AOP2P extends AORouterInterface {
                             existingContentKeys.push(key);
                         }
                     }
+
                     debug(
                         `[${
                             newContentKeys.length

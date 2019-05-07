@@ -750,10 +750,10 @@ export default class AOUserSession {
                     debug(
                         `[${
                             content.metadataDatKey
-                        }] error fetching dat stats in DOWNLOADING state:`,
+                        }] error fetching dat stats in DOWNLOADING state: ${error}`,
                         error
                     );
-                    if (error && error.message === "Dat instance not found") {
+                    if (error === "Dat instance not found") {
                         // This specific scenario occurs when a piece of content was still in the
                         // DOWNLOADING state and then removed on the next start of ao-core (since
                         // dat module wipes incomplete dats). We roll back to HOST_DISCOVERY so
