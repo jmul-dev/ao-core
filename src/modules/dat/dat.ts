@@ -255,7 +255,7 @@ export default class AODat extends AORouterInterface {
                 const datDir = path.join(this.datDir, datEntry.key);
                 Dat(
                     datDir,
-                    { key: datEntry.key, secretDir: this.datSecretsDir },
+                    { key: datEntry.key },
                     async (err: Error, dat: Dat) => {
                         if (err && dat) {
                             try {
@@ -420,8 +420,7 @@ export default class AODat extends AORouterInterface {
         Dat(
             datDir,
             {
-                createIfMissing: false,
-                secretDir: this.datSecretsDir
+                createIfMissing: false
             },
             (err: Error, dat: Dat) => {
                 try {
@@ -607,7 +606,7 @@ export default class AODat extends AORouterInterface {
         const requestData: AODat_Create_Data = request.data;
         const datLocation = path.join(this.datDir, requestData.newDatDir);
         try {
-            Dat(datLocation, { secretDir: this.datSecretsDir }, (err, dat) => {
+            Dat(datLocation, (err, dat) => {
                 if (err) return request.reject(err);
                 this._importFiles(dat)
                     .then(() => {
@@ -773,8 +772,7 @@ export default class AODat extends AORouterInterface {
                 ram,
                 {
                     key,
-                    sparse: true,
-                    secretDir: this.datSecretsDir
+                    sparse: true
                 },
                 async (err, dat) => {
                     if (err || !dat) {
@@ -895,9 +893,7 @@ export default class AODat extends AORouterInterface {
                                             Dat(
                                                 newDatPath,
                                                 {
-                                                    key,
-                                                    secretDir: this
-                                                        .datSecretsDir
+                                                    key
                                                 },
                                                 (err, dat) => {
                                                     debug(
