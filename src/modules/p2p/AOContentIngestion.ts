@@ -194,11 +194,11 @@ export default class AOContentIngestion extends EventEmitter {
                                                         metadataDatKey
                                                     );
                                                 }
-                                                resolve();
                                             })
                                             .catch(e => {
                                                 debug(e);
                                             });
+                                        resolve();
                                     }
                                 })
                                 .catch(error => {

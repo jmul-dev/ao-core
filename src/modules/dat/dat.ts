@@ -145,10 +145,11 @@ export default class AODat extends AORouterInterface {
                 await fsExtra.ensureDir(this.datSecretsDir);
                 debug(`Dat directories exists, proceed to resume dats...`);
                 // 3. Resume dats
-                this._resumeAll()
-                    .then(request.respond)
-                    .catch(request.reject);
-            } catch (error) {}
+                await this._resumeAll();
+                request.respond({});
+            } catch (error) {
+                request.reject(error);
+            }
         });
     }
 
@@ -168,7 +169,7 @@ export default class AODat extends AORouterInterface {
                             if (datEntry.complete) {
                                 const resumeError = await this._resume(
                                     datEntry,
-                                    true
+                                    false
                                 );
                                 if (resumeError) throw resumeError;
                             } else {
@@ -254,7 +255,7 @@ export default class AODat extends AORouterInterface {
                 const datDir = path.join(this.datDir, datEntry.key);
                 Dat(
                     datDir,
-                    { secretDir: this.datSecretsDir },
+                    { key: datEntry.key, secretDir: this.datSecretsDir },
                     async (err: Error, dat: Dat) => {
                         if (err && dat) {
                             try {
@@ -262,7 +263,17 @@ export default class AODat extends AORouterInterface {
                             } catch (error) {}
                             this.dats[datEntry.key] = null;
                         }
-                        if (err) return resolve(err);
+                        if (err) {
+                            debug(
+                                `[${
+                                    datEntry.key
+                                }] error initializing dat instance: ${
+                                    err.message
+                                }`,
+                                err
+                            );
+                            return resolve(err);
+                        }
                         if (!dat)
                             return resolve(
                                 new Error(
@@ -311,19 +322,19 @@ export default class AODat extends AORouterInterface {
                             }
                         });
                         // Import files if writable (Do not think this is necessary, call importSingle)
-                        // if (dat.writable) {
-                        //     try {
-                        //         await this._importFiles(dat);
-                        //     } catch (error) {
-                        //         debug(
-                        //             `[${
-                        //                 datEntry.key
-                        //             }] error importing files on resume: ${
-                        //                 error.message
-                        //             }`
-                        //         );
-                        //     }
-                        // }
+                        if (dat.writable) {
+                            try {
+                                await this._importFiles(dat);
+                            } catch (error) {
+                                debug(
+                                    `[${
+                                        datEntry.key
+                                    }] error importing files on resume: ${
+                                        error.message
+                                    }`
+                                );
+                            }
+                        }
                         !resolveOnJoinNetwork && resolve();
                     }
                 );
@@ -762,8 +773,8 @@ export default class AODat extends AORouterInterface {
                 ram,
                 {
                     key,
-                    secretDir: this.datSecretsDir,
-                    sparse: true
+                    sparse: true,
+                    secretDir: this.datSecretsDir
                 },
                 async (err, dat) => {
                     if (err || !dat) {
@@ -883,7 +894,11 @@ export default class AODat extends AORouterInterface {
                                         await new Promise((resolve, reject) => {
                                             Dat(
                                                 newDatPath,
-                                                { key },
+                                                {
+                                                    key,
+                                                    secretDir: this
+                                                        .datSecretsDir
+                                                },
                                                 (err, dat) => {
                                                     debug(
                                                         `[${key}] Dat instance created, checking for .dat folder...`
