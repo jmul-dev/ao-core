@@ -513,16 +513,14 @@ export default class AODat extends AORouterInterface {
         });
     }
 
-    private async _updateDatStats(datKey: string): Promise<any> {
+    private _getLatestDatStats(datKey: string) {
         if (!this.dats[datKey])
-            throw new Error(
+            return debug(
                 `[${datKey}] instance unavailable, cannot update dat stats`
             );
         const dat = this.dats[datKey];
         if (!dat.stats)
-            throw new Error(
-                `[${datKey}] not tracking, cannot update dat stats`
-            );
+            return debug(`[${datKey}] not tracking, cannot update dat stats`);
         dat.AO_latestStats = dat.stats.get();
     }
 
@@ -557,20 +555,20 @@ export default class AODat extends AORouterInterface {
                 );
                 datInstance.AO_isTrackingStats = true;
                 datInstance.trackStats();
-                this._updateDatStats(requestData.key);
+                this._getLatestDatStats(requestData.key);
                 datInstance.stats.on(
                     "update",
-                    this._updateDatStats.bind(this, requestData.key)
+                    this._getLatestDatStats.bind(this, requestData.key)
                 );
             }
             let datStats = datInstance.AO_latestStats || {};
 
             returnValue = Object.assign({}, datStats);
             returnValue = Object.assign(returnValue, {
-                network: datInstance.network || {}
+                network: datStats.network || {}
             });
             returnValue = Object.assign(returnValue, {
-                peers: datInstance.peers || {}
+                peers: datStats.peers || {}
             });
             returnValue = Object.assign(returnValue, {
                 complete: datStats.downloaded >= datStats.length,
