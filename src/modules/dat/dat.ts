@@ -325,6 +325,7 @@ export default class AODat extends AORouterInterface {
                                 );
                             }
                         });
+                        !resolveOnJoinNetwork && resolve();
                         // Import files if writable (Do not think this is necessary, call importSingle)
                         if (dat.writable) {
                             try {
@@ -339,7 +340,6 @@ export default class AODat extends AORouterInterface {
                                 );
                             }
                         }
-                        !resolveOnJoinNetwork && resolve();
                     }
                 );
             }
@@ -455,6 +455,7 @@ export default class AODat extends AORouterInterface {
                 );
                 return resolve({ filesImported: 0 });
             }
+            debug(`[${dat.key.toString("hex")}] attempting to import files...`);
             let filesImported = 0;
             const progress = dat.importFiles(
                 { keepExisting: true, count: false },
