@@ -101,20 +101,15 @@ export default class Http {
         );
     }
 
-    public start(): Promise<any> {
+    public start(): Promise<number> {
         let promiseHandled = false;
         return new Promise((resolve, reject) => {
             this.server = this.express.listen(this.options.corePort, () => {
                 const address: AddressInfo = <AddressInfo>this.server.address();
                 debug("Express server running on port: " + address.port);
-                this.router.send("/core/log", {
-                    message: `AO http interface running on port ${
-                        address.port
-                    }, accesible from origin ${this.options.httpOrigin}`
-                });
+                resolve(address.port);
                 debug(`started`);
                 promiseHandled = true;
-                resolve();
             });
             this.server.on("error", (error: Error) => {
                 this.shutdown(error);

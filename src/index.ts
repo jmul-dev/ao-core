@@ -580,7 +580,12 @@ export default class Core extends EventEmitter {
         );
         this.http
             .start()
-            .then(() => {
+            .then((port: number) => {
+                this.emitLog(
+                    `AO Core running on port ${port}, accesible from origin ${
+                        this.options.httpOrigin
+                    }`
+                );
                 this.stateChangeHandler(AOCoreState.HTTP_INITIALIZED);
             })
             .catch((error: Error) => {
