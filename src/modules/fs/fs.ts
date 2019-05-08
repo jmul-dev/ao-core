@@ -356,68 +356,69 @@ export default class AOFS extends AORouterInterface {
                                     );
                                     rejectAndExit(error);
                                 })
-                                .on("finish", () => {
+                                .on("finish", async () => {
                                     //get stats for the encrypted file.
-                                    const fileStats = fs.statSync(
-                                        encryptedPath
-                                    );
-                                    debug(
-                                        `${writePath}: exists ${fs.existsSync(
-                                            writePath
-                                        )}`
-                                    );
-                                    debug(
-                                        `${encryptedPath}: exists ${fs.existsSync(
+                                    try {
+                                        const fileStats = await fs.stat(
                                             encryptedPath
-                                        )}`
-                                    );
-                                    //remove the original file
-                                    fs.remove(writePath)
-                                        .then(() => {
-                                            //finally move the encrypted file to the original path
-                                            fs.move(encryptedPath, writePath, {
-                                                overwrite: true
-                                            })
-                                                .then(() => {
-                                                    //Get the encrypted checksum
-                                                    checksum.file(
-                                                        writePath,
-                                                        {
-                                                            algorithm: this
-                                                                .checksumAlgorithm,
-                                                            encoding: this
-                                                                .checksumEncoding
-                                                        },
-                                                        (
-                                                            err,
-                                                            encryptedhash
-                                                        ) => {
-                                                            if (err) {
-                                                                rejectAndExit(
-                                                                    err
-                                                                );
-                                                            } else {
-                                                                request.respond(
-                                                                    {
-                                                                        fileSize:
-                                                                            fileStats.size,
-                                                                        filePath: writePath,
-                                                                        key: key,
-                                                                        checksum: originalHash,
-                                                                        encryptedChecksum: encryptedhash
-                                                                    }
-                                                                );
-                                                                // Single use event, kill process when done
-                                                                process.nextTick(
-                                                                    process.exit
-                                                                );
-                                                            }
-                                                        }
-                                                    ); //encrypted checksum end.
-                                                })
-                                                .catch(rejectAndExit); //Move end
-                                        })
-                                        .catch(rejectAndExit); //Remove end
+                                        );
+                                        const fileExists = await fs.pathExists(
+                                            writePath
+                                        );
+                                        const encryptedFileExists = await fs.pathExists(
+                                            encryptedPath
+                                        );
+                                        debug(
+                                            `[${
+                                                requestData.writePath
+                                            }]: exists ${fileExists}`
+                                        );
+                                        debug(
+                                            `[${
+                                                requestData.writePath
+                                            }.encrypted]: exists ${encryptedFileExists}`
+                                        );
+                                        await fs.remove(writePath);
+                                        debug(
+                                            `[${
+                                                requestData.writePath
+                                            }]: removed`
+                                        );
+                                        await fs.move(encryptedPath, writePath);
+                                        debug(
+                                            `[${
+                                                requestData.writePath
+                                            }]: moved encrypted file back to original path`
+                                        );
+                                        checksum.file(
+                                            writePath,
+                                            {
+                                                algorithm: this
+                                                    .checksumAlgorithm,
+                                                encoding: this.checksumEncoding
+                                            },
+                                            (err, encryptedhash) => {
+                                                if (err) {
+                                                    rejectAndExit(err);
+                                                } else {
+                                                    request.respond({
+                                                        fileSize:
+                                                            fileStats.size,
+                                                        filePath: writePath,
+                                                        key: key,
+                                                        checksum: originalHash,
+                                                        encryptedChecksum: encryptedhash
+                                                    });
+                                                    // Single use event, kill process when done
+                                                    process.nextTick(
+                                                        process.exit
+                                                    );
+                                                }
+                                            }
+                                        ); //encrypted checksum end.
+                                    } catch (error) {
+                                        rejectAndExit(error);
+                                    }
                                 }); //Encryption finished
                         }
                     }
