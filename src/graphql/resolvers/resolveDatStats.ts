@@ -12,7 +12,12 @@ export default (
         let datKey = obj.metadataDatKey;
         if (info.fieldName === "fileDatStats") {
             datKey = obj.fileDatKey;
+            // failed to bring in fileDatKey
+            if (obj.state === AOContent.States.HOST_DISCOVERY_FAILED) {
+                return resolve(null);
+            }
         }
+
         context.router
             .send("/dat/stats", { key: datKey }, { ignoreLogging: true })
             .then((response: IAORouterMessage) => {
