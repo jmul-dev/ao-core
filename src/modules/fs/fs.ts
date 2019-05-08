@@ -191,7 +191,7 @@ export default class AOFS extends AORouterInterface {
                     request.reject(error);
                 }
             })
-            .on("finish", () => {
+            .once("finish", () => {
                 if (!responded) {
                     responded = true;
                     request.respond({
@@ -310,7 +310,7 @@ export default class AOFS extends AORouterInterface {
                 error
             );
         });
-        readStream.pipe(writeStream).on("finish", () => {
+        readStream.pipe(writeStream).once("finish", () => {
             debug("Finishing writing to disk");
             const fileStats = fs.statSync(writePath);
             if (!requestData.encrypt) {
@@ -356,7 +356,7 @@ export default class AOFS extends AORouterInterface {
                                     );
                                     rejectAndExit(error);
                                 })
-                                .on("finish", async () => {
+                                .once("finish", async () => {
                                     //get stats for the encrypted file.
                                     try {
                                         const fileStats = await fs.stat(
@@ -399,6 +399,12 @@ export default class AOFS extends AORouterInterface {
                                             },
                                             (err, encryptedhash) => {
                                                 if (err) {
+                                                    debug(
+                                                        `[${
+                                                            requestData.writePath
+                                                        }]: failed to calculate file checksum`,
+                                                        err
+                                                    );
                                                     rejectAndExit(err);
                                                 } else {
                                                     request.respond({
@@ -468,7 +474,7 @@ export default class AOFS extends AORouterInterface {
             process.nextTick(process.exit);
         });
 
-        receiver.on("finish", () => {
+        receiver.once("finish", () => {
             debug(`writeStream::close`);
             request.respond({});
             process.nextTick(process.exit);
@@ -511,7 +517,7 @@ export default class AOFS extends AORouterInterface {
                 request.reject(err);
                 process.nextTick(process.exit);
             });
-            writeStream.on("finish", () => {
+            writeStream.once("finish", () => {
                 debug(`writeStream::close`);
                 request.respond({});
                 process.nextTick(process.exit);
@@ -653,7 +659,7 @@ export default class AOFS extends AORouterInterface {
             .pipe(decrypt)
             .pipe(encrypt)
             .pipe(writeStream)
-            .on("finish", () => {
+            .once("finish", () => {
                 checksum.file(
                     finalPath,
                     {
