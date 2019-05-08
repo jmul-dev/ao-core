@@ -218,7 +218,13 @@ export default class AODat extends AORouterInterface {
                     }] attempting to resume existing dat instance...`
                 );
                 const network = dat.joinNetwork(
-                    { port: this.swarmPort },
+                    {
+                        port: this.swarmPort,
+                        hash: false,
+                        utp: true,
+                        tcp: true,
+                        dht: false
+                    },
                     err => {
                         if (err || !dat) {
                             debug(
@@ -286,7 +292,13 @@ export default class AODat extends AORouterInterface {
                         this.dats[datEntry.key] = dat;
                         // Join network
                         const network = dat.joinNetwork(
-                            { port: this.swarmPort },
+                            {
+                                port: this.swarmPort,
+                                hash: false,
+                                utp: true,
+                                tcp: true,
+                                dht: false
+                            },
                             err => {
                                 if (err) {
                                     resolveOnJoinNetwork && resolve(err);
@@ -814,7 +826,13 @@ export default class AODat extends AORouterInterface {
                     datInstance = dat;
                     let downloadPercent = 0;
                     datNetwork = dat.joinNetwork(
-                        { port: this.swarmPort },
+                        {
+                            port: this.swarmPort,
+                            hash: false,
+                            utp: true,
+                            tcp: true,
+                            dht: false
+                        },
                         async err => {
                             debug(`[${key}] joinNetwork callback`);
                             if (err) {
