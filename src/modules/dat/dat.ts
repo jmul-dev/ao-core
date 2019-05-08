@@ -513,6 +513,19 @@ export default class AODat extends AORouterInterface {
         });
     }
 
+    private async _updateDatStats(datKey: string): Promise<any> {
+        if (!this.dats[datKey])
+            throw new Error(
+                `[${datKey}] instance unavailable, cannot update dat stats`
+            );
+        const dat = this.dats[datKey];
+        if (!dat.stats)
+            throw new Error(
+                `[${datKey}] not tracking, cannot update dat stats`
+            );
+        dat.AO_latestStats = dat.stats.get();
+    }
+
     private _handleGetDatStats(request: IAORouterRequest) {
         const requestData: AODat_GetDatStats_Data = request.data;
         if (!this.dats[requestData.key]) {
@@ -544,24 +557,23 @@ export default class AODat extends AORouterInterface {
                 );
                 datInstance.AO_isTrackingStats = true;
                 datInstance.trackStats();
-                datInstance.stats.on("update", () => {
-                    debug(`[${requestData.key}] stats update callback`);
-                    if (datInstance.stats)
-                        datInstance.AO_latestStats = datInstance.stats.get();
-                });
-                datInstance.AO_latestStats = datInstance.stats.get();
+                this._updateDatStats(requestData.key);
+                datInstance.stats.on(
+                    "update",
+                    this._updateDatStats.bind(this, requestData.key)
+                );
             }
             let datStats = datInstance.AO_latestStats || {};
 
             returnValue = Object.assign({}, datStats);
             returnValue = Object.assign(returnValue, {
-                network: datStats.network || {}
+                network: datInstance.network || {}
             });
             returnValue = Object.assign(returnValue, {
-                peers: datStats.peers || {}
+                peers: datInstance.peers || {}
             });
             returnValue = Object.assign(returnValue, {
-                complete: datStats.downloaded >= datStats.files,
+                complete: datStats.downloaded >= datStats.length,
                 joinedNetwork: datInstance.AO_joinedNetwork,
                 trackingStats: datInstance.AO_isTrackingStats
             });
