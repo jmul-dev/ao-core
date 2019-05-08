@@ -521,7 +521,16 @@ export default class AODat extends AORouterInterface {
         const dat = this.dats[datKey];
         if (!dat.stats)
             return debug(`[${datKey}] not tracking, cannot update dat stats`);
-        dat.AO_latestStats = dat.stats.get();
+        try {
+            dat.AO_latestStats = {
+                ...dat.stats.get(),
+                network: {
+                    ...dat.stats.network,
+                    connected: dat.network ? dat.network.connected : false
+                },
+                peers: dat.stats.peers
+            };
+        } catch (error) {}
     }
 
     private _handleGetDatStats(request: IAORouterRequest) {
@@ -555,22 +564,14 @@ export default class AODat extends AORouterInterface {
                 );
                 datInstance.AO_isTrackingStats = true;
                 datInstance.trackStats();
-                this._getLatestDatStats(requestData.key);
                 datInstance.stats.on(
                     "update",
                     this._getLatestDatStats.bind(this, requestData.key)
                 );
             }
             let datStats = datInstance.AO_latestStats || {};
-
-            returnValue = Object.assign({}, datStats);
-            returnValue = Object.assign(returnValue, {
-                network: datStats.network || {}
-            });
-            returnValue = Object.assign(returnValue, {
-                peers: datStats.peers || {}
-            });
-            returnValue = Object.assign(returnValue, {
+            debug(datStats);
+            returnValue = Object.assign(datStats, {
                 complete: datStats.downloaded >= datStats.length,
                 joinedNetwork: datInstance.AO_joinedNetwork,
                 trackingStats: datInstance.AO_isTrackingStats
@@ -1009,7 +1010,16 @@ export default class AODat extends AORouterInterface {
                                         `stats:update event triggered after rejection`
                                     );
                                 const newStats = datStats.get();
-                                dat.AO_latestStats = newStats;
+                                dat.AO_latestStats = {
+                                    ...newStats,
+                                    network: {
+                                        ...newStats.network,
+                                        connected: dat.network
+                                            ? dat.network.connected
+                                            : false
+                                    },
+                                    peers: newStats.peers
+                                };
                                 let downloadPercentage = (
                                     (newStats.downloaded / newStats.length) *
                                     100

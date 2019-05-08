@@ -32,6 +32,7 @@ export default (
                     uploadSpeed: response.data.network.uploadSpeed,
                     downloadSpeed: response.data.network.downloadSpeed,
                     connected: response.data.network.connected,
+                    joinedNetwork: response.data.joinedNetwork,
                     peersTotal: response.data.peers.total,
                     peersComplete: response.data.peers.complete
                 });
