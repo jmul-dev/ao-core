@@ -1,5 +1,5 @@
 import TAODBWrapper, { ITAODB_Entry } from "./TAODBWrapper";
-import EthCrypto from "eth-crypto";
+import EthCrypto, { TypedValue } from "eth-crypto";
 import AOContent from "../../models/AOContent";
 import Debug from "../../AODebug";
 const debug = Debug("ao:taodb");
@@ -129,7 +129,7 @@ export default class TaoDB extends TAODBWrapper {
             throw new Error(
                 `Writer key signature requires a nameId and a nonce`
             );
-        const hashArgs = [
+        const hashArgs: TypedValue[] = [
             {
                 type: "address",
                 value: this.taodb.namePublicKey.address

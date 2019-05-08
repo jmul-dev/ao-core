@@ -110,7 +110,7 @@ export function decryptMessage({ message, privateKey }): Promise<any> {
 export function encryptMessage({ message, publicKey }): Promise<any> {
     return new Promise(async (resolve, reject) => {
         try {
-            const encryptedCipher = EthCrypto.encryptWithPublicKey(
+            const encryptedCipher = await EthCrypto.encryptWithPublicKey(
                 publicKey,
                 message
             );
