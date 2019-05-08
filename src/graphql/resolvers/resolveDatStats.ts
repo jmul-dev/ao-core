@@ -12,7 +12,12 @@ export default (
         let datKey = obj.metadataDatKey;
         if (info.fieldName === "fileDatStats") {
             datKey = obj.fileDatKey;
+            // failed to bring in fileDatKey
+            if (obj.state === AOContent.States.HOST_DISCOVERY_FAILED) {
+                return resolve(null);
+            }
         }
+
         context.router
             .send("/dat/stats", { key: datKey }, { ignoreLogging: true })
             .then((response: IAORouterMessage) => {
@@ -26,6 +31,8 @@ export default (
                     uploadTotal: response.data.network.uploadTotal,
                     uploadSpeed: response.data.network.uploadSpeed,
                     downloadSpeed: response.data.network.downloadSpeed,
+                    connected: response.data.network.connected,
+                    joinedNetwork: response.data.joinedNetwork,
                     peersTotal: response.data.peers.total,
                     peersComplete: response.data.peers.complete
                 });

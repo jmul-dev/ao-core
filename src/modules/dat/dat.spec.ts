@@ -25,7 +25,6 @@ describe("AO Dat module", () => {
             httpOrigin: "string",
             coreOrigin: "string",
             corePort: 9999,
-            ffprobeBin: "string",
             ethNetworkRpc: ""
         });
         // Faking the router send method

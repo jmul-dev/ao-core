@@ -282,7 +282,7 @@ export default class AODat extends AORouterInterface {
                                     }] dat instance unobtainable`
                                 )
                             );
-                        debug(`[${datEntry.key}] joining network...`);
+                        debug(`[${datEntry.key}] resume joining network...`);
                         this.dats[datEntry.key] = dat;
                         // Join network
                         const network = dat.joinNetwork(
@@ -292,7 +292,11 @@ export default class AODat extends AORouterInterface {
                                     resolveOnJoinNetwork && resolve(err);
                                     return;
                                 }
-                                debug(`[${datEntry.key}] joinNetwork callback`);
+                                debug(
+                                    `[${
+                                        datEntry.key
+                                    }] resume joinNetwork callback`
+                                );
                                 dat.AO_joinedNetwork = true;
                                 resolveOnJoinNetwork && resolve();
                                 // const offline = !dat.network.connected || !dat.network.connecting;
@@ -316,11 +320,12 @@ export default class AODat extends AORouterInterface {
                                 );
                             } else {
                                 debug(
-                                    `[${datEntry.key}] network error:`,
+                                    `[${datEntry.key}] resume network error:`,
                                     error
                                 );
                             }
                         });
+                        !resolveOnJoinNetwork && resolve();
                         // Import files if writable (Do not think this is necessary, call importSingle)
                         if (dat.writable) {
                             try {
@@ -335,7 +340,6 @@ export default class AODat extends AORouterInterface {
                                 );
                             }
                         }
-                        !resolveOnJoinNetwork && resolve();
                     }
                 );
             }
@@ -451,6 +455,7 @@ export default class AODat extends AORouterInterface {
                 );
                 return resolve({ filesImported: 0 });
             }
+            debug(`[${dat.key.toString("hex")}] attempting to import files...`);
             let filesImported = 0;
             const progress = dat.importFiles(
                 { keepExisting: true, count: false },
@@ -508,6 +513,26 @@ export default class AODat extends AORouterInterface {
         });
     }
 
+    private _getLatestDatStats(datKey: string) {
+        if (!this.dats[datKey])
+            return debug(
+                `[${datKey}] instance unavailable, cannot update dat stats`
+            );
+        const dat = this.dats[datKey];
+        if (!dat.stats)
+            return debug(`[${datKey}] not tracking, cannot update dat stats`);
+        try {
+            dat.AO_latestStats = {
+                ...dat.stats.get(),
+                network: {
+                    ...dat.stats.network,
+                    connected: dat.network ? dat.network.connected : false
+                },
+                peers: dat.stats.peers
+            };
+        } catch (error) {}
+    }
+
     private _handleGetDatStats(request: IAORouterRequest) {
         const requestData: AODat_GetDatStats_Data = request.data;
         if (!this.dats[requestData.key]) {
@@ -539,23 +564,14 @@ export default class AODat extends AORouterInterface {
                 );
                 datInstance.AO_isTrackingStats = true;
                 datInstance.trackStats();
-                datInstance.stats.on("update", () => {
-                    if (datInstance.stats)
-                        datInstance.AO_latestStats = datInstance.stats.get();
-                });
-                datInstance.AO_latestStats = datInstance.stats.get();
+                datInstance.stats.on(
+                    "update",
+                    this._getLatestDatStats.bind(this, requestData.key)
+                );
             }
             let datStats = datInstance.AO_latestStats || {};
-
-            returnValue = Object.assign({}, datStats);
-            returnValue = Object.assign(returnValue, {
-                network: datStats.network || {}
-            });
-            returnValue = Object.assign(returnValue, {
-                peers: datStats.peers || {}
-            });
-            returnValue = Object.assign(returnValue, {
-                complete: datStats.downloaded >= datStats.files,
+            returnValue = Object.assign(datStats, {
+                complete: datStats.downloaded >= datStats.length,
                 joinedNetwork: datInstance.AO_joinedNetwork,
                 trackingStats: datInstance.AO_isTrackingStats
             });
@@ -681,6 +697,7 @@ export default class AODat extends AORouterInterface {
     private async _handleEncryptedFileDownload(request: IAORouterRequest) {
         const requestData: AODat_Encrypted_Download_Data = request.data;
         const nodes: Array<NetworkContentHostEntry> = requestData.nodes;
+        debug(``);
         for (let i = 0; i < nodes.length; i++) {
             const nodeEntry: NetworkContentHostEntry = nodes[i];
             try {
@@ -992,7 +1009,16 @@ export default class AODat extends AORouterInterface {
                                         `stats:update event triggered after rejection`
                                     );
                                 const newStats = datStats.get();
-                                dat.AO_latestStats = newStats;
+                                dat.AO_latestStats = {
+                                    ...newStats,
+                                    network: {
+                                        ...newStats.network,
+                                        connected: dat.network
+                                            ? dat.network.connected
+                                            : false
+                                    },
+                                    peers: newStats.peers
+                                };
                                 let downloadPercentage = (
                                     (newStats.downloaded / newStats.length) *
                                     100

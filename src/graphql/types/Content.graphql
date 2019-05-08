@@ -43,6 +43,7 @@ type DatStats {
     peersComplete: Int
     complete: Boolean
     joinedNetwork: Boolean
+    connected: Boolean
 }
 
 type ContentTransactions {

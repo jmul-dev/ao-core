@@ -84,8 +84,7 @@ describe("AO P2P module", () => {
             ethNetworkRpc: "",
             httpOrigin: "string",
             coreOrigin: "string",
-            corePort: 9999,
-            ffprobeBin: "string"
+            corePort: 9999
         });
         // faking the router.send method for testing purposes
         aoP2P.router.send = (route, message) => {
