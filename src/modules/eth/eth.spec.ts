@@ -22,7 +22,6 @@ describe("Ethereum module", () => {
             httpOrigin: "string",
             coreOrigin: "string",
             corePort: 9999,
-            ffprobeBin: "string",
             ...args
         });
         // faking the router.send method for testing purposes

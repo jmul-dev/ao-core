@@ -28,8 +28,7 @@ describe("AOFS methods", () => {
             storageLocation: tmpDir,
             httpOrigin: "string",
             coreOrigin: "string",
-            corePort: 9999,
-            ffprobeBin: "string"
+            corePort: 9999
         });
         // faking the router.send method for testing purposes
         instance.router.send = (route, message) => {
@@ -56,8 +55,7 @@ describe("AOFS methods", () => {
             stream: stream,
             streamDirection: "write",
             writePath: "writeStream.json",
-            encrypt: false,
-            videoStats: false
+            encrypt: false
         };
         fsInstance._handleWriteStream({
             id: "1",
@@ -87,8 +85,7 @@ describe("AOFS methods", () => {
                 stream: stream,
                 streamDirection: "write",
                 writePath: "writeStream.json",
-                encrypt: false,
-                videoStats: false
+                encrypt: false
             };
             fsInstance._handleCheckZipForIndexHtml({
                 id: "1",
@@ -125,8 +122,7 @@ describe("AOFS methods", () => {
                 stream: stream,
                 streamDirection: "write",
                 writePath: "writeStream.json",
-                encrypt: false,
-                videoStats: false
+                encrypt: false
             };
             fsInstance._handleCheckZipForIndexHtml({
                 id: "1",

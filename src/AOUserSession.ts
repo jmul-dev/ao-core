@@ -576,6 +576,13 @@ export default class AOUserSession {
                         );
                     });
                 // 3. Attempt to download the content from ONE of the nodes above (we may not even find someone who is hosting this content)
+                debug(
+                    `[${
+                        content.id
+                    }] attempting to download encrypted content from one of ${
+                        potentialNodes.length
+                    } potential hosts...`
+                );
                 const encryptedDownloadData: AODat_Encrypted_Download_Data = {
                     nodes: potentialNodes
                 };
@@ -633,7 +640,9 @@ export default class AOUserSession {
                     })
                     .catch(error => {
                         debug(
-                            `Unable to download content from any host: ${
+                            `[${
+                                content.id
+                            }] Unable to download content from any host: ${
                                 error.message
                             }`
                         );
@@ -986,7 +995,7 @@ export default class AOUserSession {
             privateKey: sessionIdentity.privateKey
         })
             .then((decryptionKey: string) => {
-                // 2. Decrypt/ffprobe/Checksum the downloaded file and match against the content data.
+                // 2. Decrypt/Checksum the downloaded file and match against the content data.
                 const decryptChecksumData: IAOFS_DecryptCheck_Data = {
                     path: content.getFilePath(),
                     decryptionKey: decryptionKey

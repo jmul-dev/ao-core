@@ -3,7 +3,6 @@ import path from "path";
 import Debug from "../AODebug";
 import { ReadStream, WriteStream } from "fs";
 import fs from "fs";
-import ffprobeStatic from "ffprobe-static";
 import AORouterCoreProcessPretender from "./AORouterCoreProcessPretender";
 import {
     AORouterCoreProcessInterface,
@@ -566,7 +565,6 @@ export default class AORouter extends AORouterCoreProcessInterface {
                 httpOrigin: this.args.httpOrigin,
                 coreOrigin: this.args.coreOrigin,
                 corePort: this.args.corePort,
-                ffprobeBin: ffprobeStatic.path,
                 ethNetworkRpc: this.args.ethNetworkRpc
             };
             let processArgs = [processLocation];

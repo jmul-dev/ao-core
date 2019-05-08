@@ -163,8 +163,7 @@ export default (
                                                     metadataTempPath,
                                                     fileName
                                                 ),
-                                                encrypt: false,
-                                                videoStats: false
+                                                encrypt: false
                                             };
                                             context.router
                                                 .send(
@@ -314,9 +313,7 @@ export default (
                             stream: contentReadStream,
                             streamDirection: "write",
                             writePath: path.join(contentTempPath, fileName),
-                            encrypt: true,
-                            videoStats:
-                                args.inputs.contentType === AOContent.Types.VOD // TODO: videoStats should be pulled in the resolver above (switch based on content type)
+                            encrypt: true
                         };
                         context.router
                             .send("/fs/writeStream", writeStreamData)
@@ -326,15 +323,7 @@ export default (
                 }
             )
             .then(
-                ({
-                    data: {
-                        key,
-                        fileSize,
-                        checksum,
-                        encryptedChecksum,
-                        videoStats
-                    }
-                }) => {
+                ({ data: { key, fileSize, checksum, encryptedChecksum } }) => {
                     // 5a. Content (and metadata files) have been writin to disk, update contentJson
                     debug(`Content encrypted and stored to temp directory`);
                     contentJson.decryptionKey = key;
@@ -343,7 +332,7 @@ export default (
                     contentJson.fileChecksum = checksum;
                     contentJson.baseChallenge = checksum;
                     contentJson.fileSize = fileSize;
-                    contentJson.metadata = videoStats;
+                    contentJson.metadata = {}; // future use
                     return Promise.resolve();
                 }
             )

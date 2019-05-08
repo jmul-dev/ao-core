@@ -125,11 +125,7 @@ export class AOSubprocessRouter extends EventEmitter
             event: originatingMessage.event,
             ethAddress: originatingMessage.ethAddress,
             data: !isReject ? responseData : undefined,
-            error: isReject
-                ? responseData instanceof Error
-                    ? responseData.message
-                    : responseData
-                : undefined
+            error: isReject ? responseData : undefined
         };
         if (this.process && this.process.send)
             this.process.send(outgoingResponse);
@@ -259,11 +255,7 @@ export class AOCoreProcessRouter extends EventEmitter
             event: originatingMessage.event,
             ethAddress: originatingMessage.ethAddress,
             data: !isReject ? responseData : undefined,
-            error: isReject
-                ? responseData instanceof Error
-                    ? responseData.message
-                    : responseData
-                : undefined
+            error: isReject ? responseData : undefined
         };
         this.process.send(outgoingResponse);
     }
@@ -321,7 +313,6 @@ export interface AORouterSubprocessArgs {
     httpOrigin: string;
     coreOrigin: string;
     corePort: number;
-    ffprobeBin: string;
     ethNetworkRpc: string;
     debug?: Function;
 }

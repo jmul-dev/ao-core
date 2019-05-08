@@ -282,7 +282,7 @@ export default class AODat extends AORouterInterface {
                                     }] dat instance unobtainable`
                                 )
                             );
-                        debug(`[${datEntry.key}] joining network...`);
+                        debug(`[${datEntry.key}] resume joining network...`);
                         this.dats[datEntry.key] = dat;
                         // Join network
                         const network = dat.joinNetwork(
@@ -292,7 +292,11 @@ export default class AODat extends AORouterInterface {
                                     resolveOnJoinNetwork && resolve(err);
                                     return;
                                 }
-                                debug(`[${datEntry.key}] joinNetwork callback`);
+                                debug(
+                                    `[${
+                                        datEntry.key
+                                    }] resume joinNetwork callback`
+                                );
                                 dat.AO_joinedNetwork = true;
                                 resolveOnJoinNetwork && resolve();
                                 // const offline = !dat.network.connected || !dat.network.connecting;
@@ -316,7 +320,7 @@ export default class AODat extends AORouterInterface {
                                 );
                             } else {
                                 debug(
-                                    `[${datEntry.key}] network error:`,
+                                    `[${datEntry.key}] resume network error:`,
                                     error
                                 );
                             }
@@ -540,6 +544,7 @@ export default class AODat extends AORouterInterface {
                 datInstance.AO_isTrackingStats = true;
                 datInstance.trackStats();
                 datInstance.stats.on("update", () => {
+                    debug(`[${requestData.key}] stats update callback`);
                     if (datInstance.stats)
                         datInstance.AO_latestStats = datInstance.stats.get();
                 });
@@ -681,6 +686,7 @@ export default class AODat extends AORouterInterface {
     private async _handleEncryptedFileDownload(request: IAORouterRequest) {
         const requestData: AODat_Encrypted_Download_Data = request.data;
         const nodes: Array<NetworkContentHostEntry> = requestData.nodes;
+        debug(``);
         for (let i = 0; i < nodes.length; i++) {
             const nodeEntry: NetworkContentHostEntry = nodes[i];
             try {
