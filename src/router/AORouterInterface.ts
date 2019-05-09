@@ -125,7 +125,7 @@ export class AOSubprocessRouter extends EventEmitter
             event: originatingMessage.event,
             ethAddress: originatingMessage.ethAddress,
             data: !isReject ? responseData : undefined,
-            error: isReject ? responseData : undefined
+            error: isReject ? serializeError(responseData) : undefined
         };
         if (this.process && this.process.send)
             this.process.send(outgoingResponse);
@@ -186,7 +186,7 @@ export class AOSubprocessRouter extends EventEmitter
                             messageResponseListener
                         );
                         if (message.error) {
-                            reject(message.error);
+                            reject(deserializeError(message.error));
                         } else {
                             resolve(message);
                         }
@@ -255,7 +255,7 @@ export class AOCoreProcessRouter extends EventEmitter
             event: originatingMessage.event,
             ethAddress: originatingMessage.ethAddress,
             data: !isReject ? responseData : undefined,
-            error: isReject ? responseData : undefined
+            error: isReject ? serializeError(responseData) : undefined
         };
         this.process.send(outgoingResponse);
     }
@@ -295,7 +295,7 @@ export class AOCoreProcessRouter extends EventEmitter
                             messageResponseListener
                         );
                         if (message.error) {
-                            reject(message.error);
+                            reject(deserializeError(message.error));
                         } else {
                             resolve(message);
                         }
@@ -373,4 +373,29 @@ export abstract class AORouterCoreProcessInterface {
     constructor() {
         this.router = new AOCoreProcessRouter();
     }
+}
+
+export interface SerializedError {
+    type: "__error";
+    name: string;
+    message: string;
+    stack: string;
+}
+
+export function serializeError(error?: Error): SerializedError {
+    let err = error instanceof Error ? error : new Error(error);
+    return {
+        type: "__error",
+        name: err.name,
+        message: err.message,
+        stack: err.stack
+    };
+}
+export function deserializeError(serialized?: SerializedError): Error {
+    if (!serialized || serialized.type !== "__error") return serialized;
+    let error = new Error();
+    error.name = serialized.name;
+    error.message = serialized.message;
+    error.stack = serialized.stack;
+    return error;
 }

@@ -158,7 +158,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
                     const responseError: IAORouterMessage = {
                         ...message,
                         responseId: message.requestId,
-                        error: err instanceof Error ? err.message : err
+                        error: err
                     };
                     fromProcess.send(responseError);
                 });
@@ -197,10 +197,6 @@ export default class AORouter extends AORouterCoreProcessInterface {
                 event: incomingMessage.event,
                 data: incomingMessage.data,
                 error: incomingMessage.error
-                    ? incomingMessage.error instanceof Error
-                        ? incomingMessage.error
-                        : new Error(incomingMessage.error)
-                    : undefined
             };
             // 2. Make sure we have a registered process that can handle this event
             const entryNameThatCanHandleEvent = this.eventToRegistryEntryName[
