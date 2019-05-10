@@ -846,9 +846,13 @@ export default class AOUserSession {
                     };
                 } else {
                     // Transaction failed :(, go back to previous state
+                    // TODO: should go back to DOWNLOADED state if we want
+                    // the ability to resubmit purchase tx for same host.
+                    // For now we assume something bad happened and go back
+                    // to host discovery
                     contentUpdateAfterTx.update = {
                         $set: {
-                            state: AOContentState.DOWNLOADED,
+                            state: AOContentState.HOST_DISCOVERY,
                             "transactions.purchaseTx": null
                         }
                     };
