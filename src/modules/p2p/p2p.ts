@@ -309,7 +309,7 @@ export default class AOP2P extends AORouterInterface {
                 const contentListPromises = contentTypes.map(contentType => {
                     return this.taodb.list(
                         `${TaoDB.ContentKey}/${contentType}/`,
-                        { recursive: false }
+                        { recursive: false, reverse: false }
                     );
                 });
                 return Promise.all(contentListPromises);

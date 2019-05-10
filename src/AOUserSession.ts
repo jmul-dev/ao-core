@@ -407,7 +407,8 @@ export default class AOUserSession {
             // 1. Get the corresponding content entry in user db (make sure it is not )
             const contentQuery: AODB_UserContentGet_Data = {
                 query: {
-                    contentHostId: buyContentEvent.contentHostId
+                    contentHostId: buyContentEvent.contentHostId,
+                    state: AOContentState.DISCOVERABLE
                 }
             };
             this.router
@@ -525,7 +526,8 @@ export default class AOUserSession {
                         );
                         reject(error);
                     }
-                });
+                })
+                .catch(reject);
         });
     }
 
