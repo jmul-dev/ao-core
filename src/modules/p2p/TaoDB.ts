@@ -132,7 +132,7 @@ export default class TaoDB extends TAODBWrapper {
         const hashArgs = [
             {
                 type: "address",
-                value: this.taodb.namePublicKey.address
+                value: this.taodb.namePublicKey._address
             },
             {
                 type: "address",
