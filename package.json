@@ -58,7 +58,7 @@
         "minimist": "^1.2.0",
         "nedb": "^1.8.0",
         "queue": "^4.5.0",
-        "taodb": "git+ssh://git@gitlab.paramation.com:22022/AO-core/taodb.git#v1.0.1",
+        "taodb": "git+ssh://git@gitlab.paramation.com:22022/AO-core/taodb.git#v1.0.3",
         "unzipper": "^0.9.3",
         "web3": "^1.0.0-beta.33",
         "web3-legacy": "git://github.com/nharlow89/web3.js.git#legacy",
