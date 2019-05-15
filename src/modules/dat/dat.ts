@@ -878,39 +878,15 @@ export default class AODat extends AORouterInterface {
                         }
                     });
                     datNetwork.once("connection", async () => {
-                        try {
-                            if (rejected)
-                                throw new Error(
-                                    `connection event received after rejection`
-                                );
-                            debug(`[${key}] network connection made`);
-                            datInstance.AO_joinedNetwork = true;
-                            if (!resolveOnDownloadCompletion) resolve(datEntry);
-                            logDownloadStats(dat);
-                            datInstance.archive.metadata.update(download);
-                        } catch (error) {
-                            removeAndReject(
-                                error ||
-                                    new Error(
-                                        `error starting download after connection was made`
-                                    )
-                            );
-                        }
-                        // 6. Now that we have made a connection, begin monitoring stats & sync
-                        // try {
-                        //     logDownloadStats(dat);
-                        //     await this._listenForDatSyncCompletion(dat);
-                        //     datEntry.complete = true;
-                        //     datEntry.updatedAt = new Date();
-                        //     await this._updateDatEntry(datEntry);
-                        //     if (resolveOnDownloadCompletion) resolve(datEntry);
-                        //     debug(`[${key}] download complete!`);
-                        // } catch (error) {
-                        //     removeAndReject(error);
-                        // }
+                        debug(`[${key}] network connection made`);
                     });
 
-                    const download = () => {
+                    datInstance.AO_joinedNetwork = true;
+                    if (!resolveOnDownloadCompletion) resolve(datEntry);
+                    logDownloadStats(dat);
+                    datInstance.archive.metadata.update(download);
+
+                    function download() {
                         debug(`[${key}] download initiated...`);
                         try {
                             var datProgress = mirror(
@@ -1010,7 +986,7 @@ export default class AODat extends AORouterInterface {
                             debug(`[${key}] error mirroring dat folder`, error);
                             removeAndReject(error);
                         }
-                    };
+                    }
 
                     function logDownloadStats(dat) {
                         debug(`[${key}] tracking stats`);
