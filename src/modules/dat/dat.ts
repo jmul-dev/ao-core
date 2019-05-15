@@ -583,7 +583,9 @@ export default class AODat extends AORouterInterface {
             }
             let datStats = datInstance.AO_latestStats || {};
             returnValue = Object.assign(datStats, {
-                complete: datStats.downloaded >= datStats.length,
+                complete:
+                    datInstance.writable ||
+                    datStats.downloaded >= datStats.length,
                 joinedNetwork: datInstance.AO_joinedNetwork,
                 trackingStats: datInstance.AO_isTrackingStats
             });

@@ -52,7 +52,7 @@ export default class Http {
                 ? [
                       options.httpOrigin,
                       "http://localhost",
-                      "http://localhost:3000"
+											"http://localhost:3000"
                   ]
                 : options.httpOrigin;
         debug(
@@ -62,8 +62,17 @@ export default class Http {
         );
         this.express.use(
             "/graphql",
-            cors({
-                origin: corsOrigin
+						cors({
+						origin: (origin, callback) => {
+								if (!origin ||
+									(Array.isArray(corsOrigin) && corsOrigin.indexOf(origin) === -1) ||
+									(!Array.isArray(corsOrigin) && corsOrigin !== origin)
+								)	{
+									const msg = "The CORS policy for this node does not allow access from the specified Origin.";
+									return callback(new Error(msg), false);
+								}
+								return callback(null, true);
+							}
             }),
             json({
                 limit: "1mb"
