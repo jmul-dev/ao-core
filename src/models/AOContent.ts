@@ -239,6 +239,7 @@ export default abstract class AOContent {
     public toMetadataJson() {
         const metadataJsonKeys = [
             "id",
+            "ethNetworkId",
             "metadataDatKey",
             "stakeId",
             "creatorNodePublicKey",

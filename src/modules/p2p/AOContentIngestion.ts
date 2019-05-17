@@ -38,14 +38,12 @@ export default class AOContentIngestion extends EventEmitter {
     constructor(router: AORouterInterface, ethNetworkId: string) {
         super();
         this.router = router;
+        this.ethNetworkId = ethNetworkId;
         // @ts-ignore Types not up to date
         this.processingQueue = queue({
             concurrency: 3,
             autostart: true,
             timeout: 2 * 60000 // 2 min timeout to avoid freezing up the queue
-        });
-        this.processingQueue.on("end", err => {
-            debug(`processing key end event`, err);
         });
     }
 
@@ -131,6 +129,7 @@ export default class AOContentIngestion extends EventEmitter {
                             this.router
                                 .send("/fs/read", readContentJson)
                                 .then((readResponse: IAORouterMessage) => {
+                                    let incrementUpdate = null;
                                     let networkContent: AONetworkContent = {
                                         _id: metadataDatKey,
                                         status: "failed"
@@ -165,13 +164,16 @@ export default class AOContentIngestion extends EventEmitter {
                                                 key: metadataDatKey
                                             })
                                             .catch(debug);
-                                        networkContent["$inc"] = {
+                                        incrementUpdate = {
                                             importAttempts: 1
                                         };
                                     } finally {
                                         // 4. Insert into network content db, marked as failed or imported
                                         const updateArgs: AODB_NetworkContentUpdate_Data = {
-                                            update: networkContent,
+                                            update: {
+                                                $set: networkContent,
+                                                $inc: incrementUpdate
+                                            },
                                             id: metadataDatKey
                                         };
                                         this.router

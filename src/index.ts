@@ -503,7 +503,7 @@ export default class Core extends EventEmitter {
                 debugLog(`WARNING, HARDCODED TAODB KEY!`);
                 debugLog(`taodb key found in contracts: ${taoDbKey}`);
                 taoDbKey =
-                    "b95d3ba6b1d193341313ce745c7a951dddfa8f7c287700ec6f7d104091d7c4a2";
+                    "ffa48426d6f283f7bd42068d479ea5f201095223b8139f31cada726674396116";
                 debugLog(`taodb key override: ${taoDbKey}`);
 
                 // 2. Spin up p2p module with the fetched taoDbKey
@@ -608,7 +608,10 @@ export default class Core extends EventEmitter {
         const { ethAddress } = args;
         const context: IGraphqlResolverContext = {
             router: this.coreRouter.router,
-            options: this.options,
+            options: {
+                ...this.options,
+                ethNetworkId: this.ethNetworkId
+            },
             userSession: this.userSession
         };
         if (isAddress(ethAddress)) {

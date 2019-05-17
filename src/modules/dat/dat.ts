@@ -17,6 +17,7 @@ export interface AODat_ResumeAll_Data {}
 
 export interface AODat_ImportSingle_Data {
     key: string;
+    srcDir?: string;
 }
 
 export interface AODat_StopAll_Data {}
@@ -121,7 +122,7 @@ export default class AODat extends AORouterInterface {
      * @returns request.response({filesImported: number})
      */
     private async _handleImportSingle(request: IAORouterRequest) {
-        const { key }: AODat_ImportSingle_Data = request.data;
+        const { key, srcDir }: AODat_ImportSingle_Data = request.data;
         if (!this.datManager.exists(key))
             return request.reject(
                 new Error(`Attempting to import files to a non-existent dat`)
@@ -129,7 +130,14 @@ export default class AODat extends AORouterInterface {
         try {
             const archive: DatArchive = await this.datManager.get(key);
             const archivePath = archive.getPath();
-            await archive.writeFileFromDisk(archivePath, "/");
+            // By default, we simply import the files within the archive
+            let srcPath = archivePath;
+            if (srcDir) {
+                srcPath = path.isAbsolute(srcDir)
+                    ? srcDir
+                    : path.join(this.storageLocation, srcDir);
+            }
+            await archive.writeFileFromDisk(srcPath, "/");
             request.respond({});
         } catch (error) {
             request.reject(error);
