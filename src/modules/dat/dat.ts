@@ -105,7 +105,10 @@ export default class AODat extends AORouterInterface {
             await fsExtra.ensureDir(this.datSecretsDir);
             debug(`Dat directories exists, proceed to resume dats...`);
             this.datManager = new DatManager({
-                storagePath: this.datDir
+                storagePath: this.datDir,
+                datStorageOptions: {
+                    secretDir: this.datSecretsDir
+                }
             });
             await this.datManager.resumeAll();
             request.respond({});

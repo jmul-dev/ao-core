@@ -129,7 +129,7 @@ export default class AOContentIngestion extends EventEmitter {
                             this.router
                                 .send("/fs/read", readContentJson)
                                 .then((readResponse: IAORouterMessage) => {
-                                    let incrementUpdate = null;
+                                    let incrementUpdate = {};
                                     let networkContent: AONetworkContent = {
                                         _id: metadataDatKey,
                                         status: "failed"
@@ -187,7 +187,7 @@ export default class AOContentIngestion extends EventEmitter {
                                                     "imported"
                                                 ) {
                                                     debug(
-                                                        `[${metadataDatKey}] succesfully imported network content, adding to hosts updater queue`
+                                                        `[${metadataDatKey}] network content imported, adding to hosts updater queue`
                                                     );
                                                     this.emit(
                                                         AOContentIngestion
@@ -215,23 +215,29 @@ export default class AOContentIngestion extends EventEmitter {
                                             );
                                         });
                                     debug(
-                                        `[${metadataDatKey}] unable to add network content, failed to read content.json file.`,
+                                        `[${metadataDatKey}] failed to read content.json file.`,
                                         error
                                     );
                                     resolve(true);
                                 });
                         })
                         .catch(error => {
-                            debug(
-                                `[${metadataDatKey}] unable to add network content, failed to download metadata dat file.`,
-                                error
-                            );
+                            if (error.name === "TimeoutError") {
+                                debug(
+                                    `[${metadataDatKey}] network content download timed out`
+                                );
+                            } else {
+                                debug(
+                                    `[${metadataDatKey}] failed to download metadata dat file`,
+                                    error
+                                );
+                            }
                             resolve();
                         });
                 })
                 .catch(error => {
                     debug(
-                        `[${metadataDatKey}] unable to add network content, failed to get network content.`,
+                        `[${metadataDatKey}] failed to get network content.`,
                         error
                     );
                     resolve();

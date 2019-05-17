@@ -17,27 +17,32 @@ export default (
                 return resolve(null);
             }
         }
-
         context.router
             .send("/dat/stats", { key: datKey }, { ignoreLogging: true })
             .then((response: IAORouterMessage) => {
+                const stats = response.data;
+                if (!stats) return resolve(null);
                 resolve({
-                    files: response.data.files,
-                    byteLength: response.data.byteLength,
-                    length: response.data.length,
-                    downloaded: response.data.downloaded,
-                    version: response.data.version,
-                    downloadTotal: response.data.network.downloadTotal,
-                    uploadTotal: response.data.network.uploadTotal,
-                    uploadSpeed: response.data.network.uploadSpeed,
-                    downloadSpeed: response.data.network.downloadSpeed,
-                    connected: response.data.network.connected,
-                    joinedNetwork: response.data.joinedNetwork,
-                    peersTotal: response.data.peers.total,
-                    peersComplete: response.data.peers.complete
+                    key: datKey,
+                    writer: stats.writer,
+                    version: stats.version,
+                    files: stats.files,
+                    blocksDownloaded: stats.blocksDownloaded,
+                    blocksLength: stats.blocksLength,
+                    byteLength: stats.byteLength,
+                    progress: stats.progress,
+                    // Network
+                    connected: stats.network.connected,
+                    downloadSpeed: stats.network.downloadSpeed,
+                    downloadTotal: stats.network.downloadTotal,
+                    uploadSpeed: stats.network.uploadSpeed,
+                    uploadTotal: stats.network.uploadTotal,
+                    // Peers
+                    peersTotal: stats.peers.total,
+                    peersComplete: stats.peers.complete
                 });
             })
-            .catch(() => {
+            .catch(err => {
                 // In case the dat does not exist yet for whatever reason
                 resolve(null);
             });
