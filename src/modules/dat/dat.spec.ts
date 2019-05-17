@@ -10,8 +10,8 @@ describe("AO Dat module", () => {
     const unreachableDatKey =
         "ab7e9f8f02c1422eda40984ef23da0c6c3c714b000125ff86b10fdd7246ef724";
     const reachableDatKey =
-        "d177c5eb3a0a8d1f735e57928b50b2f88dc092289a2235634caee506081da4f3";
-    const reachableDatFiles = ["content.mp4"];
+        "778f8d955175c92e4ced5e4f5563f69bfec0c86cc6f670352c457943666fe639";
+    const reachableDatFiles = ["dat_intro.gif", "dat.json"];
     // const reachableDatKey =
     //     "778f8d955175c92e4ced5e4f5563f69bfec0c86cc6f670352c457943666fe639";
     // const reachableDatFiles = ["dat.json", "dat_intro.gif"];
@@ -32,7 +32,6 @@ describe("AO Dat module", () => {
             return Promise.resolve();
         };
         fs.ensureDirSync(tmpDir);
-        fs.ensureDirSync(path.join(tmpDir, "content"));
         aoDat.router.emit("/dat/init", {
             data: {
                 ethNetworkId: "4"
@@ -60,8 +59,7 @@ describe("AO Dat module", () => {
         it("should download reachable dat, resolve on download complete", done => {
             aoDat.router.emit("/dat/download", {
                 data: {
-                    key: reachableDatKey,
-                    resolveOnDownloadCompletion: true
+                    key: reachableDatKey
                 },
                 respond: ({ key }) => {
                     expect(key).to.equal(reachableDatKey);
@@ -78,7 +76,7 @@ describe("AO Dat module", () => {
                     fs.existsSync(
                         path.join(
                             tmpDir,
-                            "content",
+                            "content-4/dats",
                             reachableDatKey,
                             expectedFile
                         )
@@ -93,9 +91,10 @@ describe("AO Dat module", () => {
                 data: {
                     key: reachableDatKey
                 },
-                respond: ({ complete, joinedNetwork }) => {
-                    expect(complete).to.be.true;
-                    expect(joinedNetwork).to.be.true;
+                respond: ({ connected, progress, files }) => {
+                    expect(connected).to.be.true;
+                    expect(progress).to.equal(1);
+                    expect(files).to.equal(reachableDatFiles.length);
                     done();
                 },
                 reject: done
@@ -123,7 +122,7 @@ describe("AO Dat module", () => {
         let datDir = null;
 
         it("should initialize a new dat", done => {
-            newDatDir = path.join(tmpDir, "content", "upload");
+            newDatDir = path.join(tmpDir, "content-4", "upload");
             fs.mkdirSync(newDatDir);
             fs.writeFileSync(
                 path.join(newDatDir, ".datignore"),
@@ -136,23 +135,24 @@ describe("AO Dat module", () => {
             );
             aoDat.router.emit("/dat/create", {
                 data: {
-                    newDatDir: path.join("upload")
+                    initialImportDir: newDatDir
                 },
-                respond: ({ key, complete, dir }) => {
+                respond: ({ key, dir }) => {
                     expect(key).to.not.be.empty;
-                    expect(complete).to.be.true;
-                    expect(dir).to.equal("upload");
+                    const expectedDatDir = path.join(
+                        tmpDir,
+                        `content-${4}`,
+                        `dats`,
+                        key
+                    );
+                    expect(dir).to.equal(expectedDatDir);
                     newDatKey = key;
-                    datDir = path.join(tmpDir, "content", key);
+                    datDir = expectedDatDir;
                     done();
                 },
                 reject: done
             });
         }).timeout(10000);
-
-        it("should move from upload folder to content dat folder", () => {
-            fs.renameSync(newDatDir, datDir);
-        });
 
         it("should read test.json", done => {
             try {
@@ -176,49 +176,26 @@ describe("AO Dat module", () => {
                 data: {
                     key: newDatKey
                 },
-                respond: ({ filesImported }) => {
-                    expect(filesImported).to.equal(1);
+                respond: () => {
                     done();
                 },
                 reject: done
             });
         });
 
-        it("should resume the newly created dat", done => {
-            aoDat.router.emit("/dat/resumeSingle", {
+        it("should return stats for newly created dat", done => {
+            aoDat.router.emit("/dat/stats", {
                 data: {
                     key: newDatKey
                 },
-                respond: ({ key, complete }) => {
-                    expect(key).to.not.be.empty;
-                    expect(complete).to.be.true;
-                    newDatKey = key;
+                respond: stats => {
+                    expect(stats).to.not.be.null;
+                    // .datignore, dats.json, test.json, second.json
+                    expect(stats.files).to.equal(4);
                     done();
                 },
                 reject: done
             });
-        }).timeout(20000);
-
-        it("should return stats for newly created dat", done => {
-            // timeout allows dat to run importFiles on the resumed dat
-            // in order to update stats
-            setTimeout(() => {
-                aoDat.router.emit("/dat/stats", {
-                    data: {
-                        key: newDatKey
-                    },
-                    respond: stats => {
-                        expect(stats).to.not.be.null;
-                        expect(stats.joinedNetwork).to.be.true;
-                        expect(stats.trackingStats).to.be.true;
-                        // for some reason locally created dats do not populate some of the stats
-                        // expect(stats.complete).to.be.true;
-                        // expect(stats.files).to.equal(2);
-                        done();
-                    },
-                    reject: done
-                });
-            }, 5000);
         }).timeout(15000);
     });
 });

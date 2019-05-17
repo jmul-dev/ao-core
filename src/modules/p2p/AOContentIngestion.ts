@@ -114,8 +114,7 @@ export default class AOContentIngestion extends EventEmitter {
                     }
                     // 2b. Download the dat file
                     const datDownloadParams: AODat_Download_Data = {
-                        key: metadataDatKey,
-                        resolveOnDownloadCompletion: true
+                        key: metadataDatKey
                     };
                     this.router
                         .send("/dat/download", datDownloadParams)

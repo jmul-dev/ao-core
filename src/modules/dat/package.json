@@ -9,7 +9,6 @@
     "AO": {
         "events": [
             "/dat/init",
-            "/dat/resumeSingle",
             "/dat/importSingle",
             "/dat/stopAll",
             "/dat/create",
