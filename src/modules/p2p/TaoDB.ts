@@ -324,7 +324,7 @@ export default class TaoDB extends TAODBWrapper {
             contentType: content.contentType,
             contentMetadataDatKey: content.metadataDatKey
         });
-        return this.list(key, { recursive: false });
+        return this.list(key, { recursive: false, reverse: true });
     }
 
     /**
