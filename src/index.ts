@@ -575,7 +575,10 @@ export default class Core extends EventEmitter {
     private httpInitializer() {
         this.http = new Http(
             this.coreRouter.router,
-            this.options,
+            {
+                ...this.options,
+                ethNetworkId: this.ethNetworkId
+            },
             this.userSession
         );
         this.http

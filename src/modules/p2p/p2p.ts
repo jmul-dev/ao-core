@@ -99,6 +99,7 @@ export default class AOP2P extends AORouterInterface {
     private storageLocation: string;
     private contentIngestion: AOContentIngestion;
     private contentHostsUpdater: AOContentHostsUpdater;
+    private ethNetworkId: string;
 
     constructor(args: AORouterSubprocessArgs) {
         super({ ...args, debug });
@@ -107,13 +108,6 @@ export default class AOP2P extends AORouterInterface {
         this.contentHostsUpdater = new AOContentHostsUpdater(
             this.router,
             this._getContentHostsFormatted.bind(this)
-        );
-        this.contentIngestion = new AOContentIngestion(this.router);
-        this.contentIngestion.on(
-            AOContentIngestion.Events.CONTENT_INGESTED,
-            metadataDatKey => {
-                this.contentHostsUpdater.addContentKeyToQueue(metadataDatKey);
-            }
         );
 
         this.router.on("/p2p/init", this._init.bind(this));
@@ -157,6 +151,7 @@ export default class AOP2P extends AORouterInterface {
 
     _init(request: IAORouterRequest) {
         const { dbKey, dbPath, ethNetworkId }: AOP2P_Init_Data = request.data;
+        this.ethNetworkId = ethNetworkId;
         let resolvedDbPath: Function | string;
         Promise.resolve()
             .then(() => {
@@ -175,6 +170,21 @@ export default class AOP2P extends AORouterInterface {
                     };
                     return this.router.send("/fs/mkdir", ensureP2PPathData);
                 }
+            })
+            .then(() => {
+                // Content ingestion
+                this.contentIngestion = new AOContentIngestion(
+                    this.router,
+                    ethNetworkId
+                );
+                this.contentIngestion.on(
+                    AOContentIngestion.Events.CONTENT_INGESTED,
+                    metadataDatKey => {
+                        this.contentHostsUpdater.addContentKeyToQueue(
+                            metadataDatKey
+                        );
+                    }
+                );
             })
             .then(() => {
                 debug(`Attempting to spin up taodb...`);

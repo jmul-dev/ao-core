@@ -55,16 +55,8 @@ export default (
          * Quick note on this process, we initialize and store content in temp
          * locations
          */
-        const contentTempId: string = md5(new Date());
-        const metadataTempId: string = md5(new Date() + "-preview");
-        const contentTempPath: string = path.join("content/tmp", contentTempId);
-        const metadataTempPath: string = path.join(
-            "content/tmp",
-            metadataTempId
-        );
-        const metadataFileFields = ["featuredImage", "videoTeaser"];
-
         let contentJson: AOContent = AOContent.fromObject({
+            ethNetworkId: context.options.ethNetworkId,
             nodePublicKey: context.userSession.publicKey,
             nodeEthAddress: context.userSession.ethAddress,
             creatorNodePublicKey: context.userSession.publicKey,
@@ -83,6 +75,12 @@ export default (
             stakePrimordialPercentage: args.inputs.stakePrimordialPercentage,
             createdAt: Date.now().toString()
         });
+        const tmpFolder = `content-${context.options.ethNetworkId}/tmp`;
+        const contentTempId: string = md5(new Date());
+        const metadataTempId: string = md5(new Date() + "-preview");
+        const contentTempPath: string = path.join(tmpFolder, contentTempId);
+        const metadataTempPath: string = path.join(tmpFolder, metadataTempId);
+        const metadataFileFields = ["featuredImage", "videoTeaser"];
 
         Promise.resolve()
             .then(() => {
@@ -430,14 +428,11 @@ export default (
                     debug(`Moving content from temp directories...`);
                     const movePreviewDatData: IAOFS_Move_Data = {
                         srcPath: metadataTempPath,
-                        destPath: path.join(
-                            "content",
-                            contentJson.metadataDatKey
-                        )
+                        destPath: contentJson.getMetadataFolderPath()
                     };
                     const moveContentDatData: IAOFS_Move_Data = {
                         srcPath: contentTempPath,
-                        destPath: path.join("content", contentJson.fileDatKey)
+                        destPath: contentJson.getFileFolderPath()
                     };
                     return Promise.all([
                         context.router.send("/fs/move", movePreviewDatData),

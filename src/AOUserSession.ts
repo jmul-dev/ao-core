@@ -347,12 +347,8 @@ export default class AOUserSession {
             return null; // sanity check
         // Read in the decrypted content
         const unzipArgs: IAOFS_UnzipFile_Data = {
-            readPath: path.join(
-                "content",
-                content.fileDatKey,
-                content.fileName
-            ),
-            writePath: path.join("content", content.fileDatKey, "unpacked"),
+            readPath: content.getFilePath(),
+            writePath: path.join(content.getFileFolderPath(), "unpacked"),
             key: content.decryptionKey
         };
         this.router

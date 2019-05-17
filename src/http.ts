@@ -22,6 +22,7 @@ export interface Http_Args {
     corePort: number;
     storageLocation: string;
     desktopLocation?: string;
+    ethNetworkId: string;
 }
 
 export interface IGraphqlResolverContext {
@@ -52,7 +53,7 @@ export default class Http {
                 ? [
                       options.httpOrigin,
                       "http://localhost",
-											"http://localhost:3000"
+                      "http://localhost:3000"
                   ]
                 : options.httpOrigin;
         debug(
@@ -62,17 +63,20 @@ export default class Http {
         );
         this.express.use(
             "/graphql",
-						cors({
-						origin: (origin, callback) => {
-								if (!origin ||
-									(Array.isArray(corsOrigin) && corsOrigin.indexOf(origin) === -1) ||
-									(!Array.isArray(corsOrigin) && corsOrigin !== origin)
-								)	{
-									const msg = "The CORS policy for this node does not allow access from the specified Origin.";
-									return callback(new Error(msg), false);
-								}
-								return callback(null, true);
-							}
+            cors({
+                origin: (origin, callback) => {
+                    if (
+                        !origin ||
+                        (Array.isArray(corsOrigin) &&
+                            corsOrigin.indexOf(origin) === -1) ||
+                        (!Array.isArray(corsOrigin) && corsOrigin !== origin)
+                    ) {
+                        const msg =
+                            "The CORS policy for this node does not allow access from the specified Origin.";
+                        return callback(new Error(msg), false);
+                    }
+                    return callback(null, true);
+                }
             }),
             json({
                 limit: "1mb"
@@ -142,7 +146,7 @@ export default class Http {
         );
         const resourceLocation = path.resolve(
             this.options.storageLocation,
-            "content",
+            `content-${this.options.ethNetworkId}/dats`,
             contentRelativePath
         );
         Promise.resolve()

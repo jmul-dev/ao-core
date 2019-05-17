@@ -88,6 +88,7 @@ export default abstract class AOContent {
     public static Types = AOContentTypes;
     public static States = AOContentState;
     public id: string;
+    public ethNetworkId: string;
     public contentHostId?: string;
     public state: string;
     public stakeId: string;
@@ -178,6 +179,7 @@ export default abstract class AOContent {
         const keys = Object.keys(object);
         const minRequiredFields = [
             "id",
+            "ethNetworkId",
             "metadataDatKey",
             "stakeId",
             "creatorNodePublicKey",
@@ -201,19 +203,26 @@ export default abstract class AOContent {
     }
 
     public getFilePath(): string {
-        return path.join("content", this.fileDatKey, this.fileName);
+        return path.join(
+            `content-${this.ethNetworkId}/dats`,
+            this.fileDatKey,
+            this.fileName
+        );
     }
 
     public getFileFolderPath(): string {
-        return path.join("content", this.fileDatKey);
+        return path.join(`content-${this.ethNetworkId}/dats`, this.fileDatKey);
     }
 
     public getMetadataFolderPath(): string {
-        return path.join("content", this.metadataDatKey);
+        return path.join(
+            `content-${this.ethNetworkId}/dats`,
+            this.metadataDatKey
+        );
     }
 
     public getTempFolderPath(): string {
-        return path.join("content", "tmp", this.id); //Note, content is included here since dat works only inside of the content dir
+        return path.join(`content-${this.ethNetworkId}`, "tmp", this.id); //Note, content is included here since dat works only inside of the content dir
     }
 
     //This one is aware of the Dat context and won't add 'content'

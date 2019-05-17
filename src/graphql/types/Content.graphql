@@ -79,6 +79,7 @@ type NetworkContentHostEntry {
 # Keep AOContent.ts up to date with this
 interface IContent {
     id: ID!
+    ethNetworkId: String!
     contentHostId: ID
     state: ContentState!
     stakeId: ID
@@ -146,6 +147,7 @@ input ContentSubmissionInputs {
 #
 type VideoContent implements IContent {
     id: ID!
+    ethNetworkId: String!
     contentHostId: ID
     state: ContentState!
     stakeId: ID
@@ -200,6 +202,7 @@ type VideoContent implements IContent {
 #
 type DappContent implements IContent {
     id: ID!
+    ethNetworkId: String!
     contentHostId: ID
     state: ContentState!
     stakeId: ID
@@ -253,8 +256,9 @@ type DappContent implements IContent {
 #
 # ContentType === DAPP
 #
-type PdfContent implements IContent {
+type PdfContent implements IContent {    
     id: ID!
+    ethNetworkId: String!
     contentHostId: ID
     state: ContentState!
     stakeId: ID

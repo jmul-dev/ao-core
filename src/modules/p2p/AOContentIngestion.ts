@@ -28,13 +28,14 @@ export default class AOContentIngestion extends EventEmitter {
     public static Events = {
         CONTENT_INGESTED: "content:ingested"
     };
+    private ethNetworkId: string;
     private router: AORouterInterface;
     private processingQueue: IQueue;
     private datKeysInQueue: {
         [key: string]: boolean;
     } = {};
 
-    constructor(router: AORouterInterface) {
+    constructor(router: AORouterInterface, ethNetworkId: string) {
         super();
         this.router = router;
         // @ts-ignore Types not up to date
@@ -121,7 +122,7 @@ export default class AOContentIngestion extends EventEmitter {
                         .then((downloadResponse: IAORouterMessage) => {
                             const readContentJson: IAOFS_Read_Data = {
                                 readPath: path.join(
-                                    "content",
+                                    `content-${this.ethNetworkId}/dats`,
                                     metadataDatKey,
                                     "content.json"
                                 )
