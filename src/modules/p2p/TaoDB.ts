@@ -132,7 +132,9 @@ export default class TaoDB extends TAODBWrapper {
         const hashArgs = [
             {
                 type: "address",
-                value: this.taodb.namePublicKey._address
+                value:
+                    this.taodb.namePublicKey.address ||
+                    this.taodb.namePublicKey._address
             },
             {
                 type: "address",
@@ -147,6 +149,7 @@ export default class TaoDB extends TAODBWrapper {
                 value: nonce
             }
         ];
+        debug(hashArgs);
         const signHash = EthCrypto.hash.keccak256(hashArgs);
         return Promise.resolve(
             EthCrypto.sign(this._userIdentity.privateKey, signHash)

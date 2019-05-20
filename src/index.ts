@@ -503,7 +503,7 @@ export default class Core extends EventEmitter {
                 debugLog(`WARNING, HARDCODED TAODB KEY!`);
                 debugLog(`taodb key found in contracts: ${taoDbKey}`);
                 taoDbKey =
-                    "4eaad557aa7e0e5f543232ffb466dd10cb16381be5596f93bca87af683329b8c";
+                    "47cee873f7773baa1f7dcd0b08c15fbfdb2966fab8add95d59aed4fd193ce9d2";
                 debugLog(`taodb key override: ${taoDbKey}`);
 
                 // 2. Spin up p2p module with the fetched taoDbKey
