@@ -442,7 +442,7 @@ export default (
                     ]);
                 }
             )
-            .then(() => {
+            .then(async () => {
                 // 10. We made it!
                 debug(`Content succesfully uploaded!`);
                 resolve(contentJson);
@@ -456,10 +456,24 @@ export default (
                     userId: context.userSession.ethAddress
                 });
                 try {
-                    fs.remove(contentTempPath);
-                    fs.remove(metadataTempPath);
+                    await fs.remove(
+                        path.join(
+                            context.options.storageLocation,
+                            contentTempPath
+                        )
+                    );
                 } catch (error) {
-                    debug(`Error removing temp content paths`, error);
+                    debug(`Error removing temp content path`, error);
+                }
+                try {
+                    await fs.remove(
+                        path.join(
+                            context.options.storageLocation,
+                            metadataTempPath
+                        )
+                    );
+                } catch (error) {
+                    debug(`Error removing temp metadata path`, error);
                 }
             })
             .catch((error: Error) => {
