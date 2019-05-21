@@ -76,7 +76,7 @@ describe("AO Dat module", () => {
                     fs.existsSync(
                         path.join(
                             tmpDir,
-                            "content-4/dats",
+                            "content-4",
                             reachableDatKey,
                             expectedFile
                         )

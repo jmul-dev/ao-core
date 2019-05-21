@@ -105,10 +105,10 @@ export default class AODat extends AORouterInterface {
             await fsExtra.ensureDir(this.datSecretsDir);
             debug(`Dat directories exists, proceed to resume dats...`);
             this.datManager = new DatManager({
-                storagePath: this.datDir,
-                datStorageOptions: {
-                    secretDir: this.datSecretsDir
-                }
+                storagePath: this.datDir
+                // datStorageOptions: {
+                //     secretDir: this.datSecretsDir
+                // }
             });
             await this.datManager.resumeAll();
             request.respond({});
@@ -140,7 +140,12 @@ export default class AODat extends AORouterInterface {
                     ? srcDir
                     : path.join(this.storageLocation, srcDir);
             }
-            await archive.writeFileFromDisk(srcPath, "/");
+            await new Promise((resolve, reject) => {
+                archive.importFiles(srcPath, function(err) {
+                    if (err) reject();
+                    else resolve();
+                });
+            });
             request.respond({});
         } catch (error) {
             request.reject(error);
@@ -153,7 +158,7 @@ export default class AODat extends AORouterInterface {
             const archive: DatArchive = await this.datManager.get(
                 requestData.key
             );
-            const stats = archive.stats();
+            const stats = archive.getStats();
             request.respond(stats);
         } catch (error) {
             request.reject(error);
@@ -176,10 +181,10 @@ export default class AODat extends AORouterInterface {
         const requestData: AODat_Create_Data = request.data;
         try {
             const archive = await this.datManager.create(
-                requestData.initialImportDir
+                path.join(this.storageLocation, requestData.initialImportDir)
             );
             request.respond({
-                key: archive.key,
+                key: archive.key.toString("hex"),
                 dir: archive.getPath()
             });
         } catch (error) {
@@ -229,7 +234,7 @@ export default class AODat extends AORouterInterface {
                     }
                 );
                 request.respond({
-                    key: archive.key,
+                    key: archive.key.toString("hex"),
                     contentHostId: nodeEntry.contentHostId,
                     nodeEntry
                 });

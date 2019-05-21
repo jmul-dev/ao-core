@@ -204,21 +204,18 @@ export default abstract class AOContent {
 
     public getFilePath(): string {
         return path.join(
-            `content-${this.ethNetworkId}/dats`,
+            `content-${this.ethNetworkId}`,
             this.fileDatKey,
             this.fileName
         );
     }
 
     public getFileFolderPath(): string {
-        return path.join(`content-${this.ethNetworkId}/dats`, this.fileDatKey);
+        return path.join(`content-${this.ethNetworkId}`, this.fileDatKey);
     }
 
     public getMetadataFolderPath(): string {
-        return path.join(
-            `content-${this.ethNetworkId}/dats`,
-            this.metadataDatKey
-        );
+        return path.join(`content-${this.ethNetworkId}`, this.metadataDatKey);
     }
 
     public getTempFolderPath(): string {

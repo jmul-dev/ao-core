@@ -7,7 +7,8 @@ import {
     AODat_Create_Data,
     AODat_Encrypted_Download_Data,
     AODat_GetDatStats_Data,
-    DatStats
+    DatStats,
+    AODat_ImportSingle_Data
 } from "./modules/dat/dat";
 import {
     AODB_NetworkContentUpdate_Data,
@@ -1350,7 +1351,19 @@ export default class AOUserSession {
                                     updatedContent.toMetadataJson()
                                 )
                             };
-                            this.router.send("/fs/write", contentWriteData);
+                            this.router
+                                .send("/fs/write", contentWriteData)
+                                .then(() => {
+                                    // Need to run import to reflect these changes
+                                    const importMetadataDatData: AODat_ImportSingle_Data = {
+                                        key: updatedContent.id
+                                    };
+                                    this.router.send(
+                                        "/dat/importSingle",
+                                        importMetadataDatData
+                                    );
+                                })
+                                .catch(debug);
                             this.router.send("/db/logs/insert", {
                                 message: `${
                                     isStake ? "Staked" : "Hosted"
@@ -1404,7 +1417,7 @@ export default class AOUserSession {
                 }
             })
             .then(() => {
-                debug("Content dats resumed, adding content to discovery...");
+                debug(`[${content.id}] content registered with taodb`);
                 // 2. Add new discovery
                 const p2pAddDiscoveryData: AOP2P_Add_Discovery_Data = {
                     content
@@ -1415,7 +1428,7 @@ export default class AOUserSession {
                 );
             })
             .then((response: IAORouterMessage) => {
-                debug("Content has been added to discovery");
+                debug(`[${content.id}] content host registered with taodb`);
                 // 3. Update the content state (mark as Discoverable)
                 const contentUpdateQuery: AODB_UserContentUpdate_Data = {
                     id: content.id,

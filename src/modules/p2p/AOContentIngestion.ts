@@ -120,7 +120,7 @@ export default class AOContentIngestion extends EventEmitter {
                         .then((downloadResponse: IAORouterMessage) => {
                             const readContentJson: IAOFS_Read_Data = {
                                 readPath: path.join(
-                                    `content-${this.ethNetworkId}/dats`,
+                                    `content-${this.ethNetworkId}`,
                                     metadataDatKey,
                                     "content.json"
                                 )

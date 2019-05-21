@@ -146,7 +146,7 @@ export default class Http {
         );
         const resourceLocation = path.resolve(
             this.options.storageLocation,
-            `content-${this.options.ethNetworkId}/dats`,
+            `content-${this.options.ethNetworkId}`,
             contentRelativePath
         );
         Promise.resolve()

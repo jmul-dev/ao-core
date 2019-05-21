@@ -1,6 +1,9 @@
 import { IGraphqlResolverContext } from "../../http";
 import { IAORouterMessage } from "../../router/AORouter";
 import AOContent from "../../models/AOContent";
+import Debug from "../../AODebug";
+import { AODat_GetDatStats_Data } from "../../modules/dat/dat";
+const debug = Debug("ao:resolveDatStats");
 
 export default (
     obj: AOContent,
@@ -17,8 +20,12 @@ export default (
                 return resolve(null);
             }
         }
+        debug(`getDatStats:`, datKey);
+        const statsParams: AODat_GetDatStats_Data = {
+            key: datKey
+        };
         context.router
-            .send("/dat/stats", { key: datKey }, { ignoreLogging: true })
+            .send("/dat/stats", statsParams, { ignoreLogging: true })
             .then((response: IAORouterMessage) => {
                 const stats = response.data;
                 if (!stats) return resolve(null);
@@ -43,6 +50,7 @@ export default (
                 });
             })
             .catch(err => {
+                debug(err);
                 // In case the dat does not exist yet for whatever reason
                 resolve(null);
             });

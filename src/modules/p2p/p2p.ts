@@ -286,6 +286,7 @@ export default class AOP2P extends AORouterInterface {
 
     _runDiscovery(): Promise<any> {
         debug(`running discovery...`);
+        return Promise.resolve();
         return Promise.resolve()
             .then(() => {
                 if (this.discoveryRunning) {
