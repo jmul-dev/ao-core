@@ -20,7 +20,7 @@ export default (
                 return resolve(null);
             }
         }
-        debug(`getDatStats:`, datKey);
+        if (!datKey) return resolve(null);
         const statsParams: AODat_GetDatStats_Data = {
             key: datKey
         };
@@ -50,7 +50,7 @@ export default (
                 });
             })
             .catch(err => {
-                debug(err);
+                debug(`[${datKey}] failed to get stats: ${err.message}`);
                 // In case the dat does not exist yet for whatever reason
                 resolve(null);
             });

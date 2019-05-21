@@ -222,16 +222,11 @@ export default class AOContentIngestion extends EventEmitter {
                                 });
                         })
                         .catch(error => {
-                            if (error.name === "TimeoutError") {
-                                debug(
-                                    `[${metadataDatKey}] network content download timed out`
-                                );
-                            } else {
-                                debug(
-                                    `[${metadataDatKey}] failed to download metadata dat file`,
-                                    error
-                                );
-                            }
+                            debug(
+                                `[${metadataDatKey}] failed to download metadata dat file, ${
+                                    error.message
+                                }`
+                            );
                             resolve();
                         });
                 })

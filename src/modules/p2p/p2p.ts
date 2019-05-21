@@ -221,7 +221,7 @@ export default class AOP2P extends AORouterInterface {
                     this.discoveryRunning = false;
                     debug(`error running initial discovery:`, err);
                 });
-        }, 3000);
+        }, 5000);
     }
 
     _watchDiscovery(): Promise<any> {
@@ -284,6 +284,10 @@ export default class AOP2P extends AORouterInterface {
         });
     }
 
+    /**
+     * TODO: ideally we would create a read stream on the taodb append only log
+     * with live: true and interpret those as they come in.
+     */
     _runDiscovery(): Promise<any> {
         debug(`running discovery...`);
         return Promise.resolve()
@@ -351,8 +355,16 @@ export default class AOP2P extends AORouterInterface {
                     this.router
                         .send("/db/network/content/get", networkContentQuery)
                         .then((networkContentResponse: IAORouterMessage) => {
+                            const networkData =
+                                networkContentResponse.data || [];
+                            if (!Array.isArray(networkData))
+                                return localReject(
+                                    new Error(
+                                        `invalid network content response, not an array`
+                                    )
+                                );
                             localResolve({
-                                contentKeysAlreadyDiscovered: networkContentResponse.data
+                                contentKeysAlreadyDiscovered: networkData
                                     .filter(
                                         entry => entry.status === "imported"
                                     )

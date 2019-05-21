@@ -640,6 +640,7 @@ export default class AODB extends AORouterInterface {
             if (error) {
                 request.reject(error);
             } else {
+                if (!Array.isArray(results)) results = [];
                 if (requestData.fuzzyQuery) {
                     const fuseOptions = {
                         shouldSort: true,
