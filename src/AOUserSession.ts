@@ -1222,7 +1222,7 @@ export default class AOUserSession {
         try {
             // 1. Initialize the new Dat, importing content created during encryption process
             const createDatData: AODat_Create_Data = {
-                initialImportDir: content.getDatTempFolderPath() //Contextually aware of the dat's constraints to 'content' path
+                initialImportDir: content.getTempFolderPath() //Contextually aware of the dat's constraints to 'content' path
             };
             const createResponse: IAORouterMessage = await this.router.send(
                 "/dat/create",

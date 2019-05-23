@@ -490,9 +490,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
                         registryEntry.AO.activationEvents.length === 0
                     ) {
                         spawns.push(() =>
-                            this.spawnProcessForEntry(registryEntry, {
-                                inspectPort: 9229 + index
-                            })
+                            this.spawnProcessForEntry(registryEntry)
                         );
                     }
                 }
@@ -547,7 +545,7 @@ export default class AORouter extends AORouterCoreProcessInterface {
 
     private spawnProcessForEntry(
         entry: IRegistryEntry,
-        options?: { isActivationEvent?: boolean; inspectPort?: number }
+        options?: { isActivationEvent?: boolean }
     ): Promise<ChildProcess | null> {
         return new Promise((resolve, reject) => {
             let processLocation = path.join(__dirname, "..", entry.bin);

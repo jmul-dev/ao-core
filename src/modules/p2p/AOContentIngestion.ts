@@ -41,7 +41,7 @@ export default class AOContentIngestion extends EventEmitter {
         this.ethNetworkId = ethNetworkId;
         // @ts-ignore Types not up to date
         this.processingQueue = queue({
-            concurrency: 3,
+            concurrency: 4,
             autostart: true,
             timeout: 2 * 60000 // 2 min timeout to avoid freezing up the queue
         });
