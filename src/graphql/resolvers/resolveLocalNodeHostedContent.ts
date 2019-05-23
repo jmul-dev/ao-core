@@ -87,7 +87,9 @@ export default (
                     keys
                 };
                 context.router
-                    .send("/dat/statsMultiple", statsArgs)
+                    .send("/dat/statsMultiple", statsArgs, {
+                        ignoreLogging: true
+                    })
                     .then((response: IAORouterMessage) => {
                         const stats = response.data;
                         userContent = userContent.map(content => {
