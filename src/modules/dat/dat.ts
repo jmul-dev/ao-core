@@ -223,7 +223,6 @@ export default class AODat extends AORouterInterface {
     private async _handleEncryptedFileDownload(request: IAORouterRequest) {
         const requestData: AODat_Encrypted_Download_Data = request.data;
         const nodes: Array<NetworkContentHostEntry> = requestData.nodes;
-        debug(``);
         for (let i = 0; i < nodes.length; i++) {
             const nodeEntry: NetworkContentHostEntry = nodes[i];
             try {
@@ -236,7 +235,11 @@ export default class AODat extends AORouterInterface {
                 request.respond({
                     key: archive.key.toString("hex"),
                     contentHostId: nodeEntry.contentHostId,
-                    nodeEntry
+                    nodeEntry,
+                    datEntry: {
+                        complete: archive.getProgress() === 1,
+                        key: archive.key.toString("hex")
+                    }
                 });
                 return;
             } catch (error) {
