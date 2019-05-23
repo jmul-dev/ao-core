@@ -277,11 +277,6 @@ export default abstract class AOContent {
         let json = Object.assign({}, this);
         return json;
     }
-
-    public get metadataDatStats() {
-        // TODO: see resolveDatStats
-        return undefined;
-    }
 }
 
 export class AOVideoContent extends AOContent {

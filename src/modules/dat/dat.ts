@@ -37,6 +37,9 @@ export interface AODat_Check_Data {
 export interface AODat_GetDatStats_Data {
     key: string;
 }
+export interface AODat_GetMultipleDatStats_Data {
+    keys: Array<string>;
+}
 
 export interface AODat_Encrypted_Download_Data {
     nodes: Array<NetworkContentHostEntry>;
@@ -88,6 +91,10 @@ export default class AODat extends AORouterInterface {
         );
         this.router.on("/dat/exists", this._handleDatExists.bind(this));
         this.router.on("/dat/stats", this._handleGetDatStats.bind(this));
+        this.router.on(
+            "/dat/statsMultiple",
+            this._handleGetMultipleDatStats.bind(this)
+        );
         setInterval(() => {}, 1 << 30); // slight hack to prevent event loop from ending
         debug(`started`);
     }
@@ -161,8 +168,31 @@ export default class AODat extends AORouterInterface {
             const stats = archive.getStats();
             request.respond(stats);
         } catch (error) {
+            debug(
+                `[${requestData.key}] error fetching archive stats: ${
+                    error.message
+                }`
+            );
             request.reject(error);
         }
+    }
+
+    private async _handleGetMultipleDatStats(request: IAORouterRequest) {
+        const requestData: AODat_GetMultipleDatStats_Data = request.data;
+        const keys = requestData ? requestData.keys : [];
+        let stats = {};
+
+        for (let i = 0; i < keys.length; i++) {
+            const datKey = keys[i];
+            try {
+                const archive: DatArchive = await this.datManager.get(datKey);
+                stats[datKey] = archive.getStats();
+            } catch (error) {
+                debug(`[${datKey}] error in getStats: ${error.message}`);
+                stats[datKey] = null;
+            }
+        }
+        request.respond(stats);
     }
 
     private async _handleDatStopAll(request: IAORouterRequest) {

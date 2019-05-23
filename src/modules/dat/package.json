@@ -15,6 +15,7 @@
             "/dat/remove",
             "/dat/exists",
             "/dat/stats",
+            "/dat/statsMultiple",
             "/dat/download",
             "/dat/encryptedFileDownload"
         ],
