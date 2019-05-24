@@ -27,6 +27,15 @@ export default (
                     imageString: response.data
                 });
             })
-            .catch(reject);
+            .catch(error => {
+                if (error.message === "null rejection") {
+                    resolve({
+                        nameId: args.nameId,
+                        imageString: null
+                    });
+                } else {
+                    reject(error);
+                }
+            });
     });
 };

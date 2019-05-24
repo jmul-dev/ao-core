@@ -382,7 +382,9 @@ export interface SerializedError {
     stack: string;
 }
 
-export function serializeError(error?: Error): SerializedError {
+export function serializeError(
+    error: Error | string = "null rejection"
+): SerializedError {
     let err = error instanceof Error ? error : new Error(error);
     return {
         type: "__error",
