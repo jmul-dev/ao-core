@@ -514,7 +514,7 @@ export default class AOP2P extends AORouterInterface {
                         content.title
                     }]->[${buyersPublicKey}] _handleWatchAndGetIndexData did not find index data on first try, watching...`
                 );
-                const watcher = this.taodb.taodb.watch(indexDataKey);
+                const watcher = this.taodb.watcher(indexDataKey);
                 return Promise.resolve(watcher);
             })
             .then(watcher => {
