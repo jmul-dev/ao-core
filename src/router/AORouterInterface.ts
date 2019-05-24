@@ -385,7 +385,10 @@ export interface SerializedError {
 export function serializeError(
     error: Error | string = "null rejection"
 ): SerializedError {
-    let err = error instanceof Error ? error : new Error(error);
+    let err = error instanceof Error ? error : new Error();
+    if (!(error instanceof Error)) {
+        err.message = error || "null rejection";
+    }
     return {
         type: "__error",
         name: err.name,
