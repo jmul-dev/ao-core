@@ -3,7 +3,6 @@ import md5 from "md5";
 import path from "path";
 import { IGraphqlResolverContext } from "../../http";
 import AOContent, {
-    AOContentState,
     AOContentType,
     AOContentLicense,
     AODappContent,
@@ -15,7 +14,6 @@ import {
 } from "../../modules/dat/dat";
 import {
     IAOFS_Mkdir_Data,
-    IAOFS_Move_Data,
     IAOFS_WriteStream_Data,
     IAOFS_Write_Data,
     IAOFS_CheckZipFormIndex_Data
@@ -25,6 +23,7 @@ import { ReadStream } from "fs";
 import archiver from "archiver";
 import os from "os";
 import fs from "fs-extra";
+import validator from "../../AOValidation";
 const debug = Debug("ao:graphql:submitContent");
 
 export interface ISubmitContent_Args {
@@ -83,6 +82,41 @@ export default (
         const metadataFileFields = ["featuredImage", "videoTeaser"];
 
         Promise.resolve()
+            .then(() => {
+                // 0. input validation
+                if (!validator.isEthAddress(contentJson.creatorEthAddress))
+                    throw new Error(
+                        `Invalid creator eth address given: ${
+                            contentJson.creatorEthAddress
+                        }`
+                    );
+                if (!validator.isLength(contentJson.title, { min: 6, max: 64 }))
+                    throw new Error(
+                        `Content title must be within 6-64 characters in length`
+                    );
+                if (
+                    !validator.isLength(contentJson.description, {
+                        min: 1,
+                        max: 1024
+                    })
+                )
+                    throw new Error(
+                        `Content description is required and must be less than 1024 characters in length`
+                    );
+                if (!validator.isValidContentType(contentJson.contentType))
+                    throw new Error(`Invalid content type`);
+                if (
+                    !validator.isValidContentLicense(contentJson.contentLicense)
+                )
+                    throw new Error(`Invalid content license`);
+                if (
+                    !contentJson.creatorNameId ||
+                    !contentJson.creatorNodePublicKey
+                )
+                    throw new Error(
+                        `Missing local identity or creator name id`
+                    );
+            })
             .then(() => {
                 // 1. Ensure directories exist before writing content
                 debug(`Beginning upload process...`);

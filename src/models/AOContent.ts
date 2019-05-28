@@ -30,6 +30,12 @@ export const AOContentTypes = Object.freeze({
     DAPP: "DAPP"
 });
 
+export const AOContentLicenses = Object.freeze({
+    AO: "AO",
+    TAO: "TAO",
+    CC: "CC"
+});
+
 const AOContentStateOrdered = [
     AOContentState.DISCOVERED,
     AOContentState.HOST_DISCOVERY,
@@ -87,6 +93,7 @@ export function getListOfContentIncompleteStates() {
 export default abstract class AOContent {
     public static Types = AOContentTypes;
     public static States = AOContentState;
+    public static Licenses = AOContentLicenses;
     public id: string;
     public ethNetworkId: string;
     public contentHostId?: string;
