@@ -90,7 +90,7 @@ export default (
                             contentJson.creatorEthAddress
                         }`
                     );
-                if (!validator.isLength(contentJson.title, { min: 6, max: 64 }))
+                if (!validator.isLength(contentJson.title, { min: 1, max: 64 }))
                     throw new Error(
                         `Content title must be within 6-64 characters in length`
                     );
