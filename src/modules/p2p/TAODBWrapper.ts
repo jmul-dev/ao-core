@@ -93,10 +93,8 @@ export default class TAODBWrapper {
                         );
                         this.swarm = swarm(this.taodb, {
                             dht: false,
-                            hash: false,
                             utp: false,
-                            tcp: true,
-                            port: "0" // Force a random open port!
+                            tcp: true
                         });
                         this.connectionStatus = "CONNECTED";
                         debug(`taodb ready`);
