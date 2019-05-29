@@ -99,6 +99,7 @@ export default class AOP2P extends AORouterInterface {
     private storageLocation: string;
     private contentIngestion: AOContentIngestion;
     private contentHostsUpdater: AOContentHostsUpdater;
+    private ethNetworkId: string;
 
     constructor(args: AORouterSubprocessArgs) {
         super({ ...args, debug });
@@ -107,13 +108,6 @@ export default class AOP2P extends AORouterInterface {
         this.contentHostsUpdater = new AOContentHostsUpdater(
             this.router,
             this._getContentHostsFormatted.bind(this)
-        );
-        this.contentIngestion = new AOContentIngestion(this.router);
-        this.contentIngestion.on(
-            AOContentIngestion.Events.CONTENT_INGESTED,
-            metadataDatKey => {
-                this.contentHostsUpdater.addContentKeyToQueue(metadataDatKey);
-            }
         );
 
         this.router.on("/p2p/init", this._init.bind(this));
@@ -157,6 +151,7 @@ export default class AOP2P extends AORouterInterface {
 
     _init(request: IAORouterRequest) {
         const { dbKey, dbPath, ethNetworkId }: AOP2P_Init_Data = request.data;
+        this.ethNetworkId = ethNetworkId;
         let resolvedDbPath: Function | string;
         Promise.resolve()
             .then(() => {
@@ -175,6 +170,21 @@ export default class AOP2P extends AORouterInterface {
                     };
                     return this.router.send("/fs/mkdir", ensureP2PPathData);
                 }
+            })
+            .then(() => {
+                // Content ingestion
+                this.contentIngestion = new AOContentIngestion(
+                    this.router,
+                    ethNetworkId
+                );
+                this.contentIngestion.on(
+                    AOContentIngestion.Events.CONTENT_INGESTED,
+                    metadataDatKey => {
+                        this.contentHostsUpdater.addContentKeyToQueue(
+                            metadataDatKey
+                        );
+                    }
+                );
             })
             .then(() => {
                 debug(`Attempting to spin up taodb...`);
@@ -211,7 +221,7 @@ export default class AOP2P extends AORouterInterface {
                     this.discoveryRunning = false;
                     debug(`error running initial discovery:`, err);
                 });
-        }, 3000);
+        }, 5000);
     }
 
     _watchDiscovery(): Promise<any> {
@@ -274,6 +284,10 @@ export default class AOP2P extends AORouterInterface {
         });
     }
 
+    /**
+     * TODO: ideally we would create a read stream on the taodb append only log
+     * with live: true and interpret those as they come in.
+     */
     _runDiscovery(): Promise<any> {
         debug(`running discovery...`);
         return Promise.resolve()
@@ -309,7 +323,7 @@ export default class AOP2P extends AORouterInterface {
                 const contentListPromises = contentTypes.map(contentType => {
                     return this.taodb.list(
                         `${TaoDB.ContentKey}/${contentType}/`,
-                        { recursive: false, reverse: false }
+                        { recursive: false, reverse: true }
                     );
                 });
                 return Promise.all(contentListPromises);
@@ -341,8 +355,16 @@ export default class AOP2P extends AORouterInterface {
                     this.router
                         .send("/db/network/content/get", networkContentQuery)
                         .then((networkContentResponse: IAORouterMessage) => {
+                            const networkData =
+                                networkContentResponse.data || [];
+                            if (!Array.isArray(networkData))
+                                return localReject(
+                                    new Error(
+                                        `invalid network content response, not an array`
+                                    )
+                                );
                             localResolve({
-                                contentKeysAlreadyDiscovered: networkContentResponse.data
+                                contentKeysAlreadyDiscovered: networkData
                                     .filter(
                                         entry => entry.status === "imported"
                                     )
@@ -492,7 +514,7 @@ export default class AOP2P extends AORouterInterface {
                         content.title
                     }]->[${buyersPublicKey}] _handleWatchAndGetIndexData did not find index data on first try, watching...`
                 );
-                const watcher = this.taodb.taodb.watch(indexDataKey);
+                const watcher = this.taodb.watcher(indexDataKey);
                 return Promise.resolve(watcher);
             })
             .then(watcher => {

@@ -91,7 +91,13 @@ export default class TAODBWrapper {
                         await this.taodb.setNetworkId(
                             parseInt(args.ethNetworkId)
                         );
-                        this.swarm = swarm(this.taodb);
+                        this.swarm = swarm(this.taodb, {
+                            dht: false,
+                            hash: false,
+                            utp: false,
+                            tcp: true,
+                            port: "0" // Force a random open port!
+                        });
                         this.connectionStatus = "CONNECTED";
                         debug(`taodb ready`);
                         resolve(this.dbKey);

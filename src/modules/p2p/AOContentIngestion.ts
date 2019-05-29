@@ -28,23 +28,22 @@ export default class AOContentIngestion extends EventEmitter {
     public static Events = {
         CONTENT_INGESTED: "content:ingested"
     };
+    private ethNetworkId: string;
     private router: AORouterInterface;
     private processingQueue: IQueue;
     private datKeysInQueue: {
         [key: string]: boolean;
     } = {};
 
-    constructor(router: AORouterInterface) {
+    constructor(router: AORouterInterface, ethNetworkId: string) {
         super();
         this.router = router;
+        this.ethNetworkId = ethNetworkId;
         // @ts-ignore Types not up to date
         this.processingQueue = queue({
-            concurrency: 3,
+            concurrency: 4,
             autostart: true,
             timeout: 2 * 60000 // 2 min timeout to avoid freezing up the queue
-        });
-        this.processingQueue.on("end", err => {
-            debug(`processing key end event`, err);
         });
     }
 
@@ -114,15 +113,14 @@ export default class AOContentIngestion extends EventEmitter {
                     }
                     // 2b. Download the dat file
                     const datDownloadParams: AODat_Download_Data = {
-                        key: metadataDatKey,
-                        resolveOnDownloadCompletion: true
+                        key: metadataDatKey
                     };
                     this.router
                         .send("/dat/download", datDownloadParams)
                         .then((downloadResponse: IAORouterMessage) => {
                             const readContentJson: IAOFS_Read_Data = {
                                 readPath: path.join(
-                                    "content",
+                                    `content-${this.ethNetworkId}`,
                                     metadataDatKey,
                                     "content.json"
                                 )
@@ -131,6 +129,7 @@ export default class AOContentIngestion extends EventEmitter {
                             this.router
                                 .send("/fs/read", readContentJson)
                                 .then((readResponse: IAORouterMessage) => {
+                                    let incrementUpdate = {};
                                     let networkContent: AONetworkContent = {
                                         _id: metadataDatKey,
                                         status: "failed"
@@ -165,13 +164,16 @@ export default class AOContentIngestion extends EventEmitter {
                                                 key: metadataDatKey
                                             })
                                             .catch(debug);
-                                        networkContent["$inc"] = {
+                                        incrementUpdate = {
                                             importAttempts: 1
                                         };
                                     } finally {
                                         // 4. Insert into network content db, marked as failed or imported
                                         const updateArgs: AODB_NetworkContentUpdate_Data = {
-                                            update: networkContent,
+                                            update: {
+                                                $set: networkContent,
+                                                $inc: incrementUpdate
+                                            },
                                             id: metadataDatKey
                                         };
                                         this.router
@@ -185,7 +187,7 @@ export default class AOContentIngestion extends EventEmitter {
                                                     "imported"
                                                 ) {
                                                     debug(
-                                                        `[${metadataDatKey}] succesfully imported network content, adding to hosts updater queue`
+                                                        `[${metadataDatKey}] network content imported, adding to hosts updater queue`
                                                     );
                                                     this.emit(
                                                         AOContentIngestion
@@ -213,7 +215,7 @@ export default class AOContentIngestion extends EventEmitter {
                                             );
                                         });
                                     debug(
-                                        `[${metadataDatKey}] unable to add network content, failed to read content.json file.`,
+                                        `[${metadataDatKey}] failed to read content.json file.`,
                                         error
                                     );
                                     resolve(true);
@@ -221,15 +223,16 @@ export default class AOContentIngestion extends EventEmitter {
                         })
                         .catch(error => {
                             debug(
-                                `[${metadataDatKey}] unable to add network content, failed to download metadata dat file.`,
-                                error
+                                `[${metadataDatKey}] failed to download metadata dat file, ${
+                                    error.message
+                                }`
                             );
                             resolve();
                         });
                 })
                 .catch(error => {
                     debug(
-                        `[${metadataDatKey}] unable to add network content, failed to get network content.`,
+                        `[${metadataDatKey}] failed to get network content.`,
                         error
                     );
                     resolve();

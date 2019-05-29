@@ -30,6 +30,12 @@ export const AOContentTypes = Object.freeze({
     DAPP: "DAPP"
 });
 
+export const AOContentLicenses = Object.freeze({
+    AO: "AO",
+    TAO: "TAO",
+    CC: "CC"
+});
+
 const AOContentStateOrdered = [
     AOContentState.DISCOVERED,
     AOContentState.HOST_DISCOVERY,
@@ -87,7 +93,9 @@ export function getListOfContentIncompleteStates() {
 export default abstract class AOContent {
     public static Types = AOContentTypes;
     public static States = AOContentState;
+    public static Licenses = AOContentLicenses;
     public id: string;
+    public ethNetworkId: string;
     public contentHostId?: string;
     public state: string;
     public stakeId: string;
@@ -178,6 +186,7 @@ export default abstract class AOContent {
         const keys = Object.keys(object);
         const minRequiredFields = [
             "id",
+            "ethNetworkId",
             "metadataDatKey",
             "stakeId",
             "creatorNodePublicKey",
@@ -201,24 +210,23 @@ export default abstract class AOContent {
     }
 
     public getFilePath(): string {
-        return path.join("content", this.fileDatKey, this.fileName);
+        return path.join(
+            `content-${this.ethNetworkId}`,
+            this.fileDatKey,
+            this.fileName
+        );
     }
 
     public getFileFolderPath(): string {
-        return path.join("content", this.fileDatKey);
+        return path.join(`content-${this.ethNetworkId}`, this.fileDatKey);
     }
 
     public getMetadataFolderPath(): string {
-        return path.join("content", this.metadataDatKey);
+        return path.join(`content-${this.ethNetworkId}`, this.metadataDatKey);
     }
 
     public getTempFolderPath(): string {
-        return path.join("content", "tmp", this.id); //Note, content is included here since dat works only inside of the content dir
-    }
-
-    //This one is aware of the Dat context and won't add 'content'
-    public getDatTempFolderPath(): string {
-        return path.join("tmp", this.id);
+        return path.join(`content-${this.ethNetworkId}`, "tmp", this.id); //Note, content is included here since dat works only inside of the content dir
     }
 
     /**
@@ -230,6 +238,7 @@ export default abstract class AOContent {
     public toMetadataJson() {
         const metadataJsonKeys = [
             "id",
+            "ethNetworkId",
             "metadataDatKey",
             "stakeId",
             "creatorNodePublicKey",
@@ -274,11 +283,6 @@ export default abstract class AOContent {
     public toRawJson() {
         let json = Object.assign({}, this);
         return json;
-    }
-
-    public get metadataDatStats() {
-        // TODO: see resolveDatStats
-        return undefined;
     }
 }
 

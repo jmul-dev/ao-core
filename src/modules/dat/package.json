@@ -9,13 +9,13 @@
     "AO": {
         "events": [
             "/dat/init",
-            "/dat/resumeSingle",
             "/dat/importSingle",
             "/dat/stopAll",
             "/dat/create",
             "/dat/remove",
             "/dat/exists",
             "/dat/stats",
+            "/dat/statsMultiple",
             "/dat/download",
             "/dat/encryptedFileDownload"
         ],

@@ -30,20 +30,23 @@ enum ContentState {
 }
 
 type DatStats {
-    files: Int
-    byteLength: Int
-    length: Int
-    downloaded: Int
+    key: String
+    writer: Boolean
     version: Int
-    downloadSpeed: Float
-    uploadSpeed: Float
-    downloadTotal: Float
-    uploadTotal: Float
-    peersTotal: Int
-    peersComplete: Int
-    complete: Boolean
-    joinedNetwork: Boolean
+    files: Int
+    blocksDownloaded: Int
+    blocksLength: Int
+    byteLength: Int
+    progress: Float
+    # Network
     connected: Boolean
+    downloadSpeed: Float
+    downloadTotal: Float
+    uploadSpeed: Float    
+    uploadTotal: Float
+    # Peers
+    peersTotal: Int
+    peersComplete: Int    
 }
 
 type ContentTransactions {
@@ -79,6 +82,7 @@ type NetworkContentHostEntry {
 # Keep AOContent.ts up to date with this
 interface IContent {
     id: ID!
+    ethNetworkId: String!
     contentHostId: ID
     state: ContentState!
     stakeId: ID
@@ -146,6 +150,7 @@ input ContentSubmissionInputs {
 #
 type VideoContent implements IContent {
     id: ID!
+    ethNetworkId: String!
     contentHostId: ID
     state: ContentState!
     stakeId: ID
@@ -200,6 +205,7 @@ type VideoContent implements IContent {
 #
 type DappContent implements IContent {
     id: ID!
+    ethNetworkId: String!
     contentHostId: ID
     state: ContentState!
     stakeId: ID
@@ -253,8 +259,9 @@ type DappContent implements IContent {
 #
 # ContentType === DAPP
 #
-type PdfContent implements IContent {
+type PdfContent implements IContent {    
     id: ID!
+    ethNetworkId: String!
     contentHostId: ID
     state: ContentState!
     stakeId: ID

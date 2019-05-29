@@ -7,9 +7,8 @@ import {
     AODat_Create_Data,
     AODat_Encrypted_Download_Data,
     AODat_GetDatStats_Data,
-    AODat_ImportSingle_Data,
-    AODat_ResumeSingle_Data,
-    DatStats
+    DatStats,
+    AODat_ImportSingle_Data
 } from "./modules/dat/dat";
 import {
     AODB_NetworkContentUpdate_Data,
@@ -26,7 +25,6 @@ import {
 import {
     IAOFS_DecryptCheck_Data,
     IAOFS_Mkdir_Data,
-    IAOFS_Move_Data,
     IAOFS_Reencrypt_Data,
     IAOFS_Unlink_Data,
     IAOFS_UnzipFile_Data,
@@ -34,12 +32,12 @@ import {
 } from "./modules/fs/fs";
 import {
     AOP2P_Add_Discovery_Data,
+    AOP2P_ContentRegistration_Data,
     AOP2P_GetContentHosts_Data,
     AOP2P_Update_Node_Timestamp_Data,
     AOP2P_Watch_AND_Get_IndexData_Data,
     AOP2P_Write_Decryption_Key_Data,
-    NetworkContentHostEntry,
-    AOP2P_ContentRegistration_Data
+    NetworkContentHostEntry
 } from "./modules/p2p/p2p";
 import { ITaoDB_ContentHost_IndexData_Entry } from "./modules/p2p/TaoDB";
 import { IAORouterMessage } from "./router/AORouter";
@@ -350,12 +348,8 @@ export default class AOUserSession {
             return null; // sanity check
         // Read in the decrypted content
         const unzipArgs: IAOFS_UnzipFile_Data = {
-            readPath: path.join(
-                "content",
-                content.fileDatKey,
-                content.fileName
-            ),
-            writePath: path.join("content", content.fileDatKey, "unpacked"),
+            readPath: content.getFilePath(),
+            writePath: path.join(content.getFileFolderPath(), "unpacked"),
             key: content.decryptionKey
         };
         this.router
@@ -1222,63 +1216,51 @@ export default class AOUserSession {
      *
      * @param {AOContent} content
      */
-    private _handleContentEncrypted(content: AOContent) {
+    private async _handleContentEncrypted(content: AOContent) {
         const sessionEthAddress = this.ethAddress;
         const sessionIdentity = this.identity;
-        // 1. Initialize the new Dat within our temp folder created during encryption process
-        const createDatData: AODat_Create_Data = {
-            newDatDir: content.getDatTempFolderPath() //Contextually aware of the dat's constraints to 'content' path
-        };
-        this.router
-            .send("/dat/create", createDatData)
-            .then((datCreateResponse: IAORouterMessage) => {
-                let newDatKey = datCreateResponse.data.key;
-                // 2. Move Dat to its final location within content directory
-                const moveNewDatData: IAOFS_Move_Data = {
-                    srcPath: content.getTempFolderPath(),
-                    destPath: path.join("content", newDatKey)
-                };
-                this.router
-                    .send("/fs/move", moveNewDatData)
-                    .then(() => {
-                        // 3. Resume the Dat (start hosting)
-                        const resumeDatData: AODat_ResumeSingle_Data = {
-                            key: newDatKey
-                        };
-                        this.router.send("/dat/resumeSingle", resumeDatData);
-                        // 4. Store the newDatKey
-                        let contentUpdateQuery: AODB_UserContentUpdate_Data = {
-                            id: content.id,
-                            update: {
-                                $set: {
-                                    state: AOContentState.DAT_INITIALIZED,
-                                    fileDatKey: newDatKey,
-                                    // At this point the content is reencrypted and it is safe to update the content's node
-                                    nodePublicKey: sessionIdentity.publicKey,
-                                    nodeEthAddress: sessionEthAddress
-                                }
-                            }
-                        };
-                        this.router
-                            .send("/db/user/content/update", contentUpdateQuery)
-                            .then((contentUpdateResponse: IAORouterMessage) => {
-                                const updatedContent: AOContent = AOContent.fromObject(
-                                    contentUpdateResponse.data
-                                );
-                                // Handoff to next state handler
-                                this.processContent(updatedContent);
-                            })
-                            .catch(debug);
-                    })
-                    .catch(debug); // Move Dat Dir
-            })
-            .catch((error: Error) => {
-                debug(`Error creating Dat: ${error.message}`);
-                let removePathData: IAOFS_Unlink_Data = {
-                    removePath: path.join(content.getTempFolderPath(), ".dat")
-                };
-                this.router.send("/fs/unlink", removePathData).catch(debug);
-            }); // Dat Creation
+        try {
+            // 1. Initialize the new Dat, importing content created during encryption process
+            const createDatData: AODat_Create_Data = {
+                initialImportDir: content.getTempFolderPath() //Contextually aware of the dat's constraints to 'content' path
+            };
+            const createResponse: IAORouterMessage = await this.router.send(
+                "/dat/create",
+                createDatData
+            );
+            // 2. Store the newDatKey
+            let contentUpdateQuery: AODB_UserContentUpdate_Data = {
+                id: content.id,
+                update: {
+                    $set: {
+                        state: AOContentState.DAT_INITIALIZED,
+                        fileDatKey: createResponse.data.key,
+                        // At this point the content is reencrypted and it is safe to update the content's node
+                        nodePublicKey: sessionIdentity.publicKey,
+                        nodeEthAddress: sessionEthAddress
+                    }
+                }
+            };
+            const contentResponse: IAORouterMessage = await this.router.send(
+                "/db/user/content/update",
+                contentUpdateQuery
+            );
+            const updatedContent: AOContent = AOContent.fromObject(
+                contentResponse.data
+            );
+            // Handoff to next state handler
+            this.processContent(updatedContent);
+            // 3. Remove tmp folder (content was imported on dat creation)
+            let removePathData: IAOFS_Unlink_Data = {
+                removePath: content.getTempFolderPath()
+            };
+            await this.router.send("/fs/unlink", removePathData);
+        } catch (error) {
+            debug(
+                `[${content.id}] Error handling content ENCRYPTED state`,
+                error
+            );
+        }
     }
 
     /**
@@ -1369,7 +1351,19 @@ export default class AOUserSession {
                                     updatedContent.toMetadataJson()
                                 )
                             };
-                            this.router.send("/fs/write", contentWriteData);
+                            this.router
+                                .send("/fs/write", contentWriteData)
+                                .then(() => {
+                                    // Need to run import to reflect these changes
+                                    const importMetadataDatData: AODat_ImportSingle_Data = {
+                                        key: updatedContent.id
+                                    };
+                                    this.router.send(
+                                        "/dat/importSingle",
+                                        importMetadataDatData
+                                    );
+                                })
+                                .catch(debug);
                             this.router.send("/db/logs/insert", {
                                 message: `${
                                     isStake ? "Staked" : "Hosted"
@@ -1408,20 +1402,7 @@ export default class AOUserSession {
         );
         Promise.resolve()
             .then(() => {
-                // 1. Ensure the dats are resumed (they may already be, but need to make sure)
-                const fileResumeDatData: AODat_ResumeSingle_Data = {
-                    key: content.fileDatKey
-                };
-                const metaResumeDatData: AODat_ResumeSingle_Data = {
-                    key: content.metadataDatKey
-                };
-                return Promise.all([
-                    this.router.send("/dat/resumeSingle", fileResumeDatData),
-                    this.router.send("/dat/resumeSingle", metaResumeDatData)
-                ]);
-            })
-            .then(() => {
-                // 2. If this is the content creator, we also register the content under their
+                // 1. If this is the content creator, we also register the content under their
                 // namespace
                 if (content.creatorEthAddress == sessionEthAddress) {
                     const contentRegistrationRequest: AOP2P_ContentRegistration_Data = {
@@ -1436,8 +1417,8 @@ export default class AOUserSession {
                 }
             })
             .then(() => {
-                debug("Content dats resumed, adding content to discovery...");
-                // 3. Add new discovery
+                debug(`[${content.id}] content registered with taodb`);
+                // 2. Add new discovery
                 const p2pAddDiscoveryData: AOP2P_Add_Discovery_Data = {
                     content
                 };
@@ -1447,8 +1428,8 @@ export default class AOUserSession {
                 );
             })
             .then((response: IAORouterMessage) => {
-                debug("Content has been added to discovery");
-                // 4. Update the content state (mark as Discoverable)
+                debug(`[${content.id}] content host registered with taodb`);
+                // 3. Update the content state (mark as Discoverable)
                 const contentUpdateQuery: AODB_UserContentUpdate_Data = {
                     id: content.id,
                     update: {
@@ -1469,7 +1450,7 @@ export default class AOUserSession {
                 );
             })
             .then((contentUpdateResponse: IAORouterMessage) => {
-                // 5. Finally, done with staked content
+                // 4. Finally, done with staked content
                 const updatedContent: AOContent = AOContent.fromObject(
                     contentUpdateResponse.data
                 );

@@ -3,7 +3,6 @@ import md5 from "md5";
 import path from "path";
 import { IGraphqlResolverContext } from "../../http";
 import AOContent, {
-    AOContentState,
     AOContentType,
     AOContentLicense,
     AODappContent,
@@ -15,7 +14,6 @@ import {
 } from "../../modules/dat/dat";
 import {
     IAOFS_Mkdir_Data,
-    IAOFS_Move_Data,
     IAOFS_WriteStream_Data,
     IAOFS_Write_Data,
     IAOFS_CheckZipFormIndex_Data
@@ -24,7 +22,8 @@ import { IAORouterMessage } from "../../router/AORouter";
 import { ReadStream } from "fs";
 import archiver from "archiver";
 import os from "os";
-import fs from "fs";
+import fs from "fs-extra";
+import validator from "../../AOValidation";
 const debug = Debug("ao:graphql:submitContent");
 
 export interface ISubmitContent_Args {
@@ -55,16 +54,8 @@ export default (
          * Quick note on this process, we initialize and store content in temp
          * locations
          */
-        const contentTempId: string = md5(new Date());
-        const metadataTempId: string = md5(new Date() + "-preview");
-        const contentTempPath: string = path.join("content/tmp", contentTempId);
-        const metadataTempPath: string = path.join(
-            "content/tmp",
-            metadataTempId
-        );
-        const metadataFileFields = ["featuredImage", "videoTeaser"];
-
         let contentJson: AOContent = AOContent.fromObject({
+            ethNetworkId: context.options.ethNetworkId,
             nodePublicKey: context.userSession.publicKey,
             nodeEthAddress: context.userSession.ethAddress,
             creatorNodePublicKey: context.userSession.publicKey,
@@ -83,8 +74,49 @@ export default (
             stakePrimordialPercentage: args.inputs.stakePrimordialPercentage,
             createdAt: Date.now().toString()
         });
+        const tmpFolder = `content-${context.options.ethNetworkId}/tmp`;
+        const contentTempId: string = md5(new Date());
+        const metadataTempId: string = md5(new Date() + "-preview");
+        const contentTempPath: string = path.join(tmpFolder, contentTempId);
+        const metadataTempPath: string = path.join(tmpFolder, metadataTempId);
+        const metadataFileFields = ["featuredImage", "videoTeaser"];
 
         Promise.resolve()
+            .then(() => {
+                // 0. input validation
+                if (!validator.isEthAddress(contentJson.creatorEthAddress))
+                    throw new Error(
+                        `Invalid creator eth address given: ${
+                            contentJson.creatorEthAddress
+                        }`
+                    );
+                if (!validator.isLength(contentJson.title, { min: 1, max: 64 }))
+                    throw new Error(
+                        `Content title must be within 6-64 characters in length`
+                    );
+                if (
+                    !validator.isLength(contentJson.description, {
+                        min: 1,
+                        max: 1024
+                    })
+                )
+                    throw new Error(
+                        `Content description is required and must be less than 1024 characters in length`
+                    );
+                if (!validator.isValidContentType(contentJson.contentType))
+                    throw new Error(`Invalid content type`);
+                if (
+                    !validator.isValidContentLicense(contentJson.contentLicense)
+                )
+                    throw new Error(`Invalid content license`);
+                if (
+                    !contentJson.creatorNameId ||
+                    !contentJson.creatorNodePublicKey
+                )
+                    throw new Error(
+                        `Missing local identity or creator name id`
+                    );
+            })
             .then(() => {
                 // 1. Ensure directories exist before writing content
                 debug(`Beginning upload process...`);
@@ -368,10 +400,10 @@ export default (
                 // newDatDir is relative to the content folder, so we cant use contentTempPath
                 debug(`Initializing content and metadata Dats...`);
                 const datCreateContentData: AODat_Create_Data = {
-                    newDatDir: path.join("tmp", contentTempId)
+                    initialImportDir: contentTempPath
                 };
                 const datCreatePreviewData: AODat_Create_Data = {
-                    newDatDir: path.join("tmp", metadataTempId)
+                    initialImportDir: metadataTempPath
                 };
                 return Promise.all([
                     context.router.send("/dat/create", datCreateContentData),
@@ -420,41 +452,17 @@ export default (
                 ]);
             })
             .then(
-                ([contentJsonWriteResponse, contentInsertResponse]: Array<
-                    IAORouterMessage
-                >) => {
-                    // 9. Everything is written and good to go, now we move everything from temp location to perminent residence
-                    debug(
-                        `content.json stored in metadata dat, content inserted into user db`
-                    );
-                    debug(`Moving content from temp directories...`);
-                    const movePreviewDatData: IAOFS_Move_Data = {
-                        srcPath: metadataTempPath,
-                        destPath: path.join(
-                            "content",
-                            contentJson.metadataDatKey
-                        )
-                    };
-                    const moveContentDatData: IAOFS_Move_Data = {
-                        srcPath: contentTempPath,
-                        destPath: path.join("content", contentJson.fileDatKey)
-                    };
-                    return Promise.all([
-                        context.router.send("/fs/move", movePreviewDatData),
-                        context.router.send("/fs/move", moveContentDatData)
-                    ]);
-                }
-            )
-            .then(
                 ([metadataDatMoveResponse, contentDatMoveResponse]: Array<
                     IAORouterMessage
                 >) => {
-                    // 10. Import processed files into dat
+                    // 9. Import processed files into dat
                     const importMetadataDatData: AODat_ImportSingle_Data = {
-                        key: contentJson.metadataDatKey
+                        key: contentJson.metadataDatKey,
+                        srcDir: metadataTempPath
                     };
                     const importFileDatData: AODat_ImportSingle_Data = {
-                        key: contentJson.fileDatKey
+                        key: contentJson.fileDatKey,
+                        srcDir: contentTempPath
                     };
                     return Promise.all([
                         context.router.send(
@@ -468,8 +476,8 @@ export default (
                     ]);
                 }
             )
-            .then(() => {
-                // 11. We made it!
+            .then(async () => {
+                // 10. We made it!
                 debug(`Content succesfully uploaded!`);
                 resolve(contentJson);
                 // NOTE: processContent handles any side effects that take place after uploading content.
@@ -481,6 +489,26 @@ export default (
                     }] has been uploaded locally, waiting for content stake transaction before this content becomes part of the AO network`,
                     userId: context.userSession.ethAddress
                 });
+                try {
+                    await fs.remove(
+                        path.join(
+                            context.options.storageLocation,
+                            contentTempPath
+                        )
+                    );
+                } catch (error) {
+                    debug(`Error removing temp content path`, error);
+                }
+                try {
+                    await fs.remove(
+                        path.join(
+                            context.options.storageLocation,
+                            metadataTempPath
+                        )
+                    );
+                } catch (error) {
+                    debug(`Error removing temp metadata path`, error);
+                }
             })
             .catch((error: Error) => {
                 // TODO: This is a catch all for now, but we may want to do some resource cleanup at this stage!

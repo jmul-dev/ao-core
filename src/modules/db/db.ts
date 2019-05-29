@@ -525,6 +525,7 @@ export default class AODB extends AORouterInterface {
         this.db.logs
             .find(query)
             .sort({ createdAt: -1 })
+            .limit(64)
             .exec((error, results) => {
                 if (error) {
                     request.reject(error);
@@ -640,6 +641,7 @@ export default class AODB extends AORouterInterface {
             if (error) {
                 request.reject(error);
             } else {
+                if (!Array.isArray(results)) results = [];
                 if (requestData.fuzzyQuery) {
                     const fuseOptions = {
                         shouldSort: true,
