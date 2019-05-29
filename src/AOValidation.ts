@@ -5,29 +5,19 @@ import AOContent from "./models/AOContent";
 /**
  * Wrapping the validator library so we can add our own validation functions
  */
-// @ts-ignore
-const AOValidator: ValidatorJS.ValidatorStatic & CustomValidations = () => {};
-// function AOValidator() {}
-for (const key in ValidatorBase) {
-    if (ValidatorBase.hasOwnProperty(key)) {
-        const validationFunction = ValidatorBase[key];
-        AOValidator.prototype[key] = validationFunction;
-        // async function(errorMessage: string, ...args: any[]): Promise<any> {
-        //     if (!validationFunction(...args))
-        //         throw new Error(errorMessage)
-        // }
-    }
-}
 interface CustomValidations {
-    prototype: any;
     isEthAddress: (input: string) => boolean;
     isValidContentType: (contentType: string) => boolean;
     isValidContentLicense: (contentType: string) => boolean;
 }
-AOValidator.prototype.isEthAddress = function(str) {
+
+// @ts-ignore
+var AOValidator: ValidatorJS.ValidatorStatic &
+    CustomValidations = ValidatorBase;
+AOValidator.isEthAddress = function(str) {
     return isAddress(str);
 };
-AOValidator.prototype.isValidContentType = function(str) {
+AOValidator.isValidContentType = function(str) {
     for (const type in AOContent.Types) {
         if (AOContent.Types.hasOwnProperty(type)) {
             const element = AOContent.Types[type];
@@ -36,7 +26,7 @@ AOValidator.prototype.isValidContentType = function(str) {
     }
     return false;
 };
-AOValidator.prototype.isValidContentLicense = function(str) {
+AOValidator.isValidContentLicense = function(str) {
     for (const type in AOContent.Licenses) {
         if (AOContent.Licenses.hasOwnProperty(type)) {
             const element = AOContent.Licenses[type];
