@@ -500,8 +500,7 @@ export default class Core extends EventEmitter {
                 let taoDbKey = response.data.taoDbKey;
 
                 // TODO: remove once taodb key has been moved to contracts
-                debugLog(`WARNING, HARDCODED TAODB KEY!`);
-                debugLog(`taodb key found in contracts: ${taoDbKey}`);
+                debugLog(`taodb key (found in contracts): ${taoDbKey}`);
                 // taoDbKey =
                 //     "2a2efeadd054590fd2fc5bcbec68770319ed59d928e4eedb05c221264ac06bb4";
                 // debugLog(`taodb key override: ${taoDbKey}`);
