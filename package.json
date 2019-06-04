@@ -1,6 +1,6 @@
 {
     "name": "ao-core",
-    "version": "1.1.1",
+    "version": "1.1.2",
     "description": "AO - Core",
     "main": "dist/index.js",
     "bin": {
@@ -9,8 +9,8 @@
     "scripts": {
         "compile": "npm run compile-patch && tsc && node scripts/copy-non-ts-files.js",
         "compile-patch": "rimraf node_modules/@types/bn.js",
-        "start": "cross-env NODE_ENV=development DEBUG=ao:*,dat,dat-node node dist/bin.js start --ethNetworkRpc wss://rinkeby.infura.io/ws",
-        "start:mainnet": "cross-env DEBUG=ao:* node dist/bin.js start --ethNetworkRpc wss://mainnet.infura.io/ws",
+        "start": "cross-env NODE_ENV=development DEBUG=ao:*,dat,dat-node ECCRYPTO_NO_FALLBACK=1 node dist/bin.js start --ethNetworkRpc wss://rinkeby.infura.io/ws",
+        "start:mainnet": "cross-env DEBUG=ao:* ECCRYPTO_NO_FALLBACK=1 node dist/bin.js start --ethNetworkRpc wss://mainnet.infura.io/ws",
         "build": "npm run clean && npm run compile && npm run copy-dependencies",
         "clean": "rimraf dist",
         "test": "mocha --exit -r ts-node/register src/**/*.spec.ts",
