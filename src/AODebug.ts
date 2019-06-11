@@ -55,12 +55,18 @@ const fileLogger = (prefix: string): any => {
                 level: prefix,
                 handleExceptions: true,
                 maxsize: maxDebugFileSize,
-                maxFiles: 1 // Log is simply erased once maxsize is reached
+                maxFiles: 4,
+                tailable: true
             }),
             new transports.Console({
                 level: prefix,
                 format: combine(colorize(), debugFormat),
                 handleExceptions: true
+            })
+        ],
+        exceptionHandlers: [
+            new transports.File({
+                filename: path.resolve(dataPath, exceptionsLogFile)
             })
         ],
         exitOnError: false
