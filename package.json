@@ -34,7 +34,7 @@
         "src"
     ],
     "dependencies": {
-        "ao-contracts": "git+ssh://git@git.y-designs.com:ao/ao-contracts.git#v1.0.18",
+        "ao-contracts": "git+ssh://git@git.y-designs.com:ao/ao-contracts.git#v1.0.19",
         "ao-library": "git+ssh://git@git.y-designs.com:ao/ao-library.git",
         "apollo-server-express": "^1.3.6",
         "archiver": "^3.0.0",
@@ -60,7 +60,7 @@
         "minimist": "^1.2.0",
         "nedb": "^1.8.0",
         "queue": "^4.5.0",
-        "taodb": "git+ssh://git@gitlab.paramation.com:22022/AO-core/taodb.git#v1.0.9",
+        "taodb": "git+ssh://git@gitlab.paramation.com:22022/AO-core/taodb.git#v1.0.10",
         "unzipper": "^0.9.3",
         "validator": "^11.0.0",
         "web3": "^1.0.0-beta.33",
