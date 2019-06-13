@@ -29,7 +29,7 @@ export interface ICoreOptions {
     httpOrigin: string;
     storageLocation: string;
     nodeBin: string;
-	datContentDiscovery: boolean;
+    datContentDiscovery: boolean;
 }
 
 export interface AOCore_Log_Data {
@@ -200,11 +200,11 @@ export default class Core extends EventEmitter {
                 break;
             case AOCoreState.P2P_MODULE_INITIALIZED:
                 this.states[AOCoreState.P2P_MODULE_INITIALIZED] = true;
-				if (this.options.datContentDiscovery) {
-					this.datModuleInitializer();
-				} else {
-					this.sessionInitializer();
-				}
+                if (this.options.datContentDiscovery) {
+                    this.datModuleInitializer();
+                } else {
+                    this.sessionInitializer();
+                }
                 break;
             case AOCoreState.DAT_MODULE_INITIALIZED:
                 this.states[AOCoreState.DAT_MODULE_INITIALIZED] = true;
