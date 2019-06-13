@@ -45,7 +45,7 @@ import {
     AORouterInterface,
     IAORouterRequest
 } from "./router/AORouterInterface";
-const AOContentHostContract = require("ao-contracts/build/contracts/AOContentHost.json");
+const AOContentHostContract = require("ao-contracts/build/minified/AOContentHost.json");
 const debug = Debug("ao:userSession");
 
 /**
