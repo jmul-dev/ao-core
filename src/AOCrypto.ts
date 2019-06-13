@@ -1,5 +1,5 @@
 import EthCrypto from "eth-crypto";
-import Debug from "./AODebug";
+import Debug from "debug";
 const debug = Debug("ao:crypto");
 
 export interface Identity {

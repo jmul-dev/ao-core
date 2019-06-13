@@ -1,6 +1,6 @@
 import { ChildProcess, spawn } from "child_process";
 import path from "path";
-import Debug from "../AODebug";
+import Debug from "debug";
 import { ReadStream, WriteStream } from "fs";
 import fs from "fs";
 import AORouterCoreProcessPretender from "./AORouterCoreProcessPretender";

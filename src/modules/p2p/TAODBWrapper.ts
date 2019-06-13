@@ -1,6 +1,6 @@
 import taodb from "taodb";
 import swarm from "taodb/swarm";
-import Debug from "../../AODebug";
+import Debug from "debug";
 import { IAOStatus } from "../../models/AOStatus";
 import { createUserIdentity, Identity } from "../../AOCrypto";
 const debug = Debug("ao:taodb");

@@ -4,7 +4,7 @@ import AORouterInterface, {
 } from "../../router/AORouterInterface";
 import Web3 from "web3";
 import SolidityEvent from "web3-legacy/lib/web3/event.js";
-import Debug from "../../AODebug";
+import Debug from "debug";
 import { IAOStatus } from "../../models/AOStatus";
 import queue, { IQueue } from "queue";
 const AOPurchaseReceipt = require("ao-contracts/build/contracts/AOPurchaseReceipt.json");

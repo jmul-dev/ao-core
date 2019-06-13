@@ -2,12 +2,12 @@ import { graphiqlExpress, graphqlExpress } from "apollo-server-express";
 import { json } from "body-parser";
 import cors from "cors";
 import crypto from "crypto";
+import Debug from "debug";
 import express, { Express, NextFunction, Request, Response } from "express";
 import fs from "fs";
 import { graphqlUploadExpress } from "graphql-upload";
 import { AddressInfo, Server } from "net";
 import path from "path";
-import Debug from "./AODebug";
 import AOUserSession from "./AOUserSession";
 import schema from "./graphql/schema";
 import AOContent from "./models/AOContent";
@@ -85,7 +85,7 @@ export default class Http {
             graphqlExpress({
                 schema: graphqlSchema,
                 // debug prints additional info when execution error occurs
-                debug: debug,
+                // debug: debug,
                 // context given to our graphql resolvers
                 context: {
                     router,

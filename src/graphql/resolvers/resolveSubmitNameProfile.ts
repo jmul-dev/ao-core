@@ -1,7 +1,7 @@
 import { IGraphqlResolverContext } from "../../http";
 import { AOP2P_TaoRequest_Data } from "../../modules/p2p/p2p";
 import { IAORouterMessage } from "../../router/AORouter";
-import Debug from "../../AODebug";
+import Debug from "debug";
 const debug = Debug(`ao:resolveSubmitNameProfile`);
 
 interface ISubmitTaoProfile_Args {

@@ -5,7 +5,7 @@ import {
     AODB_UserContentGet_Data
 } from "../../modules/db/db";
 import { IAORouterMessage } from "../../router/AORouter";
-import Debug from "../../AODebug";
+import Debug from "debug";
 const debug = Debug("ao:resolveContentRequest");
 
 interface IContentRequest_Args {

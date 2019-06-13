@@ -1,5 +1,5 @@
 import path from "path";
-import Debug from "../../AODebug";
+import Debug from "debug";
 import AOContent from "../../models/AOContent";
 import { IAOStatus } from "../../models/AOStatus";
 import { IAORouterMessage } from "../../router/AORouter";

@@ -1,6 +1,6 @@
 "use strict";
 import { GraphQLUpload } from "graphql-upload";
-import Debug from "../AODebug";
+import Debug from "debug";
 import { makeExecutableSchema } from "graphql-tools";
 import resolvers from "./resolvers/resolvers";
 import AOContent from "../models/AOContent";

@@ -1,4 +1,4 @@
-import Debug from "../../AODebug";
+import Debug from "debug";
 import path from "path";
 import queue, { IQueue } from "queue";
 import AOContent, { AOContentState } from "../../models/AOContent";

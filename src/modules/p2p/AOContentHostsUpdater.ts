@@ -1,5 +1,5 @@
 import queue, { IQueue } from "queue";
-import Debug from "../../AODebug";
+import Debug from "debug";
 import AOUserSession from "../../AOUserSession";
 import AONetworkContent from "../../models/AONetworkContent";
 import { IAORouterMessage } from "../../router/AORouter";

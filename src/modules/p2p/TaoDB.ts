@@ -1,7 +1,7 @@
 import TAODBWrapper, { ITAODB_Entry } from "./TAODBWrapper";
 import EthCrypto, { TypedValue } from "eth-crypto";
 import AOContent from "../../models/AOContent";
-import Debug from "../../AODebug";
+import Debug from "debug";
 const debug = Debug("ao:taodb");
 
 export interface ITaoDB_Schema {

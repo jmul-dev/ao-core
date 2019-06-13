@@ -1,7 +1,7 @@
 import { IGraphqlResolverContext } from "../../http";
 import { IAORouterMessage } from "../../router/AORouter";
 import AOContent from "../../models/AOContent";
-import Debug from "../../AODebug";
+import Debug from "debug";
 import { AODat_GetDatStats_Data } from "../../modules/dat/dat";
 const debug = Debug("ao:resolveDatStats");
 

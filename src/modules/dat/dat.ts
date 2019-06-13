@@ -1,4 +1,4 @@
-import Debug from "../../AODebug";
+import Debug from "debug";
 import path from "path";
 import fsExtra from "fs-extra";
 import AORouterInterface, {

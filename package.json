@@ -1,6 +1,6 @@
 {
     "name": "ao-core",
-    "version": "1.1.5",
+    "version": "1.1.6",
     "description": "AO - Core",
     "main": "dist/index.js",
     "bin": {
@@ -64,7 +64,6 @@
         "web3": "^1.0.0-beta.33",
         "web3-legacy": "git://github.com/nharlow89/web3.js.git#legacy",
         "web3-utils": "^1.0.0-beta.50",
-        "winston": "^3.1.0",
         "yargs": "^12.0.2",
         "yesno": "^0.2.0"
     },

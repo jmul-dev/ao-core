@@ -1,15 +1,11 @@
 "use strict";
 import { AO_CONSTANTS } from "ao-library";
 import { EventEmitter } from "events";
-import fsExtra from "fs-extra";
-import path from "path";
 import readline from "readline";
-import Debug, { debugLogFile } from "./AODebug";
+import { isAddress } from "web3-utils";
+import Debug from "debug";
 import AOUserSession from "./AOUserSession";
 import { DEFAULT_OPTIONS } from "./bin";
-import exportDataResolver, {
-    IContentExport_Args
-} from "./graphql/resolvers/resolveExportData";
 import registerResolver, {
     IRegister_Args
 } from "./graphql/resolvers/resolveRegister";
@@ -19,7 +15,6 @@ import { IAOETH_Init_Data } from "./modules/eth/eth";
 import { AOP2P_Init_Data } from "./modules/p2p/p2p";
 import AORouter, { IAORouterMessage } from "./router/AORouter";
 import { IAORouterRequest } from "./router/AORouterInterface";
-import { isAddress } from "web3-utils";
 
 const debugLog = Debug("ao:core");
 const errorLog = Debug("ao:core:error");
@@ -46,8 +41,6 @@ export interface AOCore_NetworkIdMismatch_Data {
 
 export const AOCoreState = Object.freeze({
     INITIAL_STATE: "INITIAL_STATE",
-    LOGS_INTIALIZING: "LOGS_INTIALIZING",
-    LOGS_INTIALIZED: "LOGS_INTIALIZED",
     ROUTER_INITIALIZING: "ROUTER_INITIALIZING",
     ROUTER_INITIALIZED: "ROUTER_INITIALIZED",
     CORE_DBS_INITIALIZING: "CORE_DBS_INITIALIZING",
@@ -73,8 +66,6 @@ export const AOCoreState = Object.freeze({
 
 const AOCoreStateReadableMessages = {
     INITIAL_STATE: "Starting core...",
-    LOGS_INTIALIZING: "Setting up logs...",
-    LOGS_INTIALIZED: "Log ready",
     ROUTER_INITIALIZING: "Setting up core router...",
     ROUTER_INITIALIZED: "Core router ready",
     CORE_DBS_INITIALIZING: "Setting up core databases...",
@@ -180,10 +171,6 @@ export default class Core extends EventEmitter {
         this.state = nextState;
         switch (nextState) {
             case AOCoreState.INITIAL_STATE:
-                this.logsInitializer();
-                break;
-            case AOCoreState.LOGS_INTIALIZED:
-                // Logs have been initialized, now we start the core router
                 this.coreRouterInitializer();
                 break;
             case AOCoreState.ROUTER_INITIALIZED:
@@ -246,35 +233,6 @@ export default class Core extends EventEmitter {
                 break;
             default:
                 break;
-        }
-    }
-
-    private logsInitializer() {
-        this.stateChangeHandler(AOCoreState.LOGS_INTIALIZING);
-        if (process.platform === "win32") {
-            //Windows has a hard time dealing with filesystem stuff, can't delete something we're writing into.
-            this.stateChangeHandler(AOCoreState.LOGS_INTIALIZED);
-        } else {
-            // Remove previous log file
-            const logFilePath = path.join(
-                this.options.storageLocation,
-                debugLogFile
-            );
-            fsExtra
-                .remove(logFilePath)
-                .then(() => {
-                    this.stateChangeHandler(AOCoreState.LOGS_INTIALIZED);
-                })
-                .catch(error => {
-                    errorLog(
-                        `Error removing previous log file at: ${logFilePath}.`
-                    );
-                    this.stateChangeHandler(
-                        AOCoreState.INITIALIZATION_FAILED,
-                        error,
-                        `Unable to locate log file`
-                    );
-                });
         }
     }
 

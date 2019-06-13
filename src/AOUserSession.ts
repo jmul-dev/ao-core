@@ -1,7 +1,7 @@
 import path from "path";
 import { isAddress } from "web3-utils";
 import * as AOCrypto from "./AOCrypto";
-import Debug from "./AODebug";
+import Debug from "debug";
 import AOContent, { AOContentState, AODappContent } from "./models/AOContent";
 import {
     AODat_Create_Data,
