@@ -192,6 +192,12 @@ export default class Core extends EventEmitter {
                 break;
             case AOCoreState.ETH_MODULE_INITIALIZED:
                 this.states[AOCoreState.ETH_MODULE_INITIALIZED] = true;
+                if (this.runningUnderElectron) {
+                    process.send({
+                        event: AO_CONSTANTS.IPC.ON_ETH_NETWORK_ID,
+                        data: { ethNetworkId: this.ethNetworkId }
+                    });
+                }
                 this.networkContentDbInitializer();
                 break;
             case AOCoreState.NETWORK_DB_INITIALIZED:
