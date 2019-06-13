@@ -868,6 +868,8 @@ export default class AOUserSession {
                             });
                             // Content succesfully purchased, begin next step in process (listen for decryption key)
                             this.processContent(updatedContent);
+                        } else if (updatedContent.state === AOContentState.HOST_DISCOVERY) {
+                            this.processContent(updatedContent);
                         }
                     })
                     .catch(debug);
