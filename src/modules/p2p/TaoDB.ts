@@ -192,6 +192,21 @@ export default class TaoDB extends TAODBWrapper {
         });
     }
 
+    public async removeUserContentSignature({
+        content
+    }: {
+        content: AOContent;
+    }): Promise<any> {
+        const key = TaoDB.getUserContentSignatureKey({
+            usersPublicKey: this._userIdentity.publicKey,
+            contentType: content.contentType,
+            contentMetadataDatKey: content.metadataDatKey
+        });
+        return this.delete({
+            key
+        });
+    }
+
     /**
      *
      * Content Host Signature
@@ -227,6 +242,27 @@ export default class TaoDB extends TAODBWrapper {
             key,
             value,
             schemaKey: schema.key
+        });
+    }
+
+    public async removeContentHostSignature({
+        content
+    }: {
+        content: AOContent;
+    }): Promise<any> {
+        const key = TaoDB.getContentHostSignatureKey({
+            hostsPublicKey: this._userIdentity.publicKey,
+            contentType: content.contentType,
+            contentMetadataDatKey: content.metadataDatKey,
+            contentDatKey: content.fileDatKey
+        });
+        const schema: ITaoDB_Schema = this.schemas.contentHostSignature;
+        const schemaExists = await this.exists(schema.key);
+        if (!schemaExists) {
+            throw new Error(`Schema does not exist`);
+        }
+        return this.delete({
+            key
         });
     }
 
@@ -328,6 +364,21 @@ export default class TaoDB extends TAODBWrapper {
             contentMetadataDatKey: content.metadataDatKey
         });
         return this.list(key, { recursive: false, reverse: true });
+    }
+    // Remove a single content host, effectively removing this host from discovery
+    public removeContentHost({
+        content,
+        hostsPublicKey
+    }: {
+        content: AOContent;
+        hostsPublicKey: string;
+    }): Promise<Array<ITAODB_Entry<any>>> {
+        const key = TaoDB.getContentHostTimestampKey({
+            contentMetadataDatKey: content.metadataDatKey,
+            contentType: content.contentType,
+            hostsPublicKey
+        });
+        return this.delete({ key });
     }
 
     /**

@@ -146,6 +146,10 @@ export default class AODB extends AORouterInterface {
             this._userContentUpdate.bind(this)
         );
         this.router.on(
+            "/db/user/content/remove",
+            this._userContentRemove.bind(this)
+        );
+        this.router.on(
             "/db/network/init",
             this._setupNetworkDependentDbs.bind(this)
         );
@@ -160,6 +164,10 @@ export default class AODB extends AORouterInterface {
         this.router.on(
             "/db/network/content/update",
             this._networkContentUpdate.bind(this)
+        );
+        this.router.on(
+            "/db/network/content/remove",
+            this._networkContentRemove.bind(this)
         );
         debug(`started`);
     }
@@ -519,6 +527,28 @@ export default class AODB extends AORouterInterface {
         );
     }
 
+    private _userContentRemove(request: IAORouterRequest) {
+        const requestData = request.data;
+        const userDb = this.userDbs[request.ethAddress];
+        if (!userDb) {
+            request.reject(
+                new Error(`User db not found for ${request.ethAddress}`)
+            );
+            return;
+        }
+        userDb.content.remove(
+            { id: requestData.id },
+            {},
+            (error: Error, numAffected) => {
+                if (error) {
+                    request.reject(error);
+                } else {
+                    request.respond({});
+                }
+            }
+        );
+    }
+
     private _logsGet(request: IAORouterRequest) {
         const requestData: AODB_LogsGet_Data = request.data;
         let query = requestData.query || {};
@@ -695,6 +725,20 @@ export default class AODB extends AORouterInterface {
                     );
                 } else {
                     request.respond(updatedDoc);
+                }
+            }
+        );
+    }
+    private _networkContentRemove(request: IAORouterRequest) {
+        const requestData: AODB_NetworkContentUpdate_Data = request.data;
+        this.db.networkContent.remove(
+            { _id: requestData.id },
+            {},
+            (error: Error, numAffected) => {
+                if (error) {
+                    request.reject(error);
+                } else {
+                    request.respond({});
                 }
             }
         );
