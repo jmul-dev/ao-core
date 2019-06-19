@@ -90,7 +90,8 @@ export default function() {
                 export: resolvers.resolveExportData,
                 submitNameProfile: resolvers.resolveSubmitNameProfile,
                 submitTaoDescription: resolvers.resolveSubmitTaoDescription,
-                submitTaoThought: resolvers.resolveSubmitTaoThought
+                submitTaoThought: resolvers.resolveSubmitTaoThought,
+                removeContent: resolvers.resolveRemoveContent
             }
         },
         resolverValidationOptions: {

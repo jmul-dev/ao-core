@@ -31,6 +31,7 @@ import resolveSubmitTaoThought from "./resolveSubmitTaoThought";
 import resolveTaoDescriptions from "./resolveTaoDescriptions";
 import resolveWriterKey from "./resolveWriterKey";
 import resolveWriterKeySignature from "./resolveWriterKeySignature";
+import resolveRemoveContent from "./resolveRemoveContent";
 
 export default {
     // Query resolvers
@@ -65,6 +66,7 @@ export default {
     resolveSubmitNameProfile,
     resolveSubmitTaoDescription,
     resolveSubmitTaoThought,
+    resolveRemoveContent,
     // Field resolvers
     resolveUrl,
     resolveDappUrl,

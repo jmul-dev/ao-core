@@ -64,6 +64,10 @@ export interface AOP2P_GetContentHosts_Data {
     content: AOContent;
 }
 
+export interface AOP2P_UnregisterContentHost_Data {
+    content: AOContent;
+}
+
 export interface AOP2P_PeerStats {
     p2pStatus: IAOStatus;
     peersConnected: number;
@@ -120,8 +124,16 @@ export default class AOP2P extends AORouterInterface {
             this._handleContentRegistration.bind(this)
         );
         this.router.on(
+            "/p2p/unregisterContent",
+            this._handleContentUnregistration.bind(this)
+        );
+        this.router.on(
             "/p2p/registerContentHost",
             this._handleRegisterContentHost.bind(this)
+        );
+        this.router.on(
+            "/p2p/unregisterContentHost",
+            this._handleUnregisterContentHost.bind(this)
         );
         this.router.on("/p2p/watchKey", this._handleWatchKey.bind(this));
         this.router.on(
@@ -446,6 +458,14 @@ export default class AOP2P extends AORouterInterface {
             .catch(request.reject);
     }
 
+    _handleContentUnregistration(request: IAORouterRequest) {
+        const { content }: AOP2P_ContentRegistration_Data = request.data;
+        this.taodb
+            .removeUserContentSignature({ content })
+            .then(request.respond)
+            .catch(request.reject);
+    }
+
     _handleWatchKey(request: IAORouterRequest) {
         const requestData: AOP2P_Watch_Key_Data = request.data;
         //TODO: We might consider helping construct the specific key here.  Dunno what exactly we're looking for yet 100%
@@ -583,6 +603,22 @@ export default class AOP2P extends AORouterInterface {
             })
             .then(() => {
                 return this.taodb.insertContentHostTimestamp({ content });
+            })
+            .then(request.respond)
+            .catch(request.reject);
+    }
+
+    _handleUnregisterContentHost(request: IAORouterRequest) {
+        const { content }: AOP2P_UnregisterContentHost_Data = request.data;
+        Promise.resolve()
+            .then(() => {
+                return this.taodb.removeContentHost({
+                    content,
+                    hostsPublicKey: content.nodePublicKey
+                });
+            })
+            .then(() => {
+                return this.taodb.removeContentHostSignature({ content });
             })
             .then(request.respond)
             .catch(request.reject);

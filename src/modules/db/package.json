@@ -20,10 +20,12 @@
             "/db/user/content/get",
             "/db/user/content/insert",
             "/db/user/content/update",
+            "/db/user/content/remove",
             "/db/network/init",
             "/db/network/content/get",
             "/db/network/content/insert",
-            "/db/network/content/update"
+            "/db/network/content/update",
+            "/db/network/content/remove"
         ],
         "activationEvents": []
     }
