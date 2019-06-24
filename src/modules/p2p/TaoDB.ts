@@ -115,6 +115,14 @@ export default class TaoDB extends TAODBWrapper {
                 valueValidationKey: "",
                 keyValidation: ""
             }
+		},
+        nameLookup: {
+			key: "schema/TAO/this/nameLookup/*/id",
+            value: {
+				keySchema: "TAO/this/nameLookup/*/id",
+                valueValidationKey: "",
+                keyValidation: ""
+            }
         }
     };
 
@@ -524,5 +532,36 @@ export default class TaoDB extends TAODBWrapper {
         } catch (error) {
             return Promise.reject(error);
         }
+    }
+
+    /**
+     *
+	 * Name/TAO's name lookup
+     *
+     */
+    public static getNameLookupKey({ name }) {
+		return `TAO/this/nameLookup/${name.toLowerCase().replace(/[\s`~!@#$%^&*()_|+\-=?;:'",.<>\{\}\[\]\\\/]/gi, '')}/id`;
+    }
+    public async insertNameLookup({
+        name,
+        id
+    }: {
+        name: string;
+        id: string;
+    }): Promise<any> {
+        const key = TaoDB.getNameLookupKey({
+            name
+        });
+        const value = id;
+        const schema: ITaoDB_Schema = this.schemas.nameLookup;
+        const schemaExists = await this.exists(schema.key);
+        if (!schemaExists) {
+            throw new Error(`Schema does not exist`);
+        }
+        return this.insert({
+            key,
+            value,
+            schemaKey: schema.key
+        });
     }
 }

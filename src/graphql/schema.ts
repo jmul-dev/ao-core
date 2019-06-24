@@ -72,7 +72,8 @@ export default function() {
                 taoDescription: resolvers.resolveTaoDescription,
                 taoDescriptions: resolvers.resolveTaoDescriptions,
                 writerKey: resolvers.resolveWriterKey,
-                writerKeySignature: resolvers.resolveWriterKeySignature
+				writerKeySignature: resolvers.resolveWriterKeySignature,
+				nameLookup: resolvers.resolveNameLookup
             },
             Mutation: {
                 register: resolvers.resolveRegister,
@@ -91,7 +92,8 @@ export default function() {
                 submitNameProfile: resolvers.resolveSubmitNameProfile,
                 submitTaoDescription: resolvers.resolveSubmitTaoDescription,
                 submitTaoThought: resolvers.resolveSubmitTaoThought,
-                removeContent: resolvers.resolveRemoveContent
+				removeContent: resolvers.resolveRemoveContent,
+				submitNameLookup: resolvers.resolveSubmitNameLookup
             }
         },
         resolverValidationOptions: {

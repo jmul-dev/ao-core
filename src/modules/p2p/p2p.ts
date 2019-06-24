@@ -93,7 +93,9 @@ export interface AOP2P_TaoRequest_Data {
         | "getTaoThoughtsCount"
         | "insertTaoThought"
         | "getWriterKey"
-        | "getWriterKeySignature";
+		| "getWriterKeySignature"
+        | "insertNameLookup"
+        | "getNameLookup";
     methodArgs: any;
 }
 
@@ -976,6 +978,18 @@ export default class AOP2P extends AORouterInterface {
                 taodbPromise = this.taodb.getWriterKeySignature({
                     nameId,
                     nonce
+                });
+                break;
+            case "getNameLookup":
+                let nameLookupKey = TaoDB.getNameLookupKey({
+                    name: methodArgs["name"]
+                });
+                taodbPromise = this.taodb.get(nameLookupKey);
+                break;
+            case "insertNameLookup":
+                taodbPromise = this.taodb.insertNameLookup({
+                    name: methodArgs["name"],
+                    id: methodArgs["id"]
                 });
                 break;
             default:
