@@ -540,7 +540,7 @@ export default class TaoDB extends TAODBWrapper {
      *
      */
     public static getNameLookupKey({ name }) {
-		return `TAO/this/nameLookup/${name.toLowerCase().replace(/[\s`~!@#$%^&*()_|+\-=?;:'",.<>\{\}\[\]\\\/]/gi, '')}/id`;
+		return `TAO/this/nameLookup/${name.toLowerCase().replace(/[\s`~!@#$%^&*()_|+\-=?;:'",.<>{}[\]\\/]/gi, '')}/id`;
     }
     public async insertNameLookup({
         name,

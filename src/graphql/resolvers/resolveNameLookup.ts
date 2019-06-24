@@ -16,7 +16,7 @@ export default (
         const taoRequestArgs: AOP2P_TaoRequest_Data = {
             method: "getNameLookup",
             methodArgs: {
-                name: args.name.toLowerCase().replace(/[\s`~!@#$%^&*()_|+\-=?;:'",.<>\{\}\[\]\\\/]/gi, '')
+                name: args.name
             }
         };
         context.router
