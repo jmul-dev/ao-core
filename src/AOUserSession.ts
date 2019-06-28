@@ -45,6 +45,7 @@ import {
     AORouterInterface,
     IAORouterRequest
 } from "./router/AORouterInterface";
+import { EventEmitter } from "events";
 const AOContentHostContract = require("ao-contracts/build/minified/AOContentHost.json");
 const debug = Debug("ao:userSession");
 
@@ -58,8 +59,11 @@ const debug = Debug("ao:userSession");
  * For now I just store a scoped reference inside the processing methods. This is not a solution,
  * but at least ensures same user identity is used for the processing for any one state. In most
  * cases user action is required after a state change which helps minimize the problem.
+ * 
+ * @event 'user-update' provides an object { ethAddress, aoNameId, publicKey, publicAddress }
+ *                      whenever one of these values changes.
  */
-export default class AOUserSession {
+export default class AOUserSession extends EventEmitter {
     private router: AORouterInterface;
     public ethAddress: string;
     public aoNameId: string;
@@ -70,6 +74,7 @@ export default class AOUserSession {
     private identity: AOCrypto.Identity;
 
     constructor(router: AORouterInterface) {
+        super()
         this.router = router;
     }
 
@@ -128,6 +133,7 @@ export default class AOUserSession {
                 this.aoNameId = aoNameId;
                 this._resume();
             }
+            this._userChangeEvent();
             return { ethAddress };
         }
         this.ethAddress = ethAddress;
@@ -172,7 +178,17 @@ export default class AOUserSession {
         if (this.aoNameId) {
             this._resume();
         }
+        this._userChangeEvent();
         return { ethAddress };
+    }
+
+    private _userChangeEvent() {
+        this.emit('user-change', {
+            ethAddress: this.ethAddress,
+            aoNameId: this.aoNameId,
+            publicKey: this.publicKey,
+            publicAddress: this.publicAddress,
+        })
     }
 
     /**

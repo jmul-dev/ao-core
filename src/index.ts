@@ -537,6 +537,14 @@ export default class Core extends EventEmitter {
 
     private sessionInitializer() {
         this.userSession = new AOUserSession(this.coreRouter.router);
+        this.userSession.on("user-change", values => {
+            if (this.runningUnderElectron) {
+                process.send({
+                    event: AO_CONSTANTS.AO_ON_USER_VALUES_CHANGE,
+                    data: values
+                });
+            }
+        });
         this.stateChangeHandler(AOCoreState.SESSION_INITIALIZED);
     }
 
