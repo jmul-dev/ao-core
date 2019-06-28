@@ -161,6 +161,12 @@ export default class AODat extends AORouterInterface {
 
     private async _handleGetDatStats(request: IAORouterRequest) {
         const requestData: AODat_GetDatStats_Data = request.data;
+        if (this.datManager.exists(requestData.key))
+            return request.reject(
+                new Error(
+                    `Dat instance does not exist or has not been initialized`
+                )
+            );
         try {
             const archive: DatArchive = await this.datManager.get(
                 requestData.key

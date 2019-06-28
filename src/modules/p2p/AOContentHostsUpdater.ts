@@ -101,9 +101,9 @@ export default class AOContentHostsUpdater {
                                               ).valueOf()
                                           )
                                         : "never";
-                                    debug(
-                                        `[${metadataDatKey}] last host seen [${lastSeen}]`
-                                    );
+                                    // debug(
+                                    //     `[${metadataDatKey}] last host seen [${lastSeen}]`
+                                    // );
                                     const networkContentUpdate: AODB_NetworkContentUpdate_Data = {
                                         id: existingNetworkContent._id,
                                         update: {
