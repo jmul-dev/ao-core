@@ -877,8 +877,13 @@ export default class AOP2P extends AORouterInterface {
             contentType: content.contentType,
             contentMetadataDatKey: content.metadataDatKey
         });
+        let timestampEntry;
         try {
-            let timestampEntry = await this.taodb.get(timestampKey);
+            timestampEntry = await this.taodb.get(timestampKey);
+        } catch (error) {
+            return request.reject(error || new Error(`Key does not exist in taodb: ${timestampKey}`));
+        }
+        try {
             if (timestampEntry) {
                 // If timestamp entry is recent, avoid additional write
                 let recentThreshold =
