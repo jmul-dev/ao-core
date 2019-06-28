@@ -32,6 +32,8 @@ import resolveTaoDescriptions from "./resolveTaoDescriptions";
 import resolveWriterKey from "./resolveWriterKey";
 import resolveWriterKeySignature from "./resolveWriterKeySignature";
 import resolveRemoveContent from "./resolveRemoveContent";
+import resolveNameLookup from "./resolveNameLookup";
+import resolveSubmitNameLookup from "./resolveSubmitNameLookup";
 
 export default {
     // Query resolvers
@@ -53,6 +55,7 @@ export default {
     resolveTaoDescriptions,
     resolveWriterKey,
     resolveWriterKeySignature,
+	resolveNameLookup,
     // Mutation resolvers
     resolveSubmitContent,
     resolveRegister,
@@ -67,6 +70,7 @@ export default {
     resolveSubmitTaoDescription,
     resolveSubmitTaoThought,
     resolveRemoveContent,
+	resolveSubmitNameLookup,
     // Field resolvers
     resolveUrl,
     resolveDappUrl,

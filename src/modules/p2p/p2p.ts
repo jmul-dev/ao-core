@@ -93,7 +93,9 @@ export interface AOP2P_TaoRequest_Data {
         | "getTaoThoughtsCount"
         | "insertTaoThought"
         | "getWriterKey"
-        | "getWriterKeySignature";
+		| "getWriterKeySignature"
+        | "insertNameLookup"
+        | "getNameLookup";
     methodArgs: any;
 }
 
@@ -875,8 +877,13 @@ export default class AOP2P extends AORouterInterface {
             contentType: content.contentType,
             contentMetadataDatKey: content.metadataDatKey
         });
+        let timestampEntry;
         try {
-            let timestampEntry = await this.taodb.get(timestampKey);
+            timestampEntry = await this.taodb.get(timestampKey);
+        } catch (error) {
+            return request.reject(error || new Error(`Key does not exist in taodb: ${timestampKey}`));
+        }
+        try {
             if (timestampEntry) {
                 // If timestamp entry is recent, avoid additional write
                 let recentThreshold =
@@ -976,6 +983,18 @@ export default class AOP2P extends AORouterInterface {
                 taodbPromise = this.taodb.getWriterKeySignature({
                     nameId,
                     nonce
+                });
+                break;
+            case "getNameLookup":
+                let nameLookupKey = TaoDB.getNameLookupKey({
+                    name: methodArgs["name"]
+                });
+                taodbPromise = this.taodb.get(nameLookupKey);
+                break;
+            case "insertNameLookup":
+                taodbPromise = this.taodb.insertNameLookup({
+                    name: methodArgs["name"],
+                    id: methodArgs["id"]
                 });
                 break;
             default:

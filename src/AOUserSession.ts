@@ -277,11 +277,11 @@ export default class AOUserSession extends EventEmitter {
                         this.router
                             .send("/p2p/updateNode", updateNodeParams)
                             .then(() => {
-                                debug(`Updated hosted content timestamp`);
+                                debug(`[${contentObj.id}] Updated hosted content timestamp`);
                             })
                             .catch(error => {
                                 debug(
-                                    `Error updating hosted content timestamp: ${
+                                    `[${contentObj.id}] Error updating hosted content timestamp: ${
                                         error.message
                                     }`,
                                     error
@@ -726,6 +726,7 @@ export default class AOUserSession extends EventEmitter {
     private _handleContentDownloading(content: AOContent) {
         const sessionEthAddress = this.ethAddress;
         setTimeout(() => {
+            debug(`[${content.id}] checking for completion of download...`)
             const datStatsParams: AODat_GetDatStats_Data = {
                 key: content.fileDatKey
             };
@@ -734,6 +735,7 @@ export default class AOUserSession extends EventEmitter {
                 .then((response: IAORouterMessage) => {
                     const datStats: DatStats = response.data;
                     if (datStats.complete) {
+                        debug(`[${content.id}] download complete, moving to DOWNLOADED state.`)
                         let userContentUpdate: AODB_UserContentUpdate_Data = {
                             id: content.id,
                             update: {
@@ -764,6 +766,7 @@ export default class AOUserSession extends EventEmitter {
                                 );
                             });
                     } else {
+                        debug(`[${content.id}] download incomplete, progress: ${datStats.progress}`)
                         this.processContent(content);
                     }
                 })

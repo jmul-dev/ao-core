@@ -6,7 +6,7 @@ import AORouterInterface, {
     AORouterSubprocessArgs
 } from "../../router/AORouterInterface";
 import { NetworkContentHostEntry } from "../p2p/p2p";
-import DatManager, { DatArchive } from "dat-manager";
+import DatManager, { DatArchive, DatStats } from "dat-manager";
 const debug = Debug("ao:dat");
 
 export interface AODat_Init_Data {
@@ -52,19 +52,7 @@ export interface DatEntry {
     complete?: boolean;
 }
 
-export interface DatStats {
-    files: number;
-    byteLength: number;
-    length: number;
-    version: number;
-    downloadSpeed: number;
-    uploadSpeed: number;
-    downloadTotal: number;
-    uploadTotal: number;
-    peersTotal: number;
-    peersComplete: number;
-    complete: boolean;
-}
+export type DatStats = DatStats;
 
 export default class AODat extends AORouterInterface {
     private storageLocation: string;

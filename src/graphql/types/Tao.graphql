@@ -73,3 +73,12 @@ type TaoThoughtAodbEntry implements IAodbEntry {
     # value is the description
     value: TaoThought
 }
+# Name Lookup
+type NameLookup {
+    name: String!
+    id: ID
+}
+input NameLookupInputs {
+    name: String!
+    id: ID!
+}
