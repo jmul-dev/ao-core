@@ -7,6 +7,7 @@ import AORouterInterface, {
     IAORouterRequest,
     AORouterSubprocessArgs
 } from "../../router/AORouterInterface";
+import AOUserSession from "../../AOUserSession";
 const debug = Debug("ao:db");
 const errorLog = Debug("ao:db:error");
 
@@ -297,9 +298,16 @@ export default class AODB extends AORouterInterface {
                 request.reject(error);
             } else {
                 debug(`[core:db:networkContent]: database loaded`);
-                // Reset the number of recently seen hosts from previous session
+                // Reset the number of recently seen hosts from previous session (at least for content without a recent last seen host)
+                const now = new Date();
                 this.db.networkContent.update(
-                    {},
+                    {
+                        "lastSeenContentHost.timestamp": {
+                            $lt:
+                                now.getTime() -
+                                AOUserSession.CONTENT_DISCOVERY_UPDATE_INTERVAL
+                        }
+                    },
                     { $set: { recentlySeenHostsCount: 0 } },
                     { multi: true },
                     error => {
