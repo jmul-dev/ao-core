@@ -218,14 +218,50 @@ export default class AOUserSession extends EventEmitter {
                     const buyContentEvent: BuyContentEvent = request.data;
                     this._handleIncomingContentPurchase(buyContentEvent)
                         .then(() => {
-                            debug(
-                                `sending /core/content/incomingPurchase response`
-                            );
                             request.respond({});
                         })
                         .catch(error => {
                             debug(error);
                             request.reject(error);
+                        });
+                }
+            );
+            this.router.on(
+                "/core/content/downloadComplete",
+                (request: IAORouterRequest) => {
+                    const fileDatKey = request.data.key;
+                    debug(
+                        `[${fileDatKey}] handling /core/content/downloadComplete...`
+                    );
+                    // NOTE: there is a chance the content has already been handled/moved along from
+                    // the downloading state. Therefore, on our update request we make sure the query
+                    // includes the state.
+                    const contentUpdate: AODB_UserContentUpdate_Data = {
+                        query: {
+                            fileDatKey,
+                            state: {
+                                $in: [AOContentState.DOWNLOADING]
+                            }
+                        },
+                        update: {
+                            state: AOContentState.DOWNLOADED
+                        }
+                    };
+                    this.router
+                        .send("/db/user/content/get", contentUpdate)
+                        .then((response: IAORouterMessage) => {
+                            if (response.data && response.data.length > 0) {
+                                const userContent: AOContent = AOContent.fromObject(
+                                    response.data[0]
+                                );
+                                this.processContent(userContent);
+                            }
+                        })
+                        .catch(error => {
+                            debug(
+                                `[${fileDatKey}] handling /core/content/downloadComplete, user content update failed`,
+                                error
+                            );
                         });
                 }
             );
@@ -730,110 +766,99 @@ export default class AOUserSession extends EventEmitter {
      * @param {AOContent} content
      */
     private _handleContentDownloading(content: AOContent) {
-        const sessionEthAddress = this.ethAddress;
-        setTimeout(() => {
-            debug(
-                `[${content.fileDatKey}] checking for completion of download...`
-            );
-            const datStatsParams: AODat_GetDatStats_Data = {
-                key: content.fileDatKey
-            };
-            this.router
-                .send("/dat/stats", datStatsParams)
-                .then((response: IAORouterMessage) => {
-                    const datStats: DatStats = response.data;
-                    if (datStats.complete) {
-                        debug(
-                            `[${
-                                content.fileDatKey
-                            }] download complete, moving to DOWNLOADED state.`
-                        );
-                        let userContentUpdate: AODB_UserContentUpdate_Data = {
-                            id: content.id,
-                            update: {
-                                $set: {
-                                    state: AOContentState.DOWNLOADED
-                                }
+        debug(`[${content.fileDatKey}] checking for completion of download...`);
+        const datStatsParams: AODat_GetDatStats_Data = {
+            key: content.fileDatKey
+        };
+        this.router
+            .send("/dat/stats", datStatsParams)
+            .then((response: IAORouterMessage) => {
+                const datStats: DatStats = response.data;
+                if (datStats.complete) {
+                    debug(
+                        `[${
+                            content.fileDatKey
+                        }] download complete, moving to DOWNLOADED state.`
+                    );
+                    let userContentUpdate: AODB_UserContentUpdate_Data = {
+                        id: content.id,
+                        update: {
+                            $set: {
+                                state: AOContentState.DOWNLOADED
                             }
-                        };
-                        this.router
-                            .send("/db/user/content/update", userContentUpdate)
-                            .then(
-                                (
-                                    userContentUpdateResponse: IAORouterMessage
-                                ) => {
-                                    let updatedContent = AOContent.fromObject(
-                                        userContentUpdateResponse.data
-                                    );
-                                    this.processContent(updatedContent);
-                                }
-                            )
-                            .catch(error => {
-                                debug(
-                                    `[${
-                                        content.metadataDatKey
-                                    }] Error updating user content: ${
-                                        error.message
-                                    }`
-                                );
-                            });
-                    } else {
-                        debug(
-                            `[${content.id}] download incomplete, progress: ${
-                                datStats.progress
-                            }`
-                        );
+                        }
+                    };
+                    this.router
+                        .send("/db/user/content/update", userContentUpdate)
+                        .then((userContentUpdateResponse: IAORouterMessage) => {
+                            let updatedContent = AOContent.fromObject(
+                                userContentUpdateResponse.data
+                            );
+                            this.processContent(updatedContent);
+                        })
+                        .catch(error => {
+                            debug(
+                                `[${
+                                    content.metadataDatKey
+                                }] Error updating user content: ${
+                                    error.message
+                                }`
+                            );
+                        });
+                } else {
+                    debug(
+                        `[${content.id}] download incomplete [${
+                            datStats.progress
+                        }], timeout and check again.`
+                    );
+                    setTimeout(() => {
                         this.processContent(content);
-                    }
-                })
-                .catch(error => {
+                    }, 1500);
+                }
+            })
+            .catch(error => {
+                debug(
+                    `[${
+                        content.metadataDatKey
+                    }] error fetching dat stats in DOWNLOADING state: ${error}`
+                );
+                if (error.name === "NotFound") {
+                    // This specific scenario occurs when a piece of content was still in the
+                    // DOWNLOADING state and then removed on the next start of ao-core (since
+                    // dat module wipes incomplete dats). We roll back to HOST_DISCOVERY so
+                    // we can retry the download.
                     debug(
                         `[${
                             content.metadataDatKey
-                        }] error fetching dat stats in DOWNLOADING state: ${error}`
+                        }] failed to finish download, rolling back to HOST_DISCOVERY.`
                     );
-                    if (error.name === "NotFound") {
-                        // This specific scenario occurs when a piece of content was still in the
-                        // DOWNLOADING state and then removed on the next start of ao-core (since
-                        // dat module wipes incomplete dats). We roll back to HOST_DISCOVERY so
-                        // we can retry the download.
-                        debug(
-                            `[${
-                                content.metadataDatKey
-                            }] failed to finish download, rolling back to HOST_DISCOVERY.`
-                        );
-                        let userContentUpdate: AODB_UserContentUpdate_Data = {
-                            id: content.id,
-                            update: {
-                                $set: {
-                                    state: AOContentState.HOST_DISCOVERY
-                                }
+                    let userContentUpdate: AODB_UserContentUpdate_Data = {
+                        id: content.id,
+                        update: {
+                            $set: {
+                                state: AOContentState.HOST_DISCOVERY
                             }
-                        };
-                        this.router
-                            .send("/db/user/content/update", userContentUpdate)
-                            .then(
-                                (
-                                    userContentUpdateResponse: IAORouterMessage
-                                ) => {
-                                    let updatedContent = AOContent.fromObject(
-                                        userContentUpdateResponse.data
-                                    );
-                                    this.processContent(updatedContent);
-                                }
-                            )
-                            .catch(error => {
-                                debug(
-                                    `[${
-                                        content.metadataDatKey
-                                    }] Error updating user content: ${
-                                        error.message
-                                    }`
-                                );
-                            });
-                    }
-                });
-        }, 1500);
+                        }
+                    };
+                    this.router
+                        .send("/db/user/content/update", userContentUpdate)
+                        .then((userContentUpdateResponse: IAORouterMessage) => {
+                            let updatedContent = AOContent.fromObject(
+                                userContentUpdateResponse.data
+                            );
+                            this.processContent(updatedContent);
+                        })
+                        .catch(error => {
+                            debug(
+                                `[${
+                                    content.metadataDatKey
+                                }] Error updating user content: ${
+                                    error.message
+                                }`
+                            );
+                        });
+                }
+            });
     }
 
     /**

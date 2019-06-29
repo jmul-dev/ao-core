@@ -160,7 +160,7 @@ export default class AODat extends AORouterInterface {
             const archive: DatArchive = await this.datManager.get(
                 requestData.key
             );
-            const stats = archive.getStats();
+            const stats = await archive.getStats();
             request.respond(stats);
         } catch (error) {
             debug(
@@ -254,18 +254,25 @@ export default class AODat extends AORouterInterface {
                 const archive = await this.datManager.download(
                     nodeEntry.contentDatKey,
                     {
-                        resolveOnStart: true
+                        onDownloadStart: () => {
+                            request.respond({
+                                key: archive.key.toString("hex"),
+                                contentHostId: nodeEntry.contentHostId,
+                                nodeEntry,
+                                datEntry: {
+                                    complete: archive.getProgress() === 1,
+                                    key: archive.key.toString("hex")
+                                }
+                            });
+                        }
                     }
                 );
-                request.respond({
-                    key: archive.key.toString("hex"),
-                    contentHostId: nodeEntry.contentHostId,
-                    nodeEntry,
-                    datEntry: {
-                        complete: archive.getProgress() === 1,
+                // Download complete
+                this.router
+                    .send("/core/content/downloadComplete", {
                         key: archive.key.toString("hex")
-                    }
-                });
+                    })
+                    .catch(debug);
                 return;
             } catch (error) {
                 // Unable to download dat, continue to next dat key

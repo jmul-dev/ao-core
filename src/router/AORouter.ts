@@ -27,7 +27,11 @@ const corePackageJson = {
     bin: undefined,
     AO: {
         runUnderCore: true,
-        events: ["/core/log", "/core/content/incomingPurchase"]
+        events: [
+            "/core/log",
+            "/core/content/incomingPurchase",
+            "/core/content/downloadComplete"
+        ]
     }
 };
 

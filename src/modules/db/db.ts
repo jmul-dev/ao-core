@@ -71,7 +71,8 @@ export interface AODB_UserContentGet_Data {
     query?: Object;
 }
 export interface AODB_UserContentUpdate_Data {
-    id: string;
+    id?: string;
+    query?: object;
     update: any;
 }
 /**
@@ -513,8 +514,9 @@ export default class AODB extends AORouterInterface {
             );
             return;
         }
+        let query = requestData.query || { id: requestData.id };
         userDbs.content.update(
-            { id: requestData.id },
+            query,
             requestData.update,
             { returnUpdatedDocs: true, multi: false },
             (error: Error, numAffected, updatedDoc, upsert) => {
