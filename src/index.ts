@@ -540,7 +540,7 @@ export default class Core extends EventEmitter {
         this.userSession.on("user-change", values => {
             if (this.runningUnderElectron) {
                 process.send({
-                    event: AO_CONSTANTS.AO_ON_USER_VALUES_CHANGE,
+                    event: AO_CONSTANTS.IPC.AO_ON_USER_VALUES_CHANGE,
                     data: values
                 });
             }

@@ -3,6 +3,7 @@ import { IAORouterMessage } from "../../router/AORouter";
 import AOContent from "../../models/AOContent";
 import Debug from "debug";
 import { AODat_GetDatStats_Data } from "../../modules/dat/dat";
+import { DatStats } from "dat-manager";
 const debug = Debug("ao:resolveDatStats");
 
 export default (
@@ -27,7 +28,7 @@ export default (
         context.router
             .send("/dat/stats", statsParams, { ignoreLogging: true })
             .then((response: IAORouterMessage) => {
-                const stats = response.data;
+                const stats: DatStats = response.data;
                 if (!stats) return resolve(null);
                 resolve({
                     key: datKey,
@@ -50,7 +51,7 @@ export default (
                 });
             })
             .catch(err => {
-                debug(`[${datKey}] failed to get stats: ${err.message}`);
+                // debug(`[${datKey}] failed to get stats: ${err.message}`);
                 // In case the dat does not exist yet for whatever reason
                 resolve(null);
             });

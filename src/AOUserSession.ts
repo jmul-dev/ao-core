@@ -59,7 +59,7 @@ const debug = Debug("ao:userSession");
  * For now I just store a scoped reference inside the processing methods. This is not a solution,
  * but at least ensures same user identity is used for the processing for any one state. In most
  * cases user action is required after a state change which helps minimize the problem.
- * 
+ *
  * @event 'user-update' provides an object { ethAddress, aoNameId, publicKey, publicAddress }
  *                      whenever one of these values changes.
  */
@@ -74,7 +74,7 @@ export default class AOUserSession extends EventEmitter {
     private identity: AOCrypto.Identity;
 
     constructor(router: AORouterInterface) {
-        super()
+        super();
         this.router = router;
     }
 
@@ -183,12 +183,12 @@ export default class AOUserSession extends EventEmitter {
     }
 
     private _userChangeEvent() {
-        this.emit('user-change', {
+        this.emit("user-change", {
             ethAddress: this.ethAddress,
             aoNameId: this.aoNameId,
             publicKey: this.publicKey,
-            publicAddress: this.publicAddress,
-        })
+            publicAddress: this.publicAddress
+        });
     }
 
     /**
@@ -277,11 +277,17 @@ export default class AOUserSession extends EventEmitter {
                         this.router
                             .send("/p2p/updateNode", updateNodeParams)
                             .then(() => {
-                                debug(`[${contentObj.id}] Updated hosted content timestamp`);
+                                debug(
+                                    `[${
+                                        contentObj.id
+                                    }] Updated hosted content timestamp`
+                                );
                             })
                             .catch(error => {
                                 debug(
-                                    `[${contentObj.id}] Error updating hosted content timestamp: ${
+                                    `[${
+                                        contentObj.id
+                                    }] Error updating hosted content timestamp: ${
                                         error.message
                                     }`,
                                     error
@@ -726,7 +732,9 @@ export default class AOUserSession extends EventEmitter {
     private _handleContentDownloading(content: AOContent) {
         const sessionEthAddress = this.ethAddress;
         setTimeout(() => {
-            debug(`[${content.id}] checking for completion of download...`)
+            debug(
+                `[${content.fileDatKey}] checking for completion of download...`
+            );
             const datStatsParams: AODat_GetDatStats_Data = {
                 key: content.fileDatKey
             };
@@ -735,7 +743,11 @@ export default class AOUserSession extends EventEmitter {
                 .then((response: IAORouterMessage) => {
                     const datStats: DatStats = response.data;
                     if (datStats.complete) {
-                        debug(`[${content.id}] download complete, moving to DOWNLOADED state.`)
+                        debug(
+                            `[${
+                                content.fileDatKey
+                            }] download complete, moving to DOWNLOADED state.`
+                        );
                         let userContentUpdate: AODB_UserContentUpdate_Data = {
                             id: content.id,
                             update: {
@@ -766,7 +778,11 @@ export default class AOUserSession extends EventEmitter {
                                 );
                             });
                     } else {
-                        debug(`[${content.id}] download incomplete, progress: ${datStats.progress}`)
+                        debug(
+                            `[${content.id}] download incomplete, progress: ${
+                                datStats.progress
+                            }`
+                        );
                         this.processContent(content);
                     }
                 })
@@ -774,10 +790,9 @@ export default class AOUserSession extends EventEmitter {
                     debug(
                         `[${
                             content.metadataDatKey
-                        }] error fetching dat stats in DOWNLOADING state: ${error}`,
-                        error
+                        }] error fetching dat stats in DOWNLOADING state: ${error}`
                     );
-                    if (error === "Dat instance not found") {
+                    if (error.name === "NotFound") {
                         // This specific scenario occurs when a piece of content was still in the
                         // DOWNLOADING state and then removed on the next start of ao-core (since
                         // dat module wipes incomplete dats). We roll back to HOST_DISCOVERY so
@@ -887,7 +902,10 @@ export default class AOUserSession extends EventEmitter {
                             });
                             // Content succesfully purchased, begin next step in process (listen for decryption key)
                             this.processContent(updatedContent);
-                        } else if (updatedContent.state === AOContentState.HOST_DISCOVERY) {
+                        } else if (
+                            updatedContent.state ===
+                            AOContentState.HOST_DISCOVERY
+                        ) {
                             this.processContent(updatedContent);
                         }
                     })
