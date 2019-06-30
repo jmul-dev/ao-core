@@ -183,7 +183,6 @@ export default class AODat extends AORouterInterface {
                 const archive: DatArchive = await this.datManager.get(datKey);
                 stats[datKey] = archive.getStats();
             } catch (error) {
-                debug(`[${datKey}] error in getStats: ${error.message}`);
                 stats[datKey] = null;
             }
         }
@@ -254,14 +253,14 @@ export default class AODat extends AORouterInterface {
                 const archive = await this.datManager.download(
                     nodeEntry.contentDatKey,
                     {
-                        onDownloadStart: () => {
+                        onDownloadStart: ({ isComplete }) => {
                             request.respond({
-                                key: archive.key.toString("hex"),
+                                key: nodeEntry.contentDatKey,
                                 contentHostId: nodeEntry.contentHostId,
                                 nodeEntry,
                                 datEntry: {
-                                    complete: archive.getProgress() === 1,
-                                    key: archive.key.toString("hex")
+                                    complete: isComplete,
+                                    key: nodeEntry.contentDatKey
                                 }
                             });
                         }
@@ -276,6 +275,13 @@ export default class AODat extends AORouterInterface {
                 return;
             } catch (error) {
                 // Unable to download dat, continue to next dat key
+                if (error)
+                    debug(
+                        `[${
+                            nodeEntry.contentDatKey
+                        }] failed to download from host:`,
+                        error
+                    );
             }
         }
         debug(`Host for the given nodes not found`);
