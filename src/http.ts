@@ -14,6 +14,7 @@ import AOContent from "./models/AOContent";
 import { AODB_UserContentGet_Data } from "./modules/db/db";
 import { IAORouterMessage } from "./router/AORouter";
 import { AOCoreProcessRouter } from "./router/AORouterInterface";
+import { AO_CONSTANTS } from "ao-library";
 const debug = Debug("ao:http");
 
 export interface Http_Args {
@@ -53,9 +54,13 @@ export default class Http {
                 ? [
                       options.httpOrigin,
                       "http://localhost",
-                      "http://localhost:3000"
+                      "http://localhost:3000",
+                      `http://localhost:${AO_CONSTANTS.CORE_PORT}`
                   ]
-                : options.httpOrigin;
+                : [
+                      options.httpOrigin,
+                      `http://localhost:${AO_CONSTANTS.CORE_PORT}`
+                  ];
         debug(
             `settings cors on server: ${corsOrigin}, process.env.NODE_ENV=${
                 process.env.NODE_ENV
@@ -94,12 +99,26 @@ export default class Http {
                 }
             })
         );
-        if (process.env.NODE_ENV === "development") {
-            this.express.get(
-                "/graphiql",
-                graphiqlExpress({ endpointURL: "/graphql" })
-            );
-        }
+        this.express.get(
+            "/graphiql",
+            cors({
+                origin: (origin, callback) => {
+                    if (
+                        !origin ||
+                        (Array.isArray(corsOrigin) &&
+                            corsOrigin.indexOf(origin) === -1) ||
+                        (!Array.isArray(corsOrigin) && corsOrigin !== origin)
+                    ) {
+                        const msg =
+                            "The CORS policy for this node does not allow access from the specified Origin. " +
+                            origin;
+                        return callback(new Error(msg), false);
+                    }
+                    return callback(null, true);
+                }
+            }),
+            graphiqlExpress({ endpointURL: "/graphql" })
+        );
         this.express.get(
             `/${Http.ENCRYPTED_RESOURCES_ENDPOINT}/:key/:filename`,
             this._serveResource.bind(this, { encrypted: true })
