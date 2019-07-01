@@ -72,9 +72,11 @@ export default class Http {
                 origin: (origin, callback) => {
                     if (
                         !origin ||
-                        (Array.isArray(corsOrigin) &&
-                            corsOrigin.indexOf(origin) === -1) ||
-                        (!Array.isArray(corsOrigin) && corsOrigin !== origin)
+						(origin && (
+							(Array.isArray(corsOrigin) &&
+								corsOrigin.indexOf(origin) === -1) ||
+							(!Array.isArray(corsOrigin) && corsOrigin !== origin)
+						))
                     ) {
                         const msg =
                             "The CORS policy for this node does not allow access from the specified Origin.";
