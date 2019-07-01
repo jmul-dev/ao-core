@@ -91,13 +91,16 @@ export default class TAODBWrapper {
                         await this.taodb.setNetworkId(
                             parseInt(args.ethNetworkId)
                         );
+						// If rinkeby (networkId 4) use port 60002, else default to 60001
+						const port = parseInt(args.ethNetworkId) === 4 ? 60002 : 60001;
                         this.swarm = swarm(this.taodb, {
                             dht: false,
                             utp: false,
-                            tcp: true
+							tcp: true,
+							port
                         });
                         this.connectionStatus = "CONNECTED";
-                        debug(`taodb ready`);
+						debug(`taodb ready: port ${port}`);
                         resolve(this.dbKey);
                     } catch (error) {
                         this.connectionStatus = "ERROR";
