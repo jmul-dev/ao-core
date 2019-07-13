@@ -42,11 +42,11 @@ type DatStats {
     connected: Boolean
     downloadSpeed: Float
     downloadTotal: Float
-    uploadSpeed: Float    
+    uploadSpeed: Float
     uploadTotal: Float
     # Peers
     peersTotal: Int
-    peersComplete: Int    
+    peersComplete: Int
 }
 
 type ContentTransactions {
@@ -78,6 +78,13 @@ type NetworkContentHostEntry {
     timestamp: String
 }
 
+type TaoDBKeyValue {
+    key: String!
+    value: String
+    schema: String!
+    label: String!
+}
+
 # Shared interface between all content types
 # Keep AOContent.ts up to date with this
 interface IContent {
@@ -91,6 +98,7 @@ interface IContent {
     creatorNodePublicKey: ID!
     creatorEthAddress: ID!
     creatorNameId: ID!
+    hostNameId: ID
     taoId: ID
     contentType: ContentType!
     mimetype: String!
@@ -128,6 +136,8 @@ interface IContent {
     totalHosts: Int
     recentlySeenHostsCount: Int
     isNetworkContent: Boolean
+    # TaoDB
+    taodbValues: [TaoDBKeyValue]
 }
 
 input ContentSubmissionInputs {
@@ -159,6 +169,7 @@ type VideoContent implements IContent {
     creatorNodePublicKey: ID!
     creatorEthAddress: ID!
     creatorNameId: ID!
+    hostNameId: ID
     taoId: ID
     contentType: ContentType!
     mimetype: String!
@@ -196,6 +207,8 @@ type VideoContent implements IContent {
     totalHosts: Int
     recentlySeenHostsCount: Int
     isNetworkContent: Boolean
+    # TaoDB
+    taodbValues: [TaoDBKeyValue]
     # VideoContent
     metadata: VideoMetadata
 }
@@ -214,6 +227,7 @@ type DappContent implements IContent {
     creatorNodePublicKey: ID!
     creatorEthAddress: ID!
     creatorNameId: ID!
+    hostNameId: ID
     taoId: ID
     contentType: ContentType!
     mimetype: String!
@@ -251,6 +265,8 @@ type DappContent implements IContent {
     totalHosts: Int
     recentlySeenHostsCount: Int
     isNetworkContent: Boolean
+    # TaoDB
+    taodbValues: [TaoDBKeyValue]
     # DappContent
     unpacked: Boolean
     dappIndexPath: String
@@ -259,7 +275,7 @@ type DappContent implements IContent {
 #
 # ContentType === DAPP
 #
-type PdfContent implements IContent {    
+type PdfContent implements IContent {
     id: ID!
     ethNetworkId: String!
     contentHostId: ID
@@ -270,6 +286,7 @@ type PdfContent implements IContent {
     creatorNodePublicKey: ID!
     creatorEthAddress: ID!
     creatorNameId: ID!
+    hostNameId: ID
     taoId: ID
     contentType: ContentType!
     mimetype: String!
@@ -307,5 +324,7 @@ type PdfContent implements IContent {
     totalHosts: Int
     recentlySeenHostsCount: Int
     isNetworkContent: Boolean
+    # TaoDB
+    taodbValues: [TaoDBKeyValue]
     # PdfContent
 }

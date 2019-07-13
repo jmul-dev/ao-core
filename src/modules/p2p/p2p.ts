@@ -50,6 +50,7 @@ export interface AOP2P_Add_Discovery_Data {
 export interface AOP2P_Write_Decryption_Key_Data {
     content: AOContent;
     buyersPublicKey: string;
+    buyersNameId: string;
     hostsPublicKey: string;
     encryptedDecryptionKey: string;
     encryptedKeySignature: string;
@@ -57,7 +58,6 @@ export interface AOP2P_Write_Decryption_Key_Data {
 
 export interface AOP2P_Update_Node_Timestamp_Data {
     content: AOContent;
-    hostPublicKey: string;
 }
 
 export interface AOP2P_GetContentHosts_Data {
@@ -65,6 +65,10 @@ export interface AOP2P_GetContentHosts_Data {
 }
 
 export interface AOP2P_UnregisterContentHost_Data {
+    content: AOContent;
+}
+
+export interface AOP2P_ContentTaodbValues_Data {
     content: AOContent;
 }
 
@@ -93,7 +97,7 @@ export interface AOP2P_TaoRequest_Data {
         | "getTaoThoughtsCount"
         | "insertTaoThought"
         | "getWriterKey"
-		| "getWriterKeySignature"
+        | "getWriterKeySignature"
         | "insertNameLookup"
         | "getNameLookup";
     methodArgs: any;
@@ -161,6 +165,10 @@ export default class AOP2P extends AORouterInterface {
             this._setUserIdentity.bind(this)
         );
         this.router.on("/p2p/tao", this._handleTaoRequest.bind(this));
+        this.router.on(
+            "/p2p/content/taodbKeyValues",
+            this._handleContentTaodbValues.bind(this)
+        );
     }
 
     _init(request: IAORouterRequest) {
@@ -508,7 +516,7 @@ export default class AOP2P extends AORouterInterface {
         }: AOP2P_Watch_AND_Get_IndexData_Data = request.data;
 
         const indexDataKey = TaoDB.getContentHostIndexDataKey({
-            hostsPublicKey: content.nodePublicKey,
+            hostNameId: content.hostNameId,
             contentDatKey: content.fileDatKey,
             contentMetadataDatKey: content.metadataDatKey,
             contentType: content.contentType
@@ -615,8 +623,7 @@ export default class AOP2P extends AORouterInterface {
         Promise.resolve()
             .then(() => {
                 return this.taodb.removeContentHost({
-                    content,
-                    hostsPublicKey: content.nodePublicKey
+                    content
                 });
             })
             .then(() => {
@@ -758,6 +765,7 @@ export default class AOP2P extends AORouterInterface {
     _handleDecryptionKeyHandoff(request: IAORouterRequest) {
         let {
             content,
+            buyersNameId,
             buyersPublicKey,
             hostsPublicKey,
             encryptedDecryptionKey,
@@ -771,7 +779,7 @@ export default class AOP2P extends AORouterInterface {
                 return new Promise((localResolve, localReject) => {
                     // Fetch existing indexData...
                     const indexDataKey = TaoDB.getContentHostIndexDataKey({
-                        hostsPublicKey,
+                        hostNameId: content.hostNameId,
                         contentType: content.contentType,
                         contentMetadataDatKey: content.metadataDatKey,
                         contentDatKey: content.fileDatKey
@@ -868,12 +876,9 @@ export default class AOP2P extends AORouterInterface {
     }
 
     async _handleNodeUpdate(request: IAORouterRequest) {
-        const {
-            content,
-            hostPublicKey
-        }: AOP2P_Update_Node_Timestamp_Data = request.data;
+        const { content }: AOP2P_Update_Node_Timestamp_Data = request.data;
         const timestampKey = TaoDB.getContentHostTimestampKey({
-            hostsPublicKey: hostPublicKey,
+            hostNameId: content.hostNameId,
             contentType: content.contentType,
             contentMetadataDatKey: content.metadataDatKey
         });
@@ -881,7 +886,10 @@ export default class AOP2P extends AORouterInterface {
         try {
             timestampEntry = await this.taodb.get(timestampKey);
         } catch (error) {
-            return request.reject(error || new Error(`Key does not exist in taodb: ${timestampKey}`));
+            return request.reject(
+                error ||
+                    new Error(`Key does not exist in taodb: ${timestampKey}`)
+            );
         }
         try {
             if (timestampEntry) {
@@ -1003,5 +1011,67 @@ export default class AOP2P extends AORouterInterface {
                 );
         }
         taodbPromise.then(request.respond).catch(request.reject);
+    }
+
+    async _handleContentTaodbValues(request: IAORouterRequest) {
+        const { content }: AOP2P_ContentTaodbValues_Data = request.data;
+        try {
+            let taodbKeyValues = [];
+            let key;
+            // User content signature
+            key = TaoDB.getUserContentSignatureKey({
+                nameId: content.creatorNameId,
+                contentType: content.contentType,
+                contentMetadataDatKey: content.metadataDatKey
+            });
+            taodbKeyValues.push({
+                key,
+                value: await this.taodb.get(key),
+                schema: this.taodb.schemas["userContent"].key,
+                label: "Content creator signature"
+            });
+            // Content Host signature
+            key = TaoDB.getContentHostSignatureKey({
+                contentType: content.contentType,
+                contentMetadataDatKey: content.metadataDatKey,
+                contentDatKey: content.fileDatKey,
+                hostNameId: content.hostNameId
+            });
+            taodbKeyValues.push({
+                key,
+                value: await this.taodb.get(key),
+                schema: this.taodb.schemas["contentHostSignature"].key,
+                label: "Content host signature"
+            });
+            // Content Host indexData
+            key = TaoDB.getContentHostIndexDataKey({
+                contentType: content.contentType,
+                contentMetadataDatKey: content.metadataDatKey,
+                contentDatKey: content.fileDatKey,
+                hostNameId: content.hostNameId
+            });
+            taodbKeyValues.push({
+                key,
+                value: await this.taodb.get(key),
+                schema: this.taodb.schemas["contentHostIndexData"].key,
+                label:
+                    "Content host decryption key entries (handoff during BuyContent event)"
+            });
+            // Content Host timestamp
+            key = TaoDB.getContentHostTimestampKey({
+                contentType: content.contentType,
+                contentMetadataDatKey: content.metadataDatKey,
+                hostNameId: content.hostNameId
+            });
+            taodbKeyValues.push({
+                key,
+                value: await this.taodb.get(key),
+                schema: this.taodb.schemas["contentHostTimestamp"].key,
+                label: "Content host timestamp"
+            });
+            request.respond(taodbKeyValues);
+        } catch (error) {
+            request.reject(error);
+        }
     }
 }

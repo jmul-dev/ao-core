@@ -41,35 +41,34 @@ export default class TaoDB extends TAODBWrapper {
 
     public schemas: { [key: string]: ITaoDB_Schema } = {
         userContent: {
-            key: "schema/%writerAddress%/AO/Content/*/*/signature",
+            key: "schema/nameId/*/AO/Content/*/*/signature",
             value: {
-                keySchema: "%writerAddress%/AO/Content/*/*/signature",
+                keySchema: "nameId/*/AO/Content/*/*/signature",
                 valueValidationKey: "",
                 keyValidation: ""
             }
         },
         contentHostSignature: {
-            key:
-                "schema/AO/Content/*/*/Hosts/%writerAddress%/*/indexData/signature",
+            key: "schema/AO/Content/*/*/Hosts/nameId/*/*/indexData/signature",
             value: {
                 keySchema:
-                    "AO/Content/*/*/Hosts/%writerAddress%/*/indexData/signature",
+                    "AO/Content/*/*/Hosts/nameId/*/*/indexData/signature",
                 valueValidationKey: "",
                 keyValidation: ""
             }
         },
         contentHostIndexData: {
-            key: "schema/AO/Content/*/*/Hosts/%writerAddress%/*/indexData",
+            key: "schema/AO/Content/*/*/Hosts/nameId/*/*/indexData",
             value: {
-                keySchema: "AO/Content/*/*/Hosts/%writerAddress%/*/indexData",
+                keySchema: "AO/Content/*/*/Hosts/nameId/*/*/indexData",
                 valueValidationKey: "",
                 keyValidation: ""
             }
         },
         contentHostTimestamp: {
-            key: "schema/AO/Content/*/*/Hosts/%writerAddress%",
+            key: "schema/AO/Content/*/*/Hosts/nameId/*",
             value: {
-                keySchema: "AO/Content/*/*/Hosts/%writerAddress%",
+                keySchema: "AO/Content/*/*/Hosts/nameId/*",
                 valueValidationKey: "",
                 keyValidation: ""
             }
@@ -115,11 +114,11 @@ export default class TaoDB extends TAODBWrapper {
                 valueValidationKey: "",
                 keyValidation: ""
             }
-		},
+        },
         nameLookup: {
-			key: "schema/TAO/this/nameLookup/*/id",
+            key: "schema/TAO/this/nameLookup/*/id",
             value: {
-				keySchema: "TAO/this/nameLookup/*/id",
+                keySchema: "TAO/this/nameLookup/*/id",
                 valueValidationKey: "",
                 keyValidation: ""
             }
@@ -170,11 +169,11 @@ export default class TaoDB extends TAODBWrapper {
      *
      */
     public static getUserContentSignatureKey({
-        usersPublicKey,
+        nameId,
         contentType,
         contentMetadataDatKey
     }) {
-        return `${usersPublicKey}/AO/Content/${contentType}/${contentMetadataDatKey}/signature`;
+        return `nameId/${nameId}/AO/Content/${contentType}/${contentMetadataDatKey}/signature`;
     }
 
     public async insertUserContentSignature({
@@ -183,7 +182,7 @@ export default class TaoDB extends TAODBWrapper {
         content: AOContent;
     }): Promise<any> {
         const key = TaoDB.getUserContentSignatureKey({
-            usersPublicKey: this._userIdentity.publicKey,
+            nameId: content.creatorNameId,
             contentType: content.contentType,
             contentMetadataDatKey: content.metadataDatKey
         });
@@ -206,7 +205,7 @@ export default class TaoDB extends TAODBWrapper {
         content: AOContent;
     }): Promise<any> {
         const key = TaoDB.getUserContentSignatureKey({
-            usersPublicKey: this._userIdentity.publicKey,
+            nameId: content.creatorNameId,
             contentType: content.contentType,
             contentMetadataDatKey: content.metadataDatKey
         });
@@ -221,12 +220,12 @@ export default class TaoDB extends TAODBWrapper {
      *
      */
     public static getContentHostSignatureKey({
-        hostsPublicKey,
+        hostNameId,
         contentType,
         contentMetadataDatKey,
         contentDatKey
     }) {
-        return `AO/Content/${contentType}/${contentMetadataDatKey}/Hosts/${hostsPublicKey}/${contentDatKey}/indexData/signature`;
+        return `AO/Content/${contentType}/${contentMetadataDatKey}/Hosts/nameId/${hostNameId}/${contentDatKey}/indexData/signature`;
     }
 
     public async insertContentHostSignature({
@@ -235,7 +234,7 @@ export default class TaoDB extends TAODBWrapper {
         content: AOContent;
     }): Promise<any> {
         const key = TaoDB.getContentHostSignatureKey({
-            hostsPublicKey: this._userIdentity.publicKey,
+            hostNameId: content.hostNameId,
             contentType: content.contentType,
             contentMetadataDatKey: content.metadataDatKey,
             contentDatKey: content.fileDatKey
@@ -259,7 +258,7 @@ export default class TaoDB extends TAODBWrapper {
         content: AOContent;
     }): Promise<any> {
         const key = TaoDB.getContentHostSignatureKey({
-            hostsPublicKey: this._userIdentity.publicKey,
+            hostNameId: content.hostNameId,
             contentType: content.contentType,
             contentMetadataDatKey: content.metadataDatKey,
             contentDatKey: content.fileDatKey
@@ -280,12 +279,12 @@ export default class TaoDB extends TAODBWrapper {
      *
      */
     public static getContentHostIndexDataKey({
-        hostsPublicKey,
+        hostNameId,
         contentType,
         contentMetadataDatKey,
         contentDatKey
     }) {
-        return `AO/Content/${contentType}/${contentMetadataDatKey}/Hosts/${hostsPublicKey}/${contentDatKey}/indexData`;
+        return `AO/Content/${contentType}/${contentMetadataDatKey}/Hosts/nameId/${hostNameId}/${contentDatKey}/indexData`;
     }
 
     public async insertContentHostIndexData({
@@ -296,7 +295,7 @@ export default class TaoDB extends TAODBWrapper {
         indexData: ITaoDB_ContentHost_IndexData;
     }): Promise<any> {
         const key = TaoDB.getContentHostIndexDataKey({
-            hostsPublicKey: this._userIdentity.publicKey,
+            hostNameId: content.hostNameId,
             contentType: content.contentType,
             contentMetadataDatKey: content.metadataDatKey,
             contentDatKey: content.fileDatKey
@@ -320,11 +319,11 @@ export default class TaoDB extends TAODBWrapper {
      *
      */
     public static getContentHostTimestampKey({
-        hostsPublicKey,
+        hostNameId,
         contentType,
         contentMetadataDatKey
     }) {
-        return `AO/Content/${contentType}/${contentMetadataDatKey}/Hosts/${hostsPublicKey}`;
+        return `AO/Content/${contentType}/${contentMetadataDatKey}/Hosts/nameId/${hostNameId}`;
     }
 
     public async insertContentHostTimestamp({
@@ -333,7 +332,7 @@ export default class TaoDB extends TAODBWrapper {
         content: AOContent;
     }): Promise<any> {
         const key = TaoDB.getContentHostTimestampKey({
-            hostsPublicKey: this._userIdentity.publicKey,
+            hostNameId: content.hostNameId,
             contentType: content.contentType,
             contentMetadataDatKey: content.metadataDatKey
         });
@@ -360,7 +359,7 @@ export default class TaoDB extends TAODBWrapper {
      *
      */
     public static getContentHostsKey({ contentType, contentMetadataDatKey }) {
-        return `AO/Content/${contentType}/${contentMetadataDatKey}/Hosts`;
+        return `AO/Content/${contentType}/${contentMetadataDatKey}/Hosts/nameId`;
     }
     public listContentHosts({
         content
@@ -373,18 +372,21 @@ export default class TaoDB extends TAODBWrapper {
         });
         return this.list(key, { recursive: false, reverse: true });
     }
-    // Remove a single content host, effectively removing this host from discovery
+
+    /**
+     *
+     * Remove a single content host, effectively removing this host from discovery
+     *
+     */
     public removeContentHost({
-        content,
-        hostsPublicKey
+        content
     }: {
         content: AOContent;
-        hostsPublicKey: string;
     }): Promise<Array<ITAODB_Entry<any>>> {
         const key = TaoDB.getContentHostTimestampKey({
             contentMetadataDatKey: content.metadataDatKey,
             contentType: content.contentType,
-            hostsPublicKey
+            hostNameId: content.hostNameId
         });
         return this.delete({ key });
     }
@@ -536,11 +538,13 @@ export default class TaoDB extends TAODBWrapper {
 
     /**
      *
-	 * Name/TAO's name lookup
+     * Name/TAO's name lookup
      *
      */
     public static getNameLookupKey({ name }) {
-		return `TAO/this/nameLookup/${name.toLowerCase().replace(/[\s`~!@#$%^&*()_|+\-=?;:'",.<>{}[\]\\/]/gi, '')}/id`;
+        return `TAO/this/nameLookup/${name
+            .toLowerCase()
+            .replace(/[\s`~!@#$%^&*()_|+\-=?;:'",.<>{}[\]\\/]/gi, "")}/id`;
     }
     public async insertNameLookup({
         name,

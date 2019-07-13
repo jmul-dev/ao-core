@@ -45,7 +45,8 @@ export default function() {
                 fileUrl: resolvers.resolveUrl,
                 baseChallengeSignature: resolvers.resolveSignatureVrs,
                 teaserUrl: resolvers.resolveUrl,
-                featuredImageUrl: resolvers.resolveUrl
+                featuredImageUrl: resolvers.resolveUrl,
+                taodbValues: resolvers.resolveContentTaodbValues
             },
             VideoContent: {},
             DappContent: {
@@ -72,8 +73,8 @@ export default function() {
                 taoDescription: resolvers.resolveTaoDescription,
                 taoDescriptions: resolvers.resolveTaoDescriptions,
                 writerKey: resolvers.resolveWriterKey,
-				writerKeySignature: resolvers.resolveWriterKeySignature,
-				nameLookup: resolvers.resolveNameLookup
+                writerKeySignature: resolvers.resolveWriterKeySignature,
+                nameLookup: resolvers.resolveNameLookup
             },
             Mutation: {
                 register: resolvers.resolveRegister,
@@ -92,8 +93,8 @@ export default function() {
                 submitNameProfile: resolvers.resolveSubmitNameProfile,
                 submitTaoDescription: resolvers.resolveSubmitTaoDescription,
                 submitTaoThought: resolvers.resolveSubmitTaoThought,
-				removeContent: resolvers.resolveRemoveContent,
-				submitNameLookup: resolvers.resolveSubmitNameLookup
+                removeContent: resolvers.resolveRemoveContent,
+                submitNameLookup: resolvers.resolveSubmitNameLookup
             }
         },
         resolverValidationOptions: {

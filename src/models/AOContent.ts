@@ -105,6 +105,7 @@ export default abstract class AOContent {
     public creatorNodePublicKey: string;
     public creatorEthAddress: string;
     public creatorNameId: string;
+    public hostNameId: string;
     public taoId: string;
     public contentType: AOContentType;
     public mimetype: string;

@@ -14,6 +14,7 @@ const AOStakedContent = require("ao-contracts/build/minified/AOStakedContent.jso
 const AOIon = require("ao-contracts/build/minified/AOIon.json");
 const AOSetting = require("ao-contracts/build/minified/AOSetting.json");
 const NameFactory = require("ao-contracts/build/minified/NameFactory.json");
+const NamePublicKey = require("ao-contracts/build/minified/NamePublicKey.json");
 const debug = Debug("ao:eth");
 const errorLog = Debug("ao:eth:error");
 
@@ -123,6 +124,7 @@ export default class AOEth extends AORouterInterface {
         aoContentHost: any;
         aoSetting: any;
         nameFactory: any;
+        namePublicKey: any;
     };
 
     private events: {
@@ -148,6 +150,10 @@ export default class AOEth extends AORouterInterface {
         );
         this.router.on("/eth/stats", this._handleStats.bind(this));
         this.router.on("/eth/nameId", this._handleNameId.bind(this));
+        this.router.on(
+            "/eth/nameId/publicKey",
+            this._publicKeyFromNameId.bind(this)
+        );
         this.router.on("/eth/network/get", this._handleNetworkGet.bind(this));
         this.router.on("/eth/tx", this._handleTx.bind(this));
         this.router.on(
@@ -412,6 +418,10 @@ export default class AOEth extends AORouterInterface {
                 nameFactory: new this.web3.eth.Contract(
                     NameFactory.abi,
                     NameFactory.networks[this.networkId].address
+                ),
+                namePublicKey: new this.web3.eth.Contract(
+                    NamePublicKey.abi,
+                    NamePublicKey.networks[this.networkId].address
                 )
             };
             return true;
@@ -457,6 +467,26 @@ export default class AOEth extends AORouterInterface {
                 )
                     request.reject(new Error(`Name id not found`));
                 else request.respond({ nameId });
+            })
+            .catch((error: Error) => {
+                request.reject(error);
+            });
+    }
+
+    private _publicKeyFromNameId(request: IAORouterRequest) {
+        this.contracts.namePublicKey.methods
+            .getWriterKey(request.data.nameId)
+            .call()
+            .then((publicKey: string) => {
+                if (!publicKey)
+                    return request.reject(
+                        new Error(
+                            `No public key found for nameId ${
+                                request.data.nameId
+                            }`
+                        )
+                    );
+                else request.respond({ publicKey });
             })
             .catch((error: Error) => {
                 request.reject(error);

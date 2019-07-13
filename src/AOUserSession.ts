@@ -307,8 +307,7 @@ export default class AOUserSession extends EventEmitter {
                     // 2. Ping p2p/discovery to update the timestamp of last seen
                     response.data.forEach(contentObj => {
                         let updateNodeParams: AOP2P_Update_Node_Timestamp_Data = {
-                            content: AOContent.fromObject(contentObj),
-                            hostPublicKey: this.publicKey
+                            content: AOContent.fromObject(contentObj)
                         };
                         this.router
                             .send("/p2p/updateNode", updateNodeParams)
@@ -486,7 +485,15 @@ export default class AOUserSession extends EventEmitter {
                         } (nameId)`
                     );
                     try {
-                        if (!buyContentEvent.publicKey)
+                        // Fetch the buyer's publicKey from contracts (most recently associated with their nameId)
+                        // TODO: we should really generate a decryption key for _every_ publicKey associated with that user
+                        const publicKeyResponse: IAORouterMessage = await this.router.send(
+                            "/eth/nameId/publicKey",
+                            { nameId: buyContentEvent.buyer }
+                        );
+                        const buyersPublicKey =
+                            publicKeyResponse.data.publicKey;
+                        if (!buyersPublicKey)
                             throw new Error(
                                 `BuyContent event does not have a public key`
                             );
@@ -497,8 +504,7 @@ export default class AOUserSession extends EventEmitter {
                         // 2. Generate the encryption key according to spec
                         const contentDecryptParams = {
                             contentDecryptionKey: userContent.decryptionKey,
-                            contentRequesterPublicKey:
-                                buyContentEvent.publicKey,
+                            contentRequesterPublicKey: buyersPublicKey,
                             contentOwnersPrivateKey: sessionIdentity.privateKey
                         };
                         const {
@@ -511,7 +517,8 @@ export default class AOUserSession extends EventEmitter {
                         const sendDecryptionKeyMessage: AOP2P_Write_Decryption_Key_Data = {
                             content: userContent,
                             hostsPublicKey: sessionIdentity.publicKey,
-                            buyersPublicKey: buyContentEvent.publicKey,
+                            buyersPublicKey: buyersPublicKey,
+                            buyersNameId: buyContentEvent.buyer,
                             encryptedDecryptionKey,
                             encryptedKeySignature: encryptedDecryptionKeySignature
                         };
@@ -1389,6 +1396,7 @@ export default class AOUserSession extends EventEmitter {
                         $set: {
                             state: AOContentState.STAKED,
                             contentHostId: hostContentEvent.contentHostId,
+                            hostNameId: hostContentEvent.host,
                             stakeId: hostContentEvent.stakedContentId,
                             hostedAt: Date.now().toString()
                         }
