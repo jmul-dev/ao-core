@@ -39,6 +39,8 @@ export interface ITaoDB_ContentHost_Timestamp {
 export default class TaoDB extends TAODBWrapper {
     public static ContentKey = "AO/Content";
 
+    // NOTE: we really do not need schema definitions at this level
+    // should mostly be taken care of by taodb itself.
     public schemas: { [key: string]: ITaoDB_Schema } = {
         userContent: {
             key: "schema/nameId/*/AO/Content/*/*/signature",
@@ -119,6 +121,22 @@ export default class TaoDB extends TAODBWrapper {
             key: "schema/TAO/this/nameLookup/*/id",
             value: {
                 keySchema: "TAO/this/nameLookup/*/id",
+                valueValidationKey: "",
+                keyValidation: ""
+            }
+        },
+        writerPublicKey: {
+            key: "schema/TAO/this/nameId/*/writerKey/publicKey",
+            value: {
+                keySchema: "TAO/this/nameId/*/writerKey/publicKey",
+                valueValidationKey: "",
+                keyValidation: ""
+            }
+        },
+        writerAddress: {
+            key: "schema/TAO/this/nameId/*/writerKey/address",
+            value: {
+                keySchema: "TAO/this/nameId/*/writerKey/address",
                 valueValidationKey: "",
                 keyValidation: ""
             }
@@ -567,5 +585,86 @@ export default class TaoDB extends TAODBWrapper {
             value,
             schemaKey: schema.key
         });
+    }
+
+    /**
+     *
+     * Writer publicKey/address
+     *
+     */
+    public static getNameIdPublicKeyAssociationKey({ nameId }) {
+        return `TAO/this/nameId/${nameId}/writerKey/publicKey`;
+    }
+    public static getNameIdAddressAssociation({ nameId }) {
+        return `TAO/this/nameId/${nameId}/writerKey/address`;
+    }
+    public async insertNameIdIdentityAssociations({
+        nameId
+    }: {
+        nameId: string;
+    }): Promise<any> {
+        // Avoiding extra writes by checking if things already match.
+        // 1. Ensure publicKey sync
+        const taodbKeyForNameIdPublicKeyAssociation = TaoDB.getNameIdPublicKeyAssociationKey(
+            { nameId }
+        );
+        let existingPublicKeyAssociation;
+        try {
+            existingPublicKeyAssociation = await this.get(
+                taodbKeyForNameIdPublicKeyAssociation
+            );
+        } catch (error) {
+            // likely means that the entry does not exist yet
+        }
+        if (this.userPublicKey !== existingPublicKeyAssociation) {
+            try {
+                const schema: ITaoDB_Schema = this.schemas.writerPublicKey;
+                const schemaExists = await this.exists(schema.key);
+                if (!schemaExists) {
+                    throw new Error(`Schema does not exist`);
+                }
+                await this.insert({
+                    key: taodbKeyForNameIdPublicKeyAssociation,
+                    value: this.taodb.userPublicKey,
+                    schemaKey: schema.key
+                });
+            } catch (error) {
+                debug(
+                    `Error syncing user's nameId publicKey association in taodb`,
+                    error
+                );
+            }
+        }
+        // 2. Ensure address sync
+        const taodbKeyForNameIdAddressAssociation = TaoDB.getNameIdAddressAssociation(
+            { nameId }
+        );
+        let existingAddressAssociation;
+        try {
+            existingAddressAssociation = await this.get(
+                taodbKeyForNameIdAddressAssociation
+            );
+        } catch (error) {
+            // likely means that the entry does not exist yet
+        }
+        if (this.userPublicAddress !== existingAddressAssociation) {
+            try {
+                const schema: ITaoDB_Schema = this.schemas.writerAddress;
+                const schemaExists = await this.exists(schema.key);
+                if (!schemaExists) {
+                    throw new Error(`Schema does not exist`);
+                }
+                await this.insert({
+                    key: taodbKeyForNameIdPublicKeyAssociation,
+                    value: this.taodb.userPublicAddress,
+                    schemaKey: schema.key
+                });
+            } catch (error) {
+                debug(
+                    `Error syncing user's nameId address association in taodb`,
+                    error
+                );
+            }
+        }
     }
 }

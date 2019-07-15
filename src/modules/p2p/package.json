@@ -23,7 +23,9 @@
             "/p2p/stats",
             "/p2p/setUserIdentity",
             "/p2p/tao",
-            "/p2p/content/taodbKeyValues"
+            "/p2p/content/taodbKeyValues",
+            "/p2p/syncNameIdWriterAssociations",
+            "/p2p/getNameIdWriterAssociations"
         ],
         "activationEvents": []
     }

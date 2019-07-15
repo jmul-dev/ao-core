@@ -182,12 +182,19 @@ export default class AOUserSession extends EventEmitter {
         return { ethAddress };
     }
 
-    private _userChangeEvent() {
+    private async _userChangeEvent() {
         this.emit("user-change", {
             ethAddress: this.ethAddress,
             aoNameId: this.aoNameId,
             publicKey: this.publicKey,
             publicAddress: this.publicAddress
+        });
+        // Make sure taodb is up-to-date with the latest nameId/writerKey combo
+        this.router.send("/p2p/syncNameIdWriterAssociations").catch(error => {
+            debug(
+                `Error syncing user's nameId and local identity associations`,
+                error
+            );
         });
     }
 
@@ -487,12 +494,13 @@ export default class AOUserSession extends EventEmitter {
                     try {
                         // Fetch the buyer's publicKey from contracts (most recently associated with their nameId)
                         // TODO: we should really generate a decryption key for _every_ publicKey associated with that user
-                        const publicKeyResponse: IAORouterMessage = await this.router.send(
-                            "/eth/nameId/publicKey",
+                        const buyersNameIdWriterAssociationResponse: IAORouterMessage = await this.router.send(
+                            "/p2p/getNameIdWriterAssociations",
                             { nameId: buyContentEvent.buyer }
                         );
                         const buyersPublicKey =
-                            publicKeyResponse.data.publicKey;
+                            buyersNameIdWriterAssociationResponse.data
+                                .publicKey;
                         if (!buyersPublicKey)
                             throw new Error(
                                 `BuyContent event does not have a public key`

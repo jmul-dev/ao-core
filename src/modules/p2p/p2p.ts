@@ -169,6 +169,14 @@ export default class AOP2P extends AORouterInterface {
             "/p2p/content/taodbKeyValues",
             this._handleContentTaodbValues.bind(this)
         );
+        this.router.on(
+            "/p2p/syncNameIdWriterAssociations",
+            this._handleSyncNameIdWriterAssociations.bind(this)
+        );
+        this.router.on(
+            "/p2p/getNameIdWriterAssociations",
+            this._handleGetNameIdWriterAssociations.bind(this)
+        );
     }
 
     _init(request: IAORouterRequest) {
@@ -455,8 +463,10 @@ export default class AOP2P extends AORouterInterface {
     }
 
     _setUserIdentity(request: IAORouterRequest) {
-        const { userIdentity } = request.data;
+        const { userIdentity, nameId } = request.data;
+        // Set writing credentials for taodb
         this.taodb.setUserIdentity(userIdentity);
+        // Checks
         request.respond(null);
     }
 
@@ -1070,6 +1080,36 @@ export default class AOP2P extends AORouterInterface {
                 label: "Content host timestamp"
             });
             request.respond(taodbKeyValues);
+        } catch (error) {
+            request.reject(error);
+        }
+    }
+
+    async _handleSyncNameIdWriterAssociations(request: IAORouterRequest) {
+        const { nameId } = request.data;
+        try {
+            await this.taodb.insertNameIdIdentityAssociations({ nameId });
+            request.respond({});
+        } catch (error) {
+            request.reject(error);
+        }
+    }
+
+    async _handleGetNameIdWriterAssociations(request: IAORouterRequest) {
+        const { nameId } = request.data;
+        let response = {
+            publicKey: null,
+            address: null,
+            nameId
+        };
+        try {
+            const publicKeyKey = TaoDB.getNameIdPublicKeyAssociationKey({
+                nameId
+            });
+            response.publicKey = await this.taodb.get(publicKeyKey);
+            const addressKey = TaoDB.getNameIdAddressAssociation({ nameId });
+            response.address = await this.taodb.get(addressKey);
+            request.respond(response);
         } catch (error) {
             request.reject(error);
         }
