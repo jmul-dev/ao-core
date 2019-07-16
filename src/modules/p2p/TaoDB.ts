@@ -191,7 +191,7 @@ export default class TaoDB extends TAODBWrapper {
         contentType,
         contentMetadataDatKey
     }) {
-        return `nameId/${nameId}/AO/Content/${contentType}/${contentMetadataDatKey}/signature`;
+        return `nameId/${nameId.toLowerCase()}/AO/Content/${contentType}/${contentMetadataDatKey}/signature`;
     }
 
     public async insertUserContentSignature({
@@ -415,7 +415,7 @@ export default class TaoDB extends TAODBWrapper {
      *
      */
     public static getNameProfileImageKey({ nameId }) {
-        return `TAO/this/nameId/${nameId}/profileImage`;
+        return `TAO/this/nameId/${nameId.toLowerCase()}/profileImage`;
     }
     public async insertNameProfileImage({
         nameId,
@@ -446,10 +446,10 @@ export default class TaoDB extends TAODBWrapper {
      *
      */
     public static getTaoDescriptionKey({ taoId, timestamp }) {
-        return `TAO/this/taoId/${taoId}/description/timestamp/${timestamp}`;
+        return `TAO/this/taoId/${taoId.toLowerCase()}/description/timestamp/${timestamp}`;
     }
     public static getTaoDescriptionListKey({ taoId }) {
-        return `TAO/this/taoId/${taoId}/description`;
+        return `TAO/this/taoId/${taoId.toLowerCase()}/description`;
     }
     public async insertTaoDescription({
         taoId,
@@ -481,16 +481,16 @@ export default class TaoDB extends TAODBWrapper {
      *
      */
     public static getTaoThoughtKey({ taoId, thoughtId }) {
-        return `TAO/this/taoId/${taoId}/thoughts/thoughtId/${thoughtId}`;
+        return `TAO/this/taoId/${taoId.toLowerCase()}/thoughts/thoughtId/${thoughtId}`;
     }
     public static getTaoThoughtNameKey({ taoId, thoughtId, nameId }) {
-        return `TAO/this/taoId/${taoId}/thoughts/thoughtId/${thoughtId}/nameId/${nameId}`;
+        return `TAO/this/taoId/${taoId.toLowerCase()}/thoughts/thoughtId/${thoughtId}/nameId/${nameId.toLowerCase()}`;
     }
     public static getTaoThoughtsListKey({ taoId }) {
-        return `TAO/this/taoId/${taoId}/thoughts/thoughtId`;
+        return `TAO/this/taoId/${taoId.toLowerCase()}/thoughts/thoughtId`;
     }
     public static getTaoNameThoughtKey({ taoId, nameId, thoughtId }) {
-        return `TAO/this/nameId/${nameId}/taoId/${taoId}/thoughts/thoughtId/${thoughtId}`;
+        return `TAO/this/nameId/${nameId.toLowerCase()}/taoId/${taoId.toLowerCase()}/thoughts/thoughtId/${thoughtId}`;
     }
     public async insertTaoThought({
         taoId,
@@ -593,10 +593,10 @@ export default class TaoDB extends TAODBWrapper {
      *
      */
     public static getNameIdPublicKeyAssociationKey({ nameId }) {
-        return `TAO/this/nameId/${nameId}/writerKey/publicKey`;
+        return `TAO/this/nameId/${nameId.toLowerCase()}/writerKey/publicKey`;
     }
     public static getNameIdAddressAssociation({ nameId }) {
-        return `TAO/this/nameId/${nameId}/writerKey/address`;
+        return `TAO/this/nameId/${nameId.toLowerCase()}/writerKey/address`;
     }
     public async insertNameIdIdentityAssociations({
         nameId
