@@ -625,7 +625,7 @@ export default class TaoDB extends TAODBWrapper {
                 }
                 await this.insert({
                     key: taodbKeyForNameIdPublicKeyAssociation,
-                    value: this.taodb.userPublicKey,
+                    value: this.userPublicKey,
                     schemaKey: schema.key
                 });
             } catch (error) {
@@ -655,8 +655,8 @@ export default class TaoDB extends TAODBWrapper {
                     throw new Error(`Schema does not exist`);
                 }
                 await this.insert({
-                    key: taodbKeyForNameIdPublicKeyAssociation,
-                    value: this.taodb.userPublicAddress,
+                    key: taodbKeyForNameIdAddressAssociation,
+                    value: this.userPublicAddress,
                     schemaKey: schema.key
                 });
             } catch (error) {
