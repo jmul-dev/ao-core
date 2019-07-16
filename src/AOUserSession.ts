@@ -190,7 +190,7 @@ export default class AOUserSession extends EventEmitter {
             publicAddress: this.publicAddress
         });
         // Make sure taodb is up-to-date with the latest nameId/writerKey combo
-        this.router.send("/p2p/syncNameIdWriterAssociations").catch(error => {
+				this.router.send("/p2p/syncNameIdWriterAssociations", { nameId: this.aoNameId }).catch(error => {
             debug(
                 `Error syncing user's nameId and local identity associations`,
                 error

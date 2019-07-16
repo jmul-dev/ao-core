@@ -896,10 +896,12 @@ export default class AOP2P extends AORouterInterface {
         try {
             timestampEntry = await this.taodb.get(timestampKey);
         } catch (error) {
+					/*
             return request.reject(
                 error ||
                     new Error(`Key does not exist in taodb: ${timestampKey}`)
             );
+					 */
         }
         try {
             if (timestampEntry) {
