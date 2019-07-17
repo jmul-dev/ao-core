@@ -81,7 +81,7 @@ export interface AOP2P_PeerStats {
 export interface NetworkContentHostEntry {
     contentDatKey: string;
     contentHostId: string;
-    nodePublicKey: string;
+    hostNameId: string;
     timestamp: string;
 }
 
@@ -531,7 +531,7 @@ export default class AOP2P extends AORouterInterface {
             contentMetadataDatKey: content.metadataDatKey,
             contentType: content.contentType
         });
-
+        debug(`indexDataKey: ${indexDataKey}`);
         Promise.resolve()
             .then(() => {
                 // 1. Initial query for indexData
@@ -734,7 +734,7 @@ export default class AOP2P extends AORouterInterface {
                                     contentDatKey: entry.value.contentDatKey,
                                     contentHostId: entry.value.contentHostId,
                                     timestamp: entry.value.timestamp,
-                                    nodePublicKey: entry.splitKey[5] // /AO/Content/{contentType}/{contentMetadataDatKey}/Hosts/{hostsNodeId/publicKey}
+                                    hostNameId: entry.splitKey[6] // /AO/Content/{contentType}/{contentMetadataDatKey}/Hosts/nameId/{hostsNodeId}
                                 };
                             } else {
                                 return null;
@@ -896,7 +896,7 @@ export default class AOP2P extends AORouterInterface {
         try {
             timestampEntry = await this.taodb.get(timestampKey);
         } catch (error) {
-					/*
+            /*
             return request.reject(
                 error ||
                     new Error(`Key does not exist in taodb: ${timestampKey}`)

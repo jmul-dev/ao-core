@@ -664,6 +664,8 @@ export default class AOUserSession extends EventEmitter {
                 this.router
                     .send("/dat/encryptedFileDownload", encryptedDownloadData)
                     .then((downloadResponse: IAORouterMessage) => {
+                        const hostEntry: NetworkContentHostEntry =
+                            downloadResponse.data.nodeEntry;
                         // 4a. Content has started downloading from a host!
                         let userContentUpdate: AODB_UserContentUpdate_Data = {
                             id: content.id,
@@ -677,9 +679,7 @@ export default class AOUserSession extends EventEmitter {
                                         downloadResponse.data.contentHostId,
                                     fileDatKey:
                                         downloadResponse.data.datEntry.key,
-                                    nodePublicKey:
-                                        downloadResponse.data.nodeEntry
-                                            .nodePublicKey //Important for when you're listening on the sold key channel.
+                                    hostNameId: hostEntry.hostNameId
                                 }
                             }
                         };
