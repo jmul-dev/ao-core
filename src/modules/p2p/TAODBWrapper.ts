@@ -93,7 +93,7 @@ export default class TAODBWrapper {
                             parseInt(args.ethNetworkId)
                         );
 												const port = await getPort({port: getPort.makeRange(60001, 60010)});
-                        this.swarm = swarm(this.taodb, {
+                        this.swarm = await swarm(this.taodb, {
                             dht: false,
                             utp: false,
 							tcp: true,
@@ -115,7 +115,7 @@ export default class TAODBWrapper {
     }
 
     public peersConnected() {
-        return this.swarm && this.swarm.connected ? this.swarm.connected : 0;
+        return this.swarm ? this.swarm.connected : 0;
     }
 
     public createSignHash(key: string, value: any): string {
