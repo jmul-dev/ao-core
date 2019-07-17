@@ -4,6 +4,7 @@ import Debug from "debug";
 import { IAOStatus } from "../../models/AOStatus";
 import { createUserIdentity, Identity } from "../../AOCrypto";
 const debug = Debug("ao:taodb");
+const getPort = require("get-port");
 
 export interface ITAODB_Args {
     dbKey: string;
@@ -91,8 +92,7 @@ export default class TAODBWrapper {
                         await this.taodb.setNetworkId(
                             parseInt(args.ethNetworkId)
                         );
-						// If rinkeby (networkId 4) use port 60002, else default to 60001
-						const port = parseInt(args.ethNetworkId) === 4 ? 60002 : 60001;
+												const port = await getPort({port: getPort.makeRange(60001, 60010)});
                         this.swarm = swarm(this.taodb, {
                             dht: false,
                             utp: false,
